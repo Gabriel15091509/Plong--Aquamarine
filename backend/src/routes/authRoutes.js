@@ -5,12 +5,7 @@ const AuthMiddleware = require('../middlewares/authMiddleware');
 
 const authController = new AuthController();
 
-// Routes publiques
 router.post('/login', authController.login.bind(authController));
-router.post('/register', authController.register.bind(authController));
-
-// Routes protégées
-router.get('/me', AuthMiddleware.authenticate, authController.me.bind(authController));
-router.post('/logout', AuthMiddleware.authenticate, authController.logout.bind(authController));
+router.post('/change-password', AuthMiddleware.authenticate, authController.changePassword.bind(authController));
 
 module.exports = router;

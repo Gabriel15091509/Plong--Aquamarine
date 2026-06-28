@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   FiMenu,
   FiBell,
@@ -17,6 +18,7 @@ import {
   FiMoon,
   FiAlertCircle,
   FiCheckCircle,
+  FiKey,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
@@ -26,7 +28,7 @@ import { formatRelativeTime } from "../../utils/helpers";
 import Logo from "../Common/Logo";
 
 const Header = ({ sidebarOpen, setSidebarOpen }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -365,37 +367,54 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
                     </div>
                   </div>
 
-                  {/* Menu profil */}
+                  {/* ✅ Menu profil avec tous les liens */}
                   <div className="p-2">
-                    {[
-                      { icon: FiUser, label: "Mon profil", href: "/profile" },
-                      { icon: FiSettings, label: "Paramètres", href: "#" },
-                      {
-                        icon: FiMail,
-                        label: "Messages",
-                        href: "#",
-                        badge: "3",
-                      },
-                    ].map((item, index) => (
-                      <motion.a
-                        key={index}
-                        href={item.href}
-                        whileHover={{ x: 5, backgroundColor: "#f3f4f6" }}
-                        className="flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors dark:hover:bg-gray-700"
+                    <Link
+                      to="/profile"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <FiUser className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Mon profil
+                      </span>
+                    </Link>
+
+                    <Link
+                      to="/change-password"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <FiKey className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Changer mot de passe
+                      </span>
+                    </Link>
+
+                    {/* ✅ Lien Créer un utilisateur (visible uniquement pour le DT) */}
+                    {hasPermission("manage_users") && (
+                      <Link
+                        to="/users/create"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
-                        <div className="flex items-center gap-3">
-                          <item.icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
-                            {item.label}
-                          </span>
-                        </div>
-                        {item.badge && (
-                          <span className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                            {item.badge}
-                          </span>
-                        )}
-                      </motion.a>
-                    ))}
+                        <FiUserPlus className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          Créer un utilisateur
+                        </span>
+                      </Link>
+                    )}
+
+                    {/* Séparateur */}
+                    <div className="border-t border-gray-100 dark:border-gray-700 my-2" />
+
+                    {/* Paramètres */}
+                    <Link
+                      to="/settings"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <FiSettings className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Paramètres
+                      </span>
+                    </Link>
                   </div>
 
                   {/* Séparateur */}

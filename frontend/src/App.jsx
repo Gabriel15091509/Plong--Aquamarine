@@ -14,6 +14,8 @@ import { AnimatePresence } from "framer-motion";
 import Layout from "./components/Layout/Layout";
 
 // Pages
+import UserCreatePage from "./pages/UserCreatePage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdherentsPage from "./pages/AdherentsPage";
@@ -142,6 +144,26 @@ function App() {
                   <PrivateRoute>
                     <Layout>
                       <AdherentDetailsPage />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/users/create"
+                element={
+                  <ProtectedRoute requiredPermission="manage_users">
+                    <Layout>
+                      <UserCreatePage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/change-password"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <ChangePasswordPage />
                     </Layout>
                   </PrivateRoute>
                 }

@@ -100,7 +100,8 @@ const LoginPage = () => {
     if (!formData.password) {
       newErrors.password = "Le mot de passe est requis";
     } else if (formData.password.length < 6) {
-      newErrors.password = "Le mot de passe doit contenir au moins 6 caractères";
+      newErrors.password =
+        "Le mot de passe doit contenir au moins 6 caractères";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -108,15 +109,18 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
-
     setLoading(true);
+
     try {
-      await login(formData.email, formData.password);
-      toast.success("Connexion réussie !");
-      navigate("/dashboard");
+      const result = await login(formData.email, formData.password);
+
+      if (result?.mustChangePassword) {
+        navigate("/change-password", { state: { fromLogin: true } });
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
-      toast.error("Email ou mot de passe incorrect");
+      // toast.error déjà géré dans AuthContext.login()
     } finally {
       setLoading(false);
     }
@@ -224,7 +228,9 @@ const LoginPage = () => {
                   onChange={handleChange}
                   placeholder="exemple@email.com"
                   className={`w-full pl-10 pr-4 py-3 border ${
-                    errors.email ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                    errors.email
+                      ? "border-red-500"
+                      : "border-gray-300 dark:border-gray-600"
                   } rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400`}
                 />
                 <motion.div
@@ -262,7 +268,9 @@ const LoginPage = () => {
                   onChange={handleChange}
                   placeholder="••••••••"
                   className={`w-full pl-10 pr-12 py-3 border ${
-                    errors.password ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                    errors.password
+                      ? "border-red-500"
+                      : "border-gray-300 dark:border-gray-600"
                   } rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400`}
                 />
                 <motion.button

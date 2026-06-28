@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiUserPlus,
@@ -17,257 +17,226 @@ import {
   FiPhone,
   FiCalendar,
   FiChevronDown,
+  FiRefreshCw,
+  FiKey,
+  FiToggleLeft,
+  FiToggleRight,
 } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import ProtectedRoute from "../components/Common/ProtectedRoute";
 import SearchBar from "../components/Common/SearchBar";
 import LoadingSpinner from "../components/Common/LoadingSpinner";
-import RoleBasedContent from "../components/Common/RoleBasedContent";
+import userService from "../services/userService";
+import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
 
-// Données simulées - À remplacer par l'appel API réel
-const mockUsers = [
-  {
-    id: 1,
-    name: "Jean Dupont",
-    email: "jean@plongee.com",
-    role: "president",
-    phone: "0612345678",
-    active: true,
-    created_at: "2024-01-15",
-  },
-  {
-    id: 2,
-    name: "Marie Martin",
-    email: "marie@plongee.com",
-    role: "moniteur",
-    phone: "0623456789",
-    active: true,
-    created_at: "2024-02-01",
-  },
-  {
-    id: 3,
-    name: "Pierre Durand",
-    email: "pierre@plongee.com",
-    role: "tresorier",
-    phone: "0634567890",
-    active: true,
-    created_at: "2024-02-15",
-  },
-  {
-    id: 4,
-    name: "Sophie Bernard",
-    email: "sophie@plongee.com",
-    role: "adherent",
-    phone: "0645678901",
-    active: true,
-    created_at: "2024-03-01",
-  },
-  {
-    id: 5,
-    name: "Luc Moreau",
-    email: "luc@plongee.com",
-    role: "adherent",
-    phone: "0656789012",
-    active: false,
-    created_at: "2024-03-15",
-  },
-  {
-    id: 6,
-    name: "Claire Petit",
-    email: "claire@plongee.com",
-    role: "moniteur",
-    phone: "0667890123",
-    active: true,
-    created_at: "2024-04-01",
-  },
-  {
-    id: 7,
-    name: "Michel Robert",
-    email: "michel@plongee.com",
-    role: "adherent",
-    phone: "0678901234",
-    active: true,
-    created_at: "2024-04-15",
-  },
-  {
-    id: 8,
-    name: "Isabelle Dubois",
-    email: "isabelle@plongee.com",
-    role: "tresorier",
-    phone: "0689012345",
-    active: false,
-    created_at: "2024-05-01",
-  },
-];
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+const getRoleInfo = (role) => {
+  const roles = {
+    president: {
+      icon: FiShield,
+      label: "Président",
+      color: "text-purple-600 dark:text-purple-400",
+      bg: "bg-purple-100 dark:bg-purple-900/30",
+    },
+    moniteur: {
+      icon: FiAward,
+      label: "Moniteur",
+      color: "text-blue-600 dark:text-blue-400",
+      bg: "bg-blue-100 dark:bg-blue-900/30",
+    },
+    tresorier: {
+      icon: FiDollarSign,
+      label: "Trésorier",
+      color: "text-green-600 dark:text-green-400",
+      bg: "bg-green-100 dark:bg-green-900/30",
+    },
+    adherent: {
+      icon: FiUser,
+      label: "Adhérent",
+      color: "text-gray-600 dark:text-gray-400",
+      bg: "bg-gray-100 dark:bg-gray-700",
+    },
+  };
+  return roles[role] || roles.adherent;
+};
+
+const formatDate = (date) => {
+  if (!date) return "-";
+  return new Date(date).toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+// ── Modal Créer Utilisateur ────────────────────────────────────────────────────
+
+// ── Page Principale ────────────────────────────────────────────────────────────
 
 const UsersPage = () => {
-  const { user, hasRole, hasPermission } = useAuth();
-  const [users, setUsers] = useState(mockUsers);
-  const [loading, setLoading] = useState(false);
+  const { user: currentUser, hasRole, hasPermission } = useAuth();
+
+  // État
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null); // id de l'user en cours d'action
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  // ✅ Vérifier si l'utilisateur peut gérer les utilisateurs
   const canManageUsers =
     hasPermission("manage_users") || hasRole(["president"]);
-
-  // ✅ Vérifier si l'utilisateur peut modifier les rôles
   const canEditRoles = hasRole(["president"]);
-
-  // ✅ Vérifier si l'utilisateur peut supprimer des utilisateurs
   const canDeleteUsers = hasRole(["president"]);
 
-  // ✅ Vérifier si l'utilisateur peut voir les options avancées
-  const canSeeAdvanced = hasRole(["president", "tresorier"]);
+  // ── Chargement ──────────────────────────────────────────────────────────────
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await userService.getAll();
+      setUsers(response.data || []);
+    } catch (error) {
+      toast.error("Erreur lors du chargement des utilisateurs");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // ✅ Fonctions pour obtenir les infos des rôles
-  const getRoleInfo = (role) => {
-    const roles = {
-      president: {
-        icon: FiShield,
-        label: "Président",
-        color: "text-purple-600 dark:text-purple-400",
-        bg: "bg-purple-100 dark:bg-purple-900/30",
-        border: "border-purple-200 dark:border-purple-800",
-      },
-      moniteur: {
-        icon: FiAward,
-        label: "Moniteur",
-        color: "text-blue-600 dark:text-blue-400",
-        bg: "bg-blue-100 dark:bg-blue-900/30",
-        border: "border-blue-200 dark:border-blue-800",
-      },
-      tresorier: {
-        icon: FiDollarSign,
-        label: "Trésorier",
-        color: "text-green-600 dark:text-green-400",
-        bg: "bg-green-100 dark:bg-green-900/30",
-        border: "border-green-200 dark:border-green-800",
-      },
-      adherent: {
-        icon: FiUser,
-        label: "Adhérent",
-        color: "text-gray-600 dark:text-gray-400",
-        bg: "bg-gray-100 dark:bg-gray-700",
-        border: "border-gray-200 dark:border-gray-600",
-      },
-    };
-    return roles[role] || roles.adherent;
-  };
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
-  // ✅ Filtrer les utilisateurs
+  // ── Filtrage local (rapide, sans re-fetch) ──────────────────────────────────
   const filteredUsers = useMemo(() => {
     let result = users;
-
     if (searchTerm) {
-      const search = searchTerm.toLowerCase();
+      const s = searchTerm.toLowerCase();
       result = result.filter(
         (u) =>
-          u.name.toLowerCase().includes(search) ||
-          u.email.toLowerCase().includes(search),
+          u.name.toLowerCase().includes(s) || u.email.toLowerCase().includes(s),
       );
     }
-
-    if (filterRole !== "all") {
+    if (filterRole !== "all")
       result = result.filter((u) => u.role === filterRole);
-    }
-
-    if (filterStatus !== "all") {
+    if (filterStatus !== "all")
       result = result.filter((u) =>
         filterStatus === "active" ? u.active : !u.active,
       );
-    }
-
     return result;
   }, [users, searchTerm, filterRole, filterStatus]);
 
-  // ✅ Statistiques des filtres
-  const stats = useMemo(() => {
-    const total = users.length;
-    const active = users.filter((u) => u.active).length;
-    const inactive = users.filter((u) => !u.active).length;
-    const byRole = {
-      president: users.filter((u) => u.role === "president").length,
-      moniteur: users.filter((u) => u.role === "moniteur").length,
-      tresorier: users.filter((u) => u.role === "tresorier").length,
-      adherent: users.filter((u) => u.role === "adherent").length,
-    };
-    return { total, active, inactive, byRole };
-  }, [users]);
+  const stats = useMemo(
+    () => ({
+      total: users.length,
+      active: users.filter((u) => u.active).length,
+      inactive: users.filter((u) => !u.active).length,
+      byRole: {
+        president: users.filter((u) => u.role === "president").length,
+        moniteur: users.filter((u) => u.role === "moniteur").length,
+        tresorier: users.filter((u) => u.role === "tresorier").length,
+        adherent: users.filter((u) => u.role === "adherent").length,
+      },
+    }),
+    [users],
+  );
 
-  // ✅ Réinitialiser les filtres
-  const clearFilters = () => {
-    setSearchTerm("");
-    setFilterRole("all");
-    setFilterStatus("all");
-  };
-
-  // ✅ Ouvrir le modal de détails
-  const openUserDetails = (user) => {
-    setSelectedUser(user);
-    setIsModalOpen(true);
-  };
-
-  // ✅ Formatter la date
-  const formatDate = (date) => {
-    if (!date) return "-";
-    return new Date(date).toLocaleDateString("fr-FR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  // ✅ Options de filtres (cachées selon le rôle)
-  const roleOptions = useMemo(() => {
-    const options = [{ value: "all", label: "Tous les rôles" }];
-
-    // ✅ Seul le président voit tous les rôles
-    if (hasRole(["president"])) {
-      options.push(
-        { value: "president", label: "👑 Président" },
-        { value: "moniteur", label: "🏊 Moniteur" },
-        { value: "tresorier", label: "💰 Trésorier" },
-        { value: "adherent", label: "🤿 Adhérent" },
+  // ── Actions ─────────────────────────────────────────────────────────────────
+  const handleToggleActive = async (u) => {
+    setActionLoading(u.id);
+    try {
+      if (u.active) {
+        await userService.disableAccount(u.id);
+        toast.success(`${u.name} désactivé`);
+      } else {
+        await userService.enableAccount(u.id);
+        toast.success(`${u.name} réactivé`);
+      }
+      setUsers((prev) =>
+        prev.map((x) => (x.id === u.id ? { ...x, active: !x.active } : x)),
       );
-    } else if (hasRole(["moniteur"])) {
-      // Le moniteur voit seulement les adhérents et moniteurs
-      options.push(
-        { value: "moniteur", label: "🏊 Moniteur" },
-        { value: "adherent", label: "🤿 Adhérent" },
-      );
-    } else if (hasRole(["tresorier"])) {
-      // Le trésorier voit seulement les adhérents
-      options.push({ value: "adherent", label: "🤿 Adhérent" });
-    } else {
-      // L'adhérent voit seulement son rôle
-      options.push({ value: "adherent", label: "🤿 Adhérent" });
+      if (selectedUser?.id === u.id)
+        setSelectedUser((p) => ({ ...p, active: !p.active }));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur");
+    } finally {
+      setActionLoading(null);
     }
+  };
 
-    return options;
-  }, [user]);
+  const handleResetPassword = async (u) => {
+    if (!window.confirm(`Réinitialiser le mot de passe de ${u.name} ?`)) return;
+    setActionLoading(u.id);
+    try {
+      const result = await userService.resetPassword(u.id);
+      toast.success(
+        `Nouveau mot de passe temporaire : ${result.tempPassword}`,
+        { duration: 10000 },
+      );
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur");
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
-  const statusOptions = [
-    { value: "all", label: "Tous les statuts" },
-    { value: "active", label: "✅ Actifs" },
-    { value: "inactive", label: "❌ Inactifs" },
-  ];
+  const handleChangeRole = async (u, newRole) => {
+    setActionLoading(u.id);
+    try {
+      await userService.changeRole(u.id, newRole);
+      toast.success(`Rôle de ${u.name} mis à jour`);
+      setUsers((prev) =>
+        prev.map((x) => (x.id === u.id ? { ...x, role: newRole } : x)),
+      );
+      if (selectedUser?.id === u.id)
+        setSelectedUser((p) => ({ ...p, role: newRole }));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDelete = async (u) => {
+    if (
+      !window.confirm(
+        `Supprimer définitivement le compte de ${u.name} ? Cette action est irréversible.`,
+      )
+    )
+      return;
+    setActionLoading(u.id);
+    try {
+      await userService.deleteAccount(u.id);
+      toast.success(`${u.name} supprimé`);
+      setUsers((prev) => prev.filter((x) => x.id !== u.id));
+      if (selectedUser?.id === u.id) setIsDetailModalOpen(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCreateSuccess = (newUser) => {
+    setUsers((prev) => [newUser, ...prev]);
+  };
 
   if (!canManageUsers) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
         <div className="w-24 h-24 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-6">
-          <FiShield className="w-12 h-12 text-red-500 dark:text-red-400" />
+          <FiShield className="w-12 h-12 text-red-500" />
         </div>
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-3">
           Accès non autorisé
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md">
-          Vous n'avez pas les permissions nécessaires pour accéder à cette page.
+        <p className="text-gray-500 dark:text-gray-400 max-w-md">
+          Vous n'avez pas les permissions pour accéder à cette page.
         </p>
       </div>
     );
@@ -288,70 +257,61 @@ const UsersPage = () => {
               Gestion des utilisateurs
             </h1>
             <p className="text-gray-500 dark:text-gray-400 mt-1">
-              Gérez les comptes et les permissions des utilisateurs
+              {stats.total} utilisateur{stats.total > 1 ? "s" : ""} ·{" "}
+              {stats.active} actif{stats.active > 1 ? "s" : ""}
             </p>
           </div>
-
-          {/* ✅ Bouton "Nouvel utilisateur" - Visible uniquement pour le président */}
-          {canEditRoles && (
-            <button className="btn-primary flex items-center gap-2">
-              <FiUserPlus className="w-4 h-4" />
-              Nouvel utilisateur
-            </button>
-          )}
+          
         </div>
 
-        {/* Statistiques - Adaptées selon le rôle */}
+        {/* Statistiques */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-card p-4 text-center border border-gray-100 dark:border-gray-700">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {stats.total}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Total</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-card p-4 text-center border border-gray-100 dark:border-gray-700">
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {stats.active}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Actifs</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-card p-4 text-center border border-gray-100 dark:border-gray-700">
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-              {stats.inactive}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Inactifs</p>
-          </div>
-
-          {/* ✅ Statistiques par rôle - Cachées selon le rôle */}
-          {canEditRoles && (
-            <>
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-card p-4 text-center border border-gray-100 dark:border-gray-700">
-                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                  {stats.byRole.president}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  👑 Présidents
-                </p>
-              </div>
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-card p-4 text-center border border-gray-100 dark:border-gray-700">
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {stats.byRole.moniteur}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  🏊 Moniteurs
-                </p>
-              </div>
-            </>
-          )}
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-card p-4 text-center border border-gray-100 dark:border-gray-700">
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {stats.byRole.tresorier + stats.byRole.adherent}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              📋 Autres
-            </p>
-          </div>
+          {[
+            {
+              label: "Total",
+              value: stats.total,
+              color: "text-blue-600 dark:text-blue-400",
+            },
+            {
+              label: "Actifs",
+              value: stats.active,
+              color: "text-green-600 dark:text-green-400",
+            },
+            {
+              label: "Inactifs",
+              value: stats.inactive,
+              color: "text-red-600 dark:text-red-400",
+            },
+            ...(canEditRoles
+              ? [
+                  {
+                    label: "👑 Présidents",
+                    value: stats.byRole.president,
+                    color: "text-purple-600 dark:text-purple-400",
+                  },
+                  {
+                    label: "🏊 Moniteurs",
+                    value: stats.byRole.moniteur,
+                    color: "text-blue-600 dark:text-blue-400",
+                  },
+                ]
+              : []),
+            {
+              label: "🤿 Adhérents",
+              value: stats.byRole.adherent,
+              color: "text-gray-600 dark:text-gray-400",
+            },
+          ].map((s, i) => (
+            <div
+              key={i}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-card p-4 text-center border border-gray-100 dark:border-gray-700"
+            >
+              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {s.label}
+              </p>
+            </div>
+          ))}
         </div>
 
         {/* Recherche et filtres */}
@@ -370,7 +330,7 @@ const UsersPage = () => {
                 className={`px-4 py-2.5 rounded-xl border transition-all flex items-center gap-2 ${
                   showFilters
                     ? "bg-primary-500 text-white border-primary-500"
-                    : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+                    : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600"
                 }`}
               >
                 <FiFilter className="w-4 h-4" />
@@ -383,8 +343,12 @@ const UsersPage = () => {
                 filterRole !== "all" ||
                 filterStatus !== "all") && (
                 <button
-                  onClick={clearFilters}
-                  className="px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium dark:text-red-400 dark:hover:bg-red-900/20"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setFilterRole("all");
+                    setFilterStatus("all");
+                  }}
+                  className="px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium dark:text-red-400"
                 >
                   Effacer
                 </button>
@@ -392,14 +356,12 @@ const UsersPage = () => {
             </div>
           </div>
 
-          {/* Filtres avancés */}
           <AnimatePresence>
             {showFilters && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
                 className="overflow-hidden"
               >
                 <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -412,11 +374,11 @@ const UsersPage = () => {
                       onChange={(e) => setFilterRole(e.target.value)}
                       className="input-field"
                     >
-                      {roleOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
+                      <option value="all">Tous les rôles</option>
+                      <option value="president">👑 Président</option>
+                      <option value="moniteur">🏊 Moniteur</option>
+                      <option value="tresorier">💰 Trésorier</option>
+                      <option value="adherent">🤿 Adhérent</option>
                     </select>
                   </div>
                   <div>
@@ -428,11 +390,9 @@ const UsersPage = () => {
                       onChange={(e) => setFilterStatus(e.target.value)}
                       className="input-field"
                     >
-                      {statusOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
+                      <option value="all">Tous les statuts</option>
+                      <option value="active">✅ Actifs</option>
+                      <option value="inactive">❌ Inactifs</option>
                     </select>
                   </div>
                 </div>
@@ -441,10 +401,10 @@ const UsersPage = () => {
           </AnimatePresence>
         </div>
 
-        {/* Liste des utilisateurs */}
+        {/* Tableau */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card overflow-hidden border border-gray-100 dark:border-gray-700">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-16">
               <LoadingSpinner />
             </div>
           ) : filteredUsers.length === 0 ? (
@@ -453,69 +413,61 @@ const UsersPage = () => {
               <p className="text-gray-500 dark:text-gray-400">
                 Aucun utilisateur trouvé
               </p>
-              {(searchTerm ||
-                filterRole !== "all" ||
-                filterStatus !== "all") && (
-                <button
-                  onClick={clearFilters}
-                  className="mt-3 text-sm text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  Réinitialiser les filtres
-                </button>
-              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Utilisateur
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Rôle
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Statut
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    {[
+                      "Utilisateur",
+                      "Email",
+                      "Rôle",
+                      "Statut",
+                      "Inscription",
+                      "Actions",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredUsers.map((u, index) => {
                     const roleInfo = getRoleInfo(u.role);
                     const RoleIcon = roleInfo.icon;
+                    const isActioning = actionLoading === u.id;
 
                     return (
                       <motion.tr
                         key={u.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                        onClick={() => openUserDetails(u)}
+                        transition={{ delay: index * 0.03 }}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setIsDetailModalOpen(true);
+                        }}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div
-                              className={`w-9 h-9 rounded-full bg-gradient-to-r from-primary-500 to-ocean-500 flex items-center justify-center text-white text-sm font-semibold`}
-                            >
-                              {u.name.charAt(0)}
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-r from-primary-500 to-ocean-500 flex items-center justify-center text-white text-sm font-semibold">
+                              {u.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
                                 {u.name}
-                              </span>
+                              </p>
                               {u.phone && (
-                                <div className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
+                                <p className="text-xs text-gray-400 flex items-center gap-1">
                                   <FiPhone className="w-3 h-3" />
                                   {u.phone}
-                                </div>
+                                </p>
                               )}
                             </div>
                           </div>
@@ -555,25 +507,70 @@ const UsersPage = () => {
                             )}
                           </span>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          <div className="flex items-center gap-1">
+                            <FiCalendar className="w-3 h-3" />
+                            {formatDate(u.created_at)}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex gap-2">
+                          <div
+                            className="flex gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {canEditRoles && (
+                              <>
+                                {/* Activer / Désactiver */}
+                                <button
+                                  onClick={() => handleToggleActive(u)}
+                                  disabled={
+                                    isActioning || u.id === currentUser?.id
+                                  }
+                                  title={u.active ? "Désactiver" : "Activer"}
+                                  className={`p-2 rounded-lg transition-colors disabled:opacity-40 ${
+                                    u.active
+                                      ? "text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                                      : "text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
+                                  }`}
+                                >
+                                  {u.active ? (
+                                    <FiToggleRight className="w-4 h-4" />
+                                  ) : (
+                                    <FiToggleLeft className="w-4 h-4" />
+                                  )}
+                                </button>
+
+                                {/* Réinitialiser mot de passe */}
+                                <button
+                                  onClick={() => handleResetPassword(u)}
+                                  disabled={isActioning}
+                                  title="Réinitialiser le mot de passe"
+                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-blue-400 dark:hover:bg-blue-900/20 disabled:opacity-40"
+                                >
+                                  <FiKey className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+
+                            {/* Éditer */}
                             <button
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-blue-400 dark:hover:bg-blue-900/20"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openUserDetails(u);
+                              onClick={() => {
+                                setSelectedUser(u);
+                                setIsDetailModalOpen(true);
                               }}
+                              title="Voir / Modifier"
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors dark:text-gray-400 dark:hover:bg-gray-700"
                             >
                               <FiEdit className="w-4 h-4" />
                             </button>
 
-                            {/* ✅ Bouton Supprimer - Visible uniquement pour le président */}
-                            {canDeleteUsers && (
+                            {/* Supprimer */}
+                            {canDeleteUsers && u.id !== currentUser?.id && (
                               <button
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-red-400 dark:hover:bg-red-900/20"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                }}
+                                onClick={() => handleDelete(u)}
+                                disabled={isActioning}
+                                title="Supprimer"
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-red-400 dark:hover:bg-red-900/20 disabled:opacity-40"
                               >
                                 <FiTrash2 className="w-4 h-4" />
                               </button>
@@ -589,15 +586,15 @@ const UsersPage = () => {
           )}
         </div>
 
-        {/* Modal Détails Utilisateur - Adapté selon le rôle */}
+        {/* Modal Détails / Modifier */}
         <AnimatePresence>
-          {isModalOpen && selectedUser && (
+          {isDetailModalOpen && selectedUser && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-              onClick={() => setIsModalOpen(false)}
+              onClick={() => setIsDetailModalOpen(false)}
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -606,12 +603,12 @@ const UsersPage = () => {
                 className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* En-tête */}
+                {/* Header */}
                 <div className="bg-gradient-to-r from-primary-500 to-ocean-500 p-6 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-3xl font-bold border-2 border-white/30">
-                        {selectedUser.name.charAt(0)}
+                        {selectedUser.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <h3 className="text-xl font-semibold">
@@ -623,7 +620,7 @@ const UsersPage = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => setIsModalOpen(false)}
+                      onClick={() => setIsDetailModalOpen(false)}
                       className="p-2 hover:bg-white/20 rounded-xl transition-colors"
                     >
                       <FiX className="w-5 h-5" />
@@ -631,32 +628,15 @@ const UsersPage = () => {
                   </div>
                 </div>
 
-                {/* Informations */}
+                {/* Body */}
                 <div className="p-6 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Rôle
-                      </p>
-                      <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                        {getRoleInfo(selectedUser.role).icon &&
-                          React.createElement(
-                            getRoleInfo(selectedUser.role).icon,
-                            { className: "w-4 h-4" },
-                          )}
-                        {getRoleInfo(selectedUser.role).label}
-                      </p>
-                    </div>
-                    <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                         Statut
                       </p>
-                      <p
-                        className={`font-medium flex items-center gap-2 ${
-                          selectedUser.active
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400"
-                        }`}
+                      <span
+                        className={`text-sm font-medium flex items-center gap-1 ${selectedUser.active ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
                       >
                         {selectedUser.active ? (
                           <>
@@ -669,49 +649,117 @@ const UsersPage = () => {
                             Inactif
                           </>
                         )}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        Inscription
+                      </p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {formatDate(selectedUser.created_at)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Téléphone
-                    </p>
-                    <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                      <FiPhone className="w-4 h-4 text-gray-400" />
-                      {selectedUser.phone || "Non renseigné"}
-                    </p>
-                  </div>
+                  {selectedUser.phone && (
+                    <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        Téléphone
+                      </p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                        <FiPhone className="w-4 h-4 text-gray-400" />
+                        {selectedUser.phone}
+                      </p>
+                    </div>
+                  )}
 
-                  <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Date d'inscription
-                    </p>
-                    <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                      <FiCalendar className="w-4 h-4 text-gray-400" />
-                      {formatDate(selectedUser.created_at)}
-                    </p>
-                  </div>
+                  {/* Changer le rôle (président uniquement) */}
+                  {canEditRoles && selectedUser.id !== currentUser?.id && (
+                    <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                        Changer le rôle
+                      </p>
+                      <select
+                        value={selectedUser.role}
+                        onChange={(e) =>
+                          handleChangeRole(selectedUser, e.target.value)
+                        }
+                        disabled={actionLoading === selectedUser.id}
+                        className="input-field text-sm"
+                      >
+                        <option value="adherent">🤿 Adhérent</option>
+                        <option value="moniteur">🏊 Moniteur</option>
+                        <option value="tresorier">💰 Trésorier</option>
+                        <option value="president">👑 Président</option>
+                      </select>
+                    </div>
+                  )}
 
-                  <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    {canEditRoles && selectedUser.id !== currentUser?.id && (
+                      <>
+                        <button
+                          onClick={() => handleResetPassword(selectedUser)}
+                          disabled={actionLoading === selectedUser.id}
+                          className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition-colors dark:bg-blue-900/20 dark:text-blue-400 disabled:opacity-50"
+                        >
+                          <FiKey className="w-4 h-4" />
+                          Réinitialiser mot de passe
+                        </button>
+                        <button
+                          onClick={() => handleToggleActive(selectedUser)}
+                          disabled={actionLoading === selectedUser.id}
+                          className={`flex items-center gap-2 px-3 py-2 text-sm rounded-xl transition-colors disabled:opacity-50 ${
+                            selectedUser.active
+                              ? "bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400"
+                              : "bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400"
+                          }`}
+                        >
+                          {selectedUser.active ? (
+                            <>
+                              <FiToggleRight className="w-4 h-4" />
+                              Désactiver
+                            </>
+                          ) : (
+                            <>
+                              <FiToggleLeft className="w-4 h-4" />
+                              Activer
+                            </>
+                          )}
+                        </button>
+                        {canDeleteUsers && (
+                          <button
+                            onClick={() => handleDelete(selectedUser)}
+                            disabled={actionLoading === selectedUser.id}
+                            className="flex items-center gap-2 px-3 py-2 text-sm bg-red-50 text-red-700 rounded-xl hover:bg-red-100 transition-colors dark:bg-red-900/20 dark:text-red-400 disabled:opacity-50"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                            Supprimer
+                          </button>
+                        )}
+                      </>
+                    )}
                     <button
-                      onClick={() => setIsModalOpen(false)}
-                      className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium"
+                      onClick={() => setIsDetailModalOpen(false)}
+                      className="ml-auto px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 transition-colors"
                     >
                       Fermer
                     </button>
-
-                    {/* ✅ Bouton Modifier - Visible uniquement pour le président */}
-                    {canEditRoles && (
-                      <button className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-xl hover:bg-primary-600 transition-colors font-medium flex items-center justify-center gap-2">
-                        <FiEdit className="w-4 h-4" />
-                        Modifier
-                      </button>
-                    )}
                   </div>
                 </div>
               </motion.div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Modal Créer */}
+        <AnimatePresence>
+          {isCreateModalOpen && (
+            <CreateUserModal
+              onClose={() => setIsCreateModalOpen(false)}
+              onSuccess={handleCreateSuccess}
+            />
           )}
         </AnimatePresence>
       </motion.div>

@@ -1,60 +1,49 @@
-const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+// backend/src/controllers/AuthController.js
+const jwt = require("jsonwebtoken");
+const { User } = require("../models");
+// ✅ NE PAS importer bcrypt ici — le hook User.beforeUpdate s'en charge
 
 class AuthController {
   async login(req, res) {
     try {
       const { email, password } = req.body;
 
-      // Vérifier si l'email et le mot de passe sont fournis
       if (!email || !password) {
-        return res.status(400).json({
-          success: false,
-          message: 'Email et mot de passe requis'
-        });
+        return res
+          .status(400)
+          .json({ success: false, message: "Email et mot de passe requis" });
       }
 
-      // Trouver l'utilisateur
       const user = await User.findOne({ where: { email } });
-      
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Email ou mot de passe incorrect'
-        });
-      }
+      if (!user)
+        return res
+          .status(401)
+          .json({ success: false, message: "Email ou mot de passe incorrect" });
+      if (!user.active)
+        return res
+          .status(401)
+          .json({ success: false, message: "Compte désactivé" });
 
-      // Vérifier si l'utilisateur est actif
-      if (!user.active) {
-        return res.status(401).json({
-          success: false,
-          message: 'Compte désactivé'
-        });
-      }
-
-      // Vérifier le mot de passe
       const isValid = await user.comparePassword(password);
-      
-      if (!isValid) {
-        return res.status(401).json({
-          success: false,
-          message: 'Email ou mot de passe incorrect'
-        });
-      }
+      if (!isValid)
+        return res
+          .status(401)
+          .json({ success: false, message: "Email ou mot de passe incorrect" });
 
-      // Générer le token
+      await user.update({ last_login: new Date() });
+
       const token = jwt.sign(
         {
           id: user.id,
           email: user.email,
           role: user.role,
-          name: user.name
+          name: user.name,
+          must_change_password: user.must_change_password,
         },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE || '7d' }
+        { expiresIn: process.env.JWT_EXPIRE || "7d" },
       );
 
-      // Retourner le token et les informations utilisateur
       res.json({
         success: true,
         data: {
@@ -63,107 +52,139 @@ class AuthController {
             id: user.id,
             email: user.email,
             name: user.name,
-            role: user.role
-          }
-        }
+            role: user.role,
+            phone: user.phone,
+            active: user.active,
+            preferences: user.preferences,
+            must_change_password: user.must_change_password,
+            permissions: this.getUserPermissions(user.role),
+          },
+        },
       });
-
     } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la connexion'
-      });
+      console.error("Login error:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Erreur lors de la connexion" });
     }
   }
 
-  async register(req, res) {
+  async changePassword(req, res) {
     try {
-      const { email, password, name, role = 'user' } = req.body;
+      const { oldPassword, newPassword } = req.body;
+      const userId = req.user.id;
 
-      // Vérifier si l'utilisateur existe déjà
-      const existingUser = await User.findOne({ where: { email } });
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cet email est déjà utilisé'
-        });
+      if (!newPassword || newPassword.length < 6) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Le nouveau mot de passe doit contenir au moins 6 caractères",
+          });
       }
 
-      // Créer l'utilisateur
-      const user = await User.create({
-        email,
-        password,
-        name,
-        role
-      });
+      const user = await User.findByPk(userId);
+      if (!user)
+        return res
+          .status(404)
+          .json({ success: false, message: "Utilisateur non trouvé" });
 
-      // Générer le token
+      // Si ce n'est PAS un changement forcé, vérifier l'ancien mot de passe
+      if (!user.must_change_password) {
+        if (!oldPassword) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Ancien mot de passe requis" });
+        }
+        const isValid = await user.comparePassword(oldPassword);
+        if (!isValid)
+          return res
+            .status(400)
+            .json({ success: false, message: "Ancien mot de passe incorrect" });
+      }
+
+      // ✅ Assigner directement — le hook beforeUpdate hash automatiquement
+      user.password = newPassword;
+      user.must_change_password = false;
+      await user.save(); // ← déclenche beforeUpdate → hash automatique
+
       const token = jwt.sign(
         {
           id: user.id,
           email: user.email,
           role: user.role,
-          name: user.name
+          name: user.name,
+          must_change_password: false,
         },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE || '7d' }
+        { expiresIn: process.env.JWT_EXPIRE || "7d" },
       );
 
-      res.status(201).json({
-        success: true,
-        data: {
-          token,
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role
-          }
-        }
-      });
-
-    } catch (error) {
-      console.error('Register error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Erreur lors de l\'inscription'
-      });
-    }
-  }
-
-  async me(req, res) {
-    try {
-      const user = await User.findByPk(req.user.id, {
-        attributes: ['id', 'email', 'name', 'role', 'active']
-      });
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'Utilisateur non trouvé'
-        });
-      }
+      const userData = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        must_change_password: false,
+        permissions: this.getUserPermissions(user.role),
+      };
 
       res.json({
         success: true,
-        data: user
+        data: { token, user: userData },
+        message: "Mot de passe changé avec succès",
       });
-
     } catch (error) {
-      console.error('Me error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la récupération du profil'
-      });
+      console.error("Change password error:", error);
+      res
+        .status(500)
+        .json({
+          success: false,
+          message: "Erreur lors du changement de mot de passe",
+        });
     }
   }
 
-  async logout(req, res) {
-    res.json({
-      success: true,
-      message: 'Déconnexion réussie'
-    });
+  getUserPermissions(role) {
+    const permissions = {
+      president: [
+        "all",
+        "manage_users",
+        "manage_staff",
+        "view_stats",
+        "manage_settings",
+        "manage_sorties",
+        "validate_plongees",
+        "manage_formations",
+        "view_adherents",
+        "manage_paiements",
+        "exports",
+        "change_niveau",
+        "change_role",
+        "disable_account",
+        "delete_account",
+        "reset_password",
+      ],
+      moniteur: [
+        "manage_sorties",
+        "validate_plongees",
+        "manage_formations",
+        "view_adherents",
+        "view_profile",
+        "inscription_sorties",
+        "view_carnet",
+      ],
+      adherent: ["view_profile", "inscription_sorties", "view_carnet"],
+      tresorier: [
+        "manage_paiements",
+        "view_stats",
+        "exports",
+        "view_adherents",
+        "view_profile",
+      ],
+    };
+    return permissions[role] || [];
   }
 }
 

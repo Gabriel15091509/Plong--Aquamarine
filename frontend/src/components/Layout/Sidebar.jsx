@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FiHome,
   FiUsers,
@@ -72,6 +72,79 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const canSeeMateriel = hasRole(["president"]);
   const canSeeFormations = hasRole(["president", "moniteur"]);
 
+  // ✅ Animations de transition de thème
+  const themeTransition = {
+    duration: 0.3,
+    ease: "easeInOut",
+  };
+
+  // ✅ Animations de survol personnalisées selon le thème
+  const getHoverAnimation = (type = "default") => {
+    if (theme === "dark") {
+      // 🎨 Animations pour le MODE SOMBRE
+      switch (type) {
+        case "menu":
+          return {
+            scale: 1.05,
+            x: 5,
+            rotate: -2,
+            transition: { duration: 0.2 },
+          };
+        case "icon":
+          return { scale: 1.2, rotate: 10, transition: { duration: 0.3 } };
+        case "button":
+          return {
+            scale: 1.1,
+            rotate: -5,
+            boxShadow: "0 0 30px rgba(6, 182, 212, 0.3)",
+            transition: { duration: 0.2 },
+          };
+        case "theme":
+          return { scale: 1.15, rotate: -15, transition: { duration: 0.3 } };
+        case "logout":
+          return {
+            scale: 1.1,
+            x: 3,
+            backgroundColor: "rgba(239, 68, 68, 0.2)",
+            transition: { duration: 0.2 },
+          };
+        default:
+          return { scale: 1.05, transition: { duration: 0.2 } };
+      }
+    } else {
+      // ☀️ Animations pour le MODE CLAIR
+      switch (type) {
+        case "menu":
+          return {
+            scale: 1.03,
+            x: 8,
+            rotate: 2,
+            transition: { duration: 0.2 },
+          };
+        case "icon":
+          return { scale: 1.15, rotate: -8, transition: { duration: 0.3 } };
+        case "button":
+          return {
+            scale: 1.08,
+            rotate: 5,
+            boxShadow: "0 0 30px rgba(6, 182, 212, 0.2)",
+            transition: { duration: 0.2 },
+          };
+        case "theme":
+          return { scale: 1.12, rotate: 15, transition: { duration: 0.3 } };
+        case "logout":
+          return {
+            scale: 1.08,
+            x: 3,
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            transition: { duration: 0.2 },
+          };
+        default:
+          return { scale: 1.03, transition: { duration: 0.2 } };
+      }
+    }
+  };
+
   const MenuSection = ({ title, items, isVisible = true }) => {
     if (!isVisible || items.length === 0) return null;
 
@@ -79,9 +152,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       <>
         {isOpen && (
           <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            transition={themeTransition}
             className="px-3 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider dark:text-gray-500"
           >
             {title}
@@ -112,44 +186,80 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             >
               {({ isActive }) => (
                 <>
-                  {/* ✅ Effet de survol - barre lumineuse */}
-                  <div
+                  {/* ✅ Effet de survol avec animation selon le thème */}
+                  <motion.div
                     className={`absolute inset-0 rounded-xl transition-all duration-300 ${
                       isActive
                         ? "bg-gradient-to-r from-cyan-500/10 to-teal-500/10"
                         : "group-hover:bg-gradient-to-r group-hover:from-cyan-500/5 group-hover:to-teal-500/5"
                     }`}
+                    layoutId={`bg-${item.path}`}
+                    transition={themeTransition}
                   />
 
-                  {/* ✅ Effet de survol - bordure gauche */}
-                  <div
+                  {/* ✅ Bordure gauche animée selon le thème */}
+                  <motion.div
                     className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 rounded-full transition-all duration-300 ${
                       isActive
                         ? "bg-gradient-to-b from-cyan-500 to-teal-500"
                         : "group-hover:bg-gradient-to-b group-hover:from-cyan-400/50 group-hover:to-teal-400/50 opacity-0 group-hover:opacity-100"
                     }`}
+                    animate={{
+                      height: isActive ? 32 : 8,
+                      opacity: isActive ? 1 : 0.3,
+                    }}
+                    transition={themeTransition}
                   />
 
-                  <item.icon
-                    className={`relative z-10 w-5 h-5 flex-shrink-0 transition-all duration-300 ${
-                      isActive
-                        ? "text-cyan-600 dark:text-cyan-400"
-                        : "text-gray-500 group-hover:text-cyan-600 dark:text-gray-500 dark:group-hover:text-cyan-400"
-                    }`}
-                  />
+                  {/* ✅ Icône avec animation de survol selon le thème */}
+                  <motion.div
+                    whileHover={getHoverAnimation("icon")}
+                    animate={{
+                      scale: isActive ? 1.1 : 1,
+                    }}
+                    transition={themeTransition}
+                  >
+                    <item.icon
+                      className={`relative z-10 w-5 h-5 flex-shrink-0 transition-all duration-300 ${
+                        isActive
+                          ? "text-cyan-600 dark:text-cyan-400"
+                          : "text-gray-500 group-hover:text-cyan-600 dark:text-gray-500 dark:group-hover:text-cyan-400"
+                      }`}
+                    />
+                  </motion.div>
+
+                  {/* ✅ Label avec animation de survol */}
                   {isOpen && (
-                    <span className="relative z-10 text-sm font-medium">
+                    <motion.span
+                      className="relative z-10 text-sm font-medium"
+                      whileHover={getHoverAnimation("menu")}
+                      animate={{
+                        color: isActive
+                          ? theme === "dark"
+                            ? "#22d3ee"
+                            : "#0891b2"
+                          : theme === "dark"
+                            ? "#9ca3af"
+                            : "#4b5563",
+                      }}
+                      transition={themeTransition}
+                    >
                       {item.label}
-                    </span>
+                    </motion.span>
                   )}
 
-                  {/* ✅ Effet de survol - indicateur lumineux */}
-                  <div
+                  {/* ✅ Indicateur lumineux animé selon le thème */}
+                  <motion.div
                     className={`absolute right-3 w-1.5 h-1.5 rounded-full transition-all duration-300 ${
                       isActive
                         ? "bg-cyan-500 shadow-lg shadow-cyan-500/50"
                         : "group-hover:bg-cyan-400 group-hover:shadow-lg group-hover:shadow-cyan-400/30 opacity-0 group-hover:opacity-100"
                     }`}
+                    animate={{
+                      scale: isActive ? 1 : 0.5,
+                      opacity: isActive ? 1 : 0,
+                    }}
+                    transition={themeTransition}
                   />
                 </>
               )}
@@ -165,57 +275,101 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       initial={false}
       animate={{ width: isOpen ? 260 : 72 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="fixed left-0 top-0 h-full bg-white/80 backdrop-blur-xl border-r border-cyan-100/50 shadow-xl z-50 overflow-hidden dark:bg-gray-900/80 dark:border-cyan-800/30"
+      className={`fixed left-0 top-0 h-full shadow-xl z-50 overflow-hidden transition-colors duration-300 ${
+        theme === "dark"
+          ? "bg-gray-900/80 border-r border-cyan-800/30"
+          : "bg-white/80 backdrop-blur-xl border-r border-cyan-100/50"
+      }`}
     >
       <div className="flex flex-col h-full">
-        {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-cyan-100/50 flex-shrink-0 dark:border-cyan-800/30">
+        {/* Logo avec animation de survol selon le thème */}
+        <div
+          className={`h-16 flex items-center justify-between px-4 border-b flex-shrink-0 transition-colors duration-300 ${
+            theme === "dark" ? "border-cyan-800/30" : "border-cyan-100/50"
+          }`}
+        >
           <div className="flex items-center gap-2 overflow-hidden">
             <motion.div
-              whileHover={{ rotate: 5, scale: 1.05 }}
+              whileHover={getHoverAnimation("button")}
               transition={{ type: "spring", stiffness: 300 }}
               className="relative"
             >
               <Logo size="md" className="flex-shrink-0" />
-              {/* ✅ Effet de lueur autour du logo */}
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-500/20 to-teal-500/20 blur-xl -z-10" />
+              {/* Effet de lueur autour du logo selon le thème */}
+              <motion.div
+                className={`absolute inset-0 rounded-xl blur-xl -z-10 transition-colors duration-300 ${
+                  theme === "dark"
+                    ? "bg-gradient-to-r from-cyan-500/30 to-teal-500/30"
+                    : "bg-gradient-to-r from-cyan-500/20 to-teal-500/20"
+                }`}
+                animate={{
+                  opacity: theme === "dark" ? 0.6 : 0.3,
+                }}
+                transition={themeTransition}
+              />
             </motion.div>
             {isOpen && (
               <motion.span
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="text-lg font-bold bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent dark:from-cyan-400 dark:to-teal-400"
+                className={`text-lg font-bold bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent transition-colors duration-300 ${
+                  theme === "dark"
+                    ? "from-cyan-400 to-teal-400"
+                    : "from-cyan-600 to-teal-600"
+                }`}
               >
                 Plongée Club
               </motion.span>
             )}
           </div>
           <motion.button
-            whileHover={{ scale: 1.1, rotate: isOpen ? 5 : -5 }}
+            whileHover={getHoverAnimation("button")}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsOpen(!isOpen)}
-            className="p-1.5 rounded-lg hover:bg-cyan-100/50 transition-colors flex-shrink-0 dark:hover:bg-cyan-900/30"
+            className={`p-1.5 rounded-lg transition-colors duration-300 flex-shrink-0 ${
+              theme === "dark"
+                ? "hover:bg-cyan-900/30 text-cyan-400"
+                : "hover:bg-cyan-100/50 text-cyan-600"
+            }`}
           >
             {isOpen ? (
-              <FiChevronLeft className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              <FiChevronLeft className="w-4 h-4" />
             ) : (
-              <FiChevronRight className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              <FiChevronRight className="w-4 h-4" />
             )}
           </motion.button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5 scrollbar-thin scrollbar-thumb-cyan-200 dark:scrollbar-thumb-cyan-800">
+        <nav
+          className={`flex-1 overflow-y-auto px-2 py-3 space-y-0.5 scrollbar-thin transition-colors duration-300 ${
+            theme === "dark"
+              ? "scrollbar-thumb-cyan-800"
+              : "scrollbar-thumb-cyan-200"
+          }`}
+        >
           <MenuSection title="Personnel" items={profileMenu} />
 
           {isOpen && (
             <div className="relative my-2">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-cyan-100/50 dark:border-cyan-800/30" />
+                <div
+                  className={`w-full border-t transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "border-cyan-800/30"
+                      : "border-cyan-100/50"
+                  }`}
+                />
               </div>
               <div className="relative flex justify-center">
-                <span className="px-2 text-xs text-cyan-500/70 bg-white dark:bg-gray-900">
+                <span
+                  className={`px-2 text-xs transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "text-cyan-500/70 bg-gray-900"
+                      : "text-cyan-500/70 bg-white"
+                  }`}
+                >
                   Principal
                 </span>
               </div>
@@ -227,10 +381,22 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           {isOpen && (
             <div className="relative my-2">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-cyan-100/50 dark:border-cyan-800/30" />
+                <div
+                  className={`w-full border-t transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "border-cyan-800/30"
+                      : "border-cyan-100/50"
+                  }`}
+                />
               </div>
               <div className="relative flex justify-center">
-                <span className="px-2 text-xs text-cyan-500/70 bg-white dark:bg-gray-900">
+                <span
+                  className={`px-2 text-xs transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "text-cyan-500/70 bg-gray-900"
+                      : "text-cyan-500/70 bg-white"
+                  }`}
+                >
                   Activités
                 </span>
               </div>
@@ -247,10 +413,22 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           {isOpen && (
             <div className="relative my-2">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-cyan-100/50 dark:border-cyan-800/30" />
+                <div
+                  className={`w-full border-t transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "border-cyan-800/30"
+                      : "border-cyan-100/50"
+                  }`}
+                />
               </div>
               <div className="relative flex justify-center">
-                <span className="px-2 text-xs text-cyan-500/70 bg-white dark:bg-gray-900">
+                <span
+                  className={`px-2 text-xs transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "text-cyan-500/70 bg-gray-900"
+                      : "text-cyan-500/70 bg-white"
+                  }`}
+                >
                   Administration
                 </span>
               </div>
@@ -271,10 +449,22 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           {isOpen && (
             <div className="relative my-2">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-cyan-100/50 dark:border-cyan-800/30" />
+                <div
+                  className={`w-full border-t transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "border-cyan-800/30"
+                      : "border-cyan-100/50"
+                  }`}
+                />
               </div>
               <div className="relative flex justify-center">
-                <span className="px-2 text-xs text-cyan-500/70 bg-white dark:bg-gray-900">
+                <span
+                  className={`px-2 text-xs transition-colors duration-300 ${
+                    theme === "dark"
+                      ? "text-cyan-500/70 bg-gray-900"
+                      : "text-cyan-500/70 bg-white"
+                  }`}
+                >
                   Informations
                 </span>
               </div>
@@ -285,27 +475,58 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-cyan-100/50 dark:border-cyan-800/30 p-3 flex-shrink-0">
-          {/* Profil utilisateur avec effet de survol */}
+        <div
+          className={`border-t p-3 flex-shrink-0 transition-colors duration-300 ${
+            theme === "dark" ? "border-cyan-800/30" : "border-cyan-100/50"
+          }`}
+        >
+          {/* Profil utilisateur avec animation de survol selon le thème */}
           <motion.div
-            whileHover={{ x: 5, scale: 1.02 }}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gradient-to-r hover:from-cyan-50/50 hover:to-teal-50/50 transition-all duration-300 cursor-pointer dark:hover:from-cyan-900/20 dark:hover:to-teal-900/20 group"
+            whileHover={getHoverAnimation("menu")}
+            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-300 cursor-pointer group ${
+              theme === "dark"
+                ? "hover:bg-gradient-to-r hover:from-cyan-900/20 hover:to-teal-900/20"
+                : "hover:bg-gradient-to-r hover:from-cyan-50/50 hover:to-teal-50/50"
+            }`}
             onClick={() => navigate("/profile")}
           >
             <div className="relative flex-shrink-0">
-              <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg group-hover:shadow-cyan-500/30 transition-shadow duration-300">
+              <motion.div
+                className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg"
+                whileHover={getHoverAnimation("icon")}
+                animate={{
+                  boxShadow:
+                    theme === "dark"
+                      ? "0 0 20px rgba(6, 182, 212, 0.3)"
+                      : "0 0 15px rgba(6, 182, 212, 0.2)",
+                }}
+                transition={themeTransition}
+              >
                 {user?.name?.charAt(0) || "A"}
-              </div>
+              </motion.div>
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full dark:border-gray-900" />
-              {/* ✅ Effet de lueur autour de l'avatar */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-500/20 to-teal-500/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <motion.div
+                className={`absolute inset-0 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                  theme === "dark"
+                    ? "bg-gradient-to-r from-cyan-500/30 to-teal-500/30"
+                    : "bg-gradient-to-r from-cyan-500/20 to-teal-500/20"
+                }`}
+              />
             </div>
             {isOpen && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate dark:text-white">
+                <p
+                  className={`text-sm font-medium truncate transition-colors duration-300 ${
+                    theme === "dark" ? "text-white" : "text-gray-800"
+                  }`}
+                >
                   {user?.name || "Administrateur"}
                 </p>
-                <p className="text-xs text-cyan-600/70 truncate dark:text-cyan-400/70">
+                <p
+                  className={`text-xs truncate transition-colors duration-300 ${
+                    theme === "dark" ? "text-cyan-400/70" : "text-cyan-600/70"
+                  }`}
+                >
                   {user?.role === "president" && "👑 Président"}
                   {user?.role === "moniteur" && "🏊 Moniteur"}
                   {user?.role === "tresorier" && "💰 Trésorier"}
@@ -315,79 +536,56 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             )}
           </motion.div>
 
-          {/* Actions du footer avec effets de survol */}
+          {/* Actions du footer avec animations selon le thème */}
           <div className="flex items-center gap-1 mt-2">
-            {/* Toggle Thème */}
+            {/* Toggle Thème avec animation personnalisée */}
             <motion.button
-              whileHover={{ scale: 1.05, rotate: theme === "dark" ? -10 : 10 }}
+              whileHover={getHoverAnimation("theme")}
               whileTap={{ scale: 0.95 }}
               onClick={toggleTheme}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-cyan-100/50 transition-all duration-300 dark:hover:bg-cyan-900/30 ${
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-300 ${
                 !isOpen ? "justify-center flex-1" : ""
+              } ${
+                theme === "dark"
+                  ? "hover:bg-cyan-900/30 text-cyan-400"
+                  : "hover:bg-cyan-100/50 text-cyan-600"
               }`}
               title={theme === "dark" ? "Mode clair" : "Mode sombre"}
             >
-              {theme === "dark" ? (
-                <>
+              <motion.div
+                animate={{
+                  rotate: theme === "dark" ? 360 : 0,
+                  scale: theme === "dark" ? 1.2 : 1,
+                }}
+                transition={{ duration: 0.5 }}
+              >
+                {theme === "dark" ? (
                   <FiSun className="w-4 h-4 text-amber-400" />
-                  {isOpen && (
-                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                      Mode clair
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <FiMoon className="w-4 h-4 text-cyan-600" />
-                  {isOpen && (
-                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                      Mode sombre
-                    </span>
-                  )}
-                </>
+                ) : (
+                  <FiMoon className="w-4 h-4" />
+                )}
+              </motion.div>
+              {isOpen && (
+                <motion.span
+                  className="text-xs font-medium"
+                  animate={{
+                    color: theme === "dark" ? "#e5e7eb" : "#4b5563",
+                  }}
+                  transition={themeTransition}
+                >
+                  {theme === "dark" ? "Mode clair" : "Mode sombre"}
+                </motion.span>
               )}
             </motion.button>
 
-            {/* Paramètres */}
-            {hasRole(["president", "moniteur", "tresorier"]) && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate("/settings")}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-cyan-100/50 transition-all duration-300 text-gray-500 hover:text-cyan-700 dark:hover:bg-cyan-900/30 dark:text-gray-400 dark:hover:text-cyan-400 ${
-                  !isOpen ? "justify-center flex-1" : ""
-                }`}
-                title="Paramètres"
-              >
-                <FiSettings className="w-4 h-4" />
-                {isOpen && (
-                  <span className="text-xs font-medium">Paramètres</span>
-                )}
-              </motion.button>
-            )}
-
-            {/* Aide */}
+            {/* Déconnexion avec animation selon le thème */}
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate("/help")}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-cyan-100/50 transition-all duration-300 text-gray-500 hover:text-cyan-700 dark:hover:bg-cyan-900/30 dark:text-gray-400 dark:hover:text-cyan-400 ${
-                !isOpen ? "justify-center flex-1" : ""
-              }`}
-              title="Aide"
-            >
-              <FiHelpCircle className="w-4 h-4" />
-              {isOpen && <span className="text-xs font-medium">Aide</span>}
-            </motion.button>
-
-            {/* Déconnexion */}
-            <motion.button
-              whileHover={{ scale: 1.05, backgroundColor: "#fef2f2" }}
+              whileHover={getHoverAnimation("logout")}
               whileTap={{ scale: 0.95 }}
               onClick={handleLogout}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-red-50 transition-all duration-300 text-red-500 hover:text-red-600 dark:hover:bg-red-900/20 ${
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-300 ${
                 !isOpen ? "justify-center flex-1" : ""
-              }`}
+              } text-red-500 hover:text-red-600 dark:hover:bg-red-900/20`}
               title="Déconnexion"
             >
               <FiLogOut className="w-4 h-4" />
@@ -397,12 +595,15 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </motion.button>
           </div>
 
-          {/* Version */}
+          {/* Version avec animation de survol selon le thème */}
           {isOpen && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center text-[10px] text-cyan-400/60 dark:text-cyan-500/40 mt-2"
+              whileHover={getHoverAnimation("default")}
+              className={`text-center text-[10px] mt-2 transition-colors duration-300 cursor-default ${
+                theme === "dark" ? "text-cyan-500/40" : "text-cyan-400/60"
+              }`}
             >
               v1.0.0 • {new Date().getFullYear()} Plongée Club
             </motion.p>

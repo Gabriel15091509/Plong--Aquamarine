@@ -13,6 +13,7 @@ const plongeeRoutes = require("./plongeeRoutes");
 const materielRoutes = require("./materielRoutes");
 const formationRoutes = require("./formationRoutes");
 const alerteRoutes = require("./alerteRoutes"); // ✅ Vérifier que l'import existe
+const userRoutes = require("./userRoutes");
 
 // Routes
 router.use("/auth", authRoutes);
@@ -26,6 +27,9 @@ router.use("/plongees", plongeeRoutes);
 router.use("/materiels", materielRoutes);
 router.use("/formations", formationRoutes);
 router.use("/alertes", alerteRoutes); // ✅ Vérifier que la route existe
+
+router.use("/users", userRoutes);
+router.use("/adherents", adherentRoutes);
 
 // Route racine API
 router.get("/", (req, res) => {
