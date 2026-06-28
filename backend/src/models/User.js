@@ -1,0 +1,92 @@
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
+const bcrypt = require('bcryptjs');
+
+const User = sequelize.define('User', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  email: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+    unique: true,
+    validate: {
+      isEmail: true
+    }
+  },
+  password: {
+    type: DataTypes.STRING(255),
+    allowNull: false
+  },
+  name: {
+    type: DataTypes.STRING(100),
+    allowNull: false
+  },
+  role: {
+    type: DataTypes.ENUM('president', 'moniteur', 'adherent', 'tresorier'),
+    allowNull: false,
+    defaultValue: 'adherent'
+  },
+  active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  phone: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+  },
+  last_login: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  preferences: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {
+      theme: 'light',
+      notifications: true,
+      language: 'fr'
+    }
+  }
+}, {
+  tableName: 'users',
+  timestamps: true,
+  underscored: true
+});
+
+// Hooks pour hasher le mot de passe
+User.beforeCreate(async (user) => {
+  if (user.password) {
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(user.password, salt);
+  }
+});
+
+User.beforeUpdate(async (user) => {
+  if (user.changed('password')) {
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(user.password, salt);
+  }
+});
+
+// Méthode pour vérifier le mot de passe
+User.prototype.comparePassword = async function(password) {
+  return await bcrypt.compare(password, this.password);
+};
+
+// Méthode pour vérifier les permissions
+User.prototype.hasPermission = function(permission) {
+  const permissions = {
+    president: ['all', 'manage_users', 'manage_staff', 'view_stats', 'manage_settings'],
+    moniteur: ['manage_sorties', 'validate_plongees', 'manage_formations', 'view_adherents'],
+    adherent: ['view_profile', 'inscription_sorties', 'view_carnet'],
+    tresorier: ['manage_paiements', 'view_stats', 'exports']
+  };
+  
+  const userPermissions = permissions[this.role] || [];
+  return userPermissions.includes('all') || userPermissions.includes(permission);
+};
+
+module.exports = User;
