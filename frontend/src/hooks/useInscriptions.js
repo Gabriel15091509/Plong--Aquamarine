@@ -1,89 +1,120 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import inscriptionService from '../services/inscriptionService';
-import toast from 'react-hot-toast';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import inscriptionService from "../services/inscriptionService";
 
 export const useInscriptions = () => {
   const queryClient = useQueryClient();
 
-  const useGetAll = (params = {}) => {
+  const useGetAll = () => {
     return useQuery({
-      queryKey: ['inscriptions', params],
-      queryFn: () => inscriptionService.getAll(params),
-      staleTime: 5 * 60 * 1000,
+      queryKey: ["inscriptions"],
+      queryFn: async () => {
+        const response = await inscriptionService.getAll();
+        return response;
+      },
     });
   };
 
   const useGetById = (id) => {
     return useQuery({
-      queryKey: ['inscriptions', id],
-      queryFn: () => inscriptionService.getById(id),
+      queryKey: ["inscription", id],
+      queryFn: async () => {
+        const response = await inscriptionService.getById(id);
+        return response;
+      },
       enabled: !!id,
-      staleTime: 5 * 60 * 1000,
     });
   };
 
   const useCreate = () => {
     return useMutation({
-      mutationFn: (data) => inscriptionService.create(data),
-      onSuccess: (response) => {
-        queryClient.invalidateQueries(['inscriptions']);
-        toast.success(response.message || 'Inscription créée avec succès');
+      mutationFn: async (data) => {
+        const response = await inscriptionService.create(data);
+        return response;
       },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Erreur lors de la création');
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
       },
     });
   };
 
+  // ✅ useUpdate avec logs
   const useUpdate = () => {
     return useMutation({
-      mutationFn: ({ id, data }) => inscriptionService.update(id, data),
-      onSuccess: (response) => {
-        queryClient.invalidateQueries(['inscriptions']);
-        toast.success(response.message || 'Inscription mise à jour avec succès');
+      mutationFn: async ({ id, data }) => {
+        console.log("📝 useUpdate - ID:", id, "Data:", data);
+        const response = await inscriptionService.update(id, data);
+        return response;
+      },
+      onSuccess: (data) => {
+        console.log("✅ Update success:", data);
+        queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
+        queryClient.invalidateQueries({
+          queryKey: ["inscription", data?.data?.id_inscription],
+        });
       },
       onError: (error) => {
-        toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour');
+        console.error("❌ Update error:", error);
       },
     });
   };
 
   const useRemove = () => {
     return useMutation({
-      mutationFn: (id) => inscriptionService.delete(id),
-      onSuccess: (response) => {
-        queryClient.invalidateQueries(['inscriptions']);
-        toast.success(response.message || 'Inscription supprimée avec succès');
+      mutationFn: async (id) => {
+        const response = await inscriptionService.delete(id);
+        return response;
       },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Erreur lors de la suppression');
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
       },
     });
   };
 
   const useConfirm = () => {
     return useMutation({
-      mutationFn: (id) => inscriptionService.confirm(id),
-      onSuccess: (response) => {
-        queryClient.invalidateQueries(['inscriptions']);
-        toast.success(response.message || 'Inscription confirmée avec succès');
+      mutationFn: async (id) => {
+        const response = await inscriptionService.confirm(id);
+        return response;
       },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Erreur lors de la confirmation');
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
       },
     });
   };
 
   const useCancel = () => {
     return useMutation({
-      mutationFn: (id) => inscriptionService.cancel(id),
-      onSuccess: (response) => {
-        queryClient.invalidateQueries(['inscriptions']);
-        toast.success(response.message || 'Inscription annulée avec succès');
+      mutationFn: async (id) => {
+        const response = await inscriptionService.cancel(id);
+        return response;
       },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Erreur lors de l\'annulation');
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
       },
+    });
+  };
+
+  const useGetConfirmationsBySortie = (id_sortie) => {
+    return useQuery({
+      queryKey: ["inscriptions", "confirmations", id_sortie],
+      queryFn: async () => {
+        const response =
+          await inscriptionService.getConfirmationsBySortie(id_sortie);
+        return response;
+      },
+      enabled: !!id_sortie,
+    });
+  };
+
+  const useGetWaitlistBySortie = (id_sortie) => {
+    return useQuery({
+      queryKey: ["inscriptions", "waitlist", id_sortie],
+      queryFn: async () => {
+        const response =
+          await inscriptionService.getWaitlistBySortie(id_sortie);
+        return response;
+      },
+      enabled: !!id_sortie,
     });
   };
 
@@ -95,5 +126,7 @@ export const useInscriptions = () => {
     useRemove,
     useConfirm,
     useCancel,
+    useGetConfirmationsBySortie,
+    useGetWaitlistBySortie,
   };
 };

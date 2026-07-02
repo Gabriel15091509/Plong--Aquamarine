@@ -14,52 +14,185 @@ const Attribution = require("./Attribution");
 const Formation = require("./Formation");
 const Competence = require("./Competence");
 const Alerte = require("./Alerte");
-const User = require("./User"); // ✅ Ajout
+const User = require("./User");
 
-// Relations
-Adherent.hasMany(Adhesion, { foreignKey: "num_adherent" });
-Adhesion.belongsTo(Adherent, { foreignKey: "num_adherent" });
+// ============================================
+// RELATIONS AVEC ALIAS
+// ============================================
 
-Adherent.hasMany(CertificatMedical, { foreignKey: "num_adherent" });
-CertificatMedical.belongsTo(Adherent, { foreignKey: "num_adherent" });
+// 📌 Adherent - Adhesion
+Adherent.hasMany(Adhesion, {
+  foreignKey: "num_adherent",
+  as: "adhesions", // ✅ Alias ajouté
+});
+Adhesion.belongsTo(Adherent, {
+  foreignKey: "num_adherent",
+  as: "adherent", // ✅ Alias ajouté
+});
 
-Adherent.hasMany(Paiement, { foreignKey: "num_adherent" });
-Paiement.belongsTo(Adherent, { foreignKey: "num_adherent" });
+// 📌 Adherent - CertificatMedical
+Adherent.hasMany(CertificatMedical, {
+  foreignKey: "num_adherent",
+  as: "certificats", // ✅ Alias ajouté
+});
+CertificatMedical.belongsTo(Adherent, {
+  foreignKey: "num_adherent",
+  as: "adherent", // ✅ Alias ajouté
+});
 
-Adherent.hasMany(Inscription, { foreignKey: "num_adherent" });
-Sortie.hasMany(Inscription, { foreignKey: "id_sortie" });
-Inscription.belongsTo(Adherent, { foreignKey: "num_adherent" });
-Inscription.belongsTo(Sortie, { foreignKey: "id_sortie" });
+// 📌 Adherent - Paiement
+Adherent.hasMany(Paiement, {
+  foreignKey: "num_adherent",
+  as: "paiements", // ✅ Alias ajouté
+});
+Paiement.belongsTo(Adherent, {
+  foreignKey: "num_adherent",
+  as: "adherent", // ✅ Alias ajouté
+});
 
-Adherent.hasMany(Plongee, { foreignKey: "num_adherent" });
-Plongee.belongsTo(Adherent, { foreignKey: "num_adherent" });
+// 📌 Adherent - Inscription (création)
+Adherent.hasMany(Inscription, {
+  foreignKey: "num_adherent",
+  as: "inscriptions", // ✅ Alias ajouté
+});
 
-Plongee.hasMany(Palanquee, { foreignKey: "id_plongee" });
-Palanquee.belongsTo(Plongee, { foreignKey: "id_plongee" });
+// 📌 Sortie - Inscription
+Sortie.hasMany(Inscription, {
+  foreignKey: "id_sortie",
+  as: "inscriptions", // ✅ Alias ajouté - C'EST CELUI-CI QUI VOUS MANQUAIT !
+});
 
-Palanquee.hasMany(Composer, { foreignKey: "id_palanquee" });
-Adherent.hasMany(Composer, { foreignKey: "num_adherent" });
-Composer.belongsTo(Palanquee, { foreignKey: "id_palanquee" });
-Composer.belongsTo(Adherent, { foreignKey: "num_adherent" });
+// 📌 Inscription - Adherent
+Inscription.belongsTo(Adherent, {
+  foreignKey: "num_adherent",
+  as: "adherent", // ✅ Alias ajouté
+});
 
-Adherent.hasMany(Formation, { foreignKey: "num_adherent" });
-Formation.belongsTo(Adherent, { foreignKey: "num_adherent" });
+// 📌 Inscription - Sortie
+Inscription.belongsTo(Sortie, {
+  foreignKey: "id_sortie",
+  as: "sortie", // ✅ Alias ajouté
+});
 
-Formation.hasMany(Competence, { foreignKey: "id_formation" });
-Competence.belongsTo(Formation, { foreignKey: "id_formation" });
+// 📌 Adherent - Plongee
+Adherent.hasMany(Plongee, {
+  foreignKey: "num_adherent",
+  as: "plongees", // ✅ Alias ajouté
+});
+Plongee.belongsTo(Adherent, {
+  foreignKey: "num_adherent",
+  as: "adherent", // ✅ Alias ajouté
+});
 
-Adherent.hasMany(Alerte, { foreignKey: "num_adherent" });
-Alerte.belongsTo(Adherent, { foreignKey: "num_adherent" });
+// 📌 Plongee - Palanquee
+Plongee.hasMany(Palanquee, {
+  foreignKey: "id_plongee",
+  as: "palanquees", // ✅ Alias ajouté
+});
+Palanquee.belongsTo(Plongee, {
+  foreignKey: "id_plongee",
+  as: "plongee", // ✅ Alias ajouté
+});
 
-Materiel.hasMany(Reparation, { foreignKey: "num_inventaire" });
-Reparation.belongsTo(Materiel, { foreignKey: "num_inventaire" });
+// 📌 Palanquee - Composer
+Palanquee.hasMany(Composer, {
+  foreignKey: "id_palanquee",
+  as: "composers", // ✅ Alias ajouté
+});
 
-Materiel.hasMany(Attribution, { foreignKey: "num_inventaire" });
-Adherent.hasMany(Attribution, { foreignKey: "num_adherent" });
-Sortie.hasMany(Attribution, { foreignKey: "id_sortie" });
-Attribution.belongsTo(Materiel, { foreignKey: "num_inventaire" });
-Attribution.belongsTo(Adherent, { foreignKey: "num_adherent" });
-Attribution.belongsTo(Sortie, { foreignKey: "id_sortie" });
+// 📌 Adherent - Composer
+Adherent.hasMany(Composer, {
+  foreignKey: "num_adherent",
+  as: "composers", // ✅ Alias ajouté
+});
+
+// 📌 Composer - Palanquee
+Composer.belongsTo(Palanquee, {
+  foreignKey: "id_palanquee",
+  as: "palanquee", // ✅ Alias ajouté
+});
+
+// 📌 Composer - Adherent
+Composer.belongsTo(Adherent, {
+  foreignKey: "num_adherent",
+  as: "adherent", // ✅ Alias ajouté
+});
+
+// 📌 Adherent - Formation
+Adherent.hasMany(Formation, {
+  foreignKey: "num_adherent",
+  as: "formations", // ✅ Alias ajouté
+});
+Formation.belongsTo(Adherent, {
+  foreignKey: "num_adherent",
+  as: "adherent", // ✅ Alias ajouté
+});
+
+// 📌 Formation - Competence
+Formation.hasMany(Competence, {
+  foreignKey: "id_formation",
+  as: "competences", // ✅ Alias ajouté
+});
+Competence.belongsTo(Formation, {
+  foreignKey: "id_formation",
+  as: "formation", // ✅ Alias ajouté
+});
+
+// 📌 Adherent - Alerte
+Adherent.hasMany(Alerte, {
+  foreignKey: "num_adherent",
+  as: "alertes", // ✅ Alias ajouté
+});
+Alerte.belongsTo(Adherent, {
+  foreignKey: "num_adherent",
+  as: "adherent", // ✅ Alias ajouté
+});
+
+// 📌 Materiel - Reparation
+Materiel.hasMany(Reparation, {
+  foreignKey: "num_inventaire",
+  as: "reparations", // ✅ Alias ajouté
+});
+Reparation.belongsTo(Materiel, {
+  foreignKey: "num_inventaire",
+  as: "materiel", // ✅ Alias ajouté
+});
+
+// 📌 Materiel - Attribution
+Materiel.hasMany(Attribution, {
+  foreignKey: "num_inventaire",
+  as: "attributions", // ✅ Alias ajouté
+});
+
+// 📌 Adherent - Attribution
+Adherent.hasMany(Attribution, {
+  foreignKey: "num_adherent",
+  as: "attributions", // ✅ Alias ajouté
+});
+
+// 📌 Sortie - Attribution
+Sortie.hasMany(Attribution, {
+  foreignKey: "id_sortie",
+  as: "attributions", // ✅ Alias ajouté
+});
+
+// 📌 Attribution - Materiel
+Attribution.belongsTo(Materiel, {
+  foreignKey: "num_inventaire",
+  as: "materiel", // ✅ Alias ajouté
+});
+
+// 📌 Attribution - Adherent
+Attribution.belongsTo(Adherent, {
+  foreignKey: "num_adherent",
+  as: "adherent", // ✅ Alias ajouté
+});
+
+// 📌 Attribution - Sortie
+Attribution.belongsTo(Sortie, {
+  foreignKey: "id_sortie",
+  as: "sortie", // ✅ Alias ajouté
+});
 
 module.exports = {
   sequelize,

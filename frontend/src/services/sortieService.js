@@ -1,6 +1,7 @@
 import api from "./api";
 
 class SortieService {
+  // 📌 Sorties CRUD
   async getAll(params = {}) {
     const response = await api.get("/sorties", { params });
     return response.data;
@@ -48,6 +49,29 @@ class SortieService {
 
   async delete(id) {
     const response = await api.delete(`/sorties/${id}`);
+    return response.data;
+  }
+
+  // ✅ NOUVEAU - Pointage de présence
+  async getPointage(id) {
+    const response = await api.get(`/sorties/${id}/pointage`);
+    return response.data;
+  }
+
+  async enregistrerPointage(id_sortie, inscriptions) {
+    const response = await api.post(`/sorties/${id_sortie}/pointage`, {
+      inscriptions,
+    });
+    return response.data;
+  }
+
+  async modifierPointage(id_inscription, data) {
+    const response = await api.put(`/sorties/pointage/${id_inscription}`, data);
+    return response.data;
+  }
+
+  async annulerPointage(id_inscription) {
+    const response = await api.delete(`/sorties/pointage/${id_inscription}`);
     return response.data;
   }
 }

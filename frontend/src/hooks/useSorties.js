@@ -58,6 +58,30 @@ export const useSorties = () => {
     });
   };
 
+  // ✅ NOUVEAU - Récupérer les détails d'une sortie avec inscriptions
+  const useGetDetails = (id) => {
+    return useQuery({
+      queryKey: ["sorties", id, "details"],
+      queryFn: () => sortieService.getDetails(id),
+      enabled: !!id,
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
+      refetchOnWindowFocus: false,
+    });
+  };
+
+  // ✅ NOUVEAU - Récupérer le pointage d'une sortie
+  const useGetPointage = (id) => {
+    return useQuery({
+      queryKey: ["sorties", id, "pointage"],
+      queryFn: () => sortieService.getPointage(id),
+      enabled: !!id,
+      staleTime: 1000 * 60 * 2, // 2 minutes
+      gcTime: 1000 * 60 * 5,
+      refetchOnWindowFocus: false,
+    });
+  };
+
   const useCreate = () => {
     return useMutation({
       mutationFn: (data) => sortieService.create(data),
@@ -103,14 +127,76 @@ export const useSorties = () => {
     });
   };
 
+  // ✅ NOUVEAU - Enregistrer le pointage
+  const useEnregistrerPointage = () => {
+    return useMutation({
+      mutationFn: ({ id_sortie, inscriptions }) =>
+        sortieService.enregistrerPointage(id_sortie, inscriptions),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries({ queryKey: ["sorties"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
+        toast.success(response.message || "Pointage enregistré avec succès");
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message ||
+            "Erreur lors de l'enregistrement du pointage",
+        );
+      },
+    });
+  };
+
+  // ✅ NOUVEAU - Modifier un pointage
+  const useModifierPointage = () => {
+    return useMutation({
+      mutationFn: ({ id_inscription, data }) =>
+        sortieService.modifierPointage(id_inscription, data),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries({ queryKey: ["sorties"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
+        toast.success(response.message || "Pointage modifié avec succès");
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message ||
+            "Erreur lors de la modification du pointage",
+        );
+      },
+    });
+  };
+
+  // ✅ NOUVEAU - Annuler un pointage
+  const useAnnulerPointage = () => {
+    return useMutation({
+      mutationFn: (id_inscription) =>
+        sortieService.annulerPointage(id_inscription),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries({ queryKey: ["sorties"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
+        toast.success(response.message || "Pointage annulé avec succès");
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message ||
+            "Erreur lors de l'annulation du pointage",
+        );
+      },
+    });
+  };
+
   return {
     useGetAll,
     useGetById,
     useGetUpcoming,
     useGetStats,
     useGetAvailablePlaces,
+    useGetDetails, // ✅ Nouveau
+    useGetPointage, // ✅ Nouveau
     useCreate,
     useUpdate,
     useRemove,
+    useEnregistrerPointage, // ✅ Nouveau
+    useModifierPointage, // ✅ Nouveau
+    useAnnulerPointage, // ✅ Nouveau
   };
 };

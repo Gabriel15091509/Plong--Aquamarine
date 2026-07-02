@@ -23,6 +23,7 @@ import AdherentCreatePage from "./pages/AdherentCreatePage";
 import AdherentEditPage from "./pages/AdherentEditPage";
 import AdherentDetailsPage from "./pages/AdherentDetailsPage";
 import AdhesionsPage from "./pages/AdhesionsPage";
+import AdhesionForm from "./components/Adhesion/AdhesionForm";
 import CertificatsPage from "./pages/CertificatsPage";
 import PaiementsPage from "./pages/PaiementsPage";
 import SortiesPage from "./pages/SortiesPage";
@@ -35,19 +36,21 @@ import AboutPage from "./pages/AboutPage";
 import UsersPage from "./pages/UsersPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
+import ProfilePage from "./pages/ProfilePage";
+
+import ProtectedRoute from "./components/Common/ProtectedRoute";
+
+// ✅ NOUVEAU - Page de pointage
+import SortiePointage from "./pages/SortiePointage";
+
+// Components
 import SortieForm from "./components/Sortie/SortieForm";
 import SortieDetails from "./components/Sortie/SortieDetails";
 import InscriptionForm from "./components/Inscription/InscriptionForm";
 import PlongeeForm from "./components/Plongee/PlongeeForm";
 import MaterielForm from "./components/Materiel/MaterielForm";
 import FormationForm from "./components/Formation/FormationForm";
-import ProfilePage from "./pages/ProfilePage";
 import PaiementForm from "./components/Paiement/PaiementForm";
-
-// Ajouter la route
-
-// Components
-import ProtectedRoute from "./components/Common/ProtectedRoute";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -85,6 +88,7 @@ function App() {
             <Routes>
               {/* Page de login - sans layout */}
               <Route path="/login" element={<LoginPage />} />
+
               {/* Routes protégées - avec layout */}
               <Route
                 path="/"
@@ -96,6 +100,7 @@ function App() {
                   </PrivateRoute>
                 }
               />
+
               {/* Dashboard - accessible à tous */}
               <Route
                 path="/dashboard"
@@ -107,6 +112,31 @@ function App() {
                   </PrivateRoute>
                 }
               />
+
+              {/* Profile - accessible à tous */}
+              <Route
+                path="/profile"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <ProfilePage />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
+
+              {/* Changement de mot de passe */}
+              <Route
+                path="/change-password"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <ChangePasswordPage />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
+
               {/* Adhérents - accessible à tous les utilisateurs connectés */}
               <Route
                 path="/adherents"
@@ -148,26 +178,7 @@ function App() {
                   </PrivateRoute>
                 }
               />
-              <Route
-                path="/users/create"
-                element={
-                  <ProtectedRoute requiredPermission="manage_users">
-                    <Layout>
-                      <UserCreatePage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/change-password"
-                element={
-                  <PrivateRoute>
-                    <Layout>
-                      <ChangePasswordPage />
-                    </Layout>
-                  </PrivateRoute>
-                }
-              />
+
               {/* Adhésions - accessible à tous */}
               <Route
                 path="/adhesions"
@@ -179,6 +190,17 @@ function App() {
                   </PrivateRoute>
                 }
               />
+              <Route
+                path="/adhesions/create"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <AdhesionForm />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
+
               {/* Certificats - accessible à tous */}
               <Route
                 path="/certificats"
@@ -190,7 +212,8 @@ function App() {
                   </PrivateRoute>
                 }
               />
-              {/* ✅ Paiements - Réservé au trésorier et président */}
+
+              {/* Paiements - Réservé au trésorier et président */}
               <Route
                 path="/paiements"
                 element={
@@ -201,7 +224,18 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* ✅ Sorties - Réservé au moniteur et président */}
+              <Route
+                path="/paiements/create"
+                element={
+                  <ProtectedRoute requiredRoles={["president", "tresorier"]}>
+                    <Layout>
+                      <PaiementForm />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Sorties - Réservé au moniteur et président */}
               <Route
                 path="/sorties"
                 element={
@@ -242,16 +276,19 @@ function App() {
                   </PrivateRoute>
                 }
               />
+
+              {/* ✅ NOUVEAU - Pointage de présence pour une sortie */}
               <Route
-                path="/paiements/create"
+                path="/sorties/:id_sortie/pointage"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute requiredRoles={["president", "moniteur"]}>
                     <Layout>
-                      <PaiementForm />
+                      <SortiePointage />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
+
               {/* Inscriptions - accessible à tous */}
               <Route
                 path="/inscriptions"
@@ -273,7 +310,8 @@ function App() {
                   </PrivateRoute>
                 }
               />
-              {/* ✅ Plongées - Réservé au moniteur et président */}
+
+              {/* Plongées - Réservé au moniteur et président */}
               <Route
                 path="/plongees"
                 element={
@@ -285,17 +323,6 @@ function App() {
                 }
               />
               <Route
-                path="/profile"
-                element={
-                  <PrivateRoute>
-                    <Layout>
-                      <ProfilePage />
-                    </Layout>
-                  </PrivateRoute>
-                }
-              />
-              ;
-              <Route
                 path="/plongees/create"
                 element={
                   <ProtectedRoute requiredRoles={["president", "moniteur"]}>
@@ -305,7 +332,8 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* ✅ Matériel - Réservé au président */}
+
+              {/* Matériel - Réservé au président */}
               <Route
                 path="/materiels"
                 element={
@@ -326,7 +354,8 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* ✅ Formations - Réservé au moniteur et président */}
+
+              {/* Formations - Réservé au moniteur et président */}
               <Route
                 path="/formations"
                 element={
@@ -347,6 +376,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
               {/* Calendrier - accessible à tous */}
               <Route
                 path="/calendrier"
@@ -358,6 +388,7 @@ function App() {
                   </PrivateRoute>
                 }
               />
+
               {/* À propos - accessible à tous */}
               <Route
                 path="/about"
@@ -369,7 +400,8 @@ function App() {
                   </PrivateRoute>
                 }
               />
-              {/* ✅ Gestion des utilisateurs - Réservé au président */}
+
+              {/* Gestion des utilisateurs - Réservé au président */}
               <Route
                 path="/users"
                 element={
@@ -380,9 +412,19 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              {/* Page non autorisée */}
+              <Route
+                path="/users/create"
+                element={
+                  <ProtectedRoute requiredPermission="manage_users">
+                    <Layout>
+                      <UserCreatePage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Pages d'erreur */}
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
-              {/* 404 */}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </AnimatePresence>
@@ -398,6 +440,20 @@ function App() {
             color: "#fff",
             borderRadius: "12px",
             padding: "16px",
+          },
+          success: {
+            icon: "✅",
+            style: {
+              background: "#10B981",
+              color: "#fff",
+            },
+          },
+          error: {
+            icon: "❌",
+            style: {
+              background: "#EF4444",
+              color: "#fff",
+            },
           },
         }}
       />

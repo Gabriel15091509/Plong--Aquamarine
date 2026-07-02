@@ -1,65 +1,58 @@
-const BaseRepository = require('./BaseRepository');
-const { Sortie, Inscription } = require('../models');
-const { Op } = require('sequelize');
+const BaseRepository = require("./BaseRepository");
+const { Sortie, Inscription, User } = require("../models");
+const { Op } = require("sequelize");
 
 class SortieRepository extends BaseRepository {
   constructor() {
     super(Sortie);
   }
 
-  async findUpcomingSorties() {
+  async findAll() {
+    return await this.model.findAll({
+      order: [["date_heure", "ASC"]], // ✅ date_heure
+    });
+  }
+
+  async findById(id) {
+    return await this.model.findOne({
+      where: { id_sortie: id },
+    });
+  }
+
+  async findUpcoming() {
     const today = new Date();
     return await this.model.findAll({
       where: {
-        date_heure: { [Op.gte]: today },
-        statut: ['Planifiée', 'En cours']
+        date_heure: { [Op.gte]: today }, // ✅ date_heure
+        statut: { [Op.in]: ["Planifiée", "En cours"] },
       },
-      order: [['date_heure', 'ASC']]
+      order: [["date_heure", "ASC"]], // ✅ date_heure
     });
   }
 
-  async findSortiesWithInscriptions() {
+  async findAllWithInscriptions() {
     return await this.model.findAll({
-      include: [{
-        model: Inscription,
-        as: 'inscriptions'
-      }],
-      order: [['date_heure', 'ASC']]
+      include: [{ model: Inscription, as: "inscriptions" }],
+      order: [["date_heure", "ASC"]], // ✅ date_heure
     });
   }
 
-  // ✅ Ajout de getStats
-  async getStats() {
-    const stats = await this.model.findAll({
-      attributes: [
-        'statut',
-        [this.model.sequelize.fn('COUNT', this.model.sequelize.col('id_sortie')), 'count']
+  async findByIdWithInscriptions(id) {
+    return await this.model.findOne({
+      where: { id_sortie: id },
+      include: [
+        {
+          model: Inscription,
+          as: "inscriptions",
+          include: [
+            {
+              model: User,
+              as: "adherent",
+              attributes: ["id", "name", "email", "phone", "niveau"],
+            },
+          ],
+        },
       ],
-      group: ['statut']
-    });
-    return stats;
-  }
-
-  async findAvailablePlaces() {
-    const sorties = await this.model.findAll({
-      where: {
-        statut: ['Planifiée', 'En cours'],
-        date_heure: { [Op.gte]: new Date() }
-      },
-      include: [{
-        model: Inscription,
-        as: 'inscriptions',
-        where: { statut: 'Confirmée' },
-        required: false
-      }]
-    });
-
-    return sorties.map(sortie => {
-      const confirmedCount = sortie.inscriptions ? sortie.inscriptions.length : 0;
-      return {
-        ...sortie.toJSON(),
-        places_disponibles: sortie.nb_places - confirmedCount
-      };
     });
   }
 }

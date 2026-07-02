@@ -70,4 +70,11 @@ const Sortie = sequelize.define(
   },
 );
 
+Sortie.associate = (models) => {
+  Sortie.hasMany(models.Inscription, {
+    foreignKey: "id_sortie",
+    as: "inscriptions", // ✅ Alias important !
+  });
+};
+
 module.exports = Sortie;

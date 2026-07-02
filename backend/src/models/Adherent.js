@@ -92,4 +92,11 @@ const Adherent = sequelize.define(
   },
 );
 
+Adherent.associate = (models) => {
+  Adherent.hasMany(models.Inscription, {
+    foreignKey: "num_adherent",
+    as: "inscriptions"
+  });
+};
+
 module.exports = Adherent;

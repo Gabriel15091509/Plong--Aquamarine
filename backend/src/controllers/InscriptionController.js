@@ -8,6 +8,59 @@ class InscriptionController extends BaseController {
     this.inscriptionService = service;
   }
 
+  // ✅ Mise à jour d'une inscription
+  async update(req, res) {
+    try {
+      const { id } = req.params;
+      const data = req.body;
+      
+      console.log('📝 PUT /inscriptions/:id - ID:', id, 'Data:', data);
+      
+      const cleanData = this.cleanInscriptionData(data);
+      const result = await this.inscriptionService.update(parseInt(id), cleanData);
+      
+      res.json({
+        success: true,
+        data: result,
+        message: 'Inscription mise à jour avec succès'
+      });
+    } catch (error) {
+      console.error('❌ Erreur update inscription:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // ✅ Nettoyer les données
+  cleanInscriptionData(data) {
+    const cleanData = { ...data };
+    
+    if (cleanData.presence_check_time) {
+      const date = new Date(cleanData.presence_check_time);
+      if (!isNaN(date.getTime())) {
+        cleanData.presence_check_time = date;
+      } else {
+        cleanData.presence_check_time = null;
+      }
+    }
+    
+    if (cleanData.presence_check_by) {
+      cleanData.presence_check_by = parseInt(cleanData.presence_check_by);
+    }
+    
+    if (cleanData.presence !== undefined) {
+      cleanData.presence = Boolean(cleanData.presence);
+    }
+    
+    if (cleanData.presence_checked !== undefined) {
+      cleanData.presence_checked = Boolean(cleanData.presence_checked);
+    }
+    
+    return cleanData;
+  }
+
   async getBySortie(req, res) {
     try {
       const { id_sortie } = req.params;

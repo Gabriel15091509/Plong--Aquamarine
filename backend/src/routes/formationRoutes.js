@@ -1,41 +1,55 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const FormationController = require('../controllers/FormationController');
-const AuthMiddleware = require('../middlewares/authMiddleware');
+const FormationController = require("../controllers/FormationController");
+const AuthMiddleware = require("../middlewares/authMiddleware");
 
 const formationController = new FormationController();
 
-router.get('/', formationController.getAll.bind(formationController));
-router.get('/active', formationController.getActiveFormations.bind(formationController));
-router.get('/stats', formationController.getStats.bind(formationController)); // ✅ Ajouté
-router.get('/adherent/:num_adherent', formationController.getByAdherent.bind(formationController));
-router.get('/:id', formationController.getById.bind(formationController));
-router.get('/:id/competences', formationController.getWithCompetences.bind(formationController));
+router.get("/", formationController.getAll.bind(formationController));
+router.get(
+  "/active",
+  formationController.getActiveFormations.bind(formationController),
+);
+router.get("/stats", formationController.getStats.bind(formationController)); // ✅ Ajouté
+router.get(
+  "/adherent/:num_adherent",
+  formationController.getByAdherent.bind(formationController),
+);
+router.get("/:id", formationController.getById.bind(formationController));
+router.get(
+  "/:id/competences",
+  formationController.getWithCompetences.bind(formationController),
+);
 
-router.post('/',
+router.post(
+  "/",
   AuthMiddleware.authenticate,
   formationController.validateBeforeCreate.bind(formationController),
-  formationController.create.bind(formationController)
+  formationController.create.bind(formationController),
 );
 
-router.put('/:id',
+router.put(
+  "/:id",
   AuthMiddleware.authenticate,
-  formationController.update.bind(formationController)
+  formationController.update.bind(formationController),
 );
 
-router.patch('/:id/increment-sessions',
+router.patch(
+  "/:id/increment-sessions",
   AuthMiddleware.authenticate,
-  formationController.incrementSessions.bind(formationController)
+  formationController.incrementSessions.bind(formationController),
 );
 
-router.patch('/:id/complete',
+router.patch(
+  "/:id/complete",
   AuthMiddleware.authenticate,
-  formationController.completeFormation.bind(formationController)
+  formationController.completeFormation.bind(formationController),
 );
 
-router.delete('/:id',
+router.delete(
+  "/:id",
   AuthMiddleware.authenticate,
-  formationController.delete.bind(formationController)
+  formationController.delete.bind(formationController),
 );
 
 module.exports = router;

@@ -17,15 +17,10 @@ const Inscription = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    date_inscription: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
     statut: {
-      type: DataTypes.STRING(20),
-      allowNull: false,
+      type: DataTypes.STRING(50),
       defaultValue: "En attente",
+      allowNull: false,
     },
     rang_liste_attente: {
       type: DataTypes.INTEGER,
@@ -33,12 +28,39 @@ const Inscription = sequelize.define(
     },
     presence: {
       type: DataTypes.BOOLEAN,
-      allowNull: false,
       defaultValue: false,
+      allowNull: false,
+    },
+    presence_checked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+    presence_check_time: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    presence_check_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    absence_reason: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    absence_justified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
     },
     date_confirmation: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    date_inscription: {
+      type: DataTypes.DATE,
+      allowNull: true, // ✅ AUTORISER NULL pour éviter l'erreur
+      defaultValue: null,
     },
   },
   {

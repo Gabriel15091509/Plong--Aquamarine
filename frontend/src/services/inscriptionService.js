@@ -1,8 +1,8 @@
-import api from './api';
+import api from "./api";
 
 class InscriptionService {
-  async getAll(params = {}) {
-    const response = await api.get('/inscriptions', { params });
+  async getAll() {
+    const response = await api.get("/inscriptions");
     return response.data;
   }
 
@@ -11,28 +11,20 @@ class InscriptionService {
     return response.data;
   }
 
-  async getBySortie(sortieId) {
-    const response = await api.get(`/inscriptions/sortie/${sortieId}`);
-    return response.data;
-  }
-
-  async getWaitlist(sortieId) {
-    const response = await api.get(`/inscriptions/sortie/${sortieId}/waitlist`);
-    return response.data;
-  }
-
-  async getByAdherentAndSortie(adherentId, sortieId) {
-    const response = await api.get(`/inscriptions/adherent/${adherentId}/sortie/${sortieId}`);
-    return response.data;
-  }
-
-  async getStats() {
-    const response = await api.get('/inscriptions/stats');
-    return response.data;
-  }
-
   async create(data) {
-    const response = await api.post('/inscriptions', data);
+    const response = await api.post("/inscriptions", data);
+    return response.data;
+  }
+
+  // ✅ Méthode update
+  async update(id, data) {
+    console.log("📝 inscriptionService.update - ID:", id, "Data:", data);
+    const response = await api.put(`/inscriptions/${id}`, data);
+    return response.data;
+  }
+
+  async delete(id) {
+    const response = await api.delete(`/inscriptions/${id}`);
     return response.data;
   }
 
@@ -46,8 +38,29 @@ class InscriptionService {
     return response.data;
   }
 
-  async delete(id) {
-    const response = await api.delete(`/inscriptions/${id}`);
+  async getConfirmationsBySortie(id_sortie) {
+    const response = await api.get(
+      `/inscriptions/sortie/${id_sortie}/confirmations`,
+    );
+    return response.data;
+  }
+
+  async getWaitlistBySortie(id_sortie) {
+    const response = await api.get(
+      `/inscriptions/sortie/${id_sortie}/waitlist`,
+    );
+    return response.data;
+  }
+
+  async getStats() {
+    const response = await api.get("/inscriptions/stats");
+    return response.data;
+  }
+
+  async getByAdherentAndSortie(num_adherent, id_sortie) {
+    const response = await api.get(
+      `/inscriptions/adherent/${num_adherent}/sortie/${id_sortie}`,
+    );
     return response.data;
   }
 }
