@@ -25,7 +25,6 @@ const sequelize = new Sequelize(
   },
 );
 
-// Test connection function
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
@@ -37,33 +36,13 @@ const testConnection = async () => {
   }
 };
 
-// ✅ Sync database function avec gestion d'erreur
+// ✅ Sync database - DÉSACTIVÉE
 const syncDatabase = async (options = {}) => {
   try {
-    // ✅ Désactiver complètement la synchronisation automatique
-    // Si vous voulez synchroniser, utilisez alter: false (défaut)
-    const syncOptions = {
-      alter: false,
-      force: false,
-      ...options,
-    };
-
-    console.log("📝 Synchronisation de la base de données...");
-    console.log(`   Options: ${JSON.stringify(syncOptions)}`);
-
-    await sequelize.sync(syncOptions);
-    console.log("✅ Database synchronized successfully");
+    console.log("✅ Database sync skipped (manual management)");
     return true;
   } catch (error) {
     console.error("❌ Database sync failed:", error);
-    console.error("   Détails:", error.message);
-
-    // ✅ Afficher plus de détails sur l'erreur
-    if (error.parent) {
-      console.error("   SQL:", error.parent.sql);
-      console.error("   Code:", error.parent.code);
-    }
-
     return false;
   }
 };

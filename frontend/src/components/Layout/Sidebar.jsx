@@ -72,16 +72,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const canSeeMateriel = hasRole(["president"]);
   const canSeeFormations = hasRole(["president", "moniteur"]);
 
-  // ✅ Animations de transition de thème
   const themeTransition = {
     duration: 0.3,
     ease: "easeInOut",
   };
 
-  // ✅ Animations de survol personnalisées selon le thème
   const getHoverAnimation = (type = "default") => {
     if (theme === "dark") {
-      // 🎨 Animations pour le MODE SOMBRE
       switch (type) {
         case "menu":
           return {
@@ -112,7 +109,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           return { scale: 1.05, transition: { duration: 0.2 } };
       }
     } else {
-      // ☀️ Animations pour le MODE CLAIR
       switch (type) {
         case "menu":
           return {
@@ -186,7 +182,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             >
               {({ isActive }) => (
                 <>
-                  {/* ✅ Effet de survol avec animation selon le thème */}
                   <motion.div
                     className={`absolute inset-0 rounded-xl transition-all duration-300 ${
                       isActive
@@ -197,7 +192,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     transition={themeTransition}
                   />
 
-                  {/* ✅ Bordure gauche animée selon le thème */}
                   <motion.div
                     className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 rounded-full transition-all duration-300 ${
                       isActive
@@ -211,7 +205,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     transition={themeTransition}
                   />
 
-                  {/* ✅ Icône avec animation de survol selon le thème */}
                   <motion.div
                     whileHover={getHoverAnimation("icon")}
                     animate={{
@@ -228,7 +221,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     />
                   </motion.div>
 
-                  {/* ✅ Label avec animation de survol */}
                   {isOpen && (
                     <motion.span
                       className="relative z-10 text-sm font-medium"
@@ -248,7 +240,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     </motion.span>
                   )}
 
-                  {/* ✅ Indicateur lumineux animé selon le thème */}
                   <motion.div
                     className={`absolute right-3 w-1.5 h-1.5 rounded-full transition-all duration-300 ${
                       isActive
@@ -277,25 +268,27 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className={`fixed left-0 top-0 h-full shadow-xl z-50 overflow-hidden transition-colors duration-300 ${
         theme === "dark"
-          ? "bg-gray-900/80 border-r border-cyan-800/30"
-          : "bg-white/80 backdrop-blur-xl border-r border-cyan-100/50"
+          ? "bg-gray-900/95 border-r border-cyan-800/30"
+          : "bg-white/95 backdrop-blur-xl border-r border-cyan-100/50"
       }`}
     >
       <div className="flex flex-col h-full">
-        {/* Logo avec animation de survol selon le thème */}
+        {/* ✅ Logo avec taille fixe - bien aligné */}
         <div
-          className={`h-16 flex items-center justify-between px-4 border-b flex-shrink-0 transition-colors duration-300 ${
+          className={`h-16 flex items-center px-4 border-b flex-shrink-0 transition-colors duration-300 ${
             theme === "dark" ? "border-cyan-800/30" : "border-cyan-100/50"
           }`}
         >
-          <div className="flex items-center gap-2 overflow-hidden">
+          {/* ✅ Logo toujours visible avec taille fixe */}
+          <div className="flex items-center gap-2 overflow-hidden flex-shrink-0">
             <motion.div
               whileHover={getHoverAnimation("button")}
               transition={{ type: "spring", stiffness: 300 }}
-              className="relative"
+              className="relative flex-shrink-0"
             >
-              <Logo size="md" className="flex-shrink-0" />
-              {/* Effet de lueur autour du logo selon le thème */}
+              <div className="w-10 h-10 flex-shrink-0">
+                <Logo size="md" className="flex-shrink-0" />
+              </div>
               <motion.div
                 className={`absolute inset-0 rounded-xl blur-xl -z-10 transition-colors duration-300 ${
                   theme === "dark"
@@ -308,37 +301,46 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 transition={themeTransition}
               />
             </motion.div>
-            {isOpen && (
-              <motion.span
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className={`text-lg font-bold bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent transition-colors duration-300 ${
-                  theme === "dark"
-                    ? "from-cyan-400 to-teal-400"
-                    : "from-cyan-600 to-teal-600"
-                }`}
-              >
-                Plongée Club
-              </motion.span>
-            )}
+
+            {/* ✅ Texte du logo avec animation */}
+            <AnimatePresence mode="wait">
+              {isOpen && (
+                <motion.span
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className={`text-lg font-bold bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent transition-colors duration-300 whitespace-nowrap ${
+                    theme === "dark"
+                      ? "from-cyan-400 to-teal-400"
+                      : "from-cyan-600 to-teal-600"
+                  }`}
+                >
+                  Plongée Club
+                </motion.span>
+              )}
+            </AnimatePresence>
           </div>
-          <motion.button
-            whileHover={getHoverAnimation("button")}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setIsOpen(!isOpen)}
-            className={`p-1.5 rounded-lg transition-colors duration-300 flex-shrink-0 ${
-              theme === "dark"
-                ? "hover:bg-cyan-900/30 text-cyan-400"
-                : "hover:bg-cyan-100/50 text-cyan-600"
-            }`}
-          >
-            {isOpen ? (
-              <FiChevronLeft className="w-4 h-4" />
-            ) : (
-              <FiChevronRight className="w-4 h-4" />
-            )}
-          </motion.button>
+
+          {/* ✅ Bouton toggle - toujours visible et bien positionné */}
+          <div className="ml-auto flex-shrink-0">
+            <motion.button
+              whileHover={getHoverAnimation("button")}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setIsOpen(!isOpen)}
+              className={`p-1.5 rounded-lg transition-colors duration-300 flex-shrink-0 ${
+                theme === "dark"
+                  ? "hover:bg-cyan-900/30 text-cyan-400"
+                  : "hover:bg-cyan-100/50 text-cyan-600"
+              }`}
+            >
+              {isOpen ? (
+                <FiChevronLeft className="w-4 h-4" />
+              ) : (
+                <FiChevronRight className="w-4 h-4" />
+              )}
+            </motion.button>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -480,7 +482,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             theme === "dark" ? "border-cyan-800/30" : "border-cyan-100/50"
           }`}
         >
-          {/* Profil utilisateur avec animation de survol selon le thème */}
+          {/* Profil utilisateur */}
           <motion.div
             whileHover={getHoverAnimation("menu")}
             className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-300 cursor-pointer group ${
@@ -536,9 +538,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             )}
           </motion.div>
 
-          {/* Actions du footer avec animations selon le thème */}
+          {/* Actions du footer */}
           <div className="flex items-center gap-1 mt-2">
-            {/* Toggle Thème avec animation personnalisée */}
             <motion.button
               whileHover={getHoverAnimation("theme")}
               whileTap={{ scale: 0.95 }}
@@ -578,7 +579,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               )}
             </motion.button>
 
-            {/* Déconnexion avec animation selon le thème */}
             <motion.button
               whileHover={getHoverAnimation("logout")}
               whileTap={{ scale: 0.95 }}
@@ -595,7 +595,6 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </motion.button>
           </div>
 
-          {/* Version avec animation de survol selon le thème */}
           {isOpen && (
             <motion.p
               initial={{ opacity: 0 }}

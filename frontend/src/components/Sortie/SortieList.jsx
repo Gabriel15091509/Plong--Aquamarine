@@ -41,25 +41,48 @@ const tableRowVariants = {
 // ✅ Couleurs des actions
 const actionColors = {
   view: {
-    bg: "hover:bg-blue-50",
-    text: "text-blue-600",
-    darkText: "dark:text-blue-400",
-    darkBg: "dark:hover:bg-blue-900/20",
+    bg: "hover:bg-blue-50 dark:hover:bg-blue-900/20",
+    text: "text-blue-600 dark:text-blue-400",
     tooltip: "Voir les détails",
   },
   edit: {
-    bg: "hover:bg-emerald-50",
-    text: "text-emerald-600",
-    darkText: "dark:text-emerald-400",
-    darkBg: "dark:hover:bg-emerald-900/20",
+    bg: "hover:bg-emerald-50 dark:hover:bg-emerald-900/20",
+    text: "text-emerald-600 dark:text-emerald-400",
     tooltip: "Modifier",
   },
   delete: {
-    bg: "hover:bg-red-50",
-    text: "text-red-600",
-    darkText: "dark:text-red-400",
-    darkBg: "dark:hover:bg-red-900/20",
+    bg: "hover:bg-red-50 dark:hover:bg-red-900/20",
+    text: "text-red-600 dark:text-red-400",
     tooltip: "Supprimer",
+  },
+};
+
+// ✅ Configuration des statuts
+const STATUS_CONFIG = {
+  Planifiée: {
+    label: "Planifiée",
+    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+    border: "border-blue-200 dark:border-blue-800/30",
+    icon: FiCalendar,
+  },
+  "En cours": {
+    label: "En cours",
+    color:
+      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    border: "border-green-200 dark:border-green-800/30",
+    icon: FiClock,
+  },
+  Terminée: {
+    label: "Terminée",
+    color: "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-400",
+    border: "border-gray-200 dark:border-gray-600",
+    icon: FiCheckCircle,
+  },
+  Annulée: {
+    label: "Annulée",
+    color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    border: "border-red-200 dark:border-red-800/30",
+    icon: FiXCircle,
   },
 };
 
@@ -219,7 +242,7 @@ const SortieList = ({ sorties: sortiesProp }) => {
                           transition={{ duration: 0.5 }}
                           className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center"
                         >
-                          <FiMapPin className="w-4 h-4 text-indigo-600" />
+                          <FiMapPin className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                         </motion.div>
                         <div>
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -233,7 +256,7 @@ const SortieList = ({ sorties: sortiesProp }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <FiCalendar className="w-3 h-3 text-gray-400" />
+                        <FiCalendar className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                         {formatDateTime(sortie.date_heure)}
                       </div>
                     </td>
@@ -247,7 +270,7 @@ const SortieList = ({ sorties: sortiesProp }) => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <FiUsers className="w-3 h-3 text-gray-400" />
+                        <FiUsers className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                         {sortie.nb_places ?? "—"}
                       </div>
                     </td>
@@ -255,7 +278,22 @@ const SortieList = ({ sorties: sortiesProp }) => {
                       {formatCurrency(sortie.tarif)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <StatusBadge status={sortie.statut} />
+                      {/* ✅ Statut avec couleurs correctes */}
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border ${
+                          STATUS_CONFIG[sortie.statut]?.color ||
+                          "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-400"
+                        } ${
+                          STATUS_CONFIG[sortie.statut]?.border ||
+                          "border-gray-200 dark:border-gray-600"
+                        }`}
+                      >
+                        {sortie.statut === "Planifiée" && "📅"}
+                        {sortie.statut === "En cours" && "🔄"}
+                        {sortie.statut === "Terminée" && "✅"}
+                        {sortie.statut === "Annulée" && "❌"}
+                        {sortie.statut || "En attente"}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">

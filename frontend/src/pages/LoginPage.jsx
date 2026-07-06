@@ -54,18 +54,6 @@ const LoginPage = () => {
     },
   };
 
-  const floatVariants = {
-    animate: {
-      y: [0, -10, 0],
-      rotate: [0, 2, -2, 0],
-      transition: {
-        duration: 6,
-        repeat: Infinity,
-        ease: "easeInOut",
-      },
-    },
-  };
-
   const bubbleVariants = {
     animate: {
       y: [0, -20, 0],
@@ -403,14 +391,14 @@ const LoginPage = () => {
           </motion.div>
         </motion.div>
 
-        {/* Partie droite - Image avec animations (inchangée) */}
+        {/* ✅ Partie droite - Logo sans fond */}
         <motion.div
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-          className="hidden md:block w-1/2 relative bg-gradient-to-br from-primary-600 via-primary-700 to-ocean-800 p-8 overflow-hidden"
+          className="hidden md:block w-1/2 relative bg-gradient-to-br from-primary-600 via-primary-700 to-ocean-800 p-8 overflow-hidden flex items-center justify-center"
         >
-          {/* ... contenu de la partie droite inchangé ... */}
+          {/* Effets de fond */}
           <div className="absolute inset-0">
             <svg
               className="absolute bottom-0 w-full"
@@ -438,131 +426,146 @@ const LoginPage = () => {
             </svg>
           </div>
 
-          <div className="h-full flex flex-col justify-between relative z-10">
+          {/* ✅ Logo sans fond au centre */}
+          <div className="relative z-10 flex flex-col items-center justify-center h-full">
             <motion.div
-              className="flex justify-end"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6 }}
+              initial={{ scale: 0.6, opacity: 0, rotate: -10 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              transition={{
+                delay: 0.5,
+                type: "spring",
+                stiffness: 260,
+                damping: 20,
+              }}
+              className="relative"
             >
+              {/* Effet de lueur */}
               <motion.div
-                className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white text-sm font-medium flex items-center gap-2"
-                whileHover={{ scale: 1.05 }}
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.3, 0.6, 0.3],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="absolute inset-0 bg-white/20 rounded-full blur-xl"
+                style={{ width: "300px", height: "300px", margin: "0 auto" }}
+              />
+
+              {/* ✅ Logo sans fond - flottant */}
+              <motion.div
+                animate={{
+                  y: [0, -15, 0],
+                  rotate: [0, 3, -3, 0],
+                }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="relative"
               >
-                <FiShield className="w-4 h-4" />
-                Sécurisé
+                <div className="w-64 h-64 mx-auto flex items-center justify-center">
+                  <Logo size="xl" className="w-48 h-48" />
+                </div>
+              </motion.div>
+
+              {/* Icônes décoratives animées */}
+              <motion.div
+                animate={{
+                  y: [0, -15, 0],
+                  x: [0, 10, 0],
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="absolute -top-2 -right-2 bg-white/20 backdrop-blur-sm p-3 rounded-full border border-white/20"
+              >
+                <FiDroplet className="w-6 h-6 text-white" />
+              </motion.div>
+
+              <motion.div
+                animate={{
+                  y: [0, 15, 0],
+                  x: [0, -10, 0],
+                }}
+                transition={{
+                  duration: 5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 1,
+                }}
+                className="absolute -bottom-2 -left-2 bg-white/20 backdrop-blur-sm p-3 rounded-full border border-white/20"
+              >
+                <FiAnchor className="w-6 h-6 text-white" />
+              </motion.div>
+
+              <motion.div
+                animate={{
+                  y: [0, -10, 0],
+                  x: [0, -15, 0],
+                }}
+                transition={{
+                  duration: 3.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 0.5,
+                }}
+                className="absolute top-1/2 -left-6 bg-white/20 backdrop-blur-sm p-3 rounded-full border border-white/20"
+              >
+                <FiCompass className="w-5 h-5 text-white" />
+              </motion.div>
+
+              <motion.div
+                animate={{
+                  y: [0, -12, 0],
+                  x: [0, 15, 0],
+                }}
+                transition={{
+                  duration: 4.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: 1.5,
+                }}
+                className="absolute top-1/2 -right-6 bg-white/20 backdrop-blur-sm p-3 rounded-full border border-white/20"
+              >
+                <FiShield className="w-5 h-5 text-white" />
               </motion.div>
             </motion.div>
 
-            <div className="text-center text-white">
-              <motion.div
-                initial={{ scale: 0.6, opacity: 0, rotate: -10 }}
-                animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                transition={{
-                  delay: 0.5,
-                  type: "spring",
-                  stiffness: 260,
-                  damping: 20,
-                }}
-                className="mb-8 relative"
-              >
-                <motion.div
-                  animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.6, 0.3],
-                  }}
-                  transition={{
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute inset-0 bg-white/20 rounded-full blur-xl"
-                  style={{ width: "200px", height: "200px", margin: "0 auto" }}
-                />
-
-                <motion.img
-                  src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=600&fit=crop"
-                  alt="Plongée sous-marine"
-                  className="w-48 h-48 rounded-full mx-auto shadow-2xl border-4 border-white/30 object-cover relative"
-                  whileHover={{ scale: 1.05, rotate: 5 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                />
-
-                <motion.div
-                  animate={{
-                    y: [0, -15, 0],
-                    x: [0, 10, 0],
-                  }}
-                  transition={{
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute -top-2 -right-2 bg-white/20 backdrop-blur-sm p-2 rounded-full"
-                >
-                  <FiDroplet className="w-5 h-5 text-white" />
-                </motion.div>
-                <motion.div
-                  animate={{
-                    y: [0, 15, 0],
-                    x: [0, -10, 0],
-                  }}
-                  transition={{
-                    duration: 5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 1,
-                  }}
-                  className="absolute -bottom-2 -left-2 bg-white/20 backdrop-blur-sm p-2 rounded-full"
-                >
-                  <FiAnchor className="w-5 h-5 text-white" />
-                </motion.div>
-                <motion.div
-                  animate={{
-                    y: [0, -10, 0],
-                    x: [0, -15, 0],
-                  }}
-                  transition={{
-                    duration: 3.5,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 0.5,
-                  }}
-                  className="absolute top-1/2 -left-4 bg-white/20 backdrop-blur-sm p-2 rounded-full"
-                >
-                  <FiCompass className="w-4 h-4 text-white" />
-                </motion.div>
-              </motion.div>
-
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-                className="text-3xl font-bold mb-2"
-              >
+            {/* Texte de bienvenue */}
+            <motion.div
+              className="text-center mt-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+            >
+              <h2 className="text-3xl font-bold text-white mb-2">
                 Bienvenue dans le club
-              </motion.h2>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-                className="text-primary-100"
-              >
+              </h2>
+              <p className="text-primary-100 text-sm">
                 Gérez vos adhérents, sorties et plongées facilement
-              </motion.p>
-            </div>
+              </p>
+            </motion.div>
 
-            <div className="grid grid-cols-3 gap-4 text-white">
+            {/* Statistiques */}
+            <motion.div
+              className="grid grid-cols-3 gap-4 mt-6 text-white w-full max-w-md"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9 }}
+            >
               {[
-                { value: "150+", label: "Adhérents", delay: 0.9 },
-                { value: "50+", label: "Sorties/an", delay: 1.0 },
-                { value: "98%", label: "Satisfaction", delay: 1.1 },
+                { value: "150+", label: "Adhérents" },
+                { value: "50+", label: "Sorties/an" },
+                { value: "98%", label: "Satisfaction" },
               ].map((stat, index) => (
                 <motion.div
                   key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: stat.delay }}
                   className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-all duration-300 cursor-default"
                   whileHover={{ scale: 1.05, y: -5 }}
                 >
@@ -575,10 +578,11 @@ const LoginPage = () => {
                   <p className="text-xs text-primary-100">{stat.label}</p>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
 
-          <div className="absolute inset-0 overflow-hidden">
+          {/* Effets de fond supplémentaires */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <motion.div
               animate={{
                 scale: [1, 1.2, 1],

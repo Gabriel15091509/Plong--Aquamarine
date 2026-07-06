@@ -25,6 +25,18 @@ export const useInscriptions = () => {
     });
   };
 
+  // ✅ AJOUTER useGetStats
+  const useGetStats = () => {
+    return useQuery({
+      queryKey: ["inscriptions", "stats"],
+      queryFn: async () => {
+        const response = await inscriptionService.getStats();
+        return response;
+      },
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    });
+  };
+
   const useCreate = () => {
     return useMutation({
       mutationFn: async (data) => {
@@ -33,6 +45,8 @@ export const useInscriptions = () => {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions", "stats"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions", "capacity"] });
       },
     });
   };
@@ -51,6 +65,8 @@ export const useInscriptions = () => {
         queryClient.invalidateQueries({
           queryKey: ["inscription", data?.data?.id_inscription],
         });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions", "stats"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions", "capacity"] });
       },
       onError: (error) => {
         console.error("❌ Update error:", error);
@@ -66,6 +82,8 @@ export const useInscriptions = () => {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions", "stats"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions", "capacity"] });
       },
     });
   };
@@ -78,6 +96,8 @@ export const useInscriptions = () => {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions", "stats"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions", "capacity"] });
       },
     });
   };
@@ -90,6 +110,8 @@ export const useInscriptions = () => {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions", "stats"] });
+        queryClient.invalidateQueries({ queryKey: ["inscriptions", "capacity"] });
       },
     });
   };
@@ -118,9 +140,22 @@ export const useInscriptions = () => {
     });
   };
 
+  const useGetCapacityBySortie = (id_sortie) => {
+    return useQuery({
+      queryKey: ["inscriptions", "capacity", id_sortie],
+      queryFn: async () => {
+        const response =
+          await inscriptionService.getCapacityBySortie(id_sortie);
+        return response;
+      },
+      enabled: !!id_sortie,
+    });
+  };
+
   return {
     useGetAll,
     useGetById,
+    useGetStats, // ✅ AJOUTÉ
     useCreate,
     useUpdate,
     useRemove,
@@ -128,5 +163,6 @@ export const useInscriptions = () => {
     useCancel,
     useGetConfirmationsBySortie,
     useGetWaitlistBySortie,
+    useGetCapacityBySortie,
   };
 };

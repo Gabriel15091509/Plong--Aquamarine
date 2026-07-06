@@ -38,7 +38,7 @@ const tableRowVariants = {
     },
   }),
   hover: {
-    backgroundColor: "rgba(16, 185, 129, 0.05)",
+    backgroundColor: "rgba(59, 130, 246, 0.05)",
     transition: { duration: 0.2 },
   },
 };
@@ -51,8 +51,8 @@ const actionColors = {
     tooltip: "Voir les détails",
   },
   edit: {
-    bg: "hover:bg-emerald-50 dark:hover:bg-emerald-900/20",
-    text: "text-emerald-600 dark:text-emerald-400",
+    bg: "hover:bg-cyan-50 dark:hover:bg-cyan-900/20",
+    text: "text-cyan-600 dark:text-cyan-400",
     tooltip: "Modifier",
   },
   delete: {
@@ -157,9 +157,9 @@ const AdhesionList = () => {
             rotate: [0, 10, -10, 0],
             transition: { duration: 1, repeat: Infinity, repeatDelay: 2 },
           }}
-          className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 rounded-full mb-4"
+          className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 rounded-full mb-4"
         >
-          <FiFileText className="w-10 h-10 text-emerald-500 dark:text-emerald-400" />
+          <FiFileText className="w-10 h-10 text-blue-500 dark:text-blue-400" />
         </motion.div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           Aucune adhésion trouvée
@@ -176,7 +176,7 @@ const AdhesionList = () => {
               setFilter("all");
               setCurrentPage(1);
             }}
-            className="mt-4 text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 font-medium"
+            className="mt-4 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium"
           >
             Réinitialiser les filtres
           </button>
@@ -184,7 +184,7 @@ const AdhesionList = () => {
         {!searchTerm && filter === "all" && (
           <Link
             to="/adhesions/create"
-            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
           >
             <FiPlus className="w-4 h-4" /> Nouvelle adhésion
             <FiChevronRight className="w-4 h-4" />
@@ -211,7 +211,7 @@ const AdhesionList = () => {
               setCurrentPage(1);
             }}
             placeholder="🔍 Rechercher par adhérent, type ou licence..."
-            className="transition-all duration-300 focus:ring-2 focus:ring-emerald-500"
+            className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="flex gap-2">
@@ -221,7 +221,7 @@ const AdhesionList = () => {
               setFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="input-field w-auto bg-gradient-to-r from-gray-50 to-white dark:from-gray-700 dark:to-gray-600 rounded-xl border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-emerald-500 transition-all duration-300"
+            className="input-field w-auto bg-gradient-to-r from-gray-50 to-white dark:from-gray-700 dark:to-gray-600 rounded-xl border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 transition-all duration-300"
           >
             <option value="all">📊 Tous ({stats.total})</option>
             <option value="Payé">✅ Payés ({stats.payes})</option>
@@ -234,7 +234,7 @@ const AdhesionList = () => {
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Link
               to="/adhesions/create"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
             >
               <FiPlus className="w-4 h-4" /> Nouvelle
             </Link>
@@ -265,7 +265,7 @@ const AdhesionList = () => {
           ❌ Annulés: <strong>{stats.annules}</strong>
         </span>
         {searchTerm && (
-          <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
+          <span className="px-3 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 rounded-full">
             🔍 "{searchTerm}"
           </span>
         )}
@@ -327,7 +327,7 @@ const AdhesionList = () => {
                       <div className="flex flex-col">
                         <motion.span
                           whileHover={{ scale: 1.05 }}
-                          className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-gradient-to-r from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 text-emerald-800 dark:text-emerald-400 rounded-full"
+                          className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 text-blue-800 dark:text-blue-400 rounded-full"
                         >
                           <FiFileText className="w-3 h-3" />
                           {adhesion.type}
@@ -349,9 +349,9 @@ const AdhesionList = () => {
                                 : 0,
                           }}
                           transition={{ duration: 0.5 }}
-                          className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center"
+                          className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center"
                         >
-                          <FiUser className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          <FiUser className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         </motion.div>
                         <div>
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -377,7 +377,7 @@ const AdhesionList = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-white">
-                        <FiDollarSign className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                        <FiDollarSign className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                         {formatCurrency(adhesion.montant_paye)}
                       </span>
                     </td>

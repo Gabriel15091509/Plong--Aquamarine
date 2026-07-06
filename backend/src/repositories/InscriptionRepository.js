@@ -1,17 +1,25 @@
 const { Inscription, Adherent, Sortie } = require("../models");
 
 class InscriptionRepository {
-  // ✅ Mise à jour
-  async update(id, data) {
-    console.log("📝 Repository update - ID:", id, "Data:", data);
+  async findAll() {
+    return await Inscription.findAll({
+      include: [
+        { model: Adherent, as: "adherent" },
+        { model: Sortie, as: "sortie" },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+  }
 
-    const inscription = await Inscription.findByPk(id);
-    if (!inscription) {
-      throw new Error("Inscription non trouvée");
-    }
-
-    await inscription.update(data);
-    return inscription;
+  async findByAdherent(num_adherent) {
+    return await Inscription.findAll({
+      where: { num_adherent },
+      include: [
+        { model: Adherent, as: "adherent" },
+        { model: Sortie, as: "sortie" },
+      ],
+      order: [["created_at", "DESC"]],
+    });
   }
 
   async findById(id) {
@@ -23,18 +31,41 @@ class InscriptionRepository {
     });
   }
 
-  async findAll() {
-    return await Inscription.findAll({
-      include: [
-        { model: Adherent, as: "adherent" },
-        { model: Sortie, as: "sortie" },
-      ],
-      order: [["created_at", "DESC"]],
-    });
+  async create(data) {
+    console.log("📝 Repository create - Data:", JSON.stringify(data, null, 2));
+
+    try {
+      const cleanData = {
+        num_adherent: parseInt(data.num_adherent),
+        id_sortie: parseInt(data.id_sortie),
+        statut: data.statut || "En attente",
+        rang_liste_attente: data.rang_liste_attente || null,
+        presence: data.presence || false,
+        presence_checked: false,
+        presence_check_by: null,
+        date_confirmation: data.date_confirmation || null,
+      };
+
+      const inscription = await Inscription.create(cleanData);
+      console.log("✅ Inscription créée:", inscription.id_inscription);
+      return inscription;
+    } catch (error) {
+      console.error("❌ Erreur repository create:", error);
+      console.error("❌ Erreur details:", error.errors);
+      throw error;
+    }
   }
 
-  async create(data) {
-    return await Inscription.create(data);
+  async update(id, data) {
+    console.log("📝 Repository update - ID:", id, "Data:", data);
+
+    const inscription = await Inscription.findByPk(id);
+    if (!inscription) {
+      throw new Error("Inscription non trouvée");
+    }
+
+    await inscription.update(data);
+    return inscription;
   }
 
   async delete(id) {
@@ -78,6 +109,17 @@ class InscriptionRepository {
 
   async getInscriptionStats() {
     const inscriptions = await Inscription.findAll();
+    return this.buildStats(inscriptions);
+  }
+
+  async getInscriptionStatsByAdherent(num_adherent) {
+    const inscriptions = await Inscription.findAll({
+      where: { num_adherent },
+    });
+    return this.buildStats(inscriptions);
+  }
+
+  buildStats(inscriptions) {
     const stats = {
       total: inscriptions.length,
       enAttente: 0,

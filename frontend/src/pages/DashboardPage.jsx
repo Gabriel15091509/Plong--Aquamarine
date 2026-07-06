@@ -104,7 +104,7 @@ const DashboardPage = () => {
     });
   }
 
-  // ✅ Calcul des statistiques - CORRIGÉ POUR SORTIES ET FORMATIONS
+  // ✅ Calcul des statistiques
   const statsData = useMemo(() => {
     // ✅ Adhérents
     const totalAdherents = adherentStats?.data?.total || 0;
@@ -112,7 +112,7 @@ const DashboardPage = () => {
     const inactiveAdherents = adherentStats?.data?.inactive || 0;
     const suspendedAdherents = adherentStats?.data?.suspended || 0;
 
-    // ✅ Sorties - CORRECTION : Calculer le total à partir des statistiques groupées
+    // ✅ Sorties
     const sortieData = sortieStats?.data || [];
     let totalSorties = 0;
     let plannedSorties = 0;
@@ -121,7 +121,6 @@ const DashboardPage = () => {
     let cancelledSorties = 0;
 
     if (Array.isArray(sortieData) && sortieData.length > 0) {
-      // Si c'est un tableau de statistiques groupées (format stats)
       if (sortieData[0]?.statut) {
         totalSorties = sortieData.reduce(
           (sum, s) => sum + (parseInt(s.count) || 0),
@@ -140,7 +139,6 @@ const DashboardPage = () => {
           .filter((s) => s.statut === "Annulée")
           .reduce((sum, s) => sum + (parseInt(s.count) || 0), 0);
       } else {
-        // Si c'est une liste de sorties
         totalSorties = sortieData.length;
         plannedSorties = sortieData.filter(
           (s) => s.statut === "Planifiée",
@@ -156,7 +154,6 @@ const DashboardPage = () => {
         ).length;
       }
     } else if (sortieStats?.data && typeof sortieStats.data === "object") {
-      // Si c'est un objet avec des propriétés
       totalSorties = sortieStats.data.total || sortieStats.data.count || 0;
       plannedSorties =
         sortieStats.data.planifiees || sortieStats.data.planned || 0;
@@ -177,7 +174,6 @@ const DashboardPage = () => {
 
     if (Array.isArray(paiementData) && paiementData.length > 0) {
       if (paiementData[0]?.statut) {
-        // Format stats
         totalPaiements = paiementData.reduce(
           (sum, p) => sum + (parseInt(p.count) || 0),
           0,
@@ -193,7 +189,6 @@ const DashboardPage = () => {
           0,
         );
       } else {
-        // Format liste
         totalPaiements = paiementData.length;
         pendingPaiements = paiementData.filter(
           (p) => p.statut === "En attente",
@@ -217,7 +212,7 @@ const DashboardPage = () => {
         paiementStats.data.montantTotal || paiementStats.data.totalAmount || 0;
     }
 
-    // ✅ Formations - CORRECTION : Calculer le total à partir des statistiques groupées
+    // ✅ Formations
     const formationData = formationStats?.data || [];
     let totalFormations = 0;
     let activeFormations = 0;
@@ -227,7 +222,6 @@ const DashboardPage = () => {
 
     if (Array.isArray(formationData) && formationData.length > 0) {
       if (formationData[0]?.statut) {
-        // Format stats
         totalFormations = formationData.reduce(
           (sum, f) => sum + (parseInt(f.count) || 0),
           0,
@@ -245,7 +239,6 @@ const DashboardPage = () => {
           .filter((f) => f.statut === "Suspendue")
           .reduce((sum, f) => sum + (parseInt(f.count) || 0), 0);
       } else {
-        // Format liste
         totalFormations = formationData.length;
         activeFormations = formationData.filter(
           (f) => f.statut === "En cours",
@@ -283,7 +276,6 @@ const DashboardPage = () => {
 
     if (Array.isArray(plongeeData) && plongeeData.length > 0) {
       if (plongeeData[0]?.type_plongee) {
-        // Format stats
         totalPlongees = plongeeData.reduce(
           (sum, s) => sum + (parseInt(s.count) || 0),
           0,
@@ -294,7 +286,6 @@ const DashboardPage = () => {
         );
         avgDepth = totalDepth / plongeeData.length || 0;
       } else {
-        // Format liste
         totalPlongees = plongeeData.reduce(
           (sum, s) => sum + (parseInt(s.count) || 0),
           0,
@@ -318,7 +309,6 @@ const DashboardPage = () => {
 
     if (Array.isArray(materielData) && materielData.length > 0) {
       if (materielData[0]?.categorie) {
-        // Format stats
         totalMateriels = materielData.reduce(
           (sum, m) => sum + (parseInt(m.count) || 0),
           0,
@@ -327,7 +317,6 @@ const DashboardPage = () => {
           .filter((m) => m.etat === "Bon" || m.etat === "Neuf")
           .reduce((sum, m) => sum + (parseInt(m.count) || 0), 0);
       } else {
-        // Format liste
         totalMateriels = materielData.reduce(
           (sum, m) => sum + (parseInt(m.count) || 0),
           0,

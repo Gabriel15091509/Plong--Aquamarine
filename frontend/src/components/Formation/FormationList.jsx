@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -12,6 +13,7 @@ import {
   FiCalendar,
   FiUser,
   FiChevronRight,
+  FiRefreshCw,
 } from "react-icons/fi";
 import { useFormations } from "../../hooks/useFormations";
 import { useAdherents } from "../../hooks/useAdherents";
@@ -35,10 +37,6 @@ const tableRowVariants = {
       damping: 24,
     },
   }),
-  hover: {
-    backgroundColor: "rgba(99, 102, 241, 0.05)",
-    transition: { duration: 0.2 },
-  },
 };
 
 const FormationList = () => {
@@ -46,6 +44,7 @@ const FormationList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState("all");
   const [hoveredRow, setHoveredRow] = useState(null);
+  const [actionLoading, setActionLoading] = useState(null);
   const itemsPerPage = 10;
 
   const { useGetAll, useRemove, useComplete, useIncrementSessions } =
@@ -105,15 +104,43 @@ const FormationList = () => {
     startIndex + itemsPerPage,
   );
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Supprimer cette formation ?")) {
-      await remove.mutateAsync(id);
+  const handleDelete = async (id, name) => {
+    if (window.confirm(`Supprimer la formation "${name}" ?`)) {
+      setActionLoading(`delete-${id}`);
+      try {
+        await remove.mutateAsync(id);
+        toast.success("Formation supprimée avec succès");
+      } catch (error) {
+        toast.error("Erreur lors de la suppression");
+      } finally {
+        setActionLoading(null);
+      }
     }
   };
 
-  const handleComplete = async (id) => {
-    if (window.confirm("Marquer cette formation comme terminée ?")) {
-      await complete.mutateAsync(id);
+  const handleComplete = async (id, name) => {
+    if (window.confirm(`Marquer la formation "${name}" comme terminée ?`)) {
+      setActionLoading(`complete-${id}`);
+      try {
+        await complete.mutateAsync(id);
+        toast.success("Formation terminée avec succès");
+      } catch (error) {
+        toast.error("Erreur lors de la finalisation");
+      } finally {
+        setActionLoading(null);
+      }
+    }
+  };
+
+  const handleIncrementSession = async (id) => {
+    setActionLoading(`session-${id}`);
+    try {
+      await incrementSessions.mutateAsync(id);
+      toast.success("Séance ajoutée avec succès");
+    } catch (error) {
+      toast.error("Erreur lors de l'ajout de la séance");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -155,7 +182,7 @@ const FormationList = () => {
 
   return (
     <div className="space-y-4 p-4">
-      {/* Barre de recherche animée */}
+      {/* Barre de recherche */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -229,7 +256,7 @@ const FormationList = () => {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
             <AnimatePresence>
               {paginatedFormations.map((formation, index) => {
                 const formationId =
@@ -237,6 +264,10 @@ const FormationList = () => {
                 const adherentName =
                   adherentMap[formation.num_adherent] ||
                   `#${formation.num_adherent}`;
+                const isLoading =
+                  actionLoading === `delete-${formationId}` ||
+                  actionLoading === `complete-${formationId}` ||
+                  actionLoading === `session-${formationId}`;
 
                 return (
                   <motion.tr
@@ -245,10 +276,9 @@ const FormationList = () => {
                     variants={tableRowVariants}
                     initial="hidden"
                     animate="visible"
-                    whileHover="hover"
                     onHoverStart={() => setHoveredRow(formationId)}
                     onHoverEnd={() => setHoveredRow(null)}
-                    className="transition-all duration-200"
+                    className="transition-all duration-200 hover:bg-gray-50/50 dark:hover:bg-gray-800/30"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
@@ -267,19 +297,16 @@ const FormationList = () => {
                             {adherentName}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            #{formation.num_adherent}
+                            N°{formation.num_adherent}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <motion.span
-                        whileHover={{ scale: 1.05 }}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-800 dark:from-indigo-900/30 dark:to-blue-900/30 dark:text-indigo-400 rounded-full"
-                      >
+                      <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-800 dark:from-indigo-900/30 dark:to-blue-900/30 dark:text-indigo-400 rounded-full">
                         <FiAward className="w-3 h-3" />
                         {formation.niveau_vise}
-                      </motion.span>
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                       <div className="flex flex-col">
@@ -295,28 +322,26 @@ const FormationList = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        <motion.div
-                          className="flex items-center gap-2"
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ delay: 0.1 * index }}
-                        >
+                        <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">
                             {formation.nb_seances_realisees}
                           </span>
                           <span className="text-xs text-gray-400">séances</span>
-                        </motion.div>
+                        </div>
                         {formation.statut === "En cours" && (
                           <motion.button
-                            whileHover={{ scale: 1.1, rotate: 90 }}
+                            whileHover={{ scale: 1.2, rotate: 90 }}
                             whileTap={{ scale: 0.9 }}
-                            onClick={() =>
-                              incrementSessions.mutateAsync(formationId)
-                            }
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-300 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                            onClick={() => handleIncrementSession(formationId)}
+                            disabled={isLoading}
+                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-all duration-300 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/30 disabled:opacity-50"
                             title="Ajouter une séance"
                           >
-                            <FiClock className="w-4 h-4" />
+                            {isLoading ? (
+                              <FiRefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <FiClock className="w-4 h-4" />
+                            )}
                           </motion.button>
                         )}
                       </div>
@@ -325,64 +350,83 @@ const FormationList = () => {
                       <StatusBadge status={formation.statut} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1">
-                        {/* ✅ 1. Terminer (vert) - uniquement si En cours */}
+                      <div className="flex items-center justify-center gap-1.5">
+                        {/* Terminer - uniquement si En cours */}
                         {formation.statut === "En cours" && (
-                          <motion.div
-                            whileHover={{ scale: 1.1 }}
+                          <motion.button
+                            whileHover={{
+                              scale: 1.15,
+                              boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
+                            }}
                             whileTap={{ scale: 0.9 }}
+                            onClick={() =>
+                              handleComplete(formationId, formation.niveau_vise)
+                            }
+                            disabled={isLoading}
+                            className="p-2 text-green-600 hover:text-green-800 hover:bg-green-100 rounded-lg transition-all duration-200 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/30 disabled:opacity-50"
+                            title="Terminer la formation"
                           >
-                            <button
-                              onClick={() => handleComplete(formationId)}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200 dark:text-green-400 dark:hover:bg-green-900/20"
-                              title="Terminer la formation"
-                            >
+                            {actionLoading === `complete-${formationId}` ? (
+                              <FiRefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
                               <FiCheck className="w-4 h-4" />
-                            </button>
-                          </motion.div>
+                            )}
+                          </motion.button>
                         )}
 
-                        {/* ✅ 2. Voir (bleu) - toujours visible */}
-                        <motion.div
-                          whileHover={{ scale: 1.1 }}
+                        {/* Voir */}
+                        <motion.button
+                          whileHover={{
+                            scale: 1.15,
+                            boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+                          }}
                           whileTap={{ scale: 0.9 }}
+                          onClick={() => {
+                            // Rediriger vers la page de détails
+                            window.location.href = `/formations/${formationId}`;
+                          }}
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-all duration-200 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/30"
+                          title="Voir les détails"
                         >
-                          <Link
-                            to={`/formations/${formationId}`}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 dark:text-blue-400 dark:hover:bg-blue-900/20"
-                            title="Voir les détails"
-                          >
-                            <FiEye className="w-4 h-4" />
-                          </Link>
-                        </motion.div>
+                          <FiEye className="w-4 h-4" />
+                        </motion.button>
 
-                        {/* ✅ 3. Modifier (vert) - toujours visible */}
-                        <motion.div
-                          whileHover={{ scale: 1.1 }}
+                        {/* Modifier */}
+                        <motion.button
+                          whileHover={{
+                            scale: 1.15,
+                            boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+                          }}
                           whileTap={{ scale: 0.9 }}
+                          onClick={() => {
+                            window.location.href = `/formations/edit/${formationId}`;
+                          }}
+                          className="p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100 rounded-lg transition-all duration-200 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-900/30"
+                          title="Modifier"
                         >
-                          <Link
-                            to={`/formations/edit/${formationId}`}
-                            className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
-                            title="Modifier"
-                          >
-                            <FiEdit className="w-4 h-4" />
-                          </Link>
-                        </motion.div>
+                          <FiEdit className="w-4 h-4" />
+                        </motion.button>
 
-                        {/* ✅ 4. Supprimer (rouge) - toujours visible */}
-                        <motion.div
-                          whileHover={{ scale: 1.1 }}
+                        {/* Supprimer */}
+                        <motion.button
+                          whileHover={{
+                            scale: 1.15,
+                            boxShadow: "0 4px 12px rgba(239, 68, 68, 0.3)",
+                          }}
                           whileTap={{ scale: 0.9 }}
+                          onClick={() =>
+                            handleDelete(formationId, formation.niveau_vise)
+                          }
+                          disabled={isLoading}
+                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-lg transition-all duration-200 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30 disabled:opacity-50"
+                          title="Supprimer"
                         >
-                          <button
-                            onClick={() => handleDelete(formationId)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 dark:text-red-400 dark:hover:bg-red-900/20"
-                            title="Supprimer"
-                          >
+                          {actionLoading === `delete-${formationId}` ? (
+                            <FiRefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
                             <FiTrash2 className="w-4 h-4" />
-                          </button>
-                        </motion.div>
+                          )}
+                        </motion.button>
                       </div>
                     </td>
                   </motion.tr>

@@ -80,8 +80,18 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
         color: "text-red-500",
         bg: "bg-red-50 dark:bg-red-900/30",
       },
+      "Certificat expire bientot": {
+        icon: FiCalendar,
+        color: "text-amber-500",
+        bg: "bg-amber-50 dark:bg-amber-900/30",
+      },
       "Adhésion expirée": {
         icon: FiAlertCircle,
+        color: "text-orange-500",
+        bg: "bg-orange-50 dark:bg-orange-900/30",
+      },
+      "Adhesion expire bientot": {
+        icon: FiCalendar,
         color: "text-orange-500",
         bg: "bg-orange-50 dark:bg-orange-900/30",
       },
@@ -108,7 +118,11 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
   const getAlertDescription = (alerte) => {
     const descriptions = {
       "Certificat expiré": "Le certificat médical a expiré",
+      "Certificat expire bientot":
+        "Le certificat médical expire dans moins de 30 jours",
       "Adhésion expirée": "L'adhésion est arrivée à expiration",
+      "Adhesion expire bientot":
+        "L'adhésion expire dans moins de 30 jours",
       "Paiement en retard": "Un paiement est en attente",
       Formation: "Une formation est disponible",
     };
@@ -131,6 +145,7 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
   const getRoleLabel = (role) => {
     const roles = {
       president: "👑 Président",
+      directeur_technique: "🎯 Directeur technique",
       moniteur: "🏊 Moniteur",
       tresorier: "💰 Trésorier",
       adherent: "🤿 Adhérent",
@@ -142,25 +157,7 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
     <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200/80 sticky top-0 z-40 transition-colors duration-300 dark:bg-gray-800/80 dark:border-gray-700/80">
       <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 sm:gap-4">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-xl hover:bg-gray-100 transition-colors dark:hover:bg-gray-700"
-          >
-            <FiMenu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          </motion.button>
-
-          <div className="relative hidden md:block">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-64 bg-gray-100 border-0 rounded-xl focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:bg-gray-600"
-            />
-          </div>
+        
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">

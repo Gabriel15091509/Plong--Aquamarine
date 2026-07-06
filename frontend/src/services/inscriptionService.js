@@ -12,11 +12,11 @@ class InscriptionService {
   }
 
   async create(data) {
+    console.log("📝 InscriptionService.create - Data:", data);
     const response = await api.post("/inscriptions", data);
     return response.data;
   }
 
-  // ✅ Méthode update
   async update(id, data) {
     console.log("📝 inscriptionService.update - ID:", id, "Data:", data);
     const response = await api.put(`/inscriptions/${id}`, data);
@@ -39,15 +39,20 @@ class InscriptionService {
   }
 
   async getConfirmationsBySortie(id_sortie) {
-    const response = await api.get(
-      `/inscriptions/sortie/${id_sortie}/confirmations`,
-    );
+    const response = await api.get(`/inscriptions/sortie/${id_sortie}`);
     return response.data;
   }
 
   async getWaitlistBySortie(id_sortie) {
     const response = await api.get(
       `/inscriptions/sortie/${id_sortie}/waitlist`,
+    );
+    return response.data;
+  }
+
+  async getCapacityBySortie(id_sortie) {
+    const response = await api.get(
+      `/inscriptions/sortie/${id_sortie}/capacity`,
     );
     return response.data;
   }

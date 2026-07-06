@@ -18,7 +18,8 @@ class UserController extends BaseController {
         });
       }
 
-      const { email, name, role, phone, contact_urgence, niveau } = req.body;
+      const { email, name, role, phone, contact_urgence, niveau, password } =
+        req.body;
       const createdBy = req.user.id;
 
       // ✅ Vérifier les permissions
@@ -42,6 +43,7 @@ class UserController extends BaseController {
           phone,
           contact_urgence,
           niveau,
+          password, // ✅ transmis maintenant, pour rester cohérent avec l'email déjà envoyé par le frontend
         },
         createdBy,
       );

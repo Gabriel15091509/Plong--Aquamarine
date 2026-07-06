@@ -7,9 +7,9 @@ class AlerteRepository extends BaseRepository {
     super(Alerte);
   }
 
-  async findUnread() {
+  async findUnread(where = {}) {
     return await this.model.findAll({
-      where: { read: false },
+      where: { ...where, read: false },
       order: [['date_envoi', 'DESC']]
     });
   }
@@ -21,25 +21,29 @@ class AlerteRepository extends BaseRepository {
     });
   }
 
-  async markAsRead(id) {
+  async markAsRead(id, where = {}) {
     const alerte = await this.findById(id);
     if (!alerte) throw new Error('Alerte not found');
+    for (const [key, value] of Object.entries(where)) {
+      if (alerte[key] !== value) throw new Error('Alerte not found');
+    }
     alerte.read = true;
     alerte.statut = 'Lu';
     await alerte.save();
     return alerte;
   }
 
-  async markAllAsRead() {
+  async markAllAsRead(where = {}) {
     const result = await this.model.update(
       { read: true, statut: 'Lu' },
-      { where: { read: false } }
+      { where: { ...where, read: false } }
     );
     return result;
   }
 
-  async getStats() {
+  async getStats(where = {}) {
     const stats = await this.model.findAll({
+      where,
       attributes: [
         'type',
         'statut',
@@ -50,9 +54,9 @@ class AlerteRepository extends BaseRepository {
     return stats;
   }
 
-  async getUnreadCount() {
+  async getUnreadCount(where = {}) {
     return await this.model.count({
-      where: { read: false }
+      where: { ...where, read: false }
     });
   }
 }

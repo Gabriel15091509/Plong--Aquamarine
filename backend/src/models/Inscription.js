@@ -29,12 +29,10 @@ const Inscription = sequelize.define(
     presence: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-      allowNull: false,
     },
     presence_checked: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-      allowNull: false,
     },
     presence_check_time: {
       type: DataTypes.DATE,
@@ -51,7 +49,6 @@ const Inscription = sequelize.define(
     absence_justified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-      allowNull: false,
     },
     date_confirmation: {
       type: DataTypes.DATE,
@@ -59,8 +56,8 @@ const Inscription = sequelize.define(
     },
     date_inscription: {
       type: DataTypes.DATE,
-      allowNull: true, // ✅ AUTORISER NULL pour éviter l'erreur
-      defaultValue: null,
+      allowNull: true,
+      defaultValue: DataTypes.NOW,
     },
   },
   {

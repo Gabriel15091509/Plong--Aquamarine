@@ -36,6 +36,13 @@ export const AuthProvider = ({ children }) => {
         "view_stats",
         "manage_settings",
       ],
+      directeur_technique: [
+        "all",
+        "manage_users",
+        "manage_staff",
+        "view_stats",
+        "manage_settings",
+      ],
       moniteur: [
         "manage_sorties",
         "validate_plongees",

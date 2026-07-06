@@ -1,185 +1,420 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FiEdit, FiMail, FiPhone, FiMapPin, FiCalendar, FiAward, FiUser, FiArrowLeft, FiUsers, FiDollarSign } from 'react-icons/fi';
-import { useAdherents } from '../../hooks/useAdherents';
-import LoadingSpinner from '../Common/LoadingSpinner';
-import StatusBadge from '../Common/StatusBadge';
-import { formatDate, formatCurrency } from '../../utils/helpers';
+import React, { useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import toast from "react-hot-toast";
+import {
+  FiUser,
+  FiMail,
+  FiPhone,
+  FiMapPin,
+  FiCalendar,
+  FiAward,
+  FiUserCheck,
+  FiEdit,
+  FiArrowLeft,
+  FiHeart,
+  FiSmartphone,
+  FiHome,
+  FiClock,
+  FiAlertCircle,
+  FiTrash2,
+  FiCheckCircle,
+  FiXCircle,
+  FiUsers,
+  FiInfo,
+  FiFileText,
+  FiDroplet,
+  FiAnchor,
+  FiBriefcase,
+} from "react-icons/fi";
+import { useAdherents } from "../../hooks/useAdherents";
+import LoadingSpinner from "../Common/LoadingSpinner";
+import StatusBadge from "../Common/StatusBadge";
+import { formatDate } from "../../utils/helpers";
 
-const AdherentDetails = ({ id }) => {
+// Animations
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.4, ease: "easeOut" },
+};
+
+const staggerContainer = {
+  initial: { opacity: 0 },
+  animate: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+const AdherentDetails = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-  // ✅ CORRECTION: Utiliser useGetWithDetails au lieu de getWithDetails
-  const { useGetWithDetails } = useAdherents();
-  const { data, isLoading, error } = useGetWithDetails(id);
-  const [adherent, setAdherent] = useState(null);
+  const { useGetById, useRemove } = useAdherents();
+  const { data, isLoading } = useGetById(id);
+  const remove = useRemove();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  useEffect(() => {
-    if (data?.data) {
-      setAdherent(data.data);
+  const adherent = data?.data;
+
+  const handleDelete = async () => {
+    try {
+      await remove.mutateAsync(id);
+      toast.success("Adhérent supprimé avec succès");
+      navigate("/adherents");
+    } catch (error) {
+      toast.error("Erreur lors de la suppression");
     }
-  }, [data]);
+  };
 
-  if (isLoading) return <LoadingSpinner />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
-  if (!adherent) return <div className="text-center py-8">Adhérent non trouvé</div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
-  const InfoItem = ({ icon: Icon, label, value }) => (
-    <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
-      <div className="text-gray-400 mt-1">
+  if (!adherent) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="text-center py-16"
+      >
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800/50 mb-6">
+          <FiInfo className="w-10 h-10 text-gray-400" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+          Adhérent non trouvé
+        </h3>
+        <p className="text-gray-500 dark:text-gray-400">
+          L'adhérent que vous recherchez n'existe pas ou a été supprimé.
+        </p>
+        <button
+          onClick={() => navigate("/adherents")}
+          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35"
+        >
+          <FiArrowLeft className="w-4 h-4" />
+          Retour à la liste
+        </button>
+      </motion.div>
+    );
+  }
+
+  const InfoItem = ({
+    icon: Icon,
+    label,
+    value,
+    highlight = false,
+    children,
+  }) => (
+    <motion.div
+      variants={fadeInUp}
+      className={`flex items-start gap-4 p-4 rounded-xl transition-all duration-300 ${
+        highlight
+          ? "bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 border-l-4 border-blue-500"
+          : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
+      }`}
+    >
+      <div
+        className={`mt-0.5 p-2 rounded-lg ${
+          highlight
+            ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+            : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+        }`}
+      >
         <Icon className="w-5 h-5" />
       </div>
-      <div>
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="font-medium text-gray-900">{value || 'Non défini'}</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+          {label}
+        </p>
+        {children || (
+          <p className="font-semibold text-gray-900 dark:text-white mt-0.5">
+            {value || "Non défini"}
+          </p>
+        )}
       </div>
-    </div>
+    </motion.div>
+  );
+
+  const SectionCard = ({ title, icon: Icon, children, className = "" }) => (
+    <motion.div
+      variants={fadeInUp}
+      className={`bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6 hover:shadow-2xl transition-shadow duration-300 ${className}`}
+    >
+      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
+        <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+          <Icon className="w-5 h-5" />
+        </span>
+        {title}
+      </h3>
+      <div className="space-y-2">{children}</div>
+    </motion.div>
   );
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-6"
+      className="space-y-6 max-w-6xl mx-auto px-4"
     >
-      {/* Bouton retour */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate('/adherents')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <FiArrowLeft className="w-4 h-4" />
-          Retour à la liste
-        </button>
-        <Link
-          to={`/adherents/edit/${adherent.num_adherent}`}
-          className="btn-primary flex items-center gap-2"
-        >
-          <FiEdit className="w-4 h-4" />
-          Modifier
-        </Link>
-      </div>
-
       {/* En-tête */}
-      <div className="bg-white rounded-2xl shadow-card p-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-primary-500 to-ocean-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-              {adherent.prenom?.charAt(0)}{adherent.nom?.charAt(0)}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">
-                {adherent.civilite} {adherent.nom} {adherent.prenom}
-              </h1>
-              <div className="flex flex-wrap gap-2 mt-1">
-                <StatusBadge status={adherent.statut} />
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                  {adherent.niveau || 'Non défini'}
-                </span>
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      >
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/adherents")}
+            className="group inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-300"
+          >
+            <FiArrowLeft className="w-5 h-5 text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-white transition-colors" />
+          </button>
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
+                <FiUser className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </span>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                  {adherent.nom}{" "}
+                  <span className="text-blue-600 dark:text-blue-400">
+                    {adherent.prenom}
+                  </span>
+                </h1>
+                <p className="text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
+                  <span className="flex items-center gap-1 text-sm">
+                    <FiFileText className="w-3.5 h-3.5" />
+                    N°{adherent.num_adherent}
+                  </span>
+                  <span className="text-gray-300 dark:text-gray-600">•</span>
+                  <span className="flex items-center gap-1 text-sm">
+                    <FiMail className="w-3.5 h-3.5" />
+                    {adherent.email}
+                  </span>
+                </p>
               </div>
             </div>
           </div>
         </div>
-      </div>
+        <div className="flex gap-2">
+          <Link
+            to={`/adherents/edit/${adherent.num_adherent}`}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+          >
+            <FiEdit className="w-4 h-4" />
+            Modifier
+          </Link>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+          >
+            <FiTrash2 className="w-4 h-4" />
+            Supprimer
+          </button>
+        </div>
+      </motion.div>
 
-      {/* Informations */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-card p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <FiUser className="w-5 h-5 text-primary-500" />
-            Informations personnelles
-          </h3>
-          <div className="space-y-2">
-            <InfoItem icon={FiUser} label="Civilité" value={adherent.civilite} />
-            <InfoItem icon={FiCalendar} label="Date de naissance" value={formatDate(adherent.date_naissance)} />
-            <InfoItem icon={FiMapPin} label="Adresse" value={adherent.adresse} />
-            <InfoItem icon={FiPhone} label="Téléphone" value={adherent.telephone} />
-            <InfoItem icon={FiMail} label="Email" value={adherent.email} />
-            <InfoItem icon={FiUser} label="Contact d'urgence" value={adherent.contact_urgence || 'Non défini'} />
+      {/* Statut - Carte d'identité */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 dark:from-cyan-800 dark:via-blue-800 dark:to-indigo-800 rounded-2xl shadow-xl p-6 md:p-8 text-white"
+      >
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-blue-100/80 uppercase tracking-wider">
+              Statut du compte
+            </p>
+            <div className="flex items-center gap-3 mt-1">
+              <StatusBadge status={adherent.statut} />
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold">
+                {adherent.niveau || "Non défini"}
+              </p>
+              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+                Niveau
+              </p>
+            </div>
+            <div className="w-px h-12 bg-white/20" />
+            <div className="text-center">
+              <p className="text-2xl font-bold">
+                {formatDate(adherent.date_adhesion) || "-"}
+              </p>
+              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+                Adhésion
+              </p>
+            </div>
           </div>
         </div>
+      </motion.div>
 
-        <div className="bg-white rounded-2xl shadow-card p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <FiAward className="w-5 h-5 text-primary-500" />
-            Informations club
-          </h3>
-          <div className="space-y-2">
-            <InfoItem icon={FiAward} label="Niveau" value={adherent.niveau || 'Non défini'} />
-            <InfoItem icon={FiCalendar} label="Date d'obtention" value={formatDate(adherent.date_obtention_niveau)} />
-            <InfoItem icon={FiCalendar} label="Date d'inscription" value={formatDate(adherent.date_inscription)} />
-            <InfoItem icon={FiAward} label="Nombre de plongées" value={adherent.nb_plongees_total || 0} />
-          </div>
-        </div>
-      </div>
+      {/* Grille d'informations */}
+      <motion.div
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+      >
+        {/* Informations personnelles */}
+        <SectionCard title="Informations personnelles" icon={FiUser}>
+          <InfoItem icon={FiUser} label="Civilité" value={adherent.civilite} />
+          <InfoItem
+            icon={FiUserCheck}
+            label="Nom complet"
+            value={`${adherent.nom} ${adherent.prenom}`}
+            highlight
+          />
+          <InfoItem
+            icon={FiCalendar}
+            label="Date de naissance"
+            value={formatDate(adherent.date_naissance)}
+          />
+          <InfoItem icon={FiMail} label="Email" value={adherent.email} />
+          <InfoItem
+            icon={FiSmartphone}
+            label="Téléphone"
+            value={adherent.telephone || "Non renseigné"}
+          />
+          <InfoItem
+            icon={FiMapPin}
+            label="Adresse"
+            value={adherent.adresse || "Non renseignée"}
+          />
+          <InfoItem
+            icon={FiHome}
+            label="Code postal / Ville"
+            value={
+              adherent.code_postal && adherent.ville
+                ? `${adherent.code_postal} ${adherent.ville}`
+                : "Non renseigné"
+            }
+          />
+        </SectionCard>
 
-      {/* Adhésions */}
-      {adherent.adhesions && adherent.adhesions.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-card p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <FiUsers className="w-5 h-5 text-primary-500" />
-            Adhésions
+        {/* Informations club */}
+        <SectionCard title="Informations club" icon={FiAnchor}>
+          <InfoItem
+            icon={FiAward}
+            label="Niveau de plongée"
+            value={adherent.niveau || "Non défini"}
+            highlight
+          />
+          <InfoItem
+            icon={FiCalendar}
+            label="Date d'obtention"
+            value={
+              adherent.date_obtention_niveau
+                ? formatDate(adherent.date_obtention_niveau)
+                : "Non défini"
+            }
+          />
+          <InfoItem
+            icon={FiCalendar}
+            label="Date d'adhésion"
+            value={formatDate(adherent.date_adhesion)}
+          />
+          <InfoItem
+            icon={FiUserCheck}
+            label="Statut"
+            value={<StatusBadge status={adherent.statut} />}
+          />
+          <InfoItem
+            icon={FiHeart}
+            label="Contact d'urgence"
+            value={adherent.contact_urgence || "Non renseigné"}
+          />
+          <InfoItem
+            icon={FiUsers}
+            label="Numéro de licence"
+            value={adherent.numero_licence || "Non renseigné"}
+          />
+          <InfoItem
+            icon={FiBriefcase}
+            label="Profession"
+            value={adherent.profession || "Non renseignée"}
+          />
+          <InfoItem
+            icon={FiHeart}
+            label="Situation familiale"
+            value={adherent.situation_familiale || "Non renseignée"}
+          />
+        </SectionCard>
+      </motion.div>
+
+      {/* Remarques */}
+      {adherent.remarques && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <FiFileText className="w-5 h-5" />
+            </span>
+            Remarques
           </h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Début</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fin</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {adherent.adhesions.map((adhesion) => (
-                  <tr key={adhesion.id_adhesion} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-sm">{adhesion.type}</td>
-                    <td className="px-4 py-3 text-sm">{formatDate(adhesion.date_debut)}</td>
-                    <td className="px-4 py-3 text-sm">{formatDate(adhesion.date_fin)}</td>
-                    <td className="px-4 py-3 text-sm font-medium">{formatCurrency(adhesion.montant_paye)}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={adhesion.statut_paiement} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+              {adherent.remarques}
+            </p>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Paiements */}
-      {adherent.paiements && adherent.paiements.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-card p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <FiDollarSign className="w-5 h-5 text-primary-500" />
-            Paiements
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Motif</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {adherent.paiements.map((paiement) => (
-                  <tr key={paiement.id_paiement} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-sm">{paiement.motif}</td>
-                    <td className="px-4 py-3 text-sm">{formatDate(paiement.date_paiement)}</td>
-                    <td className="px-4 py-3 text-sm font-medium">{formatCurrency(paiement.montant)}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={paiement.statut} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {/* Modal suppression */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", damping: 25 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800"
+          >
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
+                <FiAlertCircle className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold">Confirmer la suppression</h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+              Êtes-vous sûr de vouloir supprimer l'adhérent{" "}
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {adherent.nom} {adherent.prenom}
+              </span>
+              ?
+              <br />
+              <span className="text-sm text-red-500 font-medium">
+                ⚠️ Cette action est irréversible.
+              </span>
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35"
+              >
+                <FiTrash2 className="w-4 h-4 inline mr-2" />
+                Confirmer la suppression
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </motion.div>

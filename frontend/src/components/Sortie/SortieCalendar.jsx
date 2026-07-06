@@ -16,6 +16,7 @@ import {
   FiXCircle,
   FiClock as FiClockIcon,
   FiArrowRight,
+  FiBarChart2,
 } from "react-icons/fi";
 import {
   format,
@@ -37,6 +38,21 @@ import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 
+// ✅ Animations
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.4 },
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.05,
+    },
+  },
+};
+
 const SortieCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedSortie, setSelectedSortie] = useState(null);
@@ -48,7 +64,6 @@ const SortieCalendar = () => {
 
   const sorties = data?.data || [];
 
-  // Générer les jours du mois
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -56,7 +71,6 @@ const SortieCalendar = () => {
 
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
-  // Grouper les sorties par jour
   const sortiesByDay = useMemo(() => {
     const map = {};
     sorties.forEach((sortie) => {
@@ -81,10 +95,10 @@ const SortieCalendar = () => {
 
   const getStatusColor = (statut) => {
     const colors = {
-      Planifiée: "border-blue-400",
-      "En cours": "border-green-400",
-      Terminée: "border-gray-400",
-      Annulée: "border-red-400",
+      Planifiée: "border-blue-400 dark:border-blue-500",
+      "En cours": "border-green-400 dark:border-green-500",
+      Terminée: "border-gray-400 dark:border-gray-500",
+      Annulée: "border-red-400 dark:border-red-500",
     };
     return colors[statut] || "border-gray-300";
   };
@@ -136,12 +150,21 @@ const SortieCalendar = () => {
 
   const getDayDotColor = (status) => {
     const colors = {
-      planned: "bg-blue-500",
-      ongoing: "bg-green-500",
-      completed: "bg-gray-400",
-      other: "bg-purple-400",
+      planned: "bg-blue-500 dark:bg-blue-400",
+      ongoing: "bg-green-500 dark:bg-green-400",
+      completed: "bg-gray-400 dark:bg-gray-500",
+      other: "bg-purple-400 dark:bg-purple-400",
     };
     return colors[status] || "bg-gray-300";
+  };
+
+  // ✅ Statistiques
+  const stats = {
+    total: sorties.length,
+    planifiees: sorties.filter((s) => s.statut === "Planifiée").length,
+    enCours: sorties.filter((s) => s.statut === "En cours").length,
+    terminees: sorties.filter((s) => s.statut === "Terminée").length,
+    annulees: sorties.filter((s) => s.statut === "Annulée").length,
   };
 
   if (isLoading) {
@@ -154,8 +177,10 @@ const SortieCalendar = () => {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
-        <p className="text-red-600">Erreur lors du chargement des sorties</p>
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-2xl p-6 text-center">
+        <p className="text-red-600 dark:text-red-400">
+          Erreur lors du chargement des sorties
+        </p>
       </div>
     );
   }
@@ -166,7 +191,7 @@ const SortieCalendar = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-primary-50 to-ocean-50 dark:from-primary-900/20 dark:to-ocean-900/20 p-4 rounded-2xl border border-primary-100 dark:border-primary-800/30"
+        className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800/30"
       >
         <div className="flex items-center gap-4">
           <motion.button
@@ -206,18 +231,77 @@ const SortieCalendar = () => {
           }}
           whileTap={{ scale: 0.95 }}
           onClick={handleToday}
-          className="px-5 py-2.5 bg-gradient-to-r from-primary-500 to-ocean-500 text-white rounded-xl hover:shadow-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
+          className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
         >
           <FiCalendar className="w-4 h-4" />
           Aujourd'hui
         </motion.button>
       </motion.div>
 
-      {/* Légende */}
+      {/* Statistiques rapides */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
+        className="grid grid-cols-2 sm:grid-cols-5 gap-3"
+      >
+        {[
+          {
+            label: "Total",
+            value: stats.total,
+            color: "indigo",
+            icon: FiBarChart2,
+          },
+          {
+            label: "Planifiées",
+            value: stats.planifiees,
+            color: "blue",
+            icon: FiCalendar,
+          },
+          {
+            label: "En cours",
+            value: stats.enCours,
+            color: "green",
+            icon: FiClockIcon,
+          },
+          {
+            label: "Terminées",
+            value: stats.terminees,
+            color: "gray",
+            icon: FiCheckCircle,
+          },
+          {
+            label: "Annulées",
+            value: stats.annulees,
+            color: "red",
+            icon: FiXCircle,
+          },
+        ].map((stat, index) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 * index }}
+            whileHover={{ scale: 1.03, y: -2 }}
+            className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 text-center shadow-sm hover:shadow-md transition-all`}
+          >
+            <p
+              className={`text-lg font-bold text-${stat.color}-600 dark:text-${stat.color}-400`}
+            >
+              {stat.value}
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {stat.label}
+            </p>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* Légende */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
         className="flex flex-wrap items-center gap-4 text-xs bg-white dark:bg-gray-800 p-3 rounded-xl shadow-card border border-gray-100 dark:border-gray-700"
       >
         <div className="flex items-center gap-2">
@@ -237,7 +321,7 @@ const SortieCalendar = () => {
           <span className="text-gray-600 dark:text-gray-400">Annulée</span>
         </div>
         <div className="flex items-center gap-2 ml-4">
-          <div className="w-3 h-3 bg-primary-200 border-2 border-primary-500 rounded-full shadow-sm" />
+          <div className="w-3 h-3 bg-indigo-200 border-2 border-indigo-500 rounded-full shadow-sm" />
           <span className="text-gray-600 dark:text-gray-400">Aujourd'hui</span>
         </div>
         <div className="flex items-center gap-2 ml-4">
@@ -252,7 +336,7 @@ const SortieCalendar = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.3 }}
         className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700"
       >
         {/* Jours de la semaine */}
@@ -293,7 +377,7 @@ const SortieCalendar = () => {
                 onHoverEnd={() => setHoveredDay(null)}
                 className={`relative min-h-[110px] p-2 bg-white dark:bg-gray-800 transition-all duration-200 ${
                   !isCurrentMonth ? "opacity-40" : ""
-                } ${isTodayDate ? "bg-gradient-to-br from-primary-50 to-ocean-50 dark:from-primary-900/30 dark:to-ocean-900/30" : ""} ${
+                } ${isTodayDate ? "bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30" : ""} ${
                   isHovered ? "shadow-inner" : ""
                 }`}
               >
@@ -304,7 +388,7 @@ const SortieCalendar = () => {
                       whileHover={{ scale: 1.1 }}
                       className={`text-sm font-medium ${
                         isTodayDate
-                          ? "w-8 h-8 rounded-full bg-gradient-to-r from-primary-500 to-ocean-500 text-white flex items-center justify-center shadow-md"
+                          ? "w-8 h-8 rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-center shadow-md"
                           : "text-gray-700 dark:text-gray-300"
                       }`}
                     >
@@ -347,7 +431,7 @@ const SortieCalendar = () => {
                     {daySorties.length > 3 && (
                       <motion.button
                         whileHover={{ scale: 1.05 }}
-                        className="w-full text-left text-[10px] px-1.5 py-0.5 text-primary-500 hover:text-primary-600 font-medium"
+                        className="w-full text-left text-[10px] px-1.5 py-0.5 text-indigo-500 hover:text-indigo-600 font-medium"
                       >
                         +{daySorties.length - 3} autres
                       </motion.button>
@@ -372,66 +456,6 @@ const SortieCalendar = () => {
         </div>
       </motion.div>
 
-      {/* Statistiques rapides avec animations */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
-      >
-        {[
-          {
-            label: "Total sorties",
-            value: sorties.length,
-            color: "blue",
-            icon: FiCalendar,
-          },
-          {
-            label: "Planifiées",
-            value: sorties.filter((s) => s.statut === "Planifiée").length,
-            color: "green",
-            icon: FiCalendar,
-          },
-          {
-            label: "En cours",
-            value: sorties.filter((s) => s.statut === "En cours").length,
-            color: "orange",
-            icon: FiClockIcon,
-          },
-          {
-            label: "Terminées",
-            value: sorties.filter((s) => s.statut === "Terminée").length,
-            color: "purple",
-            icon: FiCheckCircle,
-          },
-        ].map((stat, index) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 + index * 0.1 }}
-            whileHover={{ scale: 1.03, y: -3 }}
-            className={`bg-white dark:bg-gray-800 rounded-xl shadow-card p-4 text-center border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all duration-200 cursor-default group`}
-          >
-            <div
-              className={`w-10 h-10 mx-auto rounded-full bg-${stat.color}-100 dark:bg-${stat.color}-900/30 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform`}
-            >
-              <stat.icon
-                className={`w-5 h-5 text-${stat.color}-600 dark:text-${stat.color}-400`}
-              />
-            </div>
-            <p
-              className={`text-2xl font-bold text-${stat.color}-600 dark:text-${stat.color}-400`}
-            >
-              {stat.value}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {stat.label}
-            </p>
-          </motion.div>
-        ))}
-      </motion.div>
-
       {/* Modal Détails Sortie amélioré */}
       <AnimatePresence>
         {isModalOpen && selectedSortie && (
@@ -452,7 +476,15 @@ const SortieCalendar = () => {
             >
               {/* En-tête avec gradient */}
               <div
-                className={`sticky top-0 bg-gradient-to-r ${selectedSortie.statut === "Planifiée" ? "from-blue-500 to-blue-600" : selectedSortie.statut === "En cours" ? "from-green-500 to-green-600" : selectedSortie.statut === "Terminée" ? "from-gray-500 to-gray-600" : "from-red-500 to-red-600"} p-4 flex items-center justify-between`}
+                className={`sticky top-0 bg-gradient-to-r ${
+                  selectedSortie.statut === "Planifiée"
+                    ? "from-blue-600 to-blue-700"
+                    : selectedSortie.statut === "En cours"
+                      ? "from-green-600 to-green-700"
+                      : selectedSortie.statut === "Terminée"
+                        ? "from-gray-600 to-gray-700"
+                        : "from-red-600 to-red-700"
+                } p-4 flex items-center justify-between`}
               >
                 <div className="flex items-center gap-3 text-white">
                   <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
@@ -484,7 +516,7 @@ const SortieCalendar = () => {
                     icon: FiMapPin,
                     label: "Lieu",
                     value: `${selectedSortie.lieu} - ${selectedSortie.site}`,
-                    color: "primary",
+                    color: "indigo",
                   },
                   {
                     icon: FiCalendar,
@@ -508,7 +540,7 @@ const SortieCalendar = () => {
                     icon: FiDollarSign,
                     label: "Tarif",
                     value: formatCurrency(selectedSortie.tarif),
-                    color: "yellow",
+                    color: "amber",
                   },
                 ].map((item, index) => (
                   <motion.div
@@ -573,7 +605,7 @@ const SortieCalendar = () => {
                       setIsModalOpen(false);
                       window.location.href = `/sorties/${selectedSortie.id_sortie}`;
                     }}
-                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-primary-500 to-ocean-500 text-white rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 font-medium"
+                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 font-medium"
                   >
                     <FiEye className="w-4 h-4" />
                     Voir les détails

@@ -39,7 +39,7 @@ const tableRowVariants = {
     },
   }),
   hover: {
-    backgroundColor: "rgba(245, 158, 11, 0.05)",
+    backgroundColor: "rgba(59, 130, 246, 0.05)",
     transition: { duration: 0.2 },
   },
 };
@@ -62,8 +62,8 @@ const actionColors = {
     tooltip: "Voir les détails",
   },
   edit: {
-    bg: "hover:bg-emerald-50 dark:hover:bg-emerald-900/20",
-    text: "text-emerald-600 dark:text-emerald-400",
+    bg: "hover:bg-cyan-50 dark:hover:bg-cyan-900/20",
+    text: "text-cyan-600 dark:text-cyan-400",
     tooltip: "Modifier",
   },
   delete: {
@@ -119,26 +119,24 @@ const PaiementList = () => {
     });
   }, [allPaiements, adherentMap, searchTerm, filter]);
 
-  // ✅ Statistiques (calculées même si loading)
+  // ✅ Statistiques avec les BONS STATUTS
   const stats = useMemo(() => {
     const total = filteredPaiements.length;
     const enAttente = filteredPaiements.filter(
       (p) => p.statut === "En attente",
     ).length;
-    const valides = filteredPaiements.filter(
-      (p) => p.statut === "Validé",
+    const payes = filteredPaiements.filter((p) => p.statut === "Payé").length;
+    const partiels = filteredPaiements.filter(
+      (p) => p.statut === "Partiel",
     ).length;
     const annules = filteredPaiements.filter(
       (p) => p.statut === "Annulé",
-    ).length;
-    const rembourses = filteredPaiements.filter(
-      (p) => p.statut === "Remboursé",
     ).length;
     const totalMontant = filteredPaiements.reduce(
       (sum, p) => sum + (p.montant || 0),
       0,
     );
-    return { total, enAttente, valides, annules, rembourses, totalMontant };
+    return { total, enAttente, payes, partiels, annules, totalMontant };
   }, [filteredPaiements]);
 
   // ✅ Pagination
@@ -184,9 +182,9 @@ const PaiementList = () => {
             rotate: [0, 10, -10, 0],
             transition: { duration: 1, repeat: Infinity, repeatDelay: 2 },
           }}
-          className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full mb-4"
+          className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 rounded-full mb-4"
         >
-          <FiDollarSign className="w-10 h-10 text-amber-500 dark:text-amber-400" />
+          <FiDollarSign className="w-10 h-10 text-blue-500 dark:text-blue-400" />
         </motion.div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           Aucun paiement trouvé
@@ -203,7 +201,7 @@ const PaiementList = () => {
               setFilter("all");
               setCurrentPage(1);
             }}
-            className="mt-4 text-sm text-amber-600 dark:text-amber-400 hover:text-amber-700 font-medium"
+            className="mt-4 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 font-medium"
           >
             Réinitialiser les filtres
           </button>
@@ -211,7 +209,7 @@ const PaiementList = () => {
         {!searchTerm && filter === "all" && (
           <Link
             to="/paiements/create"
-            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
           >
             <FiPlus className="w-4 h-4" /> Nouveau paiement
             <FiChevronRight className="w-4 h-4" />
@@ -238,7 +236,7 @@ const PaiementList = () => {
               setCurrentPage(1);
             }}
             placeholder="🔍 Rechercher par adhérent, motif ou référence..."
-            className="transition-all duration-300 focus:ring-2 focus:ring-amber-500"
+            className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div className="flex gap-2">
@@ -248,22 +246,20 @@ const PaiementList = () => {
               setFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="input-field w-auto bg-gradient-to-r from-gray-50 to-white dark:from-gray-700 dark:to-gray-600 rounded-xl border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 transition-all duration-300"
+            className="input-field w-auto bg-gradient-to-r from-gray-50 to-white dark:from-gray-700 dark:to-gray-600 rounded-xl border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 transition-all duration-300"
           >
             <option value="all">📊 Tous ({stats.total})</option>
             <option value="En attente">
               ⏳ En attente ({stats.enAttente})
             </option>
-            <option value="Validé">✅ Validés ({stats.valides})</option>
+            <option value="Payé">✅ Payés ({stats.payes})</option>
+            <option value="Partiel">🔄 Partiels ({stats.partiels})</option>
             <option value="Annulé">❌ Annulés ({stats.annules})</option>
-            <option value="Remboursé">
-              🔄 Remboursés ({stats.rembourses})
-            </option>
           </select>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Link
               to="/paiements/create"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
             >
               <FiPlus className="w-4 h-4" /> Nouveau
             </Link>
@@ -271,7 +267,7 @@ const PaiementList = () => {
         </div>
       </motion.div>
 
-      {/* Statistiques rapides */}
+      {/* Statistiques rapides avec BONS STATUTS */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -285,19 +281,19 @@ const PaiementList = () => {
           ⏳ En attente: <strong>{stats.enAttente}</strong>
         </span>
         <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">
-          ✅ Validés: <strong>{stats.valides}</strong>
+          ✅ Payés: <strong>{stats.payes}</strong>
+        </span>
+        <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full">
+          🔄 Partiels: <strong>{stats.partiels}</strong>
         </span>
         <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full">
           ❌ Annulés: <strong>{stats.annules}</strong>
         </span>
         <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
-          🔄 Remboursés: <strong>{stats.rembourses}</strong>
-        </span>
-        <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full">
           💰 Total: <strong>{formatCurrency(stats.totalMontant)}</strong>
         </span>
         {searchTerm && (
-          <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
+          <span className="px-3 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 rounded-full">
             🔍 "{searchTerm}"
           </span>
         )}
@@ -378,9 +374,9 @@ const PaiementList = () => {
                                 : 0,
                           }}
                           transition={{ duration: 0.5 }}
-                          className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center"
+                          className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center"
                         >
-                          <FiUser className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                          <FiUser className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         </motion.div>
                         <div>
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -400,7 +396,7 @@ const PaiementList = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 text-sm font-bold text-gray-900 dark:text-white">
-                        <FiDollarSign className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                        <FiDollarSign className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                         {formatCurrency(paiement.montant)}
                       </span>
                     </td>

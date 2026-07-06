@@ -1,5 +1,5 @@
 const BaseRepository = require("./BaseRepository");
-const { Sortie, Inscription, User } = require("../models");
+const { Sortie, Inscription, Adherent, User } = require("../models"); // ✅ Inclure User
 const { Op } = require("sequelize");
 
 class SortieRepository extends BaseRepository {
@@ -9,7 +9,7 @@ class SortieRepository extends BaseRepository {
 
   async findAll() {
     return await this.model.findAll({
-      order: [["date_heure", "ASC"]], // ✅ date_heure
+      order: [["date_heure", "ASC"]],
     });
   }
 
@@ -23,20 +23,72 @@ class SortieRepository extends BaseRepository {
     const today = new Date();
     return await this.model.findAll({
       where: {
-        date_heure: { [Op.gte]: today }, // ✅ date_heure
+        date_heure: { [Op.gte]: today },
         statut: { [Op.in]: ["Planifiée", "En cours"] },
       },
-      order: [["date_heure", "ASC"]], // ✅ date_heure
+      order: [["date_heure", "ASC"]],
     });
   }
 
   async findAllWithInscriptions() {
     return await this.model.findAll({
-      include: [{ model: Inscription, as: "inscriptions" }],
-      order: [["date_heure", "ASC"]], // ✅ date_heure
+      include: [
+        {
+          model: Inscription,
+          as: "inscriptions",
+          include: [
+            {
+              model: Adherent,
+              as: "adherent",
+              attributes: [
+                "num_adherent",
+                "nom",
+                "prenom",
+                "email",
+                "telephone",
+                "niveau",
+              ],
+            },
+          ],
+        },
+      ],
+      order: [["date_heure", "ASC"]],
     });
   }
 
+  // ✅ Méthode pour le pointage avec l'utilisateur (checker)
+  async findByIdWithPointage(id) {
+    return await this.model.findOne({
+      where: { id_sortie: id },
+      include: [
+        {
+          model: Inscription,
+          as: "inscriptions",
+          include: [
+            {
+              model: Adherent,
+              as: "adherent",
+              attributes: [
+                "num_adherent",
+                "nom",
+                "prenom",
+                "email",
+                "telephone",
+                "niveau",
+              ],
+            },
+            {
+              model: User,
+              as: "checker", // ✅ Alias correct pour User
+              attributes: ["id", "name", "email"],
+            },
+          ],
+        },
+      ],
+    });
+  }
+
+  // ✅ Méthode pour les détails sans User (pour éviter les erreurs)
   async findByIdWithInscriptions(id) {
     return await this.model.findOne({
       where: { id_sortie: id },
@@ -46,9 +98,16 @@ class SortieRepository extends BaseRepository {
           as: "inscriptions",
           include: [
             {
-              model: User,
+              model: Adherent,
               as: "adherent",
-              attributes: ["id", "name", "email", "phone", "niveau"],
+              attributes: [
+                "num_adherent",
+                "nom",
+                "prenom",
+                "email",
+                "telephone",
+                "niveau",
+              ],
             },
           ],
         },

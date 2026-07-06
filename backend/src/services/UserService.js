@@ -1,6 +1,5 @@
 const BaseService = require("./BaseService");
 const UserRepository = require("../repositories/UserRepository");
-const { sendEmail } = require("../utils/email");
 const bcrypt = require("bcryptjs");
 
 class UserService extends BaseService {
@@ -19,6 +18,7 @@ class UserService extends BaseService {
       phone,
       contact_urgence,
       niveau,
+      password, // ✅ mot de passe déjà généré et envoyé par email côté frontend
     } = data;
 
     const existing = await this.userRepository.findByEmail(email);
@@ -26,13 +26,13 @@ class UserService extends BaseService {
       throw new Error("Cet email est déjà utilisé");
     }
 
-    // ✅ Générer le mot de passe temporaire EN CLAIR
-    // Le hook beforeCreate dans User.js va le hacher automatiquement
-    const tempPassword = this.generateTempPassword();
+    // ✅ Utiliser le mot de passe fourni (celui déjà envoyé par email),
+    // avec un fallback de sécurité si jamais il n'est pas fourni.
+    const tempPassword = password || this.generateTempPassword();
 
     const user = await this.userRepository.create({
       email,
-      password: tempPassword, // ✅ clair ici, hashé par le hook
+      password: tempPassword, // ✅ clair ici, hashé par le hook beforeCreate
       name,
       role,
       phone,
@@ -43,18 +43,8 @@ class UserService extends BaseService {
       active: true,
     });
 
-    // Envoyer l'email avec le mot de passe en clair
-    await sendEmail({
-      to: email,
-      subject: "Bienvenue au Plongée Club - Vos identifiants de connexion",
-      template: "welcome",
-      data: {
-        name,
-        email,
-        tempPassword, // ✅ mot de passe en clair pour l'email
-        loginUrl: `${process.env.FRONTEND_URL}/login`,
-      },
-    });
+    // ❌ Plus d'envoi d'email ici : le frontend l'a déjà envoyé
+    // via /api/email/send-welcome avant d'appeler cette route.
 
     return {
       user: {
@@ -66,11 +56,11 @@ class UserService extends BaseService {
         must_change_password: user.must_change_password,
         active: user.active,
       },
-      tempPassword, // ✅ retourné pour affichage dans l'interface
+      tempPassword,
     };
   }
 
-  // ✅ Générer un mot de passe temporaire
+  // ✅ Générer un mot de passe temporaire (fallback uniquement)
   generateTempPassword() {
     const chars =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
@@ -88,13 +78,11 @@ class UserService extends BaseService {
       throw new Error("Utilisateur non trouvé");
     }
 
-    // Vérifier l'ancien mot de passe
     const isValid = await user.comparePassword(oldPassword);
     if (!isValid) {
       throw new Error("Ancien mot de passe incorrect");
     }
 
-    // Hasher le nouveau mot de passe
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
@@ -105,7 +93,6 @@ class UserService extends BaseService {
     return user;
   }
 
-  // Dans backend/src/services/UserService.js — ajouter à la fin
   async getAllUsers(filters = {}) {
     const { User } = require("../models");
     const where = {};
@@ -121,6 +108,9 @@ class UserService extends BaseService {
   }
 
   // ✅ Réinitialiser le mot de passe (par le directeur technique)
+  // Reste sur son propre flux : ici on génère bien un nouveau mot de passe
+  // et on doit prévenir l'utilisateur (à connecter à ta route email dédiée
+  // si tu veux notifier par email côté frontend, comme pour la création).
   async resetPasswordByDirector(userId) {
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -135,108 +125,77 @@ class UserService extends BaseService {
     user.must_change_password = true;
     await user.save();
 
-    // Envoyer un email avec le nouveau mot de passe
-    await sendEmail({
-      to: user.email,
-      subject: "Réinitialisation de votre mot de passe",
-      template: "reset-password",
-      data: {
-        name: user.name,
-        tempPassword,
-        loginUrl: `${process.env.FRONTEND_URL}/login`,
-      },
-    });
-
     return { user, tempPassword };
   }
 
-  // ✅ Changer le niveau (uniquement par le DT)
   async changeNiveau(userId, niveau) {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("Utilisateur non trouvé");
     }
-
     user.niveau = niveau;
     await user.save();
-
     return user;
   }
 
-  // ✅ Changer le rôle (uniquement par le DT)
   async changeRole(userId, role) {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("Utilisateur non trouvé");
     }
-
     user.role = role;
     await user.save();
-
     return user;
   }
 
-  // ✅ Désactiver un compte (uniquement par le DT)
   async disableAccount(userId) {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("Utilisateur non trouvé");
     }
-
     user.active = false;
     await user.save();
-
     return user;
   }
 
-  // ✅ Réactiver un compte (uniquement par le DT)
   async enableAccount(userId) {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("Utilisateur non trouvé");
     }
-
     user.active = true;
     await user.save();
-
     return user;
   }
 
-  // ✅ Supprimer un compte (uniquement par le DT)
   async deleteAccount(userId) {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("Utilisateur non trouvé");
     }
-
     await user.destroy();
     return true;
   }
 
-  // ✅ Mettre à jour le profil (pour l'utilisateur connecté)
   async updateProfile(userId, data) {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("Utilisateur non trouvé");
     }
-
     const allowedFields = ["email", "phone", "contact_urgence", "name"];
     allowedFields.forEach((field) => {
       if (data[field] !== undefined) {
         user[field] = data[field];
       }
     });
-
     await user.save();
     return user;
   }
 
-  // ✅ Récupérer les utilisateurs créés par un DT
   async getUsersCreatedBy(directorId) {
     return await this.userRepository.findByCreatedBy(directorId);
   }
 
-  // ✅ Récupérer les utilisateurs par rôle
   async getUsersByRole(role) {
     return await this.userRepository.findByRole(role);
   }

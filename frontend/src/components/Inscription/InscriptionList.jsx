@@ -85,8 +85,14 @@ const InscriptionList = () => {
   const itemsPerPage = 10;
 
   const { user } = useAuth();
-  const isAdherent = user?.role === "adherent";
-  const isAdmin = ["president", "moniteur", "tresorier"].includes(user?.role);
+  const isAdmin = [
+    "president",
+    "directeur_technique",
+    "moniteur",
+    "tresorier",
+    "admin",
+  ].includes(user?.role);
+  const isAdherent = !isAdmin;
 
   const { useGetAll, useRemove, useConfirm, useCancel, useUpdate } =
     useInscriptions();
@@ -102,6 +108,7 @@ const InscriptionList = () => {
   const confirm = useConfirm();
   const cancel = useCancel();
   const updateInscription = useUpdate();
+  const allInscriptions = data?.data || [];
 
   const adherentMap = useMemo(() => {
     const map = {};
@@ -119,20 +126,50 @@ const InscriptionList = () => {
     return adherentsData.data.find((adherent) => adherent.email === user.email);
   }, [adherentsData, user]);
 
+  const capacityBySortie = useMemo(() => {
+    const map = {};
+    if (sortiesData?.data) {
+      sortiesData.data.forEach((sortie) => {
+        const sortieInscriptions = allInscriptions.filter(
+          (inscription) => inscription.id_sortie === sortie.id_sortie,
+        );
+        const confirmees = sortieInscriptions.filter(
+          (inscription) => inscription.statut === "Confirmée",
+        ).length;
+        const listeAttente = sortieInscriptions.filter(
+          (inscription) => inscription.statut === "Liste d'attente",
+        ).length;
+        const enAttente = sortieInscriptions.filter(
+          (inscription) => inscription.statut === "En attente",
+        ).length;
+
+        map[sortie.id_sortie] = {
+          nbPlaces: sortie.nb_places || 0,
+          confirmees,
+          listeAttente,
+          enAttente,
+          placesDisponibles: Math.max((sortie.nb_places || 0) - confirmees, 0),
+        };
+      });
+    }
+    return map;
+  }, [sortiesData, allInscriptions]);
+
   const sortieMap = useMemo(() => {
     const map = {};
     if (sortiesData?.data) {
       sortiesData.data.forEach((sortie) => {
         map[sortie.id_sortie] = {
           label: `${sortie.type} - ${sortie.lieu} (${sortie.site})`,
-          date: sortie.date_sortie,
+          date: sortie.date_heure,
           type: sortie.type,
           id: sortie.id_sortie,
+          capacity: capacityBySortie[sortie.id_sortie],
         };
       });
     }
     return map;
-  }, [sortiesData]);
+  }, [sortiesData, capacityBySortie]);
 
   const sortieOptions = useMemo(() => {
     const options = [{ value: "all", label: "Toutes les sorties" }];
@@ -140,14 +177,12 @@ const InscriptionList = () => {
       sortiesData.data.forEach((sortie) => {
         options.push({
           value: sortie.id_sortie.toString(),
-          label: `${sortie.type} - ${sortie.lieu} (${new Date(sortie.date_sortie).toLocaleDateString("fr-FR")})`,
+          label: `${sortie.type} - ${sortie.lieu} (${new Date(sortie.date_heure).toLocaleDateString("fr-FR")})`,
         });
       });
     }
     return options;
   }, [sortiesData]);
-
-  const allInscriptions = data?.data || [];
 
   const filteredByRole = useMemo(() => {
     if (isAdmin) {
@@ -198,6 +233,9 @@ const InscriptionList = () => {
     return counts;
   }, [filteredInscriptions]);
 
+  const selectedSortieCapacity =
+    filterSortie !== "all" ? capacityBySortie[parseInt(filterSortie)] : null;
+
   const totalPages = Math.ceil(filteredInscriptions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedInscriptions = filteredInscriptions.slice(
@@ -230,7 +268,9 @@ const InscriptionList = () => {
       await remove.mutateAsync(id);
       toast.success("Inscription supprimée avec succès");
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      toast.error(
+        error.response?.data?.message || "Erreur lors de la suppression",
+      );
     } finally {
       setLoading(false);
     }
@@ -238,7 +278,7 @@ const InscriptionList = () => {
 
   const handleConfirm = async (id) => {
     if (!isAdmin) {
-      toast.error("Seul un moniteur ou le président peut confirmer");
+      toast.error("Seul un gestionnaire peut confirmer");
       return;
     }
     setLoading(true);
@@ -246,7 +286,9 @@ const InscriptionList = () => {
       await confirm.mutateAsync(id);
       toast.success("Inscription confirmée avec succès");
     } catch (error) {
-      toast.error("Erreur lors de la confirmation");
+      toast.error(
+        error.response?.data?.message || "Erreur lors de la confirmation",
+      );
     } finally {
       setLoading(false);
     }
@@ -258,7 +300,31 @@ const InscriptionList = () => {
       await cancel.mutateAsync(id);
       toast.success("Inscription annulée avec succès");
     } catch (error) {
-      toast.error("Erreur lors de l'annulation");
+      toast.error(
+        error.response?.data?.message || "Erreur lors de l'annulation",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWaitlist = async (id) => {
+    if (!isAdmin) {
+      toast.error("Seul un gestionnaire peut gérer la liste d'attente");
+      return;
+    }
+    setLoading(true);
+    try {
+      await updateInscription.mutateAsync({
+        id,
+        data: { statut: "Liste d'attente" },
+      });
+      toast.success("Inscription ajoutée à la liste d'attente");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          "Erreur lors de la mise en liste d'attente",
+      );
     } finally {
       setLoading(false);
     }
@@ -352,15 +418,6 @@ const InscriptionList = () => {
               </option>
             ))}
           </select>
-
-          {isAdmin && (
-            <Link
-              to="/inscriptions/create"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              <FiPlus className="w-4 h-4" /> Nouvelle
-            </Link>
-          )}
         </div>
       </div>
 
@@ -398,6 +455,36 @@ const InscriptionList = () => {
           </span>
         )}
       </div>
+
+      {selectedSortieCapacity && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[
+            { label: "Places", value: selectedSortieCapacity.nbPlaces },
+            { label: "Confirmées", value: selectedSortieCapacity.confirmees },
+            {
+              label: "Disponibles",
+              value: selectedSortieCapacity.placesDisponibles,
+            },
+            { label: "En attente", value: selectedSortieCapacity.enAttente },
+            {
+              label: "Liste d'attente",
+              value: selectedSortieCapacity.listeAttente,
+            },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
+            >
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                {item.label}
+              </p>
+              <p className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
+                {item.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Tableau */}
       <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
@@ -442,6 +529,20 @@ const InscriptionList = () => {
                   const sortieInfo = sortieMap[inscription.id_sortie] || {
                     label: `#${inscription.id_sortie}`,
                   };
+                  const capacityInfo =
+                    capacityBySortie[inscription.id_sortie] || {};
+                  const hasAvailablePlace =
+                    (capacityInfo.placesDisponibles || 0) > 0;
+                  const canConfirm =
+                    isAdmin &&
+                    ["En attente", "Liste d'attente"].includes(
+                      inscription.statut,
+                    ) &&
+                    hasAvailablePlace;
+                  const canMoveToWaitlist =
+                    isAdmin &&
+                    inscription.statut === "En attente" &&
+                    !hasAvailablePlace;
 
                   const isOwnInscription =
                     isAdherent &&
@@ -508,7 +609,15 @@ const InscriptionList = () => {
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <StatusBadge status={inscription.statut} />
+                        <div className="space-y-1">
+                          <StatusBadge status={inscription.statut} />
+                          {inscription.statut === "Liste d'attente" &&
+                            inscription.rang_liste_attente && (
+                              <p className="text-xs text-amber-600 dark:text-amber-400">
+                                Rang #{inscription.rang_liste_attente}
+                              </p>
+                            )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-0.5">
@@ -523,8 +632,8 @@ const InscriptionList = () => {
                             </Link>
                           )}
 
-                          {/* ✅ 2. Confirmer (admin - En attente) */}
-                          {isAdmin && inscription.statut === "En attente" && (
+                          {/* ✅ 2. Confirmer quand une place est disponible */}
+                          {canConfirm && (
                             <button
                               onClick={() =>
                                 handleConfirm(inscription.id_inscription)
@@ -537,9 +646,24 @@ const InscriptionList = () => {
                             </button>
                           )}
 
+                          {/* ✅ 2b. Envoyer en liste d'attente si complet */}
+                          {canMoveToWaitlist && (
+                            <button
+                              onClick={() =>
+                                handleWaitlist(inscription.id_inscription)
+                              }
+                              disabled={loading}
+                              className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Mettre en liste d'attente"
+                            >
+                              <FiClock className="w-4 h-4" />
+                            </button>
+                          )}
+
                           {/* ✅ 3. Annuler (admin ou propriétaire) */}
                           {(inscription.statut === "En attente" ||
-                            inscription.statut === "Confirmée") &&
+                            inscription.statut === "Confirmée" ||
+                            inscription.statut === "Liste d'attente") &&
                             (isAdmin || isOwnInscription) && (
                               <button
                                 onClick={() =>

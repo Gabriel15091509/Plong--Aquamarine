@@ -16,7 +16,9 @@ const Alerte = sequelize.define(
     type: {
       type: DataTypes.ENUM(
         "Certificat expiré",
+        "Certificat expire bientot",
         "Adhésion expirée",
+        "Adhesion expire bientot",
         "Paiement en retard",
         "Formation",
       ),

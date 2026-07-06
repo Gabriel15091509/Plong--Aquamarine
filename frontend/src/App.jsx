@@ -23,7 +23,6 @@ import AdherentCreatePage from "./pages/AdherentCreatePage";
 import AdherentEditPage from "./pages/AdherentEditPage";
 import AdherentDetailsPage from "./pages/AdherentDetailsPage";
 import AdhesionsPage from "./pages/AdhesionsPage";
-import AdhesionForm from "./components/Adhesion/AdhesionForm";
 import CertificatsPage from "./pages/CertificatsPage";
 import PaiementsPage from "./pages/PaiementsPage";
 import SortiesPage from "./pages/SortiesPage";
@@ -37,23 +36,31 @@ import UsersPage from "./pages/UsersPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 import ProfilePage from "./pages/ProfilePage";
-
-import ProtectedRoute from "./components/Common/ProtectedRoute";
-
-// ✅ NOUVEAU - Page de pointage
 import SortiePointage from "./pages/SortiePointage";
+
+// Details Pages
+import AdhesionDetails from "./components/Adhesion/AdhesionDetails";
+import CertificatDetails from "./components/CertificatMedical/CertificatDetails";
+import PaiementDetails from "./components/Paiement/PaiementDetails";
+import FormationDetails from "./components/Formation/FormationDetails";
+import MaterielDetails from "./components/Materiel/MaterielDetails";
+import PlongeeDetails from "./components/Plongee/PlongeeDetails";
+import SortieDetails from "./components/Sortie/SortieDetails";
+import InscriptionDetails from "./components/Inscription/InscriptionDetails";
 
 // Components
 import SortieForm from "./components/Sortie/SortieForm";
-import SortieDetails from "./components/Sortie/SortieDetails";
 import InscriptionForm from "./components/Inscription/InscriptionForm";
 import PlongeeForm from "./components/Plongee/PlongeeForm";
 import MaterielForm from "./components/Materiel/MaterielForm";
 import FormationForm from "./components/Formation/FormationForm";
 import PaiementForm from "./components/Paiement/PaiementForm";
+import CertificatForm from "./components/CertificatMedical/CertificatForm";
+import AdhesionForm from "./components/Adhesion/AdhesionForm";
 
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import ProtectedRoute from "./components/Common/ProtectedRoute";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -137,7 +144,7 @@ function App() {
                 }
               />
 
-              {/* Adhérents - accessible à tous les utilisateurs connectés */}
+              {/* ============ ADHÉRENTS ============ */}
               <Route
                 path="/adherents"
                 element={
@@ -179,7 +186,7 @@ function App() {
                 }
               />
 
-              {/* Adhésions - accessible à tous */}
+              {/* ============ ADHÉSIONS ============ */}
               <Route
                 path="/adhesions"
                 element={
@@ -200,8 +207,28 @@ function App() {
                   </PrivateRoute>
                 }
               />
+              <Route
+                path="/adhesions/edit/:id"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <AdhesionForm />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/adhesions/:id"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <AdhesionDetails />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
 
-              {/* Certificats - accessible à tous */}
+              {/* ============ CERTIFICATS ============ */}
               <Route
                 path="/certificats"
                 element={
@@ -212,8 +239,38 @@ function App() {
                   </PrivateRoute>
                 }
               />
+              <Route
+                path="/certificats/create"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <CertificatForm />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/certificats/edit/:id"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <CertificatForm />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/certificats/:id"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <CertificatDetails />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
 
-              {/* Paiements - Réservé au trésorier et président */}
+              {/* ============ PAIEMENTS ============ */}
               <Route
                 path="/paiements"
                 element={
@@ -234,8 +291,28 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/paiements/edit/:id"
+                element={
+                  <ProtectedRoute requiredRoles={["president", "tresorier"]}>
+                    <Layout>
+                      <PaiementForm />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/paiements/:id"
+                element={
+                  <ProtectedRoute requiredRoles={["president", "tresorier"]}>
+                    <Layout>
+                      <PaiementDetails />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Sorties - Réservé au moniteur et président */}
+              {/* ============ SORTIES ============ */}
               <Route
                 path="/sorties"
                 element={
@@ -261,7 +338,7 @@ function App() {
                 element={
                   <ProtectedRoute requiredRoles={["president", "moniteur"]}>
                     <Layout>
-                      <SortieForm editMode={true} />
+                      <SortieForm />
                     </Layout>
                   </ProtectedRoute>
                 }
@@ -277,7 +354,7 @@ function App() {
                 }
               />
 
-              {/* ✅ NOUVEAU - Pointage de présence pour une sortie */}
+              {/* Pointage de présence */}
               <Route
                 path="/sorties/:id_sortie/pointage"
                 element={
@@ -289,7 +366,7 @@ function App() {
                 }
               />
 
-              {/* Inscriptions - accessible à tous */}
+              {/* ============ INSCRIPTIONS ============ */}
               <Route
                 path="/inscriptions"
                 element={
@@ -310,8 +387,28 @@ function App() {
                   </PrivateRoute>
                 }
               />
+              <Route
+                path="/inscriptions/:id"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <InscriptionDetails />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/inscriptions/edit/:id"
+                element={
+                  <PrivateRoute>
+                    <Layout>
+                      <InscriptionForm />
+                    </Layout>
+                  </PrivateRoute>
+                }
+              />
 
-              {/* Plongées - Réservé au moniteur et président */}
+              {/* ============ PLONGÉES ============ */}
               <Route
                 path="/plongees"
                 element={
@@ -332,8 +429,28 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/plongees/edit/:id"
+                element={
+                  <ProtectedRoute requiredRoles={["president", "moniteur"]}>
+                    <Layout>
+                      <PlongeeForm />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/plongees/:id"
+                element={
+                  <ProtectedRoute requiredRoles={["president", "moniteur"]}>
+                    <Layout>
+                      <PlongeeDetails />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Matériel - Réservé au président */}
+              {/* ============ MATÉRIEL ============ */}
               <Route
                 path="/materiels"
                 element={
@@ -354,8 +471,28 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/materiels/edit/:id"
+                element={
+                  <ProtectedRoute requiredRoles={["president"]}>
+                    <Layout>
+                      <MaterielForm />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/materiels/:id"
+                element={
+                  <ProtectedRoute requiredRoles={["president"]}>
+                    <Layout>
+                      <MaterielDetails />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Formations - Réservé au moniteur et président */}
+              {/* ============ FORMATIONS ============ */}
               <Route
                 path="/formations"
                 element={
@@ -376,8 +513,28 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/formations/edit/:id"
+                element={
+                  <ProtectedRoute requiredRoles={["president", "moniteur"]}>
+                    <Layout>
+                      <FormationForm />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/formations/:id"
+                element={
+                  <ProtectedRoute requiredRoles={["president", "moniteur"]}>
+                    <Layout>
+                      <FormationDetails />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
 
-              {/* Calendrier - accessible à tous */}
+              {/* ============ CALENDRIER ============ */}
               <Route
                 path="/calendrier"
                 element={
@@ -389,7 +546,7 @@ function App() {
                 }
               />
 
-              {/* À propos - accessible à tous */}
+              {/* ============ À PROPOS ============ */}
               <Route
                 path="/about"
                 element={
@@ -401,7 +558,7 @@ function App() {
                 }
               />
 
-              {/* Gestion des utilisateurs - Réservé au président */}
+              {/* ============ GESTION DES UTILISATEURS ============ */}
               <Route
                 path="/users"
                 element={
@@ -423,7 +580,7 @@ function App() {
                 }
               />
 
-              {/* Pages d'erreur */}
+              {/* ============ PAGES D'ERREUR ============ */}
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

@@ -14,6 +14,7 @@ const materielRoutes = require("./materielRoutes");
 const formationRoutes = require("./formationRoutes");
 const alerteRoutes = require("./alerteRoutes"); // ✅ Vérifier que l'import existe
 const userRoutes = require("./userRoutes");
+const emailRoutes = require('./emailRoutes');
 
 // Routes
 router.use("/auth", authRoutes);
@@ -30,6 +31,7 @@ router.use("/alertes", alerteRoutes); // ✅ Vérifier que la route existe
 
 router.use("/users", userRoutes);
 router.use("/adherents", adherentRoutes);
+router.use("/email", emailRoutes);
 
 // Route racine API
 router.get("/", (req, res) => {
@@ -49,6 +51,7 @@ router.get("/", (req, res) => {
       materiels: "/api/materiels",
       formations: "/api/formations",
       alertes: "/api/alertes",
+      emails: "/api/emails",
     },
   });
 });

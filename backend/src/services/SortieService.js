@@ -38,7 +38,6 @@ class SortieService extends BaseService {
     const now = new Date();
     return {
       total: sorties.length,
-      // ✅ date_heure au lieu de date_sortie
       aVenir: sorties.filter(
         (s) => new Date(s.date_heure) > now && s.statut !== "Annulée",
       ).length,
@@ -49,8 +48,23 @@ class SortieService extends BaseService {
     };
   }
 
+  // ✅ Utiliser findByIdWithInscriptions pour les détails (sans User)
   async getSortieDetails(id) {
     return await this.sortieRepository.findByIdWithInscriptions(id);
+  }
+
+  // ✅ Pour le pointage, utiliser findByIdWithPointage (avec User)
+  async getPointageBySortie(id_sortie) {
+    const sortie = await this.sortieRepository.findByIdWithPointage(id_sortie);
+    if (!sortie) throw new Error("Sortie non trouvée");
+    if (sortie.inscriptions) {
+      sortie.inscriptions.sort((a, b) => {
+        const nomA = a.adherent?.nom || "";
+        const nomB = b.adherent?.nom || "";
+        return nomA.localeCompare(nomB);
+      });
+    }
+    return sortie;
   }
 
   async getById(id) {
@@ -75,27 +89,15 @@ class SortieService extends BaseService {
     return true;
   }
 
-  async getPointageBySortie(id_sortie) {
-    const sortie =
-      await this.sortieRepository.findByIdWithInscriptions(id_sortie);
-    if (!sortie) throw new Error("Sortie non trouvée");
-    if (sortie.inscriptions) {
-      sortie.inscriptions.sort((a, b) => {
-        const nomA = a.adherent?.name || "";
-        const nomB = b.adherent?.name || "";
-        return nomA.localeCompare(nomB);
-      });
-    }
-    return sortie;
-  }
-
   async enregistrerPointage(id_sortie, inscriptions, userId) {
     const sortie = await this.sortieRepository.findById(id_sortie);
     if (!sortie) throw new Error("Sortie non trouvée");
 
-    // ✅ date_heure au lieu de date_sortie
     const dateSortie = new Date(sortie.date_heure);
-    if (dateSortie > new Date())
+    const today = new Date();
+    dateSortie.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    if (dateSortie > today)
       throw new Error("Impossible de pointer une sortie future");
 
     const results = [];
@@ -154,7 +156,6 @@ class SortieService extends BaseService {
       errors.push({ field: "lieu", message: "Le lieu est requis" });
     if (!data.site)
       errors.push({ field: "site", message: "Le site est requis" });
-    // ✅ date_heure au lieu de date_sortie
     if (!data.date_heure)
       errors.push({ field: "date_heure", message: "La date est requise" });
     if (!data.nb_places || data.nb_places < 1)

@@ -16,6 +16,14 @@ import { useAdherents } from "../hooks/useAdherents";
 import AdherentList from "../components/Adherent/AdherentList";
 import LoadingSpinner from "../components/Common/LoadingSpinner";
 
+// ✅ Configuration des statuts d'adhérents
+const ADHERENT_STATUS = [
+  { value: "all", label: "📊 Tous les statuts" },
+  { value: "Actif", label: "✅ Actif" },
+  { value: "Inactif", label: "⛔ Inactif" },
+  { value: "Suspendu", label: "⏸️ Suspendu" },
+];
+
 const AdherentsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
@@ -34,48 +42,45 @@ const AdherentsPage = () => {
   if (isLoading) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
+  // ✅ 4 STATISTIQUES SUR UNE MÊME LIGNE
   const statCards = [
     {
       label: "Total",
       value: stats.total,
-      icon: FiUsers,
-      bgColor: "bg-gray-50 dark:bg-gray-800/50",
+      icon: FiBarChart2,
+      color: "gray",
+      bg: "bg-gray-50 dark:bg-gray-800/50",
       iconBg: "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400",
-      textColor: "text-gray-900 dark:text-white",
-      subTextColor: "text-gray-500 dark:text-gray-400",
-      borderColor: "border-gray-200 dark:border-gray-700",
+      border: "border-gray-200 dark:border-gray-700",
     },
     {
       label: "Actifs",
       value: stats.actifs,
       icon: FiUserCheck,
-      bgColor: "bg-green-50 dark:bg-green-900/20",
+      color: "green",
+      bg: "bg-green-50 dark:bg-green-900/20",
       iconBg:
         "bg-green-100 dark:bg-green-800/40 text-green-600 dark:text-green-400",
-      textColor: "text-gray-900 dark:text-white",
-      subTextColor: "text-green-600 dark:text-green-400",
-      borderColor: "border-green-200 dark:border-green-800/30",
+      border: "border-green-200 dark:border-green-800/30",
     },
     {
       label: "Inactifs",
       value: stats.inactifs,
       icon: FiUserX,
-      bgColor: "bg-red-50 dark:bg-red-900/20",
+      color: "red",
+      bg: "bg-red-50 dark:bg-red-900/20",
       iconBg: "bg-red-100 dark:bg-red-800/40 text-red-600 dark:text-red-400",
-      textColor: "text-gray-900 dark:text-white",
-      subTextColor: "text-red-600 dark:text-red-400",
-      borderColor: "border-red-200 dark:border-red-800/30",
+      border: "border-red-200 dark:border-red-800/30",
     },
     {
       label: "Suspendus",
       value: stats.suspendus,
       icon: FiFilter,
-      bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
+      color: "yellow",
+      bg: "bg-yellow-50 dark:bg-yellow-900/20",
       iconBg:
         "bg-yellow-100 dark:bg-yellow-800/40 text-yellow-600 dark:text-yellow-400",
-      textColor: "text-gray-900 dark:text-white",
-      subTextColor: "text-yellow-600 dark:text-yellow-400",
-      borderColor: "border-yellow-200 dark:border-yellow-800/30",
+      border: "border-yellow-200 dark:border-yellow-800/30",
     },
   ];
 
@@ -112,7 +117,6 @@ const AdherentsPage = () => {
           </motion.p>
         </div>
 
-        {/* Badge statistique rapide */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -135,13 +139,27 @@ const AdherentsPage = () => {
         </motion.div>
       </motion.div>
 
-      {/* Statistiques animées */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
-      >
+      {/* Bouton Nouvel adhérent */}
+      <div className="flex justify-end">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, type: "spring" }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Link
+            to="/adherents/create"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all duration-300"
+          >
+            <FiPlus className="w-4 h-4" />
+            Nouvel adhérent
+          </Link>
+        </motion.div>
+      </div>
+
+      {/* ✅ 4 STATISTIQUES SUR UNE MÊME LIGNE - COMPACTES */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -149,63 +167,45 @@ const AdherentsPage = () => {
               key={stat.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * index, type: "spring" }}
+              transition={{ delay: index * 0.08 }}
               whileHover={{
-                scale: 1.05,
-                y: -5,
+                scale: 1.03,
+                y: -3,
                 transition: { type: "spring", stiffness: 400, damping: 10 },
               }}
-              className={`${stat.bgColor} ${stat.borderColor} rounded-2xl p-5 border shadow-sm transition-all duration-300`}
+              className={`${stat.bg} ${stat.border} rounded-xl border p-3 transition-all shadow-sm hover:shadow-md`}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className={`text-sm font-medium ${stat.subTextColor}`}>
+                  <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {stat.label}
                   </p>
-                  <motion.p
-                    className={`text-3xl font-bold ${stat.textColor} mt-1`}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: 0.1 * index + 0.1, type: "spring" }}
-                  >
+                  <p className="text-xl font-bold text-gray-900 dark:text-white mt-0.5">
                     {stat.value}
-                  </motion.p>
+                  </p>
                 </div>
                 <div
-                  className={`w-12 h-12 rounded-xl ${stat.iconBg} flex items-center justify-center`}
+                  className={`w-8 h-8 rounded-lg ${stat.iconBg} flex items-center justify-center`}
                 >
-                  <Icon className="w-6 h-6" />
+                  <Icon className="w-4 h-4" />
                 </div>
               </div>
+              {/* ✅ Barre de progression fine */}
               <motion.div
-                className={`h-1 mt-3 rounded-full bg-gradient-to-r ${stat.color}`}
+                className={`h-0.5 mt-2 rounded-full bg-gradient-to-r ${stat.color === "gray" ? "from-gray-400 to-gray-500" : stat.color === "green" ? "from-green-500 to-green-600" : stat.color === "red" ? "from-red-500 to-red-600" : "from-yellow-500 to-yellow-600"}`}
                 initial={{ width: 0 }}
-                animate={{ width: Math.min(stat.value / 10, 100) + "%" }}
+                animate={{
+                  width:
+                    stats.total > 0
+                      ? `${(stat.value / stats.total) * 100}%`
+                      : "0%",
+                }}
                 transition={{ delay: 0.3 + index * 0.1, duration: 0.8 }}
               />
             </motion.div>
           );
         })}
-      </motion.div>
-
-      {/* Bouton Nouvel adhérent */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="flex justify-end"
-      >
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Link
-            to="/adherents/create"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
-          >
-            <FiPlus className="w-5 h-5" />
-            Nouvel adhérent
-            <FiChevronRight className="w-4 h-4" />
-          </Link>
-        </motion.div>
-      </motion.div>
+      </div>
 
       {/* Liste des adhérents */}
       <motion.div

@@ -27,7 +27,13 @@ const User = sequelize.define(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM("president", "moniteur", "adherent", "tresorier"),
+      type: DataTypes.ENUM(
+        "president",
+        "directeur_technique",
+        "moniteur",
+        "adherent",
+        "tresorier",
+      ),
       allowNull: false,
       defaultValue: "adherent",
     },
@@ -104,6 +110,24 @@ User.prototype.comparePassword = async function (password) {
 User.prototype.hasPermission = function (permission) {
   const permissions = {
     president: [
+      "all",
+      "manage_users",
+      "manage_staff",
+      "view_stats",
+      "manage_settings",
+      "manage_sorties",
+      "validate_plongees",
+      "manage_formations",
+      "view_adherents",
+      "manage_paiements",
+      "exports",
+      "change_niveau",
+      "change_role",
+      "disable_account",
+      "delete_account",
+      "reset_password",
+    ],
+    directeur_technique: [
       "all",
       "manage_users",
       "manage_staff",
