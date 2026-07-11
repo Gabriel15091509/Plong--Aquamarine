@@ -169,59 +169,7 @@ const CalendrierPage = () => {
         </div>
       </motion.div>
 
-      {/* ✅ Statistiques rapides avec animations */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
-      >
-        {[
-          {
-            icon: FiCalendar,
-            label: "Sorties totales",
-            value: "15",
-            color: "from-blue-400 to-blue-600",
-          },
-          {
-            icon: FiMapPin,
-            label: "Lieux différents",
-            value: "8",
-            color: "from-green-400 to-green-600",
-          },
-          {
-            icon: FiCloud,
-            label: "Jours de sortie",
-            value: "12",
-            color: "from-purple-400 to-purple-600",
-          },
-          {
-            icon: FiSun,
-            label: "Saison estivale",
-            value: "3 mois",
-            color: "from-orange-400 to-orange-600",
-          },
-        ].map((stat, index) => (
-          <motion.div
-            key={stat.label}
-            variants={itemVariants}
-            whileHover={{ scale: 1.03, y: -3 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl shadow-card p-4 text-center border border-gray-100 dark:border-gray-700 cursor-default group"
-          >
-            <div
-              className={`w-12 h-12 mx-auto rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-2 shadow-lg group-hover:scale-110 transition-transform`}
-            >
-              <stat.icon className="w-6 h-6 text-white" />
-            </div>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {stat.value}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {stat.label}
-            </p>
-          </motion.div>
-        ))}
-      </motion.div>
+      
 
       {/* ✅ Le calendrier avec animation d'entrée */}
       <motion.div

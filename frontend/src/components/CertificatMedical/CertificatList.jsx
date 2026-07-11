@@ -1,48 +1,57 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
   FiTrash2,
   FiPlus,
-  FiCheck,
-  FiX,
-  FiAlertCircle,
   FiFileText,
   FiUser,
   FiCalendar,
   FiClock,
-  FiSearch,
+  FiCheck,
+  FiAlertCircle,
 } from "react-icons/fi";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { useCertificats } from "../../hooks/useCertificats";
 import { useAdherents } from "../../hooks/useAdherents";
 import StatusBadge from "../Common/StatusBadge";
-import Pagination from "../Common/Pagination";
-import LoadingSpinner from "../Common/LoadingSpinner";
 import { formatDate } from "../../utils/helpers";
 
-const CertificatList = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filter, setFilter] = useState("all");
-  const itemsPerPage = 10;
+// Fonctions utilitaires hors du composant
+const isExpired = (date) => new Date(date) < new Date();
+const getDaysRemaining = (date) => {
+  const diffTime = new Date(date) - new Date();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
 
+const CertificatList = () => {
   const { useGetAll, useRemove } = useCertificats();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
-  const { data, isLoading, error } = useGetAll();
+  const { data, isLoading, error, refetch } = useGetAll();
   const { data: adherentsData, isLoading: loadingAdherents } =
     useGetAllAdherents();
-
   const remove = useRemove();
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Map des adhérents avec toutes leurs infos
   const adherentMap = useMemo(() => {
     const map = {};
     if (adherentsData?.data) {
       adherentsData.data.forEach((adherent) => {
-        map[adherent.num_adherent] =
-          `${adherent.civilite} ${adherent.nom} ${adherent.prenom}`;
+        map[adherent.num_adherent] = {
+          nom: `${adherent.civilite} ${adherent.nom} ${adherent.prenom}`,
+          photo: adherent.photo,
+          num_adherent: adherent.num_adherent,
+        };
       });
     }
     return map;
@@ -52,33 +61,25 @@ const CertificatList = () => {
 
   const filteredCertificats = useMemo(() => {
     return allCertificats.filter((c) => {
-      const adherentName = adherentMap[c.num_adherent] || "";
-      const searchLower = searchTerm.toLowerCase();
-      const matchSearch =
-        c.type_certificat?.toLowerCase().includes(searchLower) ||
-        c.medecin?.toLowerCase().includes(searchLower) ||
-        adherentName.toLowerCase().includes(searchLower);
-      if (filter === "all") return matchSearch;
-      return matchSearch && c.statut === filter;
-    });
-  }, [allCertificats, adherentMap, searchTerm, filter]);
+      const adherentInfo = adherentMap[c.num_adherent] || {
+        nom: `#${c.num_adherent}`,
+        photo: null,
+      };
+      const adherentName = adherentInfo.nom;
 
-  const stats = useMemo(() => {
-    const total = filteredCertificats.length;
-    const valides = filteredCertificats.filter((c) => {
-      if (c.statut === "Valide") return true;
-      if (c.statut === "En attente") return false;
-      return new Date(c.date_validite) > new Date();
-    }).length;
-    const expires = filteredCertificats.filter((c) => {
-      if (c.statut === "Expiré") return true;
-      return new Date(c.date_validite) < new Date();
-    }).length;
-    const enAttente = filteredCertificats.filter(
-      (c) => c.statut === "En attente",
-    ).length;
-    return { total, valides, expires, enAttente };
-  }, [filteredCertificats]);
+      if (filter !== "all" && c.statut !== filter) return false;
+
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        return (
+          c.type_certificat?.toLowerCase().includes(search) ||
+          c.medecin?.toLowerCase().includes(search) ||
+          adherentName.toLowerCase().includes(search)
+        );
+      }
+      return true;
+    });
+  }, [allCertificats, adherentMap, filter, searchTerm]);
 
   const totalPages = Math.ceil(filteredCertificats.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -88,224 +89,298 @@ const CertificatList = () => {
   );
 
   const handleDelete = async (id) => {
-    if (window.confirm("Confirmer la suppression de ce certificat ?")) {
+    try {
       await remove.mutateAsync(id);
+      toast.success("Certificat supprimé avec succès");
+      refetch();
+      setDeleteModal(null);
+    } catch (error) {
+      toast.error("Erreur lors de la suppression");
+      console.error("Delete error:", error);
     }
   };
 
-  const isExpired = (date) => new Date(date) < new Date();
-  const getDaysRemaining = (date) => {
-    const diffTime = new Date(date) - new Date();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
-  const isLoadingData = isLoading || loadingAdherents;
-  if (isLoadingData) return <LoadingSpinner />;
+  if (isLoading || loadingAdherents) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
-  return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-      {/* En-tête avec filtres */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Recherche */}
-          <div className="flex-1 relative">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Rechercher..."
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-all"
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <select
-              value={filter}
-              onChange={(e) => {
-                setFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">Tous ({stats.total})</option>
-              <option value="Valide">Valides ({stats.valides})</option>
-              <option value="Expiré">Expirés ({stats.expires})</option>
-              <option value="En attente">En attente ({stats.enAttente})</option>
-            </select>
-
-            <Link
-              to="/certificats/create"
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              <FiPlus className="w-4 h-4" />
-              Nouveau
-            </Link>
-          </div>
+  if (filteredCertificats.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg"
+      >
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+          <FiFileText className="w-10 h-10 text-gray-400" />
         </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Aucun certificat trouvé
+        </h3>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">
+          {searchTerm || filter !== "all"
+            ? "Aucun résultat pour vos critères"
+            : "Commencez par créer un nouveau certificat"}
+        </p>
+        <Link
+          to="/certificats/create"
+          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+        >
+          <FiPlus className="w-4 h-4" /> Nouveau certificat
+        </Link>
+      </motion.div>
+    );
+  }
 
-        {/* Statistiques mini */}
-        <div className="flex gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
-          <span>
-            Total:{" "}
-            <span className="font-medium text-gray-700 dark:text-gray-300">
-              {stats.total}
-            </span>
-          </span>
-          <span>
-            Valides:{" "}
-            <span className="font-medium text-green-600">{stats.valides}</span>
-          </span>
-          <span>
-            Expirés:{" "}
-            <span className="font-medium text-red-600">{stats.expires}</span>
-          </span>
-          <span>
-            En attente:{" "}
-            <span className="font-medium text-yellow-600">
-              {stats.enAttente}
-            </span>
-          </span>
+  return (
+    <div className="space-y-4">
+      {/* Barre de recherche et filtres */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Rechercher par type, médecin ou adhérent..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          />
+        </div>
+        <div className="flex gap-2">
+          <select
+            value={filter}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">Tous</option>
+            <option value="Valide">Valides</option>
+            <option value="Expiré">Expirés</option>
+            <option value="En attente">En attente</option>
+          </select>
+          <Link
+            to="/certificats/create"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <FiPlus className="w-4 h-4" />
+            Nouveau
+          </Link>
         </div>
       </div>
 
-      {/* Tableau */}
-      <div className="overflow-x-auto">
-        {filteredCertificats.length === 0 ? (
-          <div className="text-center py-16">
-            <FiFileText className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-gray-500 dark:text-gray-400">
+      {/* Liste des certificats */}
+      <AnimatePresence>
+        {paginatedCertificats.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl"
+          >
+            <p className="text-gray-500 dark:text-gray-400 font-medium">
               Aucun certificat trouvé
             </p>
-          </div>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+              {searchTerm || filter !== "all"
+                ? "Essayez de modifier vos filtres"
+                : "Aucun certificat pour le moment"}
+            </p>
+          </motion.div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
-              <tr>
-                {["Type", "Adhérent", "Validité", "Médecin", "Statut", ""].map(
-                  (h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      {h}
-                    </th>
-                  ),
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {paginatedCertificats.map((certificat, index) => {
-                const adherentName =
-                  adherentMap[certificat.num_adherent] ||
-                  `#${certificat.num_adherent}`;
-                const expired = isExpired(certificat.date_validite);
-                const daysRemaining = getDaysRemaining(
-                  certificat.date_validite,
-                );
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="grid gap-3"
+          >
+            {paginatedCertificats.map((certificat) => {
+              const adherentInfo = adherentMap[certificat.num_adherent] || {
+                nom: `#${certificat.num_adherent}`,
+                photo: null,
+              };
+              const adherentName = adherentInfo.nom;
+              const daysRemaining = getDaysRemaining(certificat.date_validite);
 
-                let statusText = "Valide";
-                let statusColor = "text-green-600";
-                if (expired) {
-                  statusText = "Expiré";
-                  statusColor = "text-red-600";
-                } else if (daysRemaining <= 30) {
-                  statusText = `${daysRemaining} jours`;
-                  statusColor = "text-orange-600";
-                }
+              return (
+                <motion.div
+                  key={certificat.id_certificat}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Photo en évidence */}
+                    <div className="flex-shrink-0">
+                      {adherentInfo.photo ? (
+                        <img
+                          src={adherentInfo.photo}
+                          alt={adherentName}
+                          className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
+                          <FiUser className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
+                        </div>
+                      )}
+                      <div className="text-center mt-1">
+                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                          #{certificat.num_adherent}
+                        </span>
+                      </div>
+                    </div>
 
-                return (
-                  <motion.tr
-                    key={certificat.id_certificat}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: index * 0.03 }}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 rounded-full">
-                        <FiFileText className="w-3 h-3" />
-                        {certificat.type_certificat}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {adherentName}
+                    {/* Informations */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                              {adherentName}
+                            </h3>
+                            <span className="text-sm text-gray-400 dark:text-gray-500">
+                              •
+                            </span>
+                            <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                              {certificat.type_certificat}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <FiCalendar className="w-3.5 h-3.5" />
+                              {formatDate(certificat.date_validite)}
+                            </span>
+
+                            {/* Afficher uniquement si moins de 30 jours restants */}
+                            {daysRemaining <= 30 && daysRemaining > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
+                                  <FiClock className="w-3.5 h-3.5" />
+                                  {daysRemaining}{" "}
+                                  {daysRemaining === 1 ? "jour" : "jours"}
+                                </span>
+                              </>
+                            )}
+
+                            {certificat.medecin && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                  <span className="text-gray-400">
+                                    Médecin:
+                                  </span>
+                                  {certificat.medecin}
+                                </span>
+                              </>
+                            )}
+                            <span>•</span>
+                            <StatusBadge status={certificat.statut} />
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Link
+                            to={`/certificats/${certificat.id_certificat}`}
+                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            title="Voir"
+                          >
+                            <FiEye className="w-4 h-4" />
+                          </Link>
+                          <Link
+                            to={`/certificats/edit/${certificat.id_certificat}`}
+                            className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                            title="Modifier"
+                          >
+                            <FiEdit className="w-4 h-4" />
+                          </Link>
+                          <button
+                            onClick={() =>
+                              setDeleteModal(certificat.id_certificat)
+                            }
+                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            title="Supprimer"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        #{certificat.num_adherent}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        {formatDate(certificat.date_validite)}
-                      </div>
-                      <div className={`text-xs font-medium ${statusColor}`}>
-                        {expired ? (
-                          <span className="flex items-center gap-1">
-                            <FiAlertCircle className="w-3 h-3" /> Expiré
-                          </span>
-                        ) : daysRemaining <= 30 ? (
-                          <span className="flex items-center gap-1">
-                            <FiClock className="w-3 h-3" /> {statusText}
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1">
-                            <FiCheck className="w-3 h-3" /> Valide
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                      {certificat.medecin || "—"}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <StatusBadge status={certificat.statut} />
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
-                        <Link
-                          to={`/certificats/${certificat.id_certificat}`}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                          title="Voir"
-                        >
-                          <FiEye className="w-4 h-4" />
-                        </Link>
-                        <Link
-                          to={`/certificats/edit/${certificat.id_certificat}`}
-                          className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                          title="Modifier"
-                        >
-                          <FiEdit className="w-4 h-4" />
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(certificat.id_certificat)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                          title="Supprimer"
-                        >
-                          <FiTrash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
+      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
+        >
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Précédent
+          </button>
+          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Suivant
+          </button>
+        </motion.div>
+      )}
+
+      {/* Modal de confirmation de suppression */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
+                <FiTrash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold">Confirmer la suppression</h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Êtes-vous sûr de vouloir supprimer ce certificat ?
+              <br />
+              <span className="text-sm text-red-500 font-medium">
+                Cette action est irréversible.
+              </span>
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModal(null)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleDelete(deleteModal)}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>

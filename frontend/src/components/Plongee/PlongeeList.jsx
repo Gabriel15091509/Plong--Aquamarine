@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -12,188 +13,165 @@ import {
   FiDroplet,
   FiTrendingUp,
   FiChevronRight,
+  FiUser,
+  FiCalendar,
+  FiMapPin,
 } from "react-icons/fi";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { usePlongees } from "../../hooks/usePlongees";
 import { useAdherents } from "../../hooks/useAdherents";
-import StatusBadge from "../Common/StatusBadge";
-import Pagination from "../Common/Pagination";
-import LoadingSpinner from "../Common/LoadingSpinner";
-import SearchBar from "../Common/SearchBar";
 import { formatDate } from "../../utils/helpers";
 
-// ✅ Animations
-const tableRowVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.05,
-      duration: 0.3,
-      type: "spring",
-      stiffness: 300,
-      damping: 24,
-    },
-  }),
-  hover: {
-    backgroundColor: "rgba(6, 182, 212, 0.05)",
-    transition: { duration: 0.2 },
-  },
-};
-
-// ✅ Couleurs des actions
-const actionColors = {
-  validate: {
-    bg: "hover:bg-emerald-50",
-    text: "text-emerald-600",
-    darkText: "dark:text-emerald-400",
-    darkBg: "dark:hover:bg-emerald-900/20",
-    tooltip: "Valider la plongée",
-  },
-  view: {
-    bg: "hover:bg-blue-50",
-    text: "text-blue-600",
-    darkText: "dark:text-blue-400",
-    darkBg: "dark:hover:bg-blue-900/20",
-    tooltip: "Voir les détails",
-  },
-  edit: {
-    bg: "hover:bg-cyan-50",
-    text: "text-cyan-600",
-    darkText: "dark:text-cyan-400",
-    darkBg: "dark:hover:bg-cyan-900/20",
-    tooltip: "Modifier",
-  },
-  delete: {
-    bg: "hover:bg-red-50",
-    text: "text-red-600",
-    darkText: "dark:text-red-400",
-    darkBg: "dark:hover:bg-red-900/20",
-    tooltip: "Supprimer",
-  },
-};
-
+// TODO: Ajouter un filtre par type de plongée
 const PlongeeList = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filter, setFilter] = useState("all");
-  const [hoveredRow, setHoveredRow] = useState(null);
-  const itemsPerPage = 10;
-
+  // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { useGetAll, useRemove, useValidate } = usePlongees();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
-  const { data, isLoading, error } = useGetAll();
+  const { data, isLoading, error, refetch } = useGetAll();
   const { data: adherentsData, isLoading: loadingAdherents } =
     useGetAllAdherents();
 
   const remove = useRemove();
   const validate = useValidate();
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const itemsPerPage = 10;
+
+  // ✅ Map des adhérents avec leurs infos (useMemo)
   const adherentMap = useMemo(() => {
     const map = {};
     if (adherentsData?.data) {
       adherentsData.data.forEach((adherent) => {
-        map[adherent.num_adherent] =
-          `${adherent.civilite} ${adherent.nom} ${adherent.prenom}`;
+        map[adherent.num_adherent] = {
+          nom: `${adherent.civilite} ${adherent.nom} ${adherent.prenom}`,
+          photo: adherent.photo,
+          num_adherent: adherent.num_adherent,
+        };
       });
     }
     return map;
   }, [adherentsData]);
 
-  const isLoadingData = isLoading || loadingAdherents;
+  const allPlongees = data?.data || [];
 
-  if (isLoadingData) return <LoadingSpinner />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  // ✅ Filtrage (useMemo)
+  const filteredPlongees = useMemo(() => {
+    return allPlongees.filter((p) => {
+      const adherentInfo = adherentMap[p.num_adherent] || {
+        nom: `#${p.num_adherent}`,
+        photo: null,
+      };
+      const adherentName = adherentInfo.nom;
 
-  let plongees = data?.data || [];
+      if (filter !== "all") {
+        if (filter === "valide" && p.valide_moniteur !== true) return false;
+        if (filter === "non_valide" && p.valide_moniteur !== false)
+          return false;
+      }
 
-  plongees = plongees.filter((p) => {
-    const adherentName = adherentMap[p.num_adherent] || "";
-    const matchSearch =
-      p.type_plongee?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      adherentName.toLowerCase().includes(searchTerm.toLowerCase());
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        return (
+          p.type_plongee?.toLowerCase().includes(search) ||
+          adherentName.toLowerCase().includes(search)
+        );
+      }
+      return true;
+    });
+  }, [allPlongees, adherentMap, filter, searchTerm]);
 
-    if (filter === "all") return matchSearch;
-    if (filter === "valide") return matchSearch && p.valide_moniteur === true;
-    if (filter === "non_valide")
-      return matchSearch && p.valide_moniteur === false;
-    return matchSearch;
-  });
-
-  const totalPages = Math.ceil(plongees.length / itemsPerPage);
+  // ✅ Pagination
+  const totalPages = Math.ceil(filteredPlongees.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedPlongees = plongees.slice(
+  const paginatedPlongees = filteredPlongees.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
 
+  // ✅ Fonctions
   const handleDelete = async (id) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette plongée ?")) {
+    try {
+      setLoading(true);
       await remove.mutateAsync(id);
+      toast.success("Plongée supprimée avec succès");
+      refetch();
+      setDeleteModal(null);
+    } catch (error) {
+      toast.error("Erreur lors de la suppression");
+      console.error("Delete error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleValidate = async (id) => {
-    await validate.mutateAsync(id);
+    try {
+      setLoading(true);
+      await validate.mutateAsync(id);
+      toast.success("Plongée validée avec succès");
+      refetch();
+    } catch (error) {
+      toast.error("Erreur lors de la validation");
+      console.error("Validate error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (plongees.length === 0) {
+  // ✅ RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
+  if (isLoading || loadingAdherents) return <LoadingSpinner />;
+  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+
+  if (filteredPlongees.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="text-center py-16"
+        className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg"
       >
-        <motion.div
-          animate={{
-            rotate: [0, 10, -10, 0],
-            transition: { duration: 1, repeat: Infinity, repeatDelay: 2 },
-          }}
-          className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-cyan-100 to-blue-100 rounded-full mb-4"
-        >
-          <FiDroplet className="w-10 h-10 text-cyan-500" />
-        </motion.div>
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+          <FiDroplet className="w-10 h-10 text-gray-400" />
+        </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {filter === "all"
-            ? "Aucune plongée enregistrée"
-            : filter === "valide"
-              ? "Aucune plongée validée"
-              : "Aucune plongée en attente"}
+          {searchTerm || filter !== "all"
+            ? "Aucune plongée trouvée"
+            : "Aucune plongée enregistrée"}
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          Commencez par enregistrer votre première plongée
+          {searchTerm || filter !== "all"
+            ? "Aucun résultat pour vos critères"
+            : "Commencez par enregistrer votre première plongée"}
         </p>
         <Link
           to="/plongees/create"
-          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
+          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
         >
           <FiPlus className="w-4 h-4" /> Nouvelle plongée
-          <FiChevronRight className="w-4 h-4" />
         </Link>
       </motion.div>
     );
   }
 
+  // ✅ RENDU DU COMPOSANT
   return (
-    <div className="space-y-4 p-4">
-      {/* Barre de recherche animée */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex flex-col sm:flex-row gap-4"
-      >
+    <div className="space-y-4">
+      {/* Barre de recherche et filtres */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
-          <SearchBar
+          <input
+            type="text"
+            placeholder="Rechercher par adhérent ou type de plongée..."
             value={searchTerm}
-            onChange={(val) => {
-              setSearchTerm(val);
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            placeholder="🔍 Rechercher par adhérent ou type de plongée..."
-            className="transition-all duration-300 focus:ring-2 focus:ring-cyan-500"
+            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
         <div className="flex gap-2">
@@ -203,214 +181,241 @@ const PlongeeList = () => {
               setFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="input-field w-auto bg-gradient-to-r from-gray-50 to-white dark:from-gray-700 dark:to-gray-600 rounded-xl border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-cyan-500 transition-all duration-300"
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="all">📊 Toutes ({plongees.length})</option>
-            <option value="valide">✅ Validées</option>
-            <option value="non_valide">⏳ Non validées</option>
+            <option value="all">Toutes</option>
+            <option value="valide">Validées</option>
+            <option value="non_valide">Non validées</option>
           </select>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Link
-              to="/plongees/create"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
-            >
-              <FiPlus className="w-4 h-4" /> Nouvelle
-            </Link>
-          </motion.div>
+          <Link
+            to="/plongees/create"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <FiPlus className="w-4 h-4" />
+            Nouvelle
+          </Link>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Tableau */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, type: "spring" }}
-        className="overflow-x-auto"
-      >
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600">
-            <tr>
-              {[
-                "Type",
-                "Adhérent",
-                "Date",
-                "Profondeur",
-                "Durée",
-                "Validé",
-                "Actions",
-              ].map((h, i) => (
-                <th
-                  key={h}
-                  className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider"
+      {/* Liste des plongées */}
+      <AnimatePresence>
+        {paginatedPlongees.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl"
+          >
+            <p className="text-gray-500 dark:text-gray-400 font-medium">
+              Aucune plongée trouvée
+            </p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+              {searchTerm || filter !== "all"
+                ? "Essayez de modifier vos filtres"
+                : "Aucune plongée pour le moment"}
+            </p>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="grid gap-3"
+          >
+            {paginatedPlongees.map((plongee) => {
+              const adherentInfo = adherentMap[plongee.num_adherent] || {
+                nom: `#${plongee.num_adherent}`,
+                photo: null,
+              };
+              const adherentName = adherentInfo.nom;
+
+              return (
+                <motion.div
+                  key={plongee.id_plongee}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
-                  <motion.span
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 * i }}
-                  >
-                    {h}
-                  </motion.span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            <AnimatePresence>
-              {paginatedPlongees.map((plongee, index) => {
-                const adherentName =
-                  adherentMap[plongee.num_adherent] ||
-                  `#${plongee.num_adherent}`;
+                  <div className="flex items-center gap-4">
+                    {/* Photo / Avatar de l'adhérent */}
+                    <div className="flex-shrink-0">
+                      {adherentInfo.photo ? (
+                        <img
+                          src={adherentInfo.photo}
+                          alt={adherentName}
+                          className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
+                          <FiDroplet className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
+                        </div>
+                      )}
+                      <div className="text-center mt-1">
+                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                          #{plongee.num_adherent}
+                        </span>
+                      </div>
+                    </div>
 
-                return (
-                  <motion.tr
-                    key={plongee.id_plongee}
-                    custom={index}
-                    variants={tableRowVariants}
-                    initial="hidden"
-                    animate="visible"
-                    whileHover="hover"
-                    onHoverStart={() => setHoveredRow(plongee.id_plongee)}
-                    onHoverEnd={() => setHoveredRow(null)}
-                    className="transition-all duration-200"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <motion.span
-                        whileHover={{ scale: 1.05 }}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-gradient-to-r from-cyan-100 to-blue-100 text-cyan-800 dark:from-cyan-900/30 dark:to-blue-900/30 dark:text-cyan-400 rounded-full"
-                      >
-                        <FiDroplet className="w-3 h-3" />
-                        {plongee.type_plongee}
-                      </motion.span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <motion.div
-                          animate={{
-                            rotate:
-                              hoveredRow === plongee.id_plongee
-                                ? [0, 5, -5, 0]
-                                : 0,
-                          }}
-                          transition={{ duration: 0.5 }}
-                          className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-100 to-blue-100 flex items-center justify-center"
-                        >
-                          <FiTrendingUp className="w-4 h-4 text-cyan-600" />
-                        </motion.div>
+                    {/* Informations */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {adherentName}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                              {adherentName}
+                            </h3>
+                            <span className="text-sm text-gray-400 dark:text-gray-500">
+                              •
+                            </span>
+                            <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                              {plongee.type_plongee}
+                            </span>
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            #{plongee.num_adherent}
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <FiCalendar className="w-3.5 h-3.5" />
+                              {formatDate(plongee.date)}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              Profondeur:{" "}
+                              <span className="font-medium text-gray-700 dark:text-gray-300">
+                                {plongee.profondeur_max}m
+                              </span>
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              Durée:{" "}
+                              <span className="font-medium text-gray-700 dark:text-gray-300">
+                                {plongee.duree}min
+                              </span>
+                            </span>
+                            <span>•</span>
+                            {plongee.valide_moniteur ? (
+                              <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
+                                <FiCheck className="w-3.5 h-3.5" /> Validée
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400 font-medium">
+                                <FiClock className="w-3.5 h-3.5" /> En attente
+                              </span>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                      {formatDate(plongee.date)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-white">
-                        <FiClock className="w-3 h-3 text-gray-400" />
-                        {plongee.profondeur_max}m
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                      {plongee.duree}min
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {plongee.valide_moniteur ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
-                          <FiCheck className="w-3 h-3" /> Validée
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-yellow-700 bg-yellow-100 rounded-full">
-                          <FiClock className="w-3 h-3" /> En attente
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1">
-                        {/* ✅ 1. Valider (admin uniquement - non validée) */}
-                        {!plongee.valide_moniteur && (
-                          <motion.div
-                            whileHover={{ scale: 1.15 }}
-                            whileTap={{ scale: 0.85 }}
-                          >
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {/* Valider - uniquement si non validée */}
+                          {!plongee.valide_moniteur && (
                             <button
                               onClick={() => handleValidate(plongee.id_plongee)}
-                              className={`p-2 ${actionColors.validate.text} ${actionColors.validate.bg} ${actionColors.validate.darkText} ${actionColors.validate.darkBg} rounded-lg transition-all duration-200 inline-flex items-center justify-center`}
-                              title={actionColors.validate.tooltip}
+                              disabled={loading}
+                              className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Valider la plongée"
                             >
                               <FiCheck className="w-4 h-4" />
                             </button>
-                          </motion.div>
-                        )}
+                          )}
 
-                        {/* ✅ 2. Voir (toujours visible) */}
-                        <motion.div
-                          whileHover={{ scale: 1.15 }}
-                          whileTap={{ scale: 0.85 }}
-                        >
                           <Link
                             to={`/plongees/${plongee.id_plongee}`}
-                            className={`p-2 ${actionColors.view.text} ${actionColors.view.bg} ${actionColors.view.darkText} ${actionColors.view.darkBg} rounded-lg transition-all duration-200 inline-flex items-center justify-center`}
-                            title={actionColors.view.tooltip}
+                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            title="Voir"
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                        </motion.div>
-
-                        {/* ✅ 3. Modifier (toujours visible) */}
-                        <motion.div
-                          whileHover={{ scale: 1.15 }}
-                          whileTap={{ scale: 0.85 }}
-                        >
                           <Link
                             to={`/plongees/edit/${plongee.id_plongee}`}
-                            className={`p-2 ${actionColors.edit.text} ${actionColors.edit.bg} ${actionColors.edit.darkText} ${actionColors.edit.darkBg} rounded-lg transition-all duration-200 inline-flex items-center justify-center`}
-                            title={actionColors.edit.tooltip}
+                            className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                            title="Modifier"
                           >
                             <FiEdit className="w-4 h-4" />
                           </Link>
-                        </motion.div>
-
-                        {/* ✅ 4. Supprimer (toujours visible) */}
-                        <motion.div
-                          whileHover={{ scale: 1.15 }}
-                          whileTap={{ scale: 0.85 }}
-                        >
                           <button
-                            onClick={() => handleDelete(plongee.id_plongee)}
-                            className={`p-2 ${actionColors.delete.text} ${actionColors.delete.bg} ${actionColors.delete.darkText} ${actionColors.delete.darkBg} rounded-lg transition-all duration-200 inline-flex items-center justify-center`}
-                            title={actionColors.delete.tooltip}
+                            onClick={() => setDeleteModal(plongee.id_plongee)}
+                            disabled={loading}
+                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                            title="Supprimer"
                           >
                             <FiTrash2 className="w-4 h-4" />
                           </button>
-                        </motion.div>
+                        </div>
                       </div>
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </AnimatePresence>
-          </tbody>
-        </table>
-      </motion.div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      {/* Pagination */}
       {totalPages > 1 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="border-t border-gray-200 dark:border-gray-700 pt-4"
+          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
         >
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Précédent
+          </button>
+          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Suivant
+          </button>
         </motion.div>
+      )}
+
+      {/* Modal de confirmation de suppression */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
+                <FiTrash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold">Confirmer la suppression</h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Êtes-vous sûr de vouloir supprimer cette plongée ?
+              <br />
+              <span className="text-sm text-red-500 font-medium">
+                Cette action est irréversible.
+              </span>
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModal(null)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleDelete(deleteModal)}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

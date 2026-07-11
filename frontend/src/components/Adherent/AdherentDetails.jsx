@@ -32,7 +32,8 @@ import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 
-// Animations
+// Animations - j'ai repris les mêmes que sur la page d'accueil
+// Faudrait peut-être mutualiser ça un jour...
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -50,6 +51,8 @@ const staggerContainer = {
   },
 };
 
+// TODO: Ajouter un composant pour les informations de santé (allergies, etc.)
+// Le client a demandé mais j'attends le retour du médecin fédéral
 const AdherentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -67,9 +70,12 @@ const AdherentDetails = () => {
       navigate("/adherents");
     } catch (error) {
       toast.error("Erreur lors de la suppression");
+      console.error("Delete error:", error); // J'ai ajouté le log pour debug
     }
   };
 
+  // J'ai mis un petit loading avec un minimum de hauteur
+  // Sinon ça fait des sauts de page pas sympa
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -78,6 +84,7 @@ const AdherentDetails = () => {
     );
   }
 
+  // Je devrais peut-être gérer le cas où l'ID est invalide...
   if (!adherent) {
     return (
       <motion.div
@@ -105,6 +112,8 @@ const AdherentDetails = () => {
     );
   }
 
+  // J'ai fait un composant réutilisable pour les infos
+  // C'est plus propre que de répéter le même code 15 fois
   const InfoItem = ({
     icon: Icon,
     label,
@@ -142,6 +151,8 @@ const AdherentDetails = () => {
     </motion.div>
   );
 
+  // Section card avec un joli fond
+  // J'ai mis un gradient subtil, j'espère que ça rend bien sur tous les écrans
   const SectionCard = ({ title, icon: Icon, children, className = "" }) => (
     <motion.div
       variants={fadeInUp}
@@ -170,12 +181,6 @@ const AdherentDetails = () => {
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate("/adherents")}
-            className="group inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-300"
-          >
-            <FiArrowLeft className="w-5 h-5 text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-white transition-colors" />
-          </button>
           <div>
             <div className="flex items-center gap-3">
               <span className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10">

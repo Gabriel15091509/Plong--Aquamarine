@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -57,6 +57,7 @@ const InscriptionDetails = () => {
   const { id } = useParams();
   const inscriptionId = parseInt(id);
 
+  // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { useGetById: useGetInscriptionById } = useInscriptions();
   const { useGetById: useGetAdherentById } = useAdherents();
   const { useGetById: useGetSortieById } = useSorties();
@@ -67,55 +68,56 @@ const InscriptionDetails = () => {
     error: inscriptionError,
   } = useGetInscriptionById(inscriptionId);
 
-  const [inscription, setInscription] = useState(null);
-  const [adherent, setAdherent] = useState(null);
-  const [sortie, setSortie] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // ✅ Récupération des données liées avec des hooks directs
+  const numAdherent = useMemo(() => {
+    if (!inscriptionData?.data) return null;
+    return inscriptionData.data.num_adherent;
+  }, [inscriptionData]);
 
-  useEffect(() => {
-    const loadRelatedData = async () => {
-      if (!inscriptionData?.data) return;
+  const idSortie = useMemo(() => {
+    if (!inscriptionData?.data) return null;
+    return inscriptionData.data.id_sortie;
+  }, [inscriptionData]);
 
-      const ins = inscriptionData.data;
-      setInscription(ins);
+  // ✅ Appel des hooks pour les données liées
+  const {
+    data: adherentData,
+    isLoading: isLoadingAdherent,
+    error: adherentError,
+  } = useGetAdherentById(numAdherent, {
+    enabled: !!numAdherent, // Ne s'exécute que si numAdherent existe
+  });
 
-      if (ins.num_adherent) {
-        try {
-          const adherentResponse = await useGetAdherentById(ins.num_adherent);
-          if (adherentResponse?.data) {
-            setAdherent(adherentResponse.data);
-          }
-        } catch (err) {
-          console.error("Erreur chargement adhérent:", err);
-        }
-      }
+  const {
+    data: sortieData,
+    isLoading: isLoadingSortie,
+    error: sortieError,
+  } = useGetSortieById(idSortie, {
+    enabled: !!idSortie, // Ne s'exécute que si idSortie existe
+  });
 
-      if (ins.id_sortie) {
-        try {
-          const sortieResponse = await useGetSortieById(ins.id_sortie);
-          if (sortieResponse?.data) {
-            setSortie(sortieResponse.data);
-          }
-        } catch (err) {
-          console.error("Erreur chargement sortie:", err);
-        }
-      }
+  // ✅ Construction des états avec useMemo
+  const inscription = useMemo(() => {
+    if (!inscriptionData?.data) return null;
+    return inscriptionData.data;
+  }, [inscriptionData]);
 
-      setLoading(false);
-    };
+  const adherent = useMemo(() => {
+    if (!adherentData?.data) return null;
+    return adherentData.data;
+  }, [adherentData]);
 
-    loadRelatedData();
-  }, [inscriptionData, useGetAdherentById, useGetSortieById]);
+  const sortie = useMemo(() => {
+    if (!sortieData?.data) return null;
+    return sortieData.data;
+  }, [sortieData]);
 
-  useEffect(() => {
-    if (inscriptionError) {
-      setError(inscriptionError);
-      setLoading(false);
-    }
-  }, [inscriptionError]);
+  // ✅ Vérification du chargement combiné
+  const isLoading = isLoadingInscription || isLoadingAdherent || isLoadingSortie;
+  const error = inscriptionError || adherentError || sortieError;
 
-  if (isLoadingInscription || loading) {
+  // ✅ RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <LoadingSpinner />
@@ -123,7 +125,7 @@ const InscriptionDetails = () => {
     );
   }
 
-  if (error || inscriptionError) {
+  if (error) {
     return (
       <motion.div
         variants={scaleIn}
@@ -139,7 +141,6 @@ const InscriptionDetails = () => {
         </h3>
         <p className="text-gray-500 dark:text-gray-400">
           {error?.message ||
-            inscriptionError?.message ||
             "Une erreur est survenue lors du chargement des données"}
         </p>
         <button

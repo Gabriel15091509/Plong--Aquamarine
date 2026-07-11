@@ -121,8 +121,7 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
       "Certificat expire bientot":
         "Le certificat médical expire dans moins de 30 jours",
       "Adhésion expirée": "L'adhésion est arrivée à expiration",
-      "Adhesion expire bientot":
-        "L'adhésion expire dans moins de 30 jours",
+      "Adhesion expire bientot": "L'adhésion expire dans moins de 30 jours",
       "Paiement en retard": "Un paiement est en attente",
       Formation: "Une formation est disponible",
     };
@@ -154,11 +153,9 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
   };
 
   return (
-    <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200/80 sticky top-0 z-40 transition-colors duration-300 dark:bg-gray-800/80 dark:border-gray-700/80">
-      <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3 sm:gap-4">
-        
-        </div>
+    <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200/80 sticky top-0 z-40 transition-colors duration-300 dark:bg-gray-800/80 dark:border-gray-700/80 h-16">
+      <div className="px-4 sm:px-6 h-full flex items-center justify-between">
+        <div className="flex items-center gap-3 sm:gap-4"></div>
 
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Bouton Toggle Thème */}

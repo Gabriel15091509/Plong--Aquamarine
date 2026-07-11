@@ -1,42 +1,73 @@
-const express = require('express');
+// backend/routes/index.js
+const express = require("express");
 const router = express.Router();
-const AdherentController = require('../controllers/AdherentController');
-const AuthMiddleware = require('../middlewares/authMiddleware');
+const AdherentController = require("../controllers/AdherentController");
+const AuthMiddleware = require("../middlewares/authMiddleware");
 
 const adherentController = new AdherentController();
 
-// Routes publiques
-router.get('/', adherentController.getAll.bind(adherentController));
-router.get('/active', adherentController.getActiveAdherents.bind(adherentController));
-router.get('/expiring-certificates', adherentController.getWithExpiringCertificates.bind(adherentController));
-router.get('/search', adherentController.search.bind(adherentController));
-router.get('/stats', adherentController.getStats.bind(adherentController)); // ✅ Ajouté
-router.get('/email/:email', adherentController.getByEmail.bind(adherentController));
-router.get('/niveau/:niveau', adherentController.getByNiveau.bind(adherentController));
-router.get('/:id', adherentController.getById.bind(adherentController));
-router.get('/:id/details', adherentController.getWithDetails.bind(adherentController));
+// ============ ROUTES ADHÉRENTS ============
 
-// Routes protégées
-router.post('/',
+// Routes publiques
+router.get("/adherents", adherentController.getAll.bind(adherentController));
+router.get(
+  "/adherents/active",
+  adherentController.getActiveAdherents.bind(adherentController),
+);
+router.get(
+  "/adherents/expiring-certificates",
+  adherentController.getWithExpiringCertificates.bind(adherentController),
+);
+router.get(
+  "/adherents/search",
+  adherentController.search.bind(adherentController),
+);
+router.get(
+  "/adherents/stats",
+  adherentController.getStats.bind(adherentController),
+);
+router.get(
+  "/adherents/email/:email",
+  adherentController.getByEmail.bind(adherentController),
+);
+router.get(
+  "/adherents/niveau/:niveau",
+  adherentController.getByNiveau.bind(adherentController),
+);
+router.get(
+  "/adherents/:id",
+  adherentController.getById.bind(adherentController),
+);
+router.get(
+  "/adherents/:id/details",
+  adherentController.getWithDetails.bind(adherentController),
+);
+
+// Routes protégées (nécessitent authentification)
+router.post(
+  "/adherents",
   AuthMiddleware.authenticate,
   adherentController.validateBeforeCreate.bind(adherentController),
-  adherentController.create.bind(adherentController)
+  adherentController.create.bind(adherentController),
 );
 
-router.put('/:id',
+router.put(
+  "/adherents/:id",
   AuthMiddleware.authenticate,
   adherentController.validateBeforeUpdate.bind(adherentController),
-  adherentController.update.bind(adherentController)
+  adherentController.update.bind(adherentController),
 );
 
-router.patch('/:id/increment-plongees',
+router.patch(
+  "/adherents/:id/increment-plongees",
   AuthMiddleware.authenticate,
-  adherentController.incrementPlongees.bind(adherentController)
+  adherentController.incrementPlongees.bind(adherentController),
 );
 
-router.delete('/:id',
+router.delete(
+  "/adherents/:id",
   AuthMiddleware.authenticate,
-  adherentController.delete.bind(adherentController)
+  adherentController.delete.bind(adherentController),
 );
 
 module.exports = router;

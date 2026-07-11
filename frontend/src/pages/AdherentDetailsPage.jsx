@@ -14,13 +14,7 @@ const AdherentDetailsPage = () => {
       animate={{ opacity: 1 }}
       className="space-y-6"
     >
-      <button
-        onClick={() => navigate('/adherents')}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-      >
-        <FiArrowLeft className="w-4 h-4" />
-        Retour
-      </button>
+    
 
       <AdherentDetails id={id} />
     </motion.div>

@@ -1,7 +1,7 @@
-// backend/src/controllers/AuthController.js
+﻿// backend/src/controllers/AuthController.js
 const jwt = require("jsonwebtoken");
 const { User } = require("../models");
-// ✅ NE PAS importer bcrypt ici — le hook User.beforeUpdate s'en charge
+// âœ… NE PAS importer bcrypt ici â€” le hook User.beforeUpdate s'en charge
 
 class AuthController {
   async login(req, res) {
@@ -22,7 +22,7 @@ class AuthController {
       if (!user.active)
         return res
           .status(401)
-          .json({ success: false, message: "Compte désactivé" });
+          .json({ success: false, message: "Compte dÃ©sactivÃ©" });
 
       const isValid = await user.comparePassword(password);
       if (!isValid)
@@ -80,7 +80,7 @@ class AuthController {
           .json({
             success: false,
             message:
-              "Le nouveau mot de passe doit contenir au moins 6 caractères",
+              "Le nouveau mot de passe doit contenir au moins 6 caractÃ¨res",
           });
       }
 
@@ -88,9 +88,9 @@ class AuthController {
       if (!user)
         return res
           .status(404)
-          .json({ success: false, message: "Utilisateur non trouvé" });
+          .json({ success: false, message: "Utilisateur non trouvÃ©" });
 
-      // Si ce n'est PAS un changement forcé, vérifier l'ancien mot de passe
+      // Si ce n'est PAS un changement forcÃ©, vÃ©rifier l'ancien mot de passe
       if (!user.must_change_password) {
         if (!oldPassword) {
           return res
@@ -104,10 +104,10 @@ class AuthController {
             .json({ success: false, message: "Ancien mot de passe incorrect" });
       }
 
-      // ✅ Assigner directement — le hook beforeUpdate hash automatiquement
+      // âœ… Assigner directement â€” le hook beforeUpdate hash automatiquement
       user.password = newPassword;
       user.must_change_password = false;
-      await user.save(); // ← déclenche beforeUpdate → hash automatique
+      await user.save(); // â† dÃ©clenche beforeUpdate â†’ hash automatique
 
       const token = jwt.sign(
         {
@@ -133,7 +133,7 @@ class AuthController {
       res.json({
         success: true,
         data: { token, user: userData },
-        message: "Mot de passe changé avec succès",
+        message: "Mot de passe changÃ© avec succÃ¨s",
       });
     } catch (error) {
       console.error("Change password error:", error);
@@ -149,6 +149,24 @@ class AuthController {
   getUserPermissions(role) {
     const permissions = {
       president: [
+        "all",
+        "manage_users",
+        "manage_staff",
+        "view_stats",
+        "manage_settings",
+        "manage_sorties",
+        "validate_plongees",
+        "manage_formations",
+        "view_adherents",
+        "manage_paiements",
+        "exports",
+        "change_niveau",
+        "change_role",
+        "disable_account",
+        "delete_account",
+        "reset_password",
+      ],
+      directeur_technique: [
         "all",
         "manage_users",
         "manage_staff",
@@ -189,3 +207,4 @@ class AuthController {
 }
 
 module.exports = AuthController;
+

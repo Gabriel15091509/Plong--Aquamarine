@@ -15,75 +15,30 @@ import {
   FiCalendar,
   FiClock,
   FiChevronRight,
+  FiUser,
 } from "react-icons/fi";
+import LoadingSpinner from "../Common/LoadingSpinner";
 import { useInscriptions } from "../../hooks/useInscriptions";
 import { useAdherents } from "../../hooks/useAdherents";
 import { useSorties } from "../../hooks/useSorties";
 import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
-import Pagination from "../Common/Pagination";
-import LoadingSpinner from "../Common/LoadingSpinner";
-import SearchBar from "../Common/SearchBar";
 import { formatDate } from "../../utils/helpers";
 
-// ✅ Animations
-const tableRowVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.05,
-      duration: 0.3,
-      type: "spring",
-      stiffness: 300,
-      damping: 24,
-    },
-  }),
-  hover: {
-    backgroundColor: "rgba(99, 102, 241, 0.03)",
-    transition: { duration: 0.2 },
-  },
-};
-
-// ✅ Couleurs des actions
-const actionColors = {
-  pointage: {
-    bg: "hover:bg-indigo-50 dark:hover:bg-indigo-900/20",
-    text: "text-indigo-600 dark:text-indigo-400",
-    tooltip: "Gérer le pointage",
-  },
-  confirm: {
-    bg: "hover:bg-emerald-50 dark:hover:bg-emerald-900/20",
-    text: "text-emerald-600 dark:text-emerald-400",
-    tooltip: "Confirmer",
-  },
-  cancel: {
-    bg: "hover:bg-orange-50 dark:hover:bg-orange-900/20",
-    text: "text-orange-600 dark:text-orange-400",
-    tooltip: "Annuler",
-  },
-  view: {
-    bg: "hover:bg-blue-50 dark:hover:bg-blue-900/20",
-    text: "text-blue-600 dark:text-blue-400",
-    tooltip: "Voir les détails",
-  },
-  delete: {
-    bg: "hover:bg-red-50 dark:hover:bg-red-900/20",
-    text: "text-red-600 dark:text-red-400",
-    tooltip: "Supprimer",
-  },
-};
-
+// TODO: Ajouter un filtre par date de sortie
 const InscriptionList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState("all");
   const [filterSortie, setFilterSortie] = useState("all");
   const [loading, setLoading] = useState(false);
-  const [hoveredRow, setHoveredRow] = useState(null);
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [cancelModal, setCancelModal] = useState(null);
+  const [waitlistModal, setWaitlistModal] = useState(null);
   const itemsPerPage = 10;
 
+  // Auth
   const { user } = useAuth();
   const isAdmin = [
     "president",
@@ -94,6 +49,7 @@ const InscriptionList = () => {
   ].includes(user?.role);
   const isAdherent = !isAdmin;
 
+  // Hooks
   const { useGetAll, useRemove, useConfirm, useCancel, useUpdate } =
     useInscriptions();
   const { useGetAll: useGetAllAdherents } = useAdherents();
@@ -108,14 +64,19 @@ const InscriptionList = () => {
   const confirm = useConfirm();
   const cancel = useCancel();
   const updateInscription = useUpdate();
+
   const allInscriptions = data?.data || [];
 
+  // Map des adhérents avec leurs infos
   const adherentMap = useMemo(() => {
     const map = {};
     if (adherentsData?.data) {
       adherentsData.data.forEach((adherent) => {
-        map[adherent.num_adherent] =
-          `${adherent.civilite} ${adherent.nom} ${adherent.prenom}`;
+        map[adherent.num_adherent] = {
+          nom: `${adherent.civilite} ${adherent.nom} ${adherent.prenom}`,
+          photo: adherent.photo,
+          num_adherent: adherent.num_adherent,
+        };
       });
     }
     return map;
@@ -126,6 +87,7 @@ const InscriptionList = () => {
     return adherentsData.data.find((adherent) => adherent.email === user.email);
   }, [adherentsData, user]);
 
+  // Capacités par sortie
   const capacityBySortie = useMemo(() => {
     const map = {};
     if (sortiesData?.data) {
@@ -155,6 +117,7 @@ const InscriptionList = () => {
     return map;
   }, [sortiesData, allInscriptions]);
 
+  // Map des sorties
   const sortieMap = useMemo(() => {
     const map = {};
     if (sortiesData?.data) {
@@ -171,6 +134,7 @@ const InscriptionList = () => {
     return map;
   }, [sortiesData, capacityBySortie]);
 
+  // Options de filtrage
   const sortieOptions = useMemo(() => {
     const options = [{ value: "all", label: "Toutes les sorties" }];
     if (sortiesData?.data) {
@@ -184,10 +148,10 @@ const InscriptionList = () => {
     return options;
   }, [sortiesData]);
 
+  // Filtrage par rôle
   const filteredByRole = useMemo(() => {
-    if (isAdmin) {
-      return allInscriptions;
-    } else if (isAdherent && currentAdherent) {
+    if (isAdmin) return allInscriptions;
+    if (isAdherent && currentAdherent) {
       return allInscriptions.filter(
         (i) => i.num_adherent === currentAdherent.num_adherent,
       );
@@ -195,69 +159,43 @@ const InscriptionList = () => {
     return [];
   }, [allInscriptions, isAdmin, isAdherent, currentAdherent]);
 
-  const filteredInscriptions = filteredByRole.filter((i) => {
-    const adherentName = adherentMap[i.num_adherent] || "";
-    const sortieName = sortieMap[i.id_sortie]?.label || "";
-    const matchSearch =
-      adherentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sortieName.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filtrage final
+  const filteredInscriptions = useMemo(() => {
+    return filteredByRole.filter((i) => {
+      const adherentInfo = adherentMap[i.num_adherent] || { nom: `#${i.num_adherent}` };
+      const adherentName = adherentInfo.nom;
+      const sortieName = sortieMap[i.id_sortie]?.label || "";
+      const matchSearch =
+        adherentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        sortieName.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchStatus = filter === "all" || i.statut === filter;
-    const matchSortie =
-      filterSortie === "all" || i.id_sortie.toString() === filterSortie;
+      const matchStatus = filter === "all" || i.statut === filter;
+      const matchSortie =
+        filterSortie === "all" || i.id_sortie.toString() === filterSortie;
 
-    return matchSearch && matchStatus && matchSortie;
-  });
+      return matchSearch && matchStatus && matchSortie;
+    });
+  }, [
+    filteredByRole,
+    adherentMap,
+    sortieMap,
+    searchTerm,
+    filter,
+    filterSortie,
+  ]);
 
-  const stats = useMemo(() => {
-    const counts = {
-      total: filteredInscriptions.length,
-      attente: filteredInscriptions.filter((i) => i.statut === "En attente")
-        .length,
-      confirmee: filteredInscriptions.filter((i) => i.statut === "Confirmée")
-        .length,
-      annulee: filteredInscriptions.filter((i) => i.statut === "Annulée")
-        .length,
-      listeAttente: filteredInscriptions.filter(
-        (i) => i.statut === "Liste d'attente",
-      ).length,
-      present: filteredInscriptions.filter(
-        (i) => i.presence && i.presence_checked,
-      ).length,
-      absent: filteredInscriptions.filter(
-        (i) => !i.presence && i.presence_checked,
-      ).length,
-      nonPointes: filteredInscriptions.filter((i) => !i.presence_checked)
-        .length,
-    };
-    return counts;
-  }, [filteredInscriptions]);
-
-  const selectedSortieCapacity =
-    filterSortie !== "all" ? capacityBySortie[parseInt(filterSortie)] : null;
-
+  // Pagination
   const totalPages = Math.ceil(filteredInscriptions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedInscriptions = filteredInscriptions.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
+  const paginatedInscriptions = useMemo(() => {
+    return filteredInscriptions.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredInscriptions, startIndex, itemsPerPage]);
 
-  const handleFilterChange = (newFilter) => {
-    setFilter(newFilter);
-    setCurrentPage(1);
-  };
+  if (isLoading || loadingAdherents || loadingSorties)
+    return <LoadingSpinner />;
+  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
-  const handleSortieChange = (newSortie) => {
-    setFilterSortie(newSortie);
-    setCurrentPage(1);
-  };
-
-  const handleSearchChange = (newSearch) => {
-    setSearchTerm(newSearch);
-    setCurrentPage(1);
-  };
-
+  // Actions
   const handleDelete = async (id) => {
     if (!isAdmin) {
       toast.error("Vous n'avez pas les droits pour supprimer une inscription");
@@ -267,6 +205,8 @@ const InscriptionList = () => {
     try {
       await remove.mutateAsync(id);
       toast.success("Inscription supprimée avec succès");
+      refetch();
+      setDeleteModal(null);
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Erreur lors de la suppression",
@@ -285,6 +225,8 @@ const InscriptionList = () => {
     try {
       await confirm.mutateAsync(id);
       toast.success("Inscription confirmée avec succès");
+      refetch();
+      setConfirmModal(null);
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Erreur lors de la confirmation",
@@ -299,6 +241,8 @@ const InscriptionList = () => {
     try {
       await cancel.mutateAsync(id);
       toast.success("Inscription annulée avec succès");
+      refetch();
+      setCancelModal(null);
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Erreur lors de l'annulation",
@@ -320,6 +264,8 @@ const InscriptionList = () => {
         data: { statut: "Liste d'attente" },
       });
       toast.success("Inscription ajoutée à la liste d'attente");
+      refetch();
+      setWaitlistModal(null);
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
@@ -330,87 +276,82 @@ const InscriptionList = () => {
     }
   };
 
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
-  if (error) {
-    return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (filteredInscriptions.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg"
+      >
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+          <FiClipboard className="w-10 h-10 text-gray-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          {isAdherent
+            ? "Vous n'avez pas encore d'inscription"
+            : "Aucune inscription trouvée"}
+        </h3>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">
+          {searchTerm || filter !== "all" || filterSortie !== "all"
+            ? "Aucun résultat pour vos critères"
+            : isAdherent
+              ? "Inscrivez-vous à une sortie de plongée"
+              : "Commencez par créer une nouvelle inscription"}
+        </p>
+        <Link
+          to="/inscriptions/create"
+          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+        >
+          <FiPlus className="w-4 h-4" />
+          {isAdherent ? "M'inscrire" : "Nouvelle inscription"}
+        </Link>
+      </motion.div>
+    );
   }
 
   return (
-    <div className="space-y-4 p-4">
-      {/* ✅ Message pour les adhérents */}
-      {isAdherent && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <span className="text-blue-600 dark:text-blue-400 text-lg">ℹ️</span>
-            <div>
-              <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
-                Vos inscriptions
-              </p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                Vous voyez uniquement vos propres inscriptions. Vous pouvez
-                annuler une inscription en attente ou confirmée.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ✅ Message pour les admins */}
-      {isAdmin && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/30 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <span className="text-green-600 dark:text-green-400 text-lg">
-              👑
-            </span>
-            <div>
-              <p className="text-sm text-green-800 dark:text-green-300 font-medium">
-                Gestion des inscriptions
-              </p>
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                Vous avez accès à toutes les inscriptions. Vous pouvez
-                confirmer, annuler ou supprimer des inscriptions.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Barre de filtres */}
-      <div className="flex flex-col lg:flex-row gap-4">
+    <div className="space-y-4">
+      {/* Barre de recherche */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
-          <SearchBar
-            value={searchTerm}
-            onChange={handleSearchChange}
+          <input
+            type="text"
             placeholder={
               isAdherent
                 ? "Rechercher dans vos inscriptions..."
                 : "Rechercher par adhérent ou sortie..."
             }
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
-
         <div className="flex flex-wrap gap-2">
           <select
             value={filter}
-            onChange={(e) => handleFilterChange(e.target.value)}
-            className="input-field w-auto min-w-[140px]"
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="all">Tous les statuts</option>
-            <option value="En attente">En attente ({stats.attente})</option>
-            <option value="Confirmée">Confirmées ({stats.confirmee})</option>
-            <option value="Annulée">Annulées ({stats.annulee})</option>
-            <option value="Liste d'attente">
-              Liste d'attente ({stats.listeAttente})
-            </option>
+            <option value="all">Tous</option>
+            <option value="En attente">En attente</option>
+            <option value="Confirmée">Confirmées</option>
+            <option value="Annulée">Annulées</option>
+            <option value="Liste d'attente">Liste d'attente</option>
           </select>
 
           <select
             value={filterSortie}
-            onChange={(e) => handleSortieChange(e.target.value)}
-            className="input-field w-auto min-w-[180px]"
+            onChange={(e) => {
+              setFilterSortie(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
           >
             {sortieOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -418,307 +359,404 @@ const InscriptionList = () => {
               </option>
             ))}
           </select>
-        </div>
-      </div>
 
-      {/* Statistiques rapides */}
-      <div className="flex flex-wrap gap-2 text-sm">
-        {[
-          {
-            label: isAdherent ? "Vos inscriptions" : "Total",
-            value: stats.total,
-          },
-          { label: "En attente", value: stats.attente },
-          { label: "Confirmées", value: stats.confirmee },
-          { label: "Annulées", value: stats.annulee },
-          { label: "Liste d'attente", value: stats.listeAttente },
-          { label: "Présents", value: stats.present },
-          { label: "Absents", value: stats.absent },
-          { label: "Non pointés", value: stats.nonPointes },
-        ].map((stat, index) => (
-          <span
-            key={stat.label}
-            className="px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-600 dark:text-gray-400"
+          <Link
+            to="/inscriptions/create"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
           >
-            {stat.label}: <strong>{stat.value}</strong>
-          </span>
-        ))}
-        {filterSortie !== "all" && (
-          <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-full flex items-center gap-1">
-            {sortieMap[parseInt(filterSortie)]?.label || "Sortie sélectionnée"}
-            <button
-              onClick={() => handleSortieChange("all")}
-              className="ml-1 hover:text-indigo-600"
-            >
-              <FiX className="w-3 h-3" />
-            </button>
-          </span>
-        )}
+            <FiPlus className="w-4 h-4" />
+            {isAdherent ? "M'inscrire" : "Nouvelle"}
+          </Link>
+        </div>
       </div>
 
-      {selectedSortieCapacity && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {[
-            { label: "Places", value: selectedSortieCapacity.nbPlaces },
-            { label: "Confirmées", value: selectedSortieCapacity.confirmees },
-            {
-              label: "Disponibles",
-              value: selectedSortieCapacity.placesDisponibles,
-            },
-            { label: "En attente", value: selectedSortieCapacity.enAttente },
-            {
-              label: "Liste d'attente",
-              value: selectedSortieCapacity.listeAttente,
-            },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
-            >
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                {item.label}
-              </p>
-              <p className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Liste des inscriptions */}
+      <AnimatePresence>
+        {paginatedInscriptions.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl"
+          >
+            <p className="text-gray-500 dark:text-gray-400 font-medium">
+              Aucune inscription trouvée
+            </p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+              {searchTerm || filter !== "all" || filterSortie !== "all"
+                ? "Essayez de modifier vos filtres"
+                : "Aucune inscription pour le moment"}
+            </p>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="grid gap-3"
+          >
+            {paginatedInscriptions.map((inscription) => {
+              const adherentInfo = adherentMap[inscription.num_adherent] || {
+                nom: `#${inscription.num_adherent}`,
+                photo: null,
+              };
+              const adherentName = adherentInfo.nom;
+              const sortieInfo = sortieMap[inscription.id_sortie] || {
+                label: `#${inscription.id_sortie}`,
+              };
+              const capacityInfo = capacityBySortie[inscription.id_sortie] || {};
+              const hasAvailablePlace = (capacityInfo.placesDisponibles || 0) > 0;
+              const canConfirm =
+                isAdmin &&
+                ["En attente", "Liste d'attente"].includes(inscription.statut) &&
+                hasAvailablePlace;
+              const canMoveToWaitlist =
+                isAdmin &&
+                inscription.statut === "En attente" &&
+                !hasAvailablePlace;
+              const isOwnInscription =
+                isAdherent &&
+                currentAdherent &&
+                inscription.num_adherent === currentAdherent.num_adherent;
 
-      {/* Tableau */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
-              <tr>
-                {["Adhérent", "Sortie", "Date", "Présence", "Statut", ""].map(
-                  (h, i) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      {h}
-                    </th>
-                  ),
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {paginatedInscriptions.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="6"
-                    className="px-4 py-12 text-center text-gray-500"
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <FiX className="w-12 h-12 text-gray-300" />
-                      <p>
-                        {isAdherent
-                          ? "Vous n'avez pas encore d'inscription"
-                          : "Aucune inscription trouvée"}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                paginatedInscriptions.map((inscription, index) => {
-                  const adherentName =
-                    adherentMap[inscription.num_adherent] ||
-                    `#${inscription.num_adherent}`;
-                  const sortieInfo = sortieMap[inscription.id_sortie] || {
-                    label: `#${inscription.id_sortie}`,
-                  };
-                  const capacityInfo =
-                    capacityBySortie[inscription.id_sortie] || {};
-                  const hasAvailablePlace =
-                    (capacityInfo.placesDisponibles || 0) > 0;
-                  const canConfirm =
-                    isAdmin &&
-                    ["En attente", "Liste d'attente"].includes(
-                      inscription.statut,
-                    ) &&
-                    hasAvailablePlace;
-                  const canMoveToWaitlist =
-                    isAdmin &&
-                    inscription.statut === "En attente" &&
-                    !hasAvailablePlace;
-
-                  const isOwnInscription =
-                    isAdherent &&
-                    currentAdherent &&
-                    inscription.num_adherent === currentAdherent.num_adherent;
-
-                  return (
-                    <motion.tr
-                      key={inscription.id_inscription}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: index * 0.03 }}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                    >
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-medium text-xs">
-                            {adherentName.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                              {adherentName}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              #{inscription.num_adherent}
-                              {isOwnInscription && (
-                                <span className="ml-2 text-blue-600 font-medium">
-                                  (Vous)
-                                </span>
-                              )}
-                            </div>
-                          </div>
+              return (
+                <motion.div
+                  key={inscription.id_inscription}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Photo en évidence */}
+                    <div className="flex-shrink-0">
+                      {adherentInfo.photo ? (
+                        <img
+                          src={adherentInfo.photo}
+                          alt={adherentName}
+                          className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
+                          <FiUser className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
                         </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-white">
-                          {sortieInfo.label}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          #{inscription.id_sortie}
-                          {sortieInfo.date && (
-                            <> • {formatDate(sortieInfo.date)}</>
+                      )}
+                      <div className="text-center mt-1">
+                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                          #{inscription.num_adherent}
+                          {isOwnInscription && (
+                            <span className="ml-1 text-blue-600 dark:text-blue-400">
+                              (Vous)
+                            </span>
                           )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                        {formatDate(inscription.date_inscription)}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {inscription.presence_checked ? (
-                          inscription.presence ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400 rounded-full">
-                              <FiCheck className="w-3 h-3" /> Présent
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Informations */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                              {adherentName}
+                            </h3>
+                            <span className="text-sm text-gray-400 dark:text-gray-500">•</span>
+                            <span className="text-sm text-indigo-600 dark:text-indigo-400">
+                              {sortieInfo.label}
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400 rounded-full">
-                              <FiX className="w-3 h-3" /> Absent
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <FiCalendar className="w-3.5 h-3.5" />
+                              {formatDate(inscription.date_inscription)}
                             </span>
-                          )
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-full">
-                            <FiClock className="w-3 h-3" /> Non pointé
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="space-y-1">
-                          <StatusBadge status={inscription.statut} />
-                          {inscription.statut === "Liste d'attente" &&
-                            inscription.rang_liste_attente && (
-                              <p className="text-xs text-amber-600 dark:text-amber-400">
-                                Rang #{inscription.rang_liste_attente}
-                              </p>
+                            <span>•</span>
+                            {inscription.presence_checked ? (
+                              inscription.presence ? (
+                                <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                                  <FiCheck className="w-3.5 h-3.5" /> Présent
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                                  <FiX className="w-3.5 h-3.5" /> Absent
+                                </span>
+                              )
+                            ) : (
+                              <span className="flex items-center gap-1 text-gray-400">
+                                <FiClock className="w-3.5 h-3.5" /> Non pointé
+                              </span>
                             )}
+                            <span>•</span>
+                            <StatusBadge status={inscription.statut} />
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-0.5">
-                          {/* ✅ 1. Pointage (admin uniquement) */}
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {/* Pointage */}
                           {isAdmin && (
                             <Link
                               to={`/sorties/${inscription.id_sortie}/pointage`}
-                              className={`p-1.5 ${actionColors.pointage.text} ${actionColors.pointage.bg} rounded-lg transition-colors`}
-                              title={actionColors.pointage.tooltip}
+                              className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                              title="Gérer le pointage"
                             >
                               <FiClipboard className="w-4 h-4" />
                             </Link>
                           )}
 
-                          {/* ✅ 2. Confirmer quand une place est disponible */}
+                          {/* Confirmer */}
                           {canConfirm && (
                             <button
-                              onClick={() =>
-                                handleConfirm(inscription.id_inscription)
-                              }
+                              onClick={() => setConfirmModal(inscription.id_inscription)}
                               disabled={loading}
-                              className={`p-1.5 ${actionColors.confirm.text} ${actionColors.confirm.bg} rounded-lg transition-colors disabled:opacity-50`}
-                              title={actionColors.confirm.tooltip}
+                              className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Confirmer"
                             >
                               <FiCheck className="w-4 h-4" />
                             </button>
                           )}
 
-                          {/* ✅ 2b. Envoyer en liste d'attente si complet */}
+                          {/* Liste d'attente */}
                           {canMoveToWaitlist && (
                             <button
-                              onClick={() =>
-                                handleWaitlist(inscription.id_inscription)
-                              }
+                              onClick={() => setWaitlistModal(inscription.id_inscription)}
                               disabled={loading}
-                              className="p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              className="p-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors disabled:opacity-50"
                               title="Mettre en liste d'attente"
                             >
                               <FiClock className="w-4 h-4" />
                             </button>
                           )}
 
-                          {/* ✅ 3. Annuler (admin ou propriétaire) */}
+                          {/* Annuler */}
                           {(inscription.statut === "En attente" ||
                             inscription.statut === "Confirmée" ||
                             inscription.statut === "Liste d'attente") &&
                             (isAdmin || isOwnInscription) && (
                               <button
-                                onClick={() =>
-                                  handleCancel(inscription.id_inscription)
-                                }
+                                onClick={() => setCancelModal(inscription.id_inscription)}
                                 disabled={loading}
-                                className={`p-1.5 ${actionColors.cancel.text} ${actionColors.cancel.bg} rounded-lg transition-colors disabled:opacity-50`}
-                                title={actionColors.cancel.tooltip}
+                                className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="Annuler"
                               >
                                 <FiX className="w-4 h-4" />
                               </button>
                             )}
 
-                          {/* ✅ 4. Voir */}
+                          {/* Voir */}
                           <Link
                             to={`/inscriptions/${inscription.id_inscription}`}
-                            className={`p-1.5 ${actionColors.view.text} ${actionColors.view.bg} rounded-lg transition-colors`}
-                            title={actionColors.view.tooltip}
+                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            title="Voir"
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
 
-                          {/* ✅ 5. Supprimer (admin uniquement) */}
+                          {/* Supprimer */}
                           {isAdmin && (
                             <button
-                              onClick={() =>
-                                handleDelete(inscription.id_inscription)
-                              }
+                              onClick={() => setDeleteModal(inscription.id_inscription)}
                               disabled={loading}
-                              className={`p-1.5 ${actionColors.delete.text} ${actionColors.delete.bg} rounded-lg transition-colors disabled:opacity-50`}
-                              title={actionColors.delete.tooltip}
+                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Supprimer"
                             >
                               <FiTrash2 className="w-4 h-4" />
                             </button>
                           )}
                         </div>
-                      </td>
-                    </motion.tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-800">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
+        >
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Précédent
+          </button>
+          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Suivant
+          </button>
+        </motion.div>
+      )}
+
+      {/* Modal Suppression */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
+                <FiTrash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold">Confirmer la suppression</h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Êtes-vous sûr de vouloir supprimer cette inscription ?
+              <br />
+              <span className="text-sm text-red-500 font-medium">
+                Cette action est irréversible.
+              </span>
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModal(null)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleDelete(deleteModal)}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal Confirmation */}
+      {confirmModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400 mb-4">
+              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                <FiCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold">Confirmer l'inscription</h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Êtes-vous sûr de vouloir confirmer cette inscription ?
+              <br />
+              <span className="text-sm text-gray-500">
+                L'adhérent sera officiellement inscrit à la sortie.
+              </span>
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleConfirm(confirmModal)}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors"
+              >
+                Confirmer
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal Annulation */}
+      {cancelModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center gap-3 text-orange-600 dark:text-orange-400 mb-4">
+              <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/30">
+                <FiX className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold">Annuler l'inscription</h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Êtes-vous sûr de vouloir annuler cette inscription ?
+              <br />
+              <span className="text-sm text-gray-500">
+                Cette action peut être annulée si nécessaire.
+              </span>
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setCancelModal(null)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleCancel(cancelModal)}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-xl transition-colors"
+              >
+                Annuler l'inscription
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal Liste d'attente */}
+      {waitlistModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400 mb-4">
+              <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                <FiClock className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold">Liste d'attente</h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Ajouter cette inscription à la liste d'attente ?
+              <br />
+              <span className="text-sm text-gray-500">
+                L'adhérent sera notifié si une place se libère.
+              </span>
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setWaitlistModal(null)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleWaitlist(waitlistModal)}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-colors"
+              >
+                Mettre en liste d'attente
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

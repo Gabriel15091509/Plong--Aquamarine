@@ -12,13 +12,13 @@ const inscriptionRoutes = require("./inscriptionRoutes");
 const plongeeRoutes = require("./plongeeRoutes");
 const materielRoutes = require("./materielRoutes");
 const formationRoutes = require("./formationRoutes");
-const alerteRoutes = require("./alerteRoutes"); // ✅ Vérifier que l'import existe
+const alerteRoutes = require("./alerteRoutes");
 const userRoutes = require("./userRoutes");
-const emailRoutes = require('./emailRoutes');
+const emailRoutes = require("./emailRoutes");
 
 // Routes
 router.use("/auth", authRoutes);
-router.use("/adherents", adherentRoutes);
+router.use("/", adherentRoutes); // ✅ adherentRoutes.js définit déjà "/adherents/..."
 router.use("/adhesions", adhesionRoutes);
 router.use("/certificats-medicaux", certificatMedicalRoutes);
 router.use("/paiements", paiementRoutes);
@@ -27,10 +27,8 @@ router.use("/inscriptions", inscriptionRoutes);
 router.use("/plongees", plongeeRoutes);
 router.use("/materiels", materielRoutes);
 router.use("/formations", formationRoutes);
-router.use("/alertes", alerteRoutes); // ✅ Vérifier que la route existe
-
+router.use("/alertes", alerteRoutes);
 router.use("/users", userRoutes);
-router.use("/adherents", adherentRoutes);
 router.use("/email", emailRoutes);
 
 // Route racine API

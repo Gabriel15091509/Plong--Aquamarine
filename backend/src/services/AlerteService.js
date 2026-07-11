@@ -1,4 +1,4 @@
-const { Op } = require("sequelize");
+﻿const { Op } = require("sequelize");
 const BaseService = require("./BaseService");
 const AlerteRepository = require("../repositories/AlerteRepository");
 const { Adherent, Adhesion, CertificatMedical } = require("../models");
@@ -22,13 +22,23 @@ class AlerteService extends BaseService {
   }
 
   canManageAlertes(role) {
+    const normalizedRole = this.normalizeRole(role);
     return [
       "president",
       "directeur_technique",
       "moniteur",
       "tresorier",
       "admin",
-    ].includes(role);
+    ].includes(normalizedRole);
+  }
+
+  normalizeRole(role) {
+    return (role || "")
+      .toString()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[\s-]+/g, "_");
   }
 
   async getAdherentForUser(user) {

@@ -1,3 +1,4 @@
+// backend/services/AdherentService.js
 const BaseService = require("./BaseService");
 const AdherentRepository = require("../repositories/AdherentRepository");
 
@@ -5,6 +6,21 @@ class AdherentService extends BaseService {
   constructor() {
     super(new AdherentRepository());
     this.repository = new AdherentRepository();
+  }
+
+  // ✅ AJOUTER CETTE MÉTHODE MANQUANTE
+  async getAdherentByEmail(email) {
+    return await this.repository.findByEmail(email);
+  }
+
+  // ✅ AJOUTER CETTE MÉTHODE MANQUANTE
+  async getAdherentsByNiveau(niveau) {
+    return await this.repository.findByNiveau(niveau);
+  }
+
+  // ✅ AJOUTER CETTE MÉTHODE MANQUANTE
+  async searchAdherents(query) {
+    return await this.repository.search(query);
   }
 
   async getAdherentWithDetails(id) {
@@ -19,8 +35,6 @@ class AdherentService extends BaseService {
     return await this.repository.findAdherentsWithExpiringCertificates();
   }
 
-  // Ajouter cette méthode dans AdherentService.js
-
   async getAdherentStats() {
     const total = await this.repository.count();
     const active = await this.repository.count({ statut: "Actif" });
@@ -34,10 +48,10 @@ class AdherentService extends BaseService {
       suspended,
     };
   }
+
   async validateAdherentData(data) {
     const errors = [];
 
-    // Validation spécifique
     if (!data.nom) errors.push("Le nom est requis");
     if (!data.prenom) errors.push("Le prénom est requis");
     if (!data.email) errors.push("L'email est requis");

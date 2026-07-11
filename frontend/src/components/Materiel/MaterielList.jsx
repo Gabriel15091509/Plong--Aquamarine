@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -11,136 +12,93 @@ import {
   FiSearch,
   FiX,
   FiChevronRight,
+  FiUser,
+  FiMapPin,
+  FiTag,
 } from "react-icons/fi";
-import { useMateriels } from "../../hooks/useMateriels";
-import StatusBadge from "../Common/StatusBadge";
-import Pagination from "../Common/Pagination";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import SearchBar from "../Common/SearchBar";
+import { useMateriels } from "../../hooks/useMateriels";
 import { formatDate } from "../../utils/helpers";
 
-// ✅ Animations
-const tableRowVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      delay: i * 0.05,
-      duration: 0.3,
-      type: "spring",
-      stiffness: 300,
-      damping: 24,
-    },
-  }),
-  hover: {
-    backgroundColor: "rgba(59, 130, 246, 0.05)",
-    transition: { duration: 0.2 },
-  },
-};
-
-// ✅ Couleurs des actions
-const actionColors = {
-  view: {
-    bg: "hover:bg-blue-50 dark:hover:bg-blue-900/20",
-    text: "text-blue-600 dark:text-blue-400",
-    tooltip: "Voir les détails",
-  },
-  edit: {
-    bg: "hover:bg-cyan-50 dark:hover:bg-cyan-900/20",
-    text: "text-cyan-600 dark:text-cyan-400",
-    tooltip: "Modifier",
-  },
-  delete: {
-    bg: "hover:bg-red-50 dark:hover:bg-red-900/20",
-    text: "text-red-600 dark:text-red-400",
-    tooltip: "Supprimer",
-  },
-};
-
+// TODO: Ajouter un filtre par catégorie
 const MaterielList = () => {
-  // ✅ TOUS LES HOOKS EN PREMIER
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filter, setFilter] = useState("all");
-  const [hoveredRow, setHoveredRow] = useState(null);
-  const itemsPerPage = 10;
-
   const { useGetAll, useRemove } = useMateriels();
-  const { data, isLoading, error } = useGetAll();
+  const { data, isLoading, error, refetch } = useGetAll();
   const remove = useRemove();
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const itemsPerPage = 10;
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
-  let materiels = data?.data || [];
+  const allMateriels = data?.data || [];
 
-  materiels = materiels.filter((m) => {
-    const matchSearch =
-      m.marque?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.modele?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.num_inventaire?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.categorie?.toLowerCase().includes(searchTerm.toLowerCase());
-    if (filter === "all") return matchSearch;
-    return matchSearch && m.etat === filter;
-  });
+  const filteredMateriels = useMemo(() => {
+    return allMateriels.filter((m) => {
+      if (filter !== "all" && m.etat !== filter) return false;
 
-  const totalPages = Math.ceil(materiels.length / itemsPerPage);
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        return (
+          m.num_inventaire?.toLowerCase().includes(search) ||
+          m.marque?.toLowerCase().includes(search) ||
+          m.modele?.toLowerCase().includes(search) ||
+          m.categorie?.toLowerCase().includes(search) ||
+          m.localisation?.toLowerCase().includes(search)
+        );
+      }
+      return true;
+    });
+  }, [allMateriels, filter, searchTerm]);
+
+  const totalPages = Math.ceil(filteredMateriels.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedMateriels = materiels.slice(
+  const paginatedMateriels = filteredMateriels.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
 
-  const handleDelete = async (numInventaire) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce matériel ?")) {
-      await remove.mutateAsync(numInventaire);
+  const handleDelete = async (id) => {
+    try {
+      setLoading(true);
+      await remove.mutateAsync(id);
+      toast.success("Matériel supprimé avec succès");
+      refetch();
+      setDeleteModal(null);
+    } catch (error) {
+      toast.error("Erreur lors de la suppression");
+      console.error("Delete error:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const getEtatColor = (etat) => {
     const colors = {
-      Neuf: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
-      Bon: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
-      Usagé:
-        "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400",
-      "À réparer":
-        "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400",
-      "Hors service":
-        "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
+      Neuf: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+      Bon: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      Usagé: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+      "À réparer": "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+      "Hors service": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     };
-    return (
-      colors[etat] ||
-      "bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-400"
-    );
+    return colors[etat] || "bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400";
   };
 
-  // ✅ Statistiques
-  const stats = {
-    total: materiels.length,
-    disponible: materiels.filter((m) => m.etat === "Neuf" || m.etat === "Bon")
-      .length,
-    enReparation: materiels.filter((m) => m.etat === "À réparer").length,
-    horsService: materiels.filter((m) => m.etat === "Hors service").length,
-  };
-
-  if (materiels.length === 0) {
+  if (filteredMateriels.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="text-center py-16"
+        className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg"
       >
-        <motion.div
-          animate={{
-            rotate: [0, 10, -10, 0],
-            transition: { duration: 1, repeat: Infinity, repeatDelay: 2 },
-          }}
-          className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 rounded-full mb-4"
-        >
-          <FiTool className="w-10 h-10 text-blue-500 dark:text-blue-400" />
-        </motion.div>
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
+          <FiTool className="w-10 h-10 text-gray-400" />
+        </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           {searchTerm || filter !== "all"
             ? "Aucun matériel trouvé"
@@ -148,40 +106,33 @@ const MaterielList = () => {
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
           {searchTerm || filter !== "all"
-            ? "Essayez de modifier vos critères de recherche"
+            ? "Aucun résultat pour vos critères"
             : "Commencez par ajouter votre premier équipement"}
         </p>
-        {!searchTerm && filter === "all" && (
-          <Link
-            to="/materiels/create"
-            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
-          >
-            <FiPlus className="w-4 h-4" /> Nouveau matériel
-            <FiChevronRight className="w-4 h-4" />
-          </Link>
-        )}
+        <Link
+          to="/materiels/create"
+          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+        >
+          <FiPlus className="w-4 h-4" /> Nouveau matériel
+        </Link>
       </motion.div>
     );
   }
 
   return (
-    <div className="space-y-4 p-4">
-      {/* Barre de recherche animée */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex flex-col sm:flex-row gap-4"
-      >
+    <div className="space-y-4">
+      {/* Barre de recherche et filtres */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
-          <SearchBar
+          <input
+            type="text"
+            placeholder="Rechercher par numéro, marque, modèle, catégorie..."
             value={searchTerm}
-            onChange={(val) => {
-              setSearchTerm(val);
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            placeholder="🔍 Rechercher par numéro, marque, modèle, catégorie..."
-            className="transition-all duration-300 focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
         <div className="flex gap-2">
@@ -191,212 +142,207 @@ const MaterielList = () => {
               setFilter(e.target.value);
               setCurrentPage(1);
             }}
-            className="input-field w-auto bg-gradient-to-r from-gray-50 to-white dark:from-gray-700 dark:to-gray-600 rounded-xl border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="all">📊 Tous ({stats.total})</option>
-            <option value="Neuf">🆕 Neuf</option>
-            <option value="Bon">✅ Bon</option>
-            <option value="Usagé">🔄 Usagé</option>
-            <option value="À réparer">🔧 À réparer</option>
-            <option value="Hors service">❌ Hors service</option>
+            <option value="all">Tous</option>
+            <option value="Neuf">Neuf</option>
+            <option value="Bon">Bon</option>
+            <option value="Usagé">Usagé</option>
+            <option value="À réparer">À réparer</option>
+            <option value="Hors service">Hors service</option>
           </select>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Link
-              to="/materiels/create"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
-            >
-              <FiPlus className="w-4 h-4" /> Nouveau
-            </Link>
-          </motion.div>
+          <Link
+            to="/materiels/create"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <FiPlus className="w-4 h-4" />
+            Nouveau
+          </Link>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Statistiques rapides */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="flex flex-wrap gap-2 text-sm"
-      >
-        <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300">
-          Total: <strong>{stats.total}</strong>
-        </span>
-        <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full">
-          ✅ Disponible: <strong>{stats.disponible}</strong>
-        </span>
-        <span className="px-3 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-full">
-          🔧 En réparation: <strong>{stats.enReparation}</strong>
-        </span>
-        <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full">
-          ❌ Hors service: <strong>{stats.horsService}</strong>
-        </span>
-        {searchTerm && (
-          <span className="px-3 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 rounded-full">
-            🔍 "{searchTerm}"
-          </span>
-        )}
-        {filter !== "all" && (
-          <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
-            📌 {filter}
-          </span>
-        )}
-      </motion.div>
-
-      {/* Tableau */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, type: "spring" }}
-        className="overflow-x-auto"
-      >
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600">
-            <tr>
-              {[
-                "N° Inventaire",
-                "Catégorie",
-                "Marque / Modèle",
-                "État",
-                "Localisation",
-                "Actions",
-              ].map((h, i) => (
-                <th
-                  key={h}
-                  className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider"
-                >
-                  <motion.span
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 * i }}
-                  >
-                    {h}
-                  </motion.span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            <AnimatePresence>
-              {paginatedMateriels.map((materiel, index) => (
-                <motion.tr
-                  key={materiel.num_inventaire}
-                  custom={index}
-                  variants={tableRowVariants}
-                  initial="hidden"
-                  animate="visible"
-                  whileHover="hover"
-                  onHoverStart={() => setHoveredRow(materiel.num_inventaire)}
-                  onHoverEnd={() => setHoveredRow(null)}
-                  className="transition-all duration-200"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      <motion.div
-                        animate={{
-                          rotate:
-                            hoveredRow === materiel.num_inventaire
-                              ? [0, 5, -5, 0]
-                              : 0,
-                        }}
-                        transition={{ duration: 0.5 }}
-                        className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center"
-                      >
-                        <FiBox className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      </motion.div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {materiel.num_inventaire}
+      {/* Liste des matériels */}
+      <AnimatePresence>
+        {paginatedMateriels.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl"
+          >
+            <p className="text-gray-500 dark:text-gray-400 font-medium">
+              Aucun matériel trouvé
+            </p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+              {searchTerm || filter !== "all"
+                ? "Essayez de modifier vos filtres"
+                : "Aucun matériel pour le moment"}
+            </p>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="grid gap-3"
+          >
+            {paginatedMateriels.map((materiel) => (
+              <motion.div
+                key={materiel.num_inventaire}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start gap-4">
+                  {/* Icône du matériel */}
+                  <div className="flex-shrink-0">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
+                      <FiBox className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
+                    </div>
+                    <div className="text-center mt-1">
+                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                        #{materiel.num_inventaire}
                       </span>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-gradient-to-r from-purple-100 to-violet-100 dark:from-purple-900/30 dark:to-violet-900/30 text-purple-800 dark:text-purple-400 rounded-full">
-                      <FiTool className="w-3 h-3" />
-                      {materiel.categorie}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {materiel.marque}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {materiel.modele}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-3 py-1 text-xs font-medium rounded-full ${getEtatColor(materiel.etat)}`}
-                    >
-                      {materiel.etat}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                    {materiel.localisation || "—"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1">
-                      {/* ✅ 1. Voir */}
-                      <motion.div
-                        whileHover={{ scale: 1.15 }}
-                        whileTap={{ scale: 0.85 }}
-                      >
+                  </div>
+
+                  {/* Informations */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-gray-900 dark:text-white">
+                            {materiel.marque}
+                          </h3>
+                          <span className="text-sm text-gray-400 dark:text-gray-500">•</span>
+                          <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                            {materiel.modele}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          <span className="flex items-center gap-1">
+                            <FiTag className="w-3.5 h-3.5" />
+                            {materiel.categorie}
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1">
+                            <FiMapPin className="w-3.5 h-3.5" />
+                            {materiel.localisation || "Non localisé"}
+                          </span>
+                          <span>•</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getEtatColor(materiel.etat)}`}>
+                            {materiel.etat}
+                          </span>
+                          {materiel.date_achat && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                Acheté le {formatDate(materiel.date_achat)}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
                         <Link
                           to={`/materiels/${materiel.num_inventaire}`}
-                          className={`p-2 ${actionColors.view.text} ${actionColors.view.bg} rounded-lg transition-all duration-200 inline-flex items-center justify-center`}
-                          title={actionColors.view.tooltip}
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title="Voir"
                         >
                           <FiEye className="w-4 h-4" />
                         </Link>
-                      </motion.div>
-
-                      {/* ✅ 2. Modifier */}
-                      <motion.div
-                        whileHover={{ scale: 1.15 }}
-                        whileTap={{ scale: 0.85 }}
-                      >
                         <Link
                           to={`/materiels/edit/${materiel.num_inventaire}`}
-                          className={`p-2 ${actionColors.edit.text} ${actionColors.edit.bg} rounded-lg transition-all duration-200 inline-flex items-center justify-center`}
-                          title={actionColors.edit.tooltip}
+                          className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                          title="Modifier"
                         >
                           <FiEdit className="w-4 h-4" />
                         </Link>
-                      </motion.div>
-
-                      {/* ✅ 3. Supprimer */}
-                      <motion.div
-                        whileHover={{ scale: 1.15 }}
-                        whileTap={{ scale: 0.85 }}
-                      >
                         <button
-                          onClick={() => handleDelete(materiel.num_inventaire)}
-                          className={`p-2 ${actionColors.delete.text} ${actionColors.delete.bg} rounded-lg transition-all duration-200 inline-flex items-center justify-center`}
-                          title={actionColors.delete.tooltip}
+                          onClick={() => setDeleteModal(materiel.num_inventaire)}
+                          disabled={loading}
+                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                          title="Supprimer"
                         >
                           <FiTrash2 className="w-4 h-4" />
                         </button>
-                      </motion.div>
+                      </div>
                     </div>
-                  </td>
-                </motion.tr>
-              ))}
-            </AnimatePresence>
-          </tbody>
-        </table>
-      </motion.div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      {/* Pagination */}
       {totalPages > 1 && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="border-t border-gray-200 dark:border-gray-700 pt-4"
+          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
         >
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Précédent
+          </button>
+          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Suivant
+          </button>
         </motion.div>
+      )}
+
+      {/* Modal de confirmation de suppression */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
+                <FiTrash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold">Confirmer la suppression</h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Êtes-vous sûr de vouloir supprimer ce matériel ?
+              <br />
+              <span className="text-sm text-red-500 font-medium">
+                Cette action est irréversible.
+              </span>
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModal(null)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={() => handleDelete(deleteModal)}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
+              >
+                Supprimer
+              </button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

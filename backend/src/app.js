@@ -20,20 +20,31 @@ const app = express();
 
 // ========== MIDDLEWARES ==========
 
-// Security
+// Security - Configuration plus permissive
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
   }),
 );
 
-// CORS
+// ✅ CORS - Configuration SIMPLIFIÉE pour accepter TOUTES les origines
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-    credentials: true,
+    origin: "*", // Accepte toutes les origines
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+      "User-Agent",
+    ],
+    exposedHeaders: ["Authorization"],
+    credentials: true,
   }),
 );
 
@@ -51,13 +62,22 @@ app.use(
   }),
 );
 
-// Rate limiting
+// Rate limiting - Moins restrictif pour le mobile
 const limiter = rateLimit({
   windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
-  max: process.env.RATE_LIMIT_MAX || 100,
+  max: process.env.RATE_LIMIT_MAX || 200,
   message: {
     success: false,
     message: "Trop de requêtes, veuillez réessayer plus tard",
+  },
+  skip: (req) => {
+    const userAgent = req.headers["user-agent"] || "";
+    return (
+      userAgent.includes("Expo") ||
+      userAgent.includes("React Native") ||
+      userAgent.includes("okhttp") ||
+      userAgent.includes("Dalvik")
+    );
   },
 });
 app.use("/api", limiter);
@@ -71,6 +91,8 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV,
+    mobileCompatible: true,
+    apiVersion: "1.0.0",
   });
 });
 
@@ -85,7 +107,9 @@ app.use(ErrorHandler.notFound);
 // Global error handler
 app.use(ErrorHandler.handle);
 
-// ========== DATABASE CONNECTION ==========
+// ========== DATABASE CONNECTION & SERVER START ==========
+
+const PORT = process.env.PORT || 3000;
 
 const initializeApp = async () => {
   try {
@@ -101,6 +125,38 @@ const initializeApp = async () => {
       await syncDatabase({ alter: true });
       logger.info("✅ Database synchronized");
     }
+
+    // Afficher les informations réseau pour le mobile
+    const os = require("os");
+    const networkInterfaces = os.networkInterfaces();
+    const ipAddresses = [];
+
+    Object.keys(networkInterfaces).forEach((interfaceName) => {
+      networkInterfaces[interfaceName].forEach((iface) => {
+        if (iface.family === "IPv4" && !iface.internal) {
+          ipAddresses.push(iface.address);
+        }
+      });
+    });
+
+    logger.info(`✅ Server running on port ${PORT}`);
+    logger.info(`📱 Connect mobile app to:`);
+    ipAddresses.forEach((ip) => {
+      logger.info(`   📱 http://${ip}:${PORT}/api`);
+    });
+    logger.info(`   🤖 Android Emulator: http://10.0.2.2:${PORT}/api`);
+    logger.info(`   🍎 iOS Simulator: http://localhost:${PORT}/api`);
+    logger.info(`   🌐 Local: http://localhost:${PORT}/api`);
+    logger.info(``);
+    logger.info(`✅ Health check: http://localhost:${PORT}/health`);
+
+    // ✅ DÉMARRER LE SERVEUR SUR TOUTES LES INTERFACES
+    app.listen(PORT, "0.0.0.0", () => {
+      logger.info(`🚀 Server is listening on all interfaces (0.0.0.0:${PORT})`);
+      logger.info(
+        `📱 Your mobile can connect using: http://${ipAddresses[0] || "your-ip"}:${PORT}/api`,
+      );
+    });
 
     logger.info("✅ Application initialized successfully");
   } catch (error) {
