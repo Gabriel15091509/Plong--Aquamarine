@@ -1,14 +1,12 @@
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiCalendar,
   FiMapPin,
   FiUsers,
   FiDroplet,
   FiClock,
-  FiDollarSign,
   FiEdit,
   FiArrowLeft,
   FiTag,
@@ -22,11 +20,15 @@ import {
   FiXCircle,
   FiTrendingUp,
   FiBarChart2,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/useSorties";
+import { useIncidents } from "../../hooks/useIncidents";
+import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
-import { formatDateTime, formatCurrency } from "../../utils/helpers";
+import PalanqueesManager from "../Palanquee/PalanqueesManager";
+import { formatDateTime } from "../../utils/helpers";
 
 // Animations
 const fadeInUp = {
@@ -55,20 +57,40 @@ const scaleIn = {
 const SortieDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { useGetById, useRemove } = useSorties();
+  const { hasRole } = useAuth();
+  const canManageSortie = hasRole(["president", "moniteur"]);
+  const { useGetById, useRemove, useUpdate } = useSorties();
+  const { useGetBySortie } = useIncidents();
   const { data, isLoading } = useGetById(id);
+  const { data: incidentsData } = useGetBySortie(id);
   const remove = useRemove();
+  const update = useUpdate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const sortie = data?.data;
+  const incidents = incidentsData?.data || [];
+
+  // ✅ La date de la sortie est passée mais son statut n'a pas été mis à
+  // jour manuellement : on alerte le staff pour qu'il clôture/annule.
+  const needsStatusUpdate =
+    sortie &&
+    new Date(sortie.date_heure) < new Date() &&
+    ["Planifiée", "En cours"].includes(sortie.statut);
+
+  const handleChangeStatut = async (statut) => {
+    try {
+      await update.mutateAsync({ id, data: { statut } });
+    } catch (error) {
+      // Erreur déjà notifiée via toast par le hook useUpdate
+    }
+  };
 
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      toast.success("Sortie supprimée avec succès");
       navigate("/sorties");
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      // Erreur déjà notifiée via toast par le hook useRemove
     }
   };
 
@@ -245,23 +267,66 @@ const SortieDetails = () => {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Link
-            to={`/sorties/edit/${sortie.id_sortie}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
-          >
-            <FiEdit className="w-4 h-4" />
-            Modifier
-          </Link>
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
-          >
-            <FiTrash2 className="w-4 h-4" />
-            Supprimer
-          </button>
-        </div>
+        {canManageSortie && (
+          <div className="flex gap-2">
+            <Link
+              to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+            >
+              <FiAlertTriangle className="w-4 h-4" />
+              Déclarer un incident
+            </Link>
+            <Link
+              to={`/sorties/edit/${sortie.id_sortie}`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+            >
+              <FiEdit className="w-4 h-4" />
+              Modifier
+            </Link>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+            >
+              <FiTrash2 className="w-4 h-4" />
+              Supprimer
+            </button>
+          </div>
+        )}
       </motion.div>
+
+      {/* Alerte : la date est passée mais le statut n'a pas été mis à jour */}
+      {needsStatusUpdate && canManageSortie && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4"
+        >
+          <div className="flex items-center gap-3">
+            <FiAlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              Cette sortie est passée le {formatDateTime(sortie.date_heure)}
+              mais son statut est toujours « {sortie.statut} ». Pensez à le
+              mettre à jour.
+            </p>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => handleChangeStatut("Terminée")}
+              disabled={update.isPending}
+              className="px-4 py-2 text-sm font-semibold text-white bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Marquer terminée
+            </button>
+            <button
+              onClick={() => handleChangeStatut("Annulée")}
+              disabled={update.isPending}
+              className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Annuler
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Carte récapitulative */}
       <motion.div
@@ -330,15 +395,6 @@ const SortieDetails = () => {
                 Profondeur max
               </p>
             </div>
-            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(sortie.tarif)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Tarif
-              </p>
-            </div>
           </div>
         </div>
       </motion.div>
@@ -385,20 +441,31 @@ const SortieDetails = () => {
             label="Durée estimée"
             value={sortie.duree_estimee || "Non définie"}
           />
+          <InfoItem
+            icon={FiTag}
+            label="Tarif adhérent"
+            value={
+              Number(sortie.tarif_adherent) > 0
+                ? `${Number(sortie.tarif_adherent).toFixed(2)} €`
+                : "Gratuit"
+            }
+          />
+          {sortie.tarif_non_adherent != null && (
+            <InfoItem
+              icon={FiTag}
+              label="Tarif non-adhérent"
+              value={`${Number(sortie.tarif_non_adherent).toFixed(2)} €`}
+            />
+          )}
         </SectionCard>
 
-        {/* Informations financières et inscription */}
-        <SectionCard title="Inscription & tarifs" icon={FiDollarSign}>
-          <InfoItem
-            icon={FiDollarSign}
-            label="Tarif"
-            value={formatCurrency(sortie.tarif)}
-            highlight
-          />
+        {/* Informations inscription */}
+        <SectionCard title="Inscription" icon={FiUsers}>
           <InfoItem
             icon={FiCalendar}
             label="Ouverture des inscriptions"
             value={formatDateTime(sortie.date_ouverture_inscriptions)}
+            highlight
           />
           <InfoItem
             icon={FiAward}
@@ -410,7 +477,13 @@ const SortieDetails = () => {
             label="Places disponibles"
             value={
               <span className="font-semibold">
-                {sortie.nb_places} / {sortie.nb_places} places
+                {sortie.places_disponibles ?? sortie.nb_places} /{" "}
+                {sortie.nb_places} places
+                {sortie.places_disponibles === 0 && (
+                  <span className="text-orange-600 dark:text-orange-400 font-medium ml-1">
+                    (Complet)
+                  </span>
+                )}
               </span>
             }
           />
@@ -461,6 +534,69 @@ const SortieDetails = () => {
           </motion.div>
         )}
       </div>
+
+      {/* Incidents liés à cette sortie */}
+      <motion.div
+        variants={fadeInUp}
+        initial="initial"
+        animate="animate"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-red-500/10 to-orange-500/10 text-red-600 dark:text-red-400">
+              <FiAlertTriangle className="w-5 h-5" />
+            </span>
+            Incidents ({incidents.length})
+          </h3>
+          <Link
+            to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
+            className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
+          >
+            + Déclarer un incident
+          </Link>
+        </div>
+        {incidents.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Aucun incident déclaré pour cette sortie.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {incidents.map((incident) => (
+              <Link
+                key={incident.id_incident}
+                to={`/incidents/${incident.id_incident}`}
+                className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+              >
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {incident.type}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
+                    {incident.description}
+                  </p>
+                </div>
+                <span
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                    incident.cloture
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  }`}
+                >
+                  {incident.cloture ? "Clôturé" : "Non clôturé"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Constitution des palanquées (moniteur / président) */}
+      {canManageSortie && (
+        <motion.div variants={fadeInUp} initial="initial" animate="animate">
+          <PalanqueesManager sortie={sortie} />
+        </motion.div>
+      )}
 
       {/* Modal suppression */}
       {showDeleteModal && (

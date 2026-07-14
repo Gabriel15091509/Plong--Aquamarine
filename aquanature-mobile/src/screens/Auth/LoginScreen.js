@@ -293,7 +293,12 @@ const LoginScreen = ({ navigation }) => {
             {/* Options */}
             <View style={styles.optionsContainer}>
               <TouchableOpacity style={styles.rememberContainer}>
-                <View style={[styles.checkbox, { borderColor: colors.border }]}>
+                <View
+                  style={[
+                    styles.checkbox,
+                    { borderColor: colors.border, backgroundColor: colors.primary },
+                  ]}
+                >
                   <Ionicons name="checkmark" size={14} color="#fff" />
                 </View>
                 <Text
@@ -317,7 +322,7 @@ const LoginScreen = ({ navigation }) => {
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={[colors.primary, colors.primary + "CC"]}
+                colors={[colors.primary, colors.ocean]}
                 style={styles.buttonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -329,19 +334,6 @@ const LoginScreen = ({ navigation }) => {
                   <Ionicons name="log-in-outline" size={20} color="#fff" />
                 )}
               </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Lien inscription */}
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Register")}
-              style={styles.linkContainer}
-            >
-              <Text style={[styles.linkText, { color: colors.textSecondary }]}>
-                Pas encore de compte ?{" "}
-                <Text style={{ color: colors.primary, fontWeight: "600" }}>
-                  S'inscrire
-                </Text>
-              </Text>
             </TouchableOpacity>
           </View>
 
@@ -471,7 +463,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#2563eb",
   },
   rememberText: {
     fontSize: 13,
@@ -496,13 +487,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
-  },
-  linkContainer: {
-    alignItems: "center",
-    marginTop: 12,
-  },
-  linkText: {
-    fontSize: 14,
   },
   footer: {
     marginTop: 24,

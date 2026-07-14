@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -15,11 +14,15 @@ import {
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useAdhesions } from "../../hooks/useAdhesions";
 import { useAdherents } from "../../hooks/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
+import { photoUrl } from "../../utils/photoUrl";
 
 const AdhesionList = () => {
   // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
+  const { hasRole } = useAuth();
+  const canManageAdhesion = hasRole(["president", "tresorier"]);
   const { useGetAll, useRemove } = useAdhesions();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
@@ -83,11 +86,9 @@ const AdhesionList = () => {
   const handleDelete = async (id) => {
     try {
       await remove.mutateAsync(id);
-      toast.success("Adhésion supprimée avec succès");
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
       console.error("Delete error:", error);
     }
   };
@@ -114,12 +115,14 @@ const AdhesionList = () => {
             ? "Aucun résultat pour vos critères"
             : "Commencez par créer une nouvelle adhésion"}
         </p>
-        <Link
-          to="/adhesions/create"
-          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-        >
-          <FiPlus className="w-4 h-4" /> Nouvelle adhésion
-        </Link>
+        {canManageAdhesion && (
+          <Link
+            to="/adhesions/create"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+          >
+            <FiPlus className="w-4 h-4" /> Nouvelle adhésion
+          </Link>
+        )}
       </motion.div>
     );
   }
@@ -155,13 +158,15 @@ const AdhesionList = () => {
             <option value="Partiel">Partiels</option>
             <option value="Annulé">Annulés</option>
           </select>
-          <Link
-            to="/adhesions/create"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <FiPlus className="w-4 h-4" />
-            Nouvelle
-          </Link>
+          {canManageAdhesion && (
+            <Link
+              to="/adhesions/create"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <FiPlus className="w-4 h-4" />
+              Nouvelle
+            </Link>
+          )}
         </div>
       </div>
 
@@ -208,7 +213,7 @@ const AdhesionList = () => {
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
                         <img
-                          src={adherentInfo.photo}
+                          src={photoUrl(adherentInfo.photo)}
                           alt={adherentName}
                           className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
                         />
@@ -249,11 +254,15 @@ const AdhesionList = () => {
                               <FiCalendar className="w-3.5 h-3.5" />
                               {formatDate(adhesion.date_fin)}
                             </span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
-                              <FiDollarSign className="w-3.5 h-3.5 text-indigo-500" />
-                              {formatCurrency(adhesion.montant_paye)}
-                            </span>
+                            {adhesion.type === "Club" && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
+                                  <FiDollarSign className="w-3.5 h-3.5 text-indigo-500" />
+                                  {formatCurrency(adhesion.montant)}
+                                </span>
+                              </>
+                            )}
                             <span>•</span>
                             <StatusBadge status={adhesion.statut_paiement} />
                             {adhesion.num_licence_ffesm && (
@@ -276,20 +285,24 @@ const AdhesionList = () => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          <Link
-                            to={`/adhesions/edit/${adhesion.id_adhesion}`}
-                            className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                            title="Modifier"
-                          >
-                            <FiEdit className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={() => setDeleteModal(adhesion.id_adhesion)}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                            title="Supprimer"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
+                          {canManageAdhesion && (
+                            <>
+                              <Link
+                                to={`/adhesions/edit/${adhesion.id_adhesion}`}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                title="Modifier"
+                              >
+                                <FiEdit className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() => setDeleteModal(adhesion.id_adhesion)}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                title="Supprimer"
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

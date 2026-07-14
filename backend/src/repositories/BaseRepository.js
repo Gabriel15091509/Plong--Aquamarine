@@ -15,10 +15,10 @@ class BaseRepository {
     return await this.model.create(data);
   }
 
-  async update(id, data) {
-    const instance = await this.findById(id);
+  async update(id, data, options = {}) {
+    const instance = await this.findById(id, options);
     if (!instance) throw new Error('Entity not found');
-    return await instance.update(data);
+    return await instance.update(data, options);
   }
 
   async delete(id) {

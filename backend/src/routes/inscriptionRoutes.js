@@ -11,6 +11,7 @@ router.get('/sortie/:id_sortie', AuthMiddleware.authenticate, inscriptionControl
 router.get('/sortie/:id_sortie/waitlist', AuthMiddleware.authenticate, inscriptionController.getWaitlist.bind(inscriptionController));
 router.get('/sortie/:id_sortie/capacity', AuthMiddleware.authenticate, inscriptionController.getCapacity.bind(inscriptionController));
 router.get('/adherent/:num_adherent/sortie/:id_sortie', AuthMiddleware.authenticate, inscriptionController.getByAdherentAndSortie.bind(inscriptionController));
+router.get('/adherent/:num_adherent', AuthMiddleware.authenticate, inscriptionController.getByAdherent.bind(inscriptionController));
 router.get('/:id', AuthMiddleware.authenticate, inscriptionController.getById.bind(inscriptionController));
 
 router.post('/',
@@ -27,6 +28,12 @@ router.patch('/:id/confirm',
 router.patch('/:id/cancel',
   AuthMiddleware.authenticate,
   inscriptionController.cancelInscription.bind(inscriptionController)
+);
+
+router.post('/:id/paiement',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(["president", "tresorier", "moniteur"]),
+  inscriptionController.enregistrerPaiement.bind(inscriptionController)
 );
 
 router.put('/:id',

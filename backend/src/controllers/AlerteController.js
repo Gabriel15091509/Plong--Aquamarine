@@ -44,7 +44,7 @@ class AlerteController extends BaseController {
     try {
       const { num_adherent } = req.params;
       const results = await this.alerteService.getByAdherent(
-        parseInt(num_adherent),
+        num_adherent,
         req.user
       );
       res.json({

@@ -12,8 +12,8 @@ class FormationRepository extends BaseRepository {
     });
   }
 
-  async findById(id) {
-    return await this.model.findByPk(id);
+  async findById(id, options = {}) {
+    return await this.model.findByPk(id, options);
   }
 
   async findActive() {

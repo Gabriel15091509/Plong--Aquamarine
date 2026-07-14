@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -15,10 +14,14 @@ import {
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useAdherents } from "../../hooks/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
+import { photoUrl } from "../../utils/photoUrl";
 
 // TODO: Ajouter un filtre par date d'inscription
 const AdherentList = () => {
+  const { hasRole } = useAuth();
+  const canManageAdherent = hasRole(["president"]);
   const { useGetAll, useRemove } = useAdherents();
   const { data, isLoading, error, refetch } = useGetAll();
   const remove = useRemove();
@@ -28,9 +31,6 @@ const AdherentList = () => {
   const [deleteModal, setDeleteModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-
-  if (isLoading) return <LoadingSpinner />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   const allAdherents = data?.data || [];
 
@@ -51,6 +51,9 @@ const AdherentList = () => {
     });
   }, [allAdherents, filter, searchTerm]);
 
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+
   const totalPages = Math.ceil(filteredAdherents.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedAdherents = filteredAdherents.slice(
@@ -61,11 +64,9 @@ const AdherentList = () => {
   const handleDelete = async (id) => {
     try {
       await remove.mutateAsync(id);
-      toast.success("Adhérent supprimé avec succès");
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
       console.error("Delete error:", error);
     }
   };
@@ -88,12 +89,14 @@ const AdherentList = () => {
             ? "Aucun résultat pour vos critères"
             : "Commencez par ajouter votre premier adhérent"}
         </p>
-        <Link
-          to="/adherents/create"
-          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-        >
-          <FiPlus className="w-4 h-4" /> Ajouter un adhérent
-        </Link>
+        {canManageAdherent && (
+          <Link
+            to="/adherents/create"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+          >
+            <FiPlus className="w-4 h-4" /> Ajouter un adhérent
+          </Link>
+        )}
       </motion.div>
     );
   }
@@ -128,13 +131,15 @@ const AdherentList = () => {
             <option value="Inactif">Inactifs</option>
             <option value="Suspendu">Suspendus</option>
           </select>
-          <Link
-            to="/adherents/create"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <FiPlus className="w-4 h-4" />
-            Ajouter
-          </Link>
+          {canManageAdherent && (
+            <Link
+              to="/adherents/create"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <FiPlus className="w-4 h-4" />
+              Ajouter
+            </Link>
+          )}
         </div>
       </div>
 
@@ -174,7 +179,7 @@ const AdherentList = () => {
                   <div className="flex-shrink-0">
                     {adherent.photo ? (
                       <img
-                        src={adherent.photo}
+                        src={photoUrl(adherent.photo)}
                         alt={`${adherent.prenom} ${adherent.nom}`}
                         className="w-14 h-14 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
                       />
@@ -232,20 +237,24 @@ const AdherentList = () => {
                         >
                           <FiEye className="w-4 h-4" />
                         </Link>
-                        <Link
-                          to={`/adherents/edit/${adherent.num_adherent}`}
-                          className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                          title="Modifier"
-                        >
-                          <FiEdit className="w-4 h-4" />
-                        </Link>
-                        <button
-                          onClick={() => setDeleteModal(adherent.num_adherent)}
-                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                          title="Supprimer"
-                        >
-                          <FiTrash2 className="w-4 h-4" />
-                        </button>
+                        {canManageAdherent && (
+                          <>
+                            <Link
+                              to={`/adherents/edit/${adherent.num_adherent}`}
+                              className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                              title="Modifier"
+                            >
+                              <FiEdit className="w-4 h-4" />
+                            </Link>
+                            <button
+                              onClick={() => setDeleteModal(adherent.num_adherent)}
+                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              title="Supprimer"
+                            >
+                              <FiTrash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

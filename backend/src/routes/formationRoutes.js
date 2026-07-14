@@ -46,6 +46,13 @@ router.patch(
   formationController.completeFormation.bind(formationController),
 );
 
+router.post(
+  "/:id/paiement",
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(["president", "tresorier"]),
+  formationController.enregistrerPaiement.bind(formationController),
+);
+
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,

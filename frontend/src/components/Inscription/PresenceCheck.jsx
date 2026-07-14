@@ -56,6 +56,13 @@ const PresenceCheck = ({ inscription, onCheck, loading, onCancel }) => {
       ? `${adherent.nom} ${adherent.prenom}`
       : `#${inscription.num_adherent}`;
 
+  // Le pointage "présent" reste bloqué côté backend tant qu'aucun paiement
+  // n'a été enregistré : on le reflète ici pour ne pas laisser l'utilisateur
+  // cliquer dans le vide et ne l'apprendre qu'après coup via un toast d'erreur.
+  const paiementNonCommence =
+    Number(inscription.montant_du) > 0 &&
+    Number(inscription.montant_paye || 0) <= 0;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -126,8 +133,13 @@ const PresenceCheck = ({ inscription, onCheck, loading, onCancel }) => {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => handlePresence(true)}
-                disabled={isLoading || loading}
-                className="px-3.5 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 rounded-lg transition-all disabled:opacity-50"
+                disabled={isLoading || loading || paiementNonCommence}
+                title={
+                  paiementNonCommence
+                    ? "Aucun paiement enregistré pour cette sortie : impossible de pointer présent"
+                    : undefined
+                }
+                className="px-3.5 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 ✅ Présent
               </button>
@@ -181,6 +193,19 @@ const PresenceCheck = ({ inscription, onCheck, loading, onCancel }) => {
           )}
         </div>
       </div>
+
+      {/* Alerte paiement non commencé */}
+      {!isChecked && paiementNonCommence && (
+        <motion.div
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-1.5 flex items-center gap-2"
+        >
+          <FiClock className="w-3.5 h-3.5 flex-shrink-0" />
+          Aucun paiement enregistré : pointage "Présent" bloqué tant que le
+          règlement n'a pas débuté.
+        </motion.div>
+      )}
 
       {/* Raison d'absence */}
       {isChecked && !inscription.presence && inscription.absence_reason && (

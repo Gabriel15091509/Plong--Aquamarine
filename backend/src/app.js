@@ -4,12 +4,14 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
+const cron = require("node-cron");
 require("dotenv").config();
 
 // Import modules
 const routes = require("./routes");
 const ErrorHandler = require("./middlewares/errorHandler");
 const logger = require("./utils/logger");
+const AlerteService = require("./services/AlerteService");
 const {
   sequelize,
   testConnection,
@@ -125,6 +127,14 @@ const initializeApp = async () => {
       await syncDatabase({ alter: true });
       logger.info("✅ Database synchronized");
     }
+
+    // ✅ Alertes d'expiration (adhésion / certificat médical à J-30) :
+    // un premier passage immédiat au démarrage, puis tous les jours à 6h,
+    // indépendamment de toute consultation de l'écran des alertes.
+    const alerteService = new AlerteService();
+    await alerteService.syncExpirationAlertes();
+    cron.schedule("0 6 * * *", () => alerteService.syncExpirationAlertes());
+    logger.info("✅ Planification des alertes d'expiration active (quotidien 06:00)");
 
     // Afficher les informations réseau pour le mobile
     const os = require("os");

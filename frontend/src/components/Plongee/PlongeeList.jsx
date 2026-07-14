@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -20,11 +19,15 @@ import {
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { usePlongees } from "../../hooks/usePlongees";
 import { useAdherents } from "../../hooks/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import { formatDate } from "../../utils/helpers";
+import { photoUrl } from "../../utils/photoUrl";
 
 // TODO: Ajouter un filtre par type de plongée
 const PlongeeList = () => {
   // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
+  const { hasRole } = useAuth();
+  const canManagePlongee = hasRole(["president", "moniteur"]);
   const { useGetAll, useRemove, useValidate } = usePlongees();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
@@ -69,9 +72,9 @@ const PlongeeList = () => {
       const adherentName = adherentInfo.nom;
 
       if (filter !== "all") {
-        if (filter === "valide" && p.valide_moniteur !== true) return false;
-        if (filter === "non_valide" && p.valide_moniteur !== false)
-          return false;
+        const isValide = !!p.id_moniteur_validateur;
+        if (filter === "valide" && !isValide) return false;
+        if (filter === "non_valide" && isValide) return false;
       }
 
       if (searchTerm) {
@@ -98,11 +101,9 @@ const PlongeeList = () => {
     try {
       setLoading(true);
       await remove.mutateAsync(id);
-      toast.success("Plongée supprimée avec succès");
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
       console.error("Delete error:", error);
     } finally {
       setLoading(false);
@@ -113,10 +114,8 @@ const PlongeeList = () => {
     try {
       setLoading(true);
       await validate.mutateAsync(id);
-      toast.success("Plongée validée avec succès");
       refetch();
     } catch (error) {
-      toast.error("Erreur lors de la validation");
       console.error("Validate error:", error);
     } finally {
       setLoading(false);
@@ -147,12 +146,14 @@ const PlongeeList = () => {
             ? "Aucun résultat pour vos critères"
             : "Commencez par enregistrer votre première plongée"}
         </p>
-        <Link
-          to="/plongees/create"
-          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-        >
-          <FiPlus className="w-4 h-4" /> Nouvelle plongée
-        </Link>
+        {canManagePlongee && (
+          <Link
+            to="/plongees/create"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+          >
+            <FiPlus className="w-4 h-4" /> Nouvelle plongée
+          </Link>
+        )}
       </motion.div>
     );
   }
@@ -187,13 +188,15 @@ const PlongeeList = () => {
             <option value="valide">Validées</option>
             <option value="non_valide">Non validées</option>
           </select>
-          <Link
-            to="/plongees/create"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <FiPlus className="w-4 h-4" />
-            Nouvelle
-          </Link>
+          {canManagePlongee && (
+            <Link
+              to="/plongees/create"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <FiPlus className="w-4 h-4" />
+              Nouvelle
+            </Link>
+          )}
         </div>
       </div>
 
@@ -240,7 +243,7 @@ const PlongeeList = () => {
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
                         <img
-                          src={adherentInfo.photo}
+                          src={photoUrl(adherentInfo.photo)}
                           alt={adherentName}
                           className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
                         />
@@ -291,7 +294,7 @@ const PlongeeList = () => {
                               </span>
                             </span>
                             <span>•</span>
-                            {plongee.valide_moniteur ? (
+                            {plongee.id_moniteur_validateur ? (
                               <span className="flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
                                 <FiCheck className="w-3.5 h-3.5" /> Validée
                               </span>
@@ -306,7 +309,7 @@ const PlongeeList = () => {
                         {/* Actions */}
                         <div className="flex items-center gap-1 flex-shrink-0">
                           {/* Valider - uniquement si non validée */}
-                          {!plongee.valide_moniteur && (
+                          {canManagePlongee && !plongee.id_moniteur_validateur && (
                             <button
                               onClick={() => handleValidate(plongee.id_plongee)}
                               disabled={loading}
@@ -324,21 +327,25 @@ const PlongeeList = () => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          <Link
-                            to={`/plongees/edit/${plongee.id_plongee}`}
-                            className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                            title="Modifier"
-                          >
-                            <FiEdit className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={() => setDeleteModal(plongee.id_plongee)}
-                            disabled={loading}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                            title="Supprimer"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
+                          {canManagePlongee && (
+                            <>
+                              <Link
+                                to={`/plongees/edit/${plongee.id_plongee}`}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                title="Modifier"
+                              >
+                                <FiEdit className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() => setDeleteModal(plongee.id_plongee)}
+                                disabled={loading}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="Supprimer"
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

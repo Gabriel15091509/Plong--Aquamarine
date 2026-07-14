@@ -20,6 +20,31 @@ class PaiementRepository extends BaseRepository {
     });
   }
 
+  async findLatestByReference(type_paiement, reference_id) {
+    return await this.model.findOne({
+      where: { type_paiement, reference_id: String(reference_id) },
+      order: [['created_at', 'DESC']]
+    });
+  }
+
+  // Anti-doublon : détecte un paiement identique (même adhérent, type,
+  // référence et montant) créé il y a moins de `windowMs` — un double-clic
+  // ou une double soumission envoie deux requêtes quasi simultanées avant
+  // qu'un garde-fou front-end ne puisse les bloquer, ce qui insérait deux
+  // lignes distinctes pour un seul paiement reçu.
+  async findRecentDuplicate({ num_adherent, type_paiement, reference_id, montant }, windowMs = 10000) {
+    return await this.model.findOne({
+      where: {
+        num_adherent,
+        type_paiement,
+        reference_id: reference_id !== undefined && reference_id !== null ? String(reference_id) : null,
+        montant,
+        created_at: { [Op.gte]: new Date(Date.now() - windowMs) },
+      },
+      order: [['created_at', 'DESC']],
+    });
+  }
+
   // ✅ Ajout de getStats
   async getStats() {
     const stats = await this.model.findAll({
@@ -42,7 +67,7 @@ class PaiementRepository extends BaseRepository {
         date_paiement: {
           [Op.between]: [startDate, endDate]
         },
-        statut: 'Validé'
+        statut: 'Payé'
       }
     });
     return result ? result.get('total') || 0 : 0;

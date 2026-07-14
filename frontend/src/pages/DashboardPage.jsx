@@ -19,12 +19,15 @@ import { usePaiements } from "../hooks/usePaiements";
 import { useFormations } from "../hooks/useFormations";
 import { usePlongees } from "../hooks/usePlongees";
 import { useMateriels } from "../hooks/useMateriels";
+import { useDashboard } from "../hooks/useDashboard";
 import StatsCard from "../components/Common/StatsCard";
 import LoadingSpinner from "../components/Common/LoadingSpinner";
 import BarChart from "../components/Charts/BarChart";
 import PieChart from "../components/Charts/PieChart";
 import RecentActivity from "../components/Dashboard/RecentActivity";
-import Logo from "../components/Common/Logo";
+import AdherentRecapCard from "../components/Dashboard/AdherentRecapCard";
+import DashboardHero from "../components/Dashboard/DashboardHero";
+import { useAuth } from "../context/AuthContext";
 
 // ✅ Formattage des nombres
 const formatNumber = (num) => {
@@ -56,6 +59,22 @@ const staggerContainer = {
 };
 
 const DashboardPage = () => {
+  const { user } = useAuth();
+
+  // Un adhérent voit sa fiche récapitulative personnelle (niveau, échéances)
+  // plutôt que les statistiques globales du club, réservées au staff.
+  if (user?.role === "adherent") {
+    return (
+      <div className="min-h-screen p-6">
+        <AdherentRecapCard />
+      </div>
+    );
+  }
+
+  return <StaffDashboardContent />;
+};
+
+const StaffDashboardContent = () => {
   // ✅ Hooks
   const { useGetStats: useGetAdherentStats } = useAdherents();
   const { useGetStats: useGetSortieStats } = useSorties();
@@ -63,8 +82,11 @@ const DashboardPage = () => {
   const { useGetStats: useGetFormationStats } = useFormations();
   const { useGetStats: useGetPlongeeStats } = usePlongees();
   const { useGetStats: useGetMaterielStats } = useMateriels();
+  const { useGetTrends } = useDashboard();
 
   // ✅ Données
+  const { data: trendsResponse } = useGetTrends();
+  const trends = trendsResponse?.data;
   const {
     data: adherentStats,
     isLoading: adherentLoading,
@@ -201,7 +223,7 @@ const DashboardPage = () => {
           .filter((p) => p.statut === "En attente")
           .reduce((sum, p) => sum + (parseInt(p.count) || 0), 0);
         validatedPaiements = paiementData
-          .filter((p) => p.statut === "Validé")
+          .filter((p) => p.statut === "Payé")
           .reduce((sum, p) => sum + (parseInt(p.count) || 0), 0);
         totalPaiementsAmount = paiementData.reduce(
           (sum, p) => sum + parseFloat(p.total || 0),
@@ -213,7 +235,7 @@ const DashboardPage = () => {
           (p) => p.statut === "En attente",
         ).length;
         validatedPaiements = paiementData.filter(
-          (p) => p.statut === "Validé",
+          (p) => p.statut === "Payé",
         ).length;
         totalPaiementsAmount = paiementData.reduce(
           (sum, p) => sum + parseFloat(p.total || 0),
@@ -369,48 +391,44 @@ const DashboardPage = () => {
         title: "Adhérents",
         value: formatNumber(statsData.totalAdherents),
         icon: FiUsers,
-        color: "from-blue-500 to-indigo-600",
         bgColor: "bg-blue-50 dark:bg-blue-900/20",
         textColor: "text-blue-600 dark:text-blue-400",
         subValue: `${formatNumber(statsData.activeAdherents)} actifs • ${formatNumber(statsData.inactiveAdherents)} inactifs • ${formatNumber(statsData.suspendedAdherents)} suspendus`,
-        trend: "+12%",
-        trendUp: true,
+        trend: trends?.adherents?.trend,
+        trendUp: trends?.adherents?.trendUp,
       },
       {
         title: "Sorties",
         value: formatNumber(statsData.totalSorties),
         icon: FiCalendar,
-        color: "from-emerald-500 to-green-600",
         bgColor: "bg-emerald-50 dark:bg-emerald-900/20",
         textColor: "text-emerald-600 dark:text-emerald-400",
         subValue: `${formatNumber(statsData.plannedSorties)} planifiées • ${formatNumber(statsData.ongoingSorties)} en cours • ${formatNumber(statsData.completedSorties)} terminées`,
-        trend: "+8%",
-        trendUp: true,
+        trend: trends?.sorties?.trend,
+        trendUp: trends?.sorties?.trendUp,
       },
       {
         title: "Chiffre d'affaires",
         value: formatCurrency(statsData.totalPaiementsAmount),
         icon: FiDollarSign,
-        color: "from-purple-500 to-violet-600",
         bgColor: "bg-purple-50 dark:bg-purple-900/20",
         textColor: "text-purple-600 dark:text-purple-400",
         subValue: `${formatNumber(statsData.validatedPaiements)} validés • ${formatNumber(statsData.pendingPaiements)} en attente`,
-        trend: "+15%",
-        trendUp: true,
+        trend: trends?.chiffreAffaires?.trend,
+        trendUp: trends?.chiffreAffaires?.trendUp,
       },
       {
         title: "Formations",
         value: formatNumber(statsData.totalFormations),
         icon: FiAward,
-        color: "from-orange-500 to-amber-600",
         bgColor: "bg-orange-50 dark:bg-orange-900/20",
         textColor: "text-orange-600 dark:text-orange-400",
         subValue: `${formatNumber(statsData.activeFormations)} en cours • ${formatNumber(statsData.completedFormations)} terminées`,
-        trend: "+5%",
-        trendUp: true,
+        trend: trends?.formations?.trend,
+        trendUp: trends?.formations?.trendUp,
       },
     ],
-    [statsData],
+    [statsData, trends],
   );
 
   // ✅ Statistiques secondaires
@@ -420,32 +438,30 @@ const DashboardPage = () => {
         title: "Plongées",
         value: formatNumber(statsData.totalPlongees),
         icon: FiActivity,
-        color: "from-rose-500 to-pink-600",
         bgColor: "bg-rose-50 dark:bg-rose-900/20",
         textColor: "text-rose-600 dark:text-rose-400",
         subValue:
           statsData.avgDepth > 0
             ? `Profondeur moyenne: ${formatNumber(statsData.avgDepth)}m`
             : "Aucune plongée",
-        trend: "+23%",
-        trendUp: true,
+        trend: trends?.plongees?.trend,
+        trendUp: trends?.plongees?.trendUp,
       },
       {
         title: "Matériel disponible",
         value: `${formatNumber(statsData.availableMateriels)}/${formatNumber(statsData.totalMateriels)}`,
         icon: FiPackage,
-        color: "from-cyan-500 to-sky-600",
         bgColor: "bg-cyan-50 dark:bg-cyan-900/20",
         textColor: "text-cyan-600 dark:text-cyan-400",
         subValue:
           statsData.totalMateriels > 0
             ? `${Math.round((statsData.availableMateriels / statsData.totalMateriels) * 100)}% du stock`
             : "Aucun matériel",
-        trend: "-3%",
-        trendUp: false,
+        trend: trends?.materiel?.trend,
+        trendUp: trends?.materiel?.trendUp,
       },
     ],
-    [statsData],
+    [statsData, trends],
   );
 
   // ✅ Données graphiques
@@ -512,131 +528,6 @@ const DashboardPage = () => {
           </button>
         </motion.div>
       )}
-
-      {/* En-tête avec image de fond */}
-      <div className="relative rounded-3xl h-[200px] md:h-[240px] shadow-2xl overflow-hidden">
-        {/* Image de fond */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
-          style={{
-            backgroundImage: `url('https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=1920&fit=crop')`,
-            backgroundPosition: 'center 60%',
-          }}
-        />
-        
-        {/* Overlay dégradé */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-800/60 to-slate-900/40 z-10" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 z-10" />
-
-        {/* Motif de fond subtil */}
-        <div className="absolute inset-0 opacity-[0.06] z-0 pointer-events-none">
-          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="dots" width="30" height="30" patternUnits="userSpaceOnUse">
-                <circle cx="2" cy="2" r="1.5" fill="white" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#dots)" />
-          </svg>
-        </div>
-
-        {/* Reflets lumineux */}
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/5 rounded-full blur-3xl z-10 pointer-events-none" />
-        <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl z-10 pointer-events-none" />
-
-        <div className="relative z-20 h-full flex flex-col justify-center px-6 md:px-10 lg:px-14">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="flex items-center gap-4 md:gap-6"
-          >
-            {/* Logo */}
-            <div className="hidden sm:flex items-center justify-center w-14 h-14 md:w-[72px] md:h-[72px] bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl flex-shrink-0 hover:scale-105 hover:bg-white/20 transition-all duration-300">
-              <Logo size="lg" className="flex-shrink-0" />
-            </div>
-
-            {/* Séparateur */}
-            <div className="hidden sm:block w-px h-12 bg-gradient-to-b from-white/30 via-white/10 to-transparent" />
-
-            {/* Titre */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-                <h1 className="text-white text-xl md:text-3xl lg:text-4xl font-bold tracking-tight drop-shadow-2xl">
-                  Tableau de bord
-                </h1>
-                <span className="text-[10px] md:text-xs font-semibold text-white/90 bg-white/20 backdrop-blur-md px-3 md:px-4 py-1 rounded-full shadow-lg border border-white/20 hover:bg-white/30 transition-all duration-300">
-                  Dashboard
-                </span>
-              </div>
-              <p className="text-white/80 text-xs md:text-sm lg:text-base font-light tracking-wide mt-0.5 md:mt-1 flex items-center gap-2 drop-shadow-lg">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                Gérez votre club de plongée en toute simplicité
-              </p>
-            </div>
-
-            {/* Date et statut */}
-            <div className="hidden lg:block text-right flex-shrink-0">
-              <p className="text-white/50 text-[10px] font-medium tracking-[0.15em] drop-shadow-lg uppercase">
-                {new Date().toLocaleDateString("fr-FR", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
-              <div className="flex items-center justify-end gap-2 mt-1.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                <span className="text-white/30 text-[8px] font-light tracking-[0.25em] uppercase">
-                  En direct
-                </span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Stats rapides */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.5 }}
-            className="flex flex-wrap items-center gap-2 md:gap-3 mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10"
-          >
-            <div className="flex items-center gap-1.5 md:gap-2 bg-white/10 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 hover:bg-white/20 hover:border-white/20 transition-all duration-300 cursor-default">
-              <FiUsers className="w-3 h-3 md:w-3.5 md:h-3.5 text-blue-300" />
-              <span className="text-white/90 text-[10px] md:text-xs font-medium tracking-wider whitespace-nowrap">
-                {formatNumber(statsData.totalAdherents)} adhérents
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 md:gap-2 bg-white/10 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 hover:bg-white/20 hover:border-white/20 transition-all duration-300 cursor-default">
-              <FiCalendar className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-300" />
-              <span className="text-white/90 text-[10px] md:text-xs font-medium tracking-wider whitespace-nowrap">
-                {formatNumber(statsData.plannedSorties)} sorties
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 md:gap-2 bg-white/10 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 hover:bg-white/20 hover:border-white/20 transition-all duration-300 cursor-default">
-              <FiDollarSign className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-300" />
-              <span className="text-white/90 text-[10px] md:text-xs font-medium tracking-wider whitespace-nowrap">
-                {formatCurrency(statsData.totalPaiementsAmount)}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 md:gap-2 bg-white/10 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 hover:bg-white/20 hover:border-white/20 transition-all duration-300 cursor-default">
-              <FiActivity className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-300" />
-              <span className="text-white/90 text-[10px] md:text-xs font-medium tracking-wider whitespace-nowrap">
-                {formatNumber(statsData.totalPlongees)} plongées
-              </span>
-            </div>
-          </motion.div>
-        </div>
-      </div>
 
       {/* Statistiques principales */}
       <motion.div

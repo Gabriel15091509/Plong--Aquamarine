@@ -128,6 +128,28 @@ class InscriptionController extends BaseController {
     }
   }
 
+  // ✅ POST - Enregistrer un paiement (acompte/solde) sur le tarif de la sortie
+  async enregistrerPaiement(req, res) {
+    try {
+      const { id } = req.params;
+      const result = await this.inscriptionService.enregistrerPaiement(
+        parseInt(id),
+        req.body,
+        req.user,
+      );
+      res.json({
+        success: true,
+        data: result,
+        message: "Paiement enregistré avec succès",
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
   // ✅ DELETE - Supprimer une inscription
   async delete(req, res) {
     try {
@@ -197,6 +219,7 @@ class InscriptionController extends BaseController {
       const results = await this.inscriptionService.getConfirmationsBySortie(
         parseInt(id_sortie),
         req.user,
+        req.query.presents === "true",
       );
       res.json({
         success: true,
@@ -257,11 +280,30 @@ class InscriptionController extends BaseController {
     }
   }
 
+  async getByAdherent(req, res) {
+    try {
+      const { num_adherent } = req.params;
+      const results = await this.inscriptionService.getByAdherent(num_adherent);
+      res.json({
+        success: true,
+        data: results || [],
+        count: results?.length || 0,
+      });
+    } catch (error) {
+      console.error("Erreur getByAdherent:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message,
+        data: [],
+      });
+    }
+  }
+
   async getByAdherentAndSortie(req, res) {
     try {
       const { num_adherent, id_sortie } = req.params;
       const result = await this.inscriptionService.getByAdherentAndSortie(
-        parseInt(num_adherent),
+        num_adherent,
         parseInt(id_sortie),
         req.user,
       );

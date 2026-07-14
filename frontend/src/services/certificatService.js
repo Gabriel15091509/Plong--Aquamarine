@@ -32,12 +32,18 @@ class CertificatService {
   }
 
   async create(data) {
-    const response = await api.post('/certificats-medicaux', data);
+    const isFormData = data instanceof FormData;
+    const response = await api.post('/certificats-medicaux', data, isFormData
+      ? { headers: { 'Content-Type': 'multipart/form-data' } }
+      : undefined);
     return response.data;
   }
 
   async update(id, data) {
-    const response = await api.put(`/certificats-medicaux/${id}`, data);
+    const isFormData = data instanceof FormData;
+    const response = await api.put(`/certificats-medicaux/${id}`, data, isFormData
+      ? { headers: { 'Content-Type': 'multipart/form-data' } }
+      : undefined);
     return response.data;
   }
 

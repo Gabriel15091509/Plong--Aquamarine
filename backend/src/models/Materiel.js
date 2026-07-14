@@ -57,6 +57,14 @@ const Materiel = sequelize.define(
       type: DataTypes.BLOB,
       allowNull: true,
     },
+    created_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "president",
+        key: "id_president",
+      },
+    },
   },
   {
     tableName: "materiels",

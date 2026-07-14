@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -19,6 +18,7 @@ import { useFormations } from "../../hooks/useFormations";
 import { useAdherents } from "../../hooks/useAdherents";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
+import { photoUrl } from "../../utils/photoUrl";
 
 // TODO: Ajouter un filtre par niveau de formation
 const FormationList = () => {
@@ -57,9 +57,6 @@ const FormationList = () => {
     return map;
   }, [adherentsData]);
 
-  if (isLoading || loadingAdherents) return <LoadingSpinner />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
-
   const allFormations = data?.data || [];
 
   const filteredFormations = useMemo(() => {
@@ -83,6 +80,9 @@ const FormationList = () => {
     });
   }, [allFormations, adherentMap, filter, searchTerm]);
 
+  if (isLoading || loadingAdherents) return <LoadingSpinner />;
+  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+
   const totalPages = Math.ceil(filteredFormations.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedFormations = filteredFormations.slice(
@@ -94,11 +94,9 @@ const FormationList = () => {
     try {
       setActionLoading(`delete-${id}`);
       await remove.mutateAsync(id);
-      toast.success("Formation supprimée avec succès");
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
       console.error("Delete error:", error);
     } finally {
       setActionLoading(null);
@@ -109,11 +107,9 @@ const FormationList = () => {
     try {
       setActionLoading(`complete-${id}`);
       await complete.mutateAsync(id);
-      toast.success("Formation terminée avec succès");
       refetch();
       setCompleteModal(null);
     } catch (error) {
-      toast.error("Erreur lors de la finalisation");
       console.error("Complete error:", error);
     } finally {
       setActionLoading(null);
@@ -124,10 +120,8 @@ const FormationList = () => {
     try {
       setActionLoading(`session-${id}`);
       await incrementSessions.mutateAsync(id);
-      toast.success("Séance ajoutée avec succès");
       refetch();
     } catch (error) {
-      toast.error("Erreur lors de l'ajout de la séance");
       console.error("Session error:", error);
     } finally {
       setActionLoading(null);
@@ -251,7 +245,7 @@ const FormationList = () => {
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
                         <img
-                          src={adherentInfo.photo}
+                          src={photoUrl(adherentInfo.photo)}
                           alt={adherentName}
                           className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
                         />

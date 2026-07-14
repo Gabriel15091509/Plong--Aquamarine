@@ -39,31 +39,35 @@ export const ThemeProvider = ({ children }) => {
     }
   };
 
+  // Palette alignee sur frontend/tailwind.config.js (primary/ocean) pour que
+  // l'appli mobile reprenne visuellement le meme style que le site web.
   const colors = {
     light: {
-      background: "#f5f5f5",
+      background: "#f9fafb", // gray-50 (body du web)
       card: "#ffffff",
-      text: "#1a1a2e",
-      textSecondary: "#666666",
-      border: "#e0e0e0",
-      primary: "#1a73e8",
-      primaryLight: "#e3f2fd",
-      success: "#4caf50",
-      error: "#f44336",
-      warning: "#ff9800",
+      text: "#1f2937", // gray-800 (titres du web)
+      textSecondary: "#6b7280", // gray-500
+      border: "#e5e7eb", // gray-200
+      primary: "#2563eb", // primary-600
+      primaryLight: "#dbeafe", // primary-100
+      ocean: "#0ea5e9", // ocean-500 (fin de degrade primary -> ocean)
+      success: "#16a34a", // green-600
+      error: "#dc2626", // red-600
+      warning: "#d97706", // amber-600
       shadow: "rgba(0,0,0,0.1)",
     },
     dark: {
-      background: "#121212",
-      card: "#1e1e1e",
-      text: "#ffffff",
-      textSecondary: "#999999",
-      border: "#333333",
-      primary: "#1a73e8",
-      primaryLight: "#1a237e",
-      success: "#4caf50",
-      error: "#f44336",
-      warning: "#ff9800",
+      background: "#111827", // gray-900
+      card: "#1f2937", // gray-800
+      text: "#f3f4f6", // gray-100
+      textSecondary: "#9ca3af", // gray-400
+      border: "#374151", // gray-700
+      primary: "#3b82f6", // primary-500
+      primaryLight: "#1e3a8a", // primary-900
+      ocean: "#0ea5e9", // ocean-500
+      success: "#22c55e", // green-500
+      error: "#ef4444", // red-500
+      warning: "#f59e0b", // amber-500
       shadow: "rgba(0,0,0,0.3)",
     },
   };

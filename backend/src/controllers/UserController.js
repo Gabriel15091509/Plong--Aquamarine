@@ -18,8 +18,7 @@ class UserController extends BaseController {
         });
       }
 
-      const { email, name, role, phone, contact_urgence, niveau, password } =
-        req.body;
+      const { email, name, role, phone, password } = req.body;
       const createdBy = req.user.id;
 
       // ✅ Vérifier les permissions
@@ -35,14 +34,31 @@ class UserController extends BaseController {
         });
       }
 
+      // ✅ Chaque rôle a une fiche métier avec des champs obligatoires que
+      // ce formulaire générique ne collecte pas (Adherent: civilité, date de
+      // naissance, adresse... / Moniteur: numéro de brevet... / Trésorier et
+      // Président: année en poste...). Un compte créé ici serait orphelin
+      // (sans fiche) et bloquerait ensuite sa création depuis la page dédiée
+      // (email déjà utilisé). Chaque page dédiée crée elle-même le compte.
+      const DEDICATED_PAGE = {
+        adherent: "Adhérents → Nouvel adhérent",
+        moniteur: "Moniteurs → Nouveau moniteur",
+        tresorier: "Trésoriers → Nouveau trésorier",
+        president: "Présidents → Nouveau président",
+      };
+      if (DEDICATED_PAGE[role]) {
+        return res.status(400).json({
+          success: false,
+          message: `Un compte "${role}" doit être créé depuis la page "${DEDICATED_PAGE[role]}", qui crée automatiquement le compte de connexion et sa fiche associée`,
+        });
+      }
+
       const result = await this.userService.createUserByDirector(
         {
           email,
           name,
           role: role || "adherent",
           phone,
-          contact_urgence,
-          niveau,
           password, // ✅ transmis maintenant, pour rester cohérent avec l'email déjà envoyé par le frontend
         },
         createdBy,
@@ -215,18 +231,21 @@ class UserController extends BaseController {
   async updateProfile(req, res) {
     try {
       const userId = req.user.id;
-      const { email, phone, contact_urgence, name } = req.body;
+      const { email, phone, contact_urgence, name, photo_path } = req.body;
 
       const result = await this.userService.updateProfile(userId, {
         email,
         phone,
         contact_urgence,
         name,
+        ...(photo_path ? { photo: photo_path } : {}),
       });
+      // ✅ contact_urgence est redirigé vers la fiche Adherent liée par UserService.updateProfile
 
+      const { password, ...safeUser } = result.toJSON();
       res.json({
         success: true,
-        data: result,
+        data: safeUser,
         message: "Profil mis à jour avec succès",
       });
     } catch (error) {

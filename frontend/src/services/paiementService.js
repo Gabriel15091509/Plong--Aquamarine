@@ -1,4 +1,5 @@
 import api from "./api";
+import { downloadFile } from "../utils/downloadFile";
 
 class PaiementService {
   async getAll(params = {}) {
@@ -56,6 +57,10 @@ class PaiementService {
   async delete(id) {
     const response = await api.delete(`/paiements/${id}`);
     return response.data;
+  }
+
+  async downloadRecu(id) {
+    return downloadFile(`/paiements/${id}/recu`, `recu-paiement-${id}.pdf`);
   }
 }
 

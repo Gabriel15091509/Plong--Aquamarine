@@ -1,11 +1,31 @@
 const BaseService = require('./BaseService');
 const CertificatMedicalRepository = require('../repositories/CertificatMedicalRepository');
+const { getAdherentForUser } = require('../utils/roleScope');
 
 class CertificatMedicalService extends BaseService {
   constructor() {
     const repository = new CertificatMedicalRepository();
     super(repository);
     this.certificatRepository = repository;
+  }
+
+  async getAll(user = null) {
+    const adherent = await getAdherentForUser(user);
+    if (adherent) {
+      return await this.certificatRepository.findByAdherent(adherent.num_adherent);
+    }
+    return await this.certificatRepository.findAll();
+  }
+
+  async getById(id, user = null) {
+    const certificat = await this.certificatRepository.findById(id);
+    if (certificat) {
+      const adherent = await getAdherentForUser(user);
+      if (adherent && certificat.num_adherent !== adherent.num_adherent) {
+        throw new Error("Accès refusé à ce certificat");
+      }
+    }
+    return certificat;
   }
 
   async getValidCertificates() {
@@ -16,7 +36,11 @@ class CertificatMedicalService extends BaseService {
     return await this.certificatRepository.findExpiredCertificates();
   }
 
-  async getCertificatesByAdherent(num_adherent) {
+  async getCertificatesByAdherent(num_adherent, user = null) {
+    const adherent = await getAdherentForUser(user);
+    if (adherent && num_adherent !== adherent.num_adherent) {
+      throw new Error("Accès refusé à ces certificats");
+    }
     return await this.certificatRepository.findByAdherent(num_adherent);
   }
 

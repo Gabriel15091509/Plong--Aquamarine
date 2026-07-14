@@ -4,30 +4,22 @@ import {
   Pie,
   Cell,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 
-// Couleurs modernes
-const COLORS = ["#3b82f6", "#10b981", "#ef4444", "#f59e0b"];
+const COLORS = ["#3b82f6", "#f59e0b", "#ef4444", "#10b981"];
 
-// Tooltip custom stylé
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0];
     return (
-      <div
-        style={{
-          background: "rgba(15, 23, 42, 0.95)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          padding: "10px 12px",
-          borderRadius: 12,
-          color: "#fff",
-          boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
-        }}
-      >
-        <p style={{ margin: 0, fontWeight: "bold" }}>{data.name}</p>
-        <p style={{ margin: 0, color: "#38bdf8" }}>Valeur: {data.value}</p>
+      <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-lg px-3 py-2">
+        <p className="text-xs font-semibold text-gray-800 dark:text-white">
+          {data.name}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-slate-400">
+          Valeur : <span className="font-semibold">{data.value}</span>
+        </p>
       </div>
     );
   }
@@ -35,84 +27,58 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 const PieChart = ({ data }) => {
+  const total = data.reduce((sum, d) => sum + (d.value || 0), 0);
+
   return (
-    <div
-      style={{
-        width: "100%",
-        height: 350,
-        background: "linear-gradient(135deg, #0f172a, #1e293b)",
-        borderRadius: 16,
-        padding: 16,
-        boxShadow: "0 15px 35px rgba(0,0,0,0.4)",
-        position: "relative",
-      }}
-    >
-      <ResponsiveContainer width="100%" height="100%">
-        <RechartsPie>
-          {/* Glow effect (centre pro look) */}
-          <defs>
-            {COLORS.map((color, i) => (
-              <linearGradient
-                key={i}
-                id={`grad${i}`}
-                x1="0"
-                y1="0"
-                x2="1"
-                y2="1"
-              >
-                <stop offset="0%" stopColor={color} stopOpacity={0.9} />
-                <stop offset="100%" stopColor={color} stopOpacity={0.6} />
-              </linearGradient>
-            ))}
-          </defs>
+    <div>
+      <div className="relative">
+        <ResponsiveContainer width="100%" height={260}>
+          <RechartsPie>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              outerRadius={100}
+              innerRadius={65}
+              paddingAngle={3}
+              dataKey="value"
+              animationBegin={0}
+              animationDuration={1000}
+              animationEasing="ease-out"
+            >
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                  stroke="#fff"
+                  strokeWidth={2}
+                />
+              ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+          </RechartsPie>
+        </ResponsiveContainer>
 
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            outerRadius={100}
-            innerRadius={55} // 🔥 effet donut moderne
-            paddingAngle={3}
-            dataKey="value"
-            animationBegin={0}
-            animationDuration={1200}
-            animationEasing="ease-out"
-            label={({ name, percent }) =>
-              `${name} ${(percent * 100).toFixed(0)}%`
-            }
-          >
-            {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={`url(#grad${index % COLORS.length})`}
-                stroke="rgba(255,255,255,0.15)"
-              />
-            ))}
-          </Pie>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            {total}
+          </p>
+          <p className="text-xs text-gray-400 dark:text-slate-500">Total</p>
+        </div>
+      </div>
 
-          <Tooltip content={<CustomTooltip />} />
-          <Legend
-            wrapperStyle={{
-              color: "#fff",
-              fontSize: 12,
-            }}
-          />
-        </RechartsPie>
-      </ResponsiveContainer>
-
-      {/* Centre label style (optionnel) */}
-      <div
-        style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          color: "#fff",
-          textAlign: "center",
-          pointerEvents: "none",
-        }}
-      >
-        <p style={{ margin: 0, fontSize: 12, opacity: 0.7 }}>Total</p>
+      <div className="flex flex-wrap justify-center gap-4 mt-4">
+        {data.map((entry, index) => (
+          <div key={entry.name} className="flex items-center gap-1.5">
+            <span
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+            />
+            <span className="text-xs font-medium text-gray-500 dark:text-slate-400">
+              {entry.name}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

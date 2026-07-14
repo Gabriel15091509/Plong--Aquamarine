@@ -30,6 +30,15 @@ export const usePaiements = () => {
     });
   };
 
+  const useGetByAdherent = (numAdherent) => {
+    return useQuery({
+      queryKey: ["paiements", "adherent", numAdherent],
+      queryFn: () => paiementService.getByAdherent(numAdherent),
+      enabled: !!numAdherent,
+      staleTime: 2 * 60 * 1000,
+    });
+  };
+
   // ✅ CORRECTION: useGetStats existe bien
   const useGetStats = () => {
     return useQuery({
@@ -42,8 +51,18 @@ export const usePaiements = () => {
   const useCreate = () => {
     return useMutation({
       mutationFn: (data) => paiementService.create(data),
-      onSuccess: (response) => {
+      onSuccess: (response, variables) => {
         queryClient.invalidateQueries(["paiements"]);
+        // Le registre général délègue à Adhesion/Inscription/FormationService
+        // selon le type choisi : invalider le cache de l'objet visé pour
+        // refléter le nouveau statut/solde sans attendre le staleTime.
+        if (variables?.type_paiement === "Adhesion") {
+          queryClient.invalidateQueries(["adhesions"]);
+        } else if (variables?.type_paiement === "Sortie") {
+          queryClient.invalidateQueries(["inscriptions"]);
+        } else if (variables?.type_paiement === "Formation") {
+          queryClient.invalidateQueries(["formations"]);
+        }
         toast.success(response.message || "Paiement créé avec succès");
       },
       onError: (error) => {
@@ -118,6 +137,7 @@ export const usePaiements = () => {
     useGetAll,
     useGetById,
     useGetPending,
+    useGetByAdherent,
     useGetStats, // ✅ Bien retourné
     useCreate,
     useUpdate,

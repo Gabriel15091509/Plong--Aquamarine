@@ -30,6 +30,15 @@ export const usePlongees = () => {
     });
   };
 
+  const useGetByAdherent = (numAdherent) => {
+    return useQuery({
+      queryKey: ['plongees', 'adherent', numAdherent],
+      queryFn: () => plongeeService.getByAdherent(numAdherent),
+      enabled: !!numAdherent,
+      staleTime: 2 * 60 * 1000,
+    });
+  };
+
   const useCreate = () => {
     return useMutation({
       mutationFn: (data) => plongeeService.create(data),
@@ -86,6 +95,7 @@ export const usePlongees = () => {
     useGetAll,
     useGetById,
     useGetStats,
+    useGetByAdherent,
     useCreate,
     useUpdate,
     useRemove,

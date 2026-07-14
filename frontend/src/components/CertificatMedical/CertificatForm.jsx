@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiUser,
   FiFileText,
@@ -14,6 +13,8 @@ import {
   FiClock,
   FiAward,
   FiBriefcase,
+  FiUpload,
+  FiFile,
 } from "react-icons/fi";
 import { useCertificats } from "../../hooks/useCertificats";
 import { useAdherents } from "../../hooks/useAdherents";
@@ -54,6 +55,9 @@ const CertificatForm = () => {
     medecin: "",
     statut: "Valide",
   });
+  const [documentFile, setDocumentFile] = useState(null);
+  const [existingDocumentPath, setExistingDocumentPath] = useState(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState(null);
 
   useEffect(() => {
     if (editMode && id && certificatData?.data) {
@@ -70,6 +74,7 @@ const CertificatForm = () => {
         medecin: cert.medecin || "",
         statut: cert.statut || "Valide",
       });
+      setExistingDocumentPath(cert.document_path || null);
     }
   }, [editMode, id, certificatData]);
 
@@ -78,6 +83,23 @@ const CertificatForm = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setDocumentFile(file);
+    setFilePreviewUrl((prevUrl) => {
+      if (prevUrl) URL.revokeObjectURL(prevUrl);
+      return file && file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : null;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    };
+  }, [filePreviewUrl]);
 
   const handleFocus = (name) => setFocused(name);
   const handleBlur = () => setFocused(null);
@@ -100,19 +122,22 @@ const CertificatForm = () => {
     if (!validate()) return;
     setLoading(true);
     try {
+      let payload = formData;
+      if (documentFile) {
+        payload = new FormData();
+        Object.entries(formData).forEach(([key, value]) => {
+          payload.append(key, value);
+        });
+        payload.append("document", documentFile);
+      }
       if (editMode && id) {
-        await update.mutateAsync({ id, data: formData });
-        toast.success("Certificat modifié avec succès");
+        await update.mutateAsync({ id, data: payload });
       } else {
-        await create.mutateAsync(formData);
-        toast.success("Certificat créé avec succès");
+        await create.mutateAsync(payload);
       }
       navigate("/certificats");
     } catch (error) {
       console.error("Error:", error);
-      toast.error(
-        error.response?.data?.message || "Erreur lors de l'enregistrement",
-      );
     } finally {
       setLoading(false);
     }
@@ -295,6 +320,48 @@ const CertificatForm = () => {
                 </option>
               ))}
             </select>
+          </motion.div>
+
+          <motion.div {...fadeInUp} className="md:col-span-2">
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiUpload className="w-4 h-4 text-gray-400" />
+                Photo / scan du certificat (facultatif)
+              </span>
+            </label>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={handleFileChange}
+              className={inputClasses("document")}
+            />
+            {documentFile ? (
+              <div className="mt-1.5">
+                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                  <FiFile className="w-3.5 h-3.5" />
+                  {documentFile.name}
+                </p>
+                {filePreviewUrl && (
+                  <img
+                    src={filePreviewUrl}
+                    alt="Aperçu du document"
+                    className="mt-2 max-h-48 rounded-lg border border-gray-200 dark:border-gray-600 object-contain"
+                  />
+                )}
+              </div>
+            ) : (
+              existingDocumentPath && (
+                <a
+                  href={`http://localhost:5000${existingDocumentPath}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
+                >
+                  <FiFile className="w-3.5 h-3.5" />
+                  Voir le document actuel
+                </a>
+              )
+            )}
           </motion.div>
         </div>
       </div>

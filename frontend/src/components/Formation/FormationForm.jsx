@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiUser,
   FiAward,
@@ -13,6 +12,8 @@ import {
   FiSave,
   FiX,
   FiBookOpen,
+  FiDollarSign,
+  FiCreditCard,
 } from "react-icons/fi";
 import { useFormations } from "../../hooks/useFormations";
 import { useAdherents } from "../../hooks/useAdherents";
@@ -21,6 +22,7 @@ import SearchableSelect from "../Common/SearchableSelect";
 import {
   NIVEAU_FORMATION_OPTIONS,
   STATUT_FORMATION_OPTIONS,
+  MODE_PAIEMENT_OPTIONS,
 } from "../../utils/constants";
 
 const fadeInUp = {
@@ -45,6 +47,7 @@ const FormationForm = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [focused, setFocused] = useState(null);
+  const submittingRef = useRef(false);
 
   const [formData, setFormData] = useState({
     num_adherent: "",
@@ -54,6 +57,9 @@ const FormationForm = () => {
     statut: "En cours",
     nb_seances_realisees: 0,
     commentaire_moniteur: "",
+    montant_total: "",
+    montant_paye: "",
+    mode: "Espèces",
   });
 
   useEffect(() => {
@@ -69,6 +75,9 @@ const FormationForm = () => {
         statut: f.statut || "En cours",
         nb_seances_realisees: f.nb_seances_realisees || 0,
         commentaire_moniteur: f.commentaire_moniteur || "",
+        montant_total: f.montant_total ?? "",
+        montant_paye: f.montant_paye ?? "",
+        mode: "Espèces",
       });
     }
   }, [editMode, id, data]);
@@ -97,23 +106,21 @@ const FormationForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     if (!validate()) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       if (editMode && id) {
         await update.mutateAsync({ id, data: formData });
-        toast.success("Formation modifiée avec succès");
       } else {
         await create.mutateAsync(formData);
-        toast.success("Formation créée avec succès");
       }
       navigate("/formations");
     } catch (error) {
       console.error("Error:", error);
-      toast.error(
-        error.response?.data?.message || "Erreur lors de l'enregistrement",
-      );
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -277,6 +284,78 @@ const FormationForm = () => {
               ))}
             </select>
           </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiDollarSign className="w-4 h-4 text-gray-400" />
+                Montant total de la formation (€)
+              </span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              name="montant_total"
+              value={formData.montant_total}
+              onChange={handleChange}
+              onFocus={() => handleFocus("montant_total")}
+              onBlur={handleBlur}
+              className={inputClasses("montant_total")}
+              placeholder="Facultatif — laisser vide si gratuite"
+              min="0"
+            />
+          </motion.div>
+
+          {!editMode && Number(formData.montant_total) > 0 && (
+            <>
+              <motion.div {...fadeInUp}>
+                <label className={labelClasses}>
+                  <span className="flex items-center gap-2">
+                    <FiDollarSign className="w-4 h-4 text-gray-400" />
+                    Montant reçu maintenant (€)
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="montant_paye"
+                  value={formData.montant_paye}
+                  onChange={handleChange}
+                  onFocus={() => handleFocus("montant_paye")}
+                  onBlur={handleBlur}
+                  className={inputClasses("montant_paye")}
+                  placeholder={formData.montant_total || "0.00"}
+                />
+                <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  Laisser vide pour ne rien encaisser maintenant. Un solde restant pourra être
+                  enregistré ultérieurement.
+                </p>
+              </motion.div>
+
+              <motion.div {...fadeInUp}>
+                <label className={labelClasses}>
+                  <span className="flex items-center gap-2">
+                    <FiCreditCard className="w-4 h-4 text-gray-400" />
+                    Mode de paiement
+                  </span>
+                </label>
+                <select
+                  name="mode"
+                  value={formData.mode}
+                  onChange={handleChange}
+                  onFocus={() => handleFocus("mode")}
+                  onBlur={handleBlur}
+                  className={inputClasses("mode")}
+                >
+                  {MODE_PAIEMENT_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </motion.div>
+            </>
+          )}
 
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>

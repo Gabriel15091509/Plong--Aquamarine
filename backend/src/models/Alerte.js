@@ -10,7 +10,7 @@ const Alerte = sequelize.define(
       autoIncrement: true,
     },
     num_adherent: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(20),
       allowNull: false,
     },
     type: {

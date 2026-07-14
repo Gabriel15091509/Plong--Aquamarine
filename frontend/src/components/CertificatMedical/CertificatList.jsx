@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -17,8 +16,10 @@ import {
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useCertificats } from "../../hooks/useCertificats";
 import { useAdherents } from "../../hooks/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
+import { photoUrl } from "../../utils/photoUrl";
 
 // Fonctions utilitaires hors du composant
 const isExpired = (date) => new Date(date) < new Date();
@@ -28,6 +29,8 @@ const getDaysRemaining = (date) => {
 };
 
 const CertificatList = () => {
+  const { hasRole } = useAuth();
+  const canManageCertificat = hasRole(["president"]);
   const { useGetAll, useRemove } = useCertificats();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
@@ -91,11 +94,9 @@ const CertificatList = () => {
   const handleDelete = async (id) => {
     try {
       await remove.mutateAsync(id);
-      toast.success("Certificat supprimé avec succès");
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
       console.error("Delete error:", error);
     }
   };
@@ -121,12 +122,14 @@ const CertificatList = () => {
             ? "Aucun résultat pour vos critères"
             : "Commencez par créer un nouveau certificat"}
         </p>
-        <Link
-          to="/certificats/create"
-          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-        >
-          <FiPlus className="w-4 h-4" /> Nouveau certificat
-        </Link>
+        {canManageCertificat && (
+          <Link
+            to="/certificats/create"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+          >
+            <FiPlus className="w-4 h-4" /> Nouveau certificat
+          </Link>
+        )}
       </motion.div>
     );
   }
@@ -161,13 +164,15 @@ const CertificatList = () => {
             <option value="Expiré">Expirés</option>
             <option value="En attente">En attente</option>
           </select>
-          <Link
-            to="/certificats/create"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <FiPlus className="w-4 h-4" />
-            Nouveau
-          </Link>
+          {canManageCertificat && (
+            <Link
+              to="/certificats/create"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <FiPlus className="w-4 h-4" />
+              Nouveau
+            </Link>
+          )}
         </div>
       </div>
 
@@ -215,7 +220,7 @@ const CertificatList = () => {
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
                         <img
-                          src={adherentInfo.photo}
+                          src={photoUrl(adherentInfo.photo)}
                           alt={adherentName}
                           className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
                         />
@@ -289,22 +294,26 @@ const CertificatList = () => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          <Link
-                            to={`/certificats/edit/${certificat.id_certificat}`}
-                            className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                            title="Modifier"
-                          >
-                            <FiEdit className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={() =>
-                              setDeleteModal(certificat.id_certificat)
-                            }
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                            title="Supprimer"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
+                          {canManageCertificat && (
+                            <>
+                              <Link
+                                to={`/certificats/edit/${certificat.id_certificat}`}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                title="Modifier"
+                              >
+                                <FiEdit className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() =>
+                                  setDeleteModal(certificat.id_certificat)
+                                }
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                title="Supprimer"
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

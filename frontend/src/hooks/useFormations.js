@@ -22,6 +22,15 @@ export const useFormations = () => {
     });
   };
 
+  const useGetByAdherent = (numAdherent) => {
+    return useQuery({
+      queryKey: ["formations", "adherent", numAdherent],
+      queryFn: () => formationService.getByAdherent(numAdherent),
+      enabled: !!numAdherent,
+      staleTime: 2 * 60 * 1000,
+    });
+  };
+
   const useGetActive = () => {
     return useQuery({
       queryKey: ["formations", "active"],
@@ -114,9 +123,27 @@ export const useFormations = () => {
     });
   };
 
+  const useEnregistrerPaiement = () => {
+    return useMutation({
+      mutationFn: ({ id, data }) => formationService.enregistrerPaiement(id, data),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["formations"]);
+        // Le versement crée aussi une ligne Paiement liée côté backend.
+        queryClient.invalidateQueries(["paiements"]);
+        toast.success(response.message || "Paiement enregistré avec succès");
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message || "Erreur lors de l'enregistrement du paiement",
+        );
+      },
+    });
+  };
+
   return {
     useGetAll,
     useGetById,
+    useGetByAdherent,
     useGetActive,
     useGetStats, // ✅ Bien retourné
     useCreate,
@@ -124,5 +151,6 @@ export const useFormations = () => {
     useRemove,
     useComplete,
     useIncrementSessions,
+    useEnregistrerPaiement,
   };
 };

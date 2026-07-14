@@ -36,7 +36,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const hydrateUserWithAdherent = async (userData) => {
-    if (!userData?.email || userData?.num_adherent) return userData;
+    // Toujours retenter le chargement (meme si num_adherent est deja present
+    // depuis une session precedente en cache) : une session mise en cache
+    // avant l'ajout d'un champ (ex. adresse/contact_urgence) ne le recevrait
+    // sinon jamais, puisqu'elle sortirait ici avant le fetch.
+    if (!userData?.email) return userData;
 
     try {
       const response = await apiClient.get(
@@ -55,6 +59,8 @@ export const AuthProvider = ({ children }) => {
         niveau: adherent.niveau,
         date_inscription: adherent.date_inscription,
         statut_adherent: adherent.statut,
+        adresse: adherent.adresse,
+        contact_urgence: adherent.contact_urgence,
       };
     } catch (error) {
       console.log('Profil adherent non charge:', error.response?.data || error.message);
@@ -110,18 +116,20 @@ export const AuthProvider = ({ children }) => {
             'Changement de mot de passe',
             'Veuillez changer votre mot de passe avant de continuer'
           );
-          return { user: authenticatedUser, mustChangePassword: true };
         }
 
-        return { user: authenticatedUser, mustChangePassword: false };
+        return {
+          success: true,
+          user: authenticatedUser,
+          mustChangePassword: !!authenticatedUser.must_change_password,
+        };
       }
 
-      throw new Error('Erreur de connexion');
+      return { success: false, error: 'Erreur de connexion' };
     } catch (error) {
       console.log('Erreur login:', error.response?.data || error.message);
       const message = error.response?.data?.message || 'Erreur de connexion au serveur';
-      Alert.alert('Erreur', message);
-      throw error;
+      return { success: false, error: message };
     }
   };
 

@@ -14,12 +14,16 @@ const Attribution = sequelize.define(
       allowNull: false,
     },
     num_adherent: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(20),
       allowNull: false,
     },
     id_sortie: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    id_palanquee: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     date_attribution: {
       type: DataTypes.DATE,
@@ -38,13 +42,22 @@ const Attribution = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
+    date_retour_reel: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     constat_deterioration: {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    type: {
-      type: DataTypes.STRING(20),
+    montant_caution: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    statut_caution: {
+      type: DataTypes.STRING(30),
       allowNull: false,
+      defaultValue: "Aucune",
     },
   },
   {

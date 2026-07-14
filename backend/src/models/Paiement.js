@@ -10,8 +10,18 @@ const Paiement = sequelize.define(
       autoIncrement: true,
     },
     num_adherent: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(20),
       allowNull: false,
+    },
+    id_tresorier: {
+      // Nullable : un président/moniteur peut aussi enregistrer un paiement
+      // (ex. sur le bateau) sans avoir de profil Tresorier dédié.
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "tresoriers",
+        key: "id_tresorier",
+      },
     },
     date_paiement: {
       type: DataTypes.DATE,
@@ -26,8 +36,8 @@ const Paiement = sequelize.define(
       type: DataTypes.STRING(10),
       allowNull: false,
     },
-    motif: {
-      type: DataTypes.STRING(100),
+    type_paiement: {
+      type: DataTypes.STRING(30),
       allowNull: false,
     },
     statut: {
@@ -35,8 +45,12 @@ const Paiement = sequelize.define(
       allowNull: false,
       defaultValue: "En attente",
     },
-    reference: {
+    reference_id: {
       type: DataTypes.STRING(50),
+      allowNull: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
       allowNull: true,
     },
   },

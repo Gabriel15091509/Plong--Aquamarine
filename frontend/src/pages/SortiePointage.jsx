@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiArrowLeft,
   FiMapPin,
@@ -133,9 +132,7 @@ const SortiePointage = () => {
         ],
       });
       await refetch();
-      toast.success("Pointage enregistré avec succès");
     } catch (error) {
-      toast.error("Erreur lors du pointage");
       console.error("Erreur lors du pointage:", error);
     } finally {
       setLoading(false);
@@ -147,9 +144,7 @@ const SortiePointage = () => {
     try {
       await annulerPointage.mutateAsync(id);
       await refetch();
-      toast.success("Pointage annulé avec succès");
     } catch (error) {
-      toast.error("Erreur lors de l'annulation du pointage");
       console.error("Erreur lors de l'annulation du pointage:", error);
     } finally {
       setLoading(false);

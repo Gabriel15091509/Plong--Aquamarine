@@ -1,4 +1,4 @@
-﻿// src/navigation/MainTabs.js
+// src/navigation/MainTabs.js
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -6,42 +6,51 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import SortiesListScreen from "../screens/Sorties/SortiesListScreen";
 import SortieDetailsScreen from "../screens/Sorties/SortieDetailsScreen";
+import InscriptionScreen from "../screens/Sorties/InscriptionScreen";
+import InscriptionsListScreen from "../screens/Sorties/InscriptionsListScreen";
+import InscriptionDetailsScreen from "../screens/Sorties/InscriptionDetailsScreen";
 import CarnetScreen from "../screens/Carnet/CarnetScreen";
+import PlongeeDetailsScreen from "../screens/Carnet/PlongeeDetailsScreen";
 import ProfilScreen from "../screens/Profil/ProfilScreen";
 
 const Tab = createBottomTabNavigator();
 const SortiesStackNavigator = createNativeStackNavigator();
+const CarnetStackNavigator = createNativeStackNavigator();
 
-const SortiesStack = () => {
-  const { colors } = useTheme();
+const SortiesStack = () => (
+  <SortiesStackNavigator.Navigator screenOptions={{ headerShown: false }}>
+    <SortiesStackNavigator.Screen
+      name="SortiesList"
+      component={SortiesListScreen}
+    />
+    <SortiesStackNavigator.Screen
+      name="SortieDetails"
+      component={SortieDetailsScreen}
+    />
+    <SortiesStackNavigator.Screen
+      name="Inscription"
+      component={InscriptionScreen}
+    />
+    <SortiesStackNavigator.Screen
+      name="InscriptionsList"
+      component={InscriptionsListScreen}
+    />
+    <SortiesStackNavigator.Screen
+      name="InscriptionDetails"
+      component={InscriptionDetailsScreen}
+    />
+  </SortiesStackNavigator.Navigator>
+);
 
-  return (
-    <SortiesStackNavigator.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: "#fff",
-        headerTitleStyle: { fontWeight: "bold" },
-      }}
-    >
-      <SortiesStackNavigator.Screen
-        name="SortiesList"
-        component={SortiesListScreen}
-        options={{ title: "Sorties" }}
-        screenOptions={{
-          headerShown: false, // ✅ Cache complètement le header pour tous les écrans
-        }}
-      />
-      <SortiesStackNavigator.Screen
-        name="SortieDetails"
-        component={SortieDetailsScreen}
-        options={{ headerShown: false }}
-        screenOptions={{
-          headerShown: false, // ✅ Cache complètement le header pour tous les écrans
-        }}
-      />
-    </SortiesStackNavigator.Navigator>
-  );
-};
+const CarnetStack = () => (
+  <CarnetStackNavigator.Navigator screenOptions={{ headerShown: false }}>
+    <CarnetStackNavigator.Screen name="CarnetList" component={CarnetScreen} />
+    <CarnetStackNavigator.Screen
+      name="PlongeeDetails"
+      component={PlongeeDetailsScreen}
+    />
+  </CarnetStackNavigator.Navigator>
+);
 
 const MainTabs = () => {
   const { colors } = useTheme();
@@ -49,6 +58,7 @@ const MainTabs = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === "Sorties") {
@@ -62,39 +72,15 @@ const MainTabs = () => {
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: "#fff",
-        headerTitleStyle: { fontWeight: "bold" },
         tabBarStyle: {
           backgroundColor: colors.card,
           borderTopColor: colors.border,
         },
       })}
     >
-      <Tab.Screen
-        name="Sorties"
-        component={SortiesStack}
-        options={{ title: "Sorties", headerShown: false }}
-        screenOptions={{
-          headerShown: false, // ✅ Cache complètement le header pour tous les écrans
-        }}
-      />
-      <Tab.Screen
-        name="Carnet"
-        component={CarnetScreen}
-        options={{ title: "Carnet de plongee" }}
-        screenOptions={{
-          headerShown: false, // ✅ Cache complètement le header pour tous les écrans
-        }}
-      />
-      <Tab.Screen
-        name="Profil"
-        component={ProfilScreen}
-        options={{ title: "Mon Profil" }}
-        screenOptions={{
-          headerShown: false, // ✅ Cache complètement le header pour tous les écrans
-        }}
-      />
+      <Tab.Screen name="Sorties" component={SortiesStack} />
+      <Tab.Screen name="Carnet" component={CarnetStack} />
+      <Tab.Screen name="Profil" component={ProfilScreen} />
     </Tab.Navigator>
   );
 };

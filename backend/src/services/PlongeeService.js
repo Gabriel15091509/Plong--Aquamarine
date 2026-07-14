@@ -1,5 +1,6 @@
 const BaseService = require('./BaseService');
 const PlongeeRepository = require('../repositories/PlongeeRepository');
+const { getAdherentForUser } = require('../utils/roleScope');
 
 class PlongeeService extends BaseService {
   constructor() {
@@ -8,12 +9,39 @@ class PlongeeService extends BaseService {
     this.plongeeRepository = repository;
   }
 
-  async getPlongeesByAdherent(num_adherent) {
+  async getAll(user = null) {
+    const adherent = await getAdherentForUser(user);
+    if (adherent) {
+      return await this.plongeeRepository.findPlongeesByAdherent(adherent.num_adherent);
+    }
+    return await this.plongeeRepository.findAll();
+  }
+
+  async getById(id, user = null) {
+    const plongee = await this.plongeeRepository.findById(id);
+    if (plongee) await this.assertCanAccessPlongee(plongee, user);
+    return plongee;
+  }
+
+  async assertCanAccessPlongee(plongee, user) {
+    const adherent = await getAdherentForUser(user);
+    if (adherent && plongee.num_adherent !== adherent.num_adherent) {
+      throw new Error("Accès refusé à cette plongée");
+    }
+  }
+
+  async getPlongeesByAdherent(num_adherent, user = null) {
+    const adherent = await getAdherentForUser(user);
+    if (adherent && num_adherent !== adherent.num_adherent) {
+      throw new Error("Accès refusé à ce carnet de plongée");
+    }
     return await this.plongeeRepository.findPlongeesByAdherent(num_adherent);
   }
 
-  async getPlongeeWithDetails(id) {
-    return await this.plongeeRepository.findPlongeesWithDetails(id);
+  async getPlongeeWithDetails(id, user = null) {
+    const plongee = await this.plongeeRepository.findPlongeesWithDetails(id);
+    if (plongee) await this.assertCanAccessPlongee(plongee, user);
+    return plongee;
   }
 
   // ✅ Ajout de getPlongeeStats
@@ -41,11 +69,12 @@ class PlongeeService extends BaseService {
     return errors;
   }
 
-  async validatePlongee(id) {
+  async validatePlongee(id, id_moniteur) {
     const plongee = await this.getById(id);
     if (!plongee) throw new Error('Plongée non trouvée');
-    
-    plongee.valide_moniteur = true;
+    if (!id_moniteur) throw new Error('Le moniteur validateur est requis');
+
+    plongee.id_moniteur_validateur = id_moniteur;
     await plongee.save();
     
     const AdherentService = require('./AdherentService');

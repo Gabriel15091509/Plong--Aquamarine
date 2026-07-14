@@ -70,12 +70,6 @@ const statusConfig = {
     border: "border-green-200 dark:border-green-800/30",
     label: "Payé",
   },
-  Validé: {
-    color:
-      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    border: "border-green-200 dark:border-green-800/30",
-    label: "Validé",
-  },
   Partiel: {
     color:
       "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",

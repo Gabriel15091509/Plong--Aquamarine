@@ -55,6 +55,7 @@ class AuthController {
             role: user.role,
             phone: user.phone,
             active: user.active,
+            photo: user.photo,
             preferences: user.preferences,
             must_change_password: user.must_change_password,
             permissions: this.getUserPermissions(user.role),
@@ -149,24 +150,6 @@ class AuthController {
   getUserPermissions(role) {
     const permissions = {
       president: [
-        "all",
-        "manage_users",
-        "manage_staff",
-        "view_stats",
-        "manage_settings",
-        "manage_sorties",
-        "validate_plongees",
-        "manage_formations",
-        "view_adherents",
-        "manage_paiements",
-        "exports",
-        "change_niveau",
-        "change_role",
-        "disable_account",
-        "delete_account",
-        "reset_password",
-      ],
-      directeur_technique: [
         "all",
         "manage_users",
         "manage_staff",

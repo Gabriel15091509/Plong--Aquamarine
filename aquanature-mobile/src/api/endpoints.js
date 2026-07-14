@@ -18,6 +18,7 @@ export const sorties = {
 export const inscriptions = {
   getAll: () => apiClient.get('/inscriptions'),
   getMine: () => apiClient.get('/inscriptions'),
+  getById: (id) => apiClient.get(`/inscriptions/${id}`),
   create: (data) => apiClient.post('/inscriptions', data),
   getByAdherent: () => apiClient.get('/inscriptions'),
   getByAdherentAndSortie: (numAdherent, sortieId) =>
@@ -40,4 +41,15 @@ export const adherents = {
   getById: (id) => apiClient.get(`/adherents/${id}`),
   getByEmail: (email) => apiClient.get(`/adherents/email/${encodeURIComponent(email)}`),
   update: (id, data) => apiClient.put(`/adherents/${id}`, data),
+};
+
+export const formations = {
+  getByAdherent: (numAdherent) => apiClient.get(`/formations/adherent/${numAdherent}`),
+};
+
+export const alertes = {
+  getUnread: () => apiClient.get('/alertes/unread'),
+  markAsRead: (id) => apiClient.patch(`/alertes/${id}/read`),
+  markAllAsRead: () => apiClient.patch('/alertes/mark-all-read'),
+  remove: (id) => apiClient.delete(`/alertes/${id}`),
 };

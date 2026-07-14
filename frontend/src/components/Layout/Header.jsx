@@ -25,6 +25,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useAlertes } from "../../hooks/useAlertes";
 import { formatRelativeTime } from "../../utils/helpers";
+import { photoUrl } from "../../utils/photoUrl";
 import Logo from "../Common/Logo";
 
 const Header = ({ sidebarOpen, setSidebarOpen }) => {
@@ -144,7 +145,6 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
   const getRoleLabel = (role) => {
     const roles = {
       president: "👑 Président",
-      directeur_technique: "🎯 Directeur technique",
       moniteur: "🏊 Moniteur",
       tresorier: "💰 Trésorier",
       adherent: "🤿 Adhérent",
@@ -319,8 +319,16 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
               className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors dark:hover:bg-gray-700"
             >
               <div className="relative">
-                <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-ocean-500 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md">
-                  {user?.name?.charAt(0) || "A"}
+                <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-ocean-500 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md overflow-hidden">
+                  {user?.photo ? (
+                    <img
+                      src={photoUrl(user.photo)}
+                      alt={user?.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    user?.name?.charAt(0) || "A"
+                  )}
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full dark:border-gray-800"></span>
               </div>
@@ -343,8 +351,16 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
                   {/* En-tête profil avec gradient */}
                   <div className="px-4 py-6 bg-gradient-to-r from-primary-500 to-ocean-500 text-white text-center">
                     <div className="relative inline-block">
-                      <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/30 mx-auto">
-                        {user?.name?.charAt(0) || "A"}
+                      <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center text-4xl font-bold border-4 border-white/30 mx-auto overflow-hidden">
+                        {user?.photo ? (
+                          <img
+                            src={photoUrl(user.photo)}
+                            alt={user?.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          user?.name?.charAt(0) || "A"
+                        )}
                       </div>
                       <span className="absolute bottom-0 right-0 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></span>
                     </div>

@@ -24,6 +24,7 @@ import { useSorties } from "../../hooks/useSorties";
 import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
+import { photoUrl } from "../../utils/photoUrl";
 
 // TODO: Ajouter un filtre par date de sortie
 const InscriptionList = () => {
@@ -40,13 +41,9 @@ const InscriptionList = () => {
 
   // Auth
   const { user } = useAuth();
-  const isAdmin = [
-    "president",
-    "directeur_technique",
-    "moniteur",
-    "tresorier",
-    "admin",
-  ].includes(user?.role);
+  const isAdmin = ["president", "moniteur", "tresorier"].includes(
+    user?.role,
+  );
   const isAdherent = !isAdmin;
 
   // Hooks
@@ -430,7 +427,7 @@ const InscriptionList = () => {
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
                         <img
-                          src={adherentInfo.photo}
+                          src={photoUrl(adherentInfo.photo)}
                           alt={adherentName}
                           className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
                         />

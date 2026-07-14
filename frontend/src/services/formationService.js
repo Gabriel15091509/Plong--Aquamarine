@@ -51,6 +51,11 @@ class FormationService {
     return response.data;
   }
 
+  async enregistrerPaiement(id, data) {
+    const response = await api.post(`/formations/${id}/paiement`, data);
+    return response.data;
+  }
+
   async delete(id) {
     const response = await api.delete(`/formations/${id}`);
     return response.data;

@@ -10,7 +10,7 @@ const Inscription = sequelize.define(
       autoIncrement: true,
     },
     num_adherent: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(20),
       allowNull: false,
     },
     id_sortie: {
@@ -58,6 +58,20 @@ const Inscription = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: DataTypes.NOW,
+    },
+    montant_du: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    montant_paye: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    paye: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

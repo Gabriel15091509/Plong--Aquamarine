@@ -5,24 +5,36 @@ const AuthMiddleware = require("../middlewares/authMiddleware");
 
 const sortieController = new SortieController();
 
-// ✅ Routes publiques (ou avec authentification selon vos besoins)
-router.get("/", sortieController.getAll.bind(sortieController));
+// ✅ Routes authentifiées (nécessaires pour le filtrage par rôle/niveau)
+router.get(
+  "/",
+  AuthMiddleware.authenticate,
+  sortieController.getAll.bind(sortieController),
+);
 router.get(
   "/upcoming",
+  AuthMiddleware.authenticate,
   sortieController.getUpcomingSorties.bind(sortieController),
 );
 router.get(
   "/with-inscriptions",
+  AuthMiddleware.authenticate,
   sortieController.getSortiesWithInscriptions.bind(sortieController),
 );
 router.get(
   "/available-places",
+  AuthMiddleware.authenticate,
   sortieController.getAvailablePlaces.bind(sortieController),
 );
 router.get("/stats", sortieController.getStats.bind(sortieController));
-router.get("/:id", sortieController.getById.bind(sortieController));
+router.get(
+  "/:id",
+  AuthMiddleware.authenticate,
+  sortieController.getById.bind(sortieController),
+);
 router.get(
   "/:id/details",
+  AuthMiddleware.authenticate,
   sortieController.getSortieDetails.bind(sortieController),
 );
 
@@ -58,6 +70,7 @@ router.delete(
 router.post(
   "/",
   AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(["president", "moniteur"]),
   sortieController.validateBeforeCreate.bind(sortieController),
   sortieController.create.bind(sortieController),
 );
@@ -65,12 +78,14 @@ router.post(
 router.put(
   "/:id",
   AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(["president", "moniteur"]),
   sortieController.update.bind(sortieController),
 );
 
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(["president", "moniteur"]),
   sortieController.delete.bind(sortieController),
 );
 

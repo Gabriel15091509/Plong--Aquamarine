@@ -57,13 +57,9 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
   const [errors, setErrors] = useState({});
   const [focused, setFocused] = useState(null);
 
-  const canManageInscriptions = [
-    "president",
-    "directeur_technique",
-    "moniteur",
-    "tresorier",
-    "admin",
-  ].includes(user?.role);
+  const canManageInscriptions = ["president", "moniteur", "tresorier"].includes(
+    user?.role,
+  );
   const isAdherent = !canManageInscriptions;
 
   const currentAdherent = useMemo(() => {
@@ -156,7 +152,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
 
     try {
       const dataToSubmit = {
-        num_adherent: parseInt(formData.num_adherent),
+        num_adherent: formData.num_adherent,
         id_sortie: parseInt(formData.id_sortie),
         statut: isAdherent ? "En attente" : formData.statut,
         rang_liste_attente: formData.rang_liste_attente

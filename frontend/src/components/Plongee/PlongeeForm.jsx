@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiUser,
   FiCalendar,
@@ -63,7 +62,6 @@ const PlongeeForm = () => {
     visibilite: "Bonne",
     type_plongee: "Loisir",
     observations_faune: "",
-    valide_moniteur: false,
     lien_photos: "",
   });
 
@@ -79,7 +77,6 @@ const PlongeeForm = () => {
         visibilite: p.visibilite || "Bonne",
         type_plongee: p.type_plongee || "Loisir",
         observations_faune: p.observations_faune || "",
-        valide_moniteur: p.valide_moniteur || false,
         lien_photos: p.lien_photos || "",
       });
     }
@@ -118,17 +115,12 @@ const PlongeeForm = () => {
     try {
       if (editMode && id) {
         await update.mutateAsync({ id, data: formData });
-        toast.success("Plongée modifiée avec succès");
       } else {
         await create.mutateAsync(formData);
-        toast.success("Plongée créée avec succès");
       }
       navigate("/plongees");
     } catch (error) {
       console.error("Error:", error);
-      toast.error(
-        error.response?.data?.message || "Erreur lors de l'enregistrement",
-      );
     } finally {
       setLoading(false);
     }
@@ -377,21 +369,6 @@ const PlongeeForm = () => {
             />
           </motion.div>
 
-          <motion.div {...fadeInUp} className="md:col-span-2">
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                name="valide_moniteur"
-                checked={formData.valide_moniteur}
-                onChange={handleChange}
-                className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all cursor-pointer"
-              />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors flex items-center gap-2">
-                <FiCheckCircle className="w-4 h-4 text-blue-500" />
-                Validée par le moniteur
-              </span>
-            </label>
-          </motion.div>
         </div>
       </div>
 

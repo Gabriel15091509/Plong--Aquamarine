@@ -29,6 +29,7 @@ import LoadingSpinner from "../components/Common/LoadingSpinner";
 import userService from "../services/userService";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
+import { photoUrl } from "../utils/photoUrl";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -88,7 +89,6 @@ const UsersPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const canManageUsers =
     hasPermission("manage_users") || hasRole(["president"]);
@@ -222,10 +222,6 @@ const UsersPage = () => {
     }
   };
 
-  const handleCreateSuccess = (newUser) => {
-    setUsers((prev) => [newUser, ...prev]);
-  };
-
   if (!canManageUsers) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -261,7 +257,15 @@ const UsersPage = () => {
               {stats.active} actif{stats.active > 1 ? "s" : ""}
             </p>
           </div>
-          
+          {canManageUsers && (
+            <Link
+              to="/users/create"
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-cyan-500/25"
+            >
+              <FiUserPlus className="w-4 h-4" />
+              Nouveau compte
+            </Link>
+          )}
         </div>
 
         {/* Statistiques */}
@@ -456,8 +460,16 @@ const UsersPage = () => {
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-r from-primary-500 to-ocean-500 flex items-center justify-center text-white text-sm font-semibold">
-                              {u.name.charAt(0).toUpperCase()}
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-r from-primary-500 to-ocean-500 flex items-center justify-center text-white text-sm font-semibold overflow-hidden">
+                              {u.photo ? (
+                                <img
+                                  src={photoUrl(u.photo)}
+                                  alt={u.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                u.name.charAt(0).toUpperCase()
+                              )}
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-900 dark:text-white">
@@ -607,8 +619,16 @@ const UsersPage = () => {
                 <div className="bg-gradient-to-r from-primary-500 to-ocean-500 p-6 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-3xl font-bold border-2 border-white/30">
-                        {selectedUser.name.charAt(0).toUpperCase()}
+                      <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-3xl font-bold border-2 border-white/30 overflow-hidden">
+                        {selectedUser.photo ? (
+                          <img
+                            src={photoUrl(selectedUser.photo)}
+                            alt={selectedUser.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          selectedUser.name.charAt(0).toUpperCase()
+                        )}
                       </div>
                       <div>
                         <h3 className="text-xl font-semibold">
@@ -753,15 +773,6 @@ const UsersPage = () => {
           )}
         </AnimatePresence>
 
-        {/* Modal Créer */}
-        <AnimatePresence>
-          {isCreateModalOpen && (
-            <CreateUserModal
-              onClose={() => setIsCreateModalOpen(false)}
-              onSuccess={handleCreateSuccess}
-            />
-          )}
-        </AnimatePresence>
       </motion.div>
     </ProtectedRoute>
   );

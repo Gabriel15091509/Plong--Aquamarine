@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiUser,
   FiCalendar,
@@ -22,9 +21,11 @@ import {
   FiAward,
   FiAnchor,
   FiMapPin,
+  FiUsers,
 } from "react-icons/fi";
 import { usePlongees } from "../../hooks/usePlongees";
 import { useAdherents } from "../../hooks/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatDateTime } from "../../utils/helpers";
@@ -56,6 +57,8 @@ const scaleIn = {
 const PlongeeDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const canManagePlongee = hasRole(["president", "moniteur"]);
   const { useGetById, useRemove } = usePlongees();
   const { useGetAll } = useAdherents();
   const { data, isLoading } = useGetById(id);
@@ -71,10 +74,9 @@ const PlongeeDetails = () => {
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      toast.success("Plongée supprimée avec succès");
       navigate("/plongees");
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      // toast déjà géré par le hook useRemove
     }
   };
 
@@ -166,7 +168,7 @@ const PlongeeDetails = () => {
     </motion.div>
   );
 
-  const isValide = plongee.valide_moniteur;
+  const isValide = !!plongee.id_moniteur_validateur;
 
   return (
     <motion.div
@@ -215,6 +217,7 @@ const PlongeeDetails = () => {
             </div>
           </div>
         </div>
+        {canManagePlongee && (
         <div className="flex gap-2">
           <Link
             to={`/plongees/edit/${plongee.id_plongee}`}
@@ -231,6 +234,7 @@ const PlongeeDetails = () => {
             Supprimer
           </button>
         </div>
+        )}
       </motion.div>
 
       {/* Carte récapitulative */}
@@ -413,6 +417,67 @@ const PlongeeDetails = () => {
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               {plongee.observations_faune}
             </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Note individuelle du moniteur */}
+      {plongee.observations_moniteur && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 text-amber-600 dark:text-amber-400">
+              <FiUser className="w-5 h-5" />
+            </span>
+            Note du moniteur
+          </h3>
+          <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+              {plongee.observations_moniteur}
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Palanquée de la plongée (lecture seule - gérée depuis la sortie) */}
+      {plongee.palanquee && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <FiUsers className="w-5 h-5" />
+            </span>
+            Palanquée : {plongee.palanquee.nom_palanquee}
+          </h3>
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
+            Co-plongeurs
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(plongee.palanquee.composers || [])
+              .filter((c) => c.num_adherent !== plongee.num_adherent)
+              .map((membre) => (
+                <span
+                  key={membre.num_adherent}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-50 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300"
+                >
+                  {membre.adherent
+                    ? `${membre.adherent.nom} ${membre.adherent.prenom}`
+                    : `#${membre.num_adherent}`}
+                </span>
+              ))}
+            {(plongee.palanquee.composers || []).length <= 1 && (
+              <span className="text-sm text-gray-400 dark:text-gray-500">
+                Aucun autre co-plongeur
+              </span>
+            )}
           </div>
         </motion.div>
       )}

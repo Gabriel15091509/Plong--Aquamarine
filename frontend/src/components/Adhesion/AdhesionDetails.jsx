@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -19,12 +19,18 @@ import {
   FiInfo,
   FiTrendingUp,
   FiAward,
+  FiPaperclip,
+  FiDownload,
+  FiPlusCircle,
 } from "react-icons/fi";
 import { useAdhesions } from "../../hooks/useAdhesions";
 import { useAdherents } from "../../hooks/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
+import adhesionService from "../../services/adhesionService";
+import { MODE_PAIEMENT_OPTIONS } from "../../utils/constants";
 
 // Animations
 const fadeInUp = {
@@ -47,12 +53,56 @@ const staggerContainer = {
 const AdhesionDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { useGetById, useRemove } = useAdhesions();
+  const { hasRole } = useAuth();
+  const canManageAdhesion = hasRole(["president", "tresorier"]);
+  const { useGetById, useRemove, useEnregistrerPaiement } = useAdhesions();
+  // Seule l'adhésion "Club" a un tarif/paiement suivi dans l'app : la
+  // licence FFESM et les assurances sont couvertes par cette cotisation.
   const { useGetAll } = useAdherents();
   const { data, isLoading } = useGetById(id);
   const { data: adherentsData } = useGetAll();
   const remove = useRemove();
+  const enregistrerPaiement = useEnregistrerPaiement();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPaiementModal, setShowPaiementModal] = useState(false);
+  const [paiementForm, setPaiementForm] = useState({ montant: "", mode: "Espèces" });
+  const [downloading, setDownloading] = useState(false);
+  // Meme garde-fou que PaiementForm.jsx : sans lui, un double-clic sur
+  // "Enregistrer" envoie deux mutations avant que le re-render (asynchrone)
+  // ne desactive le bouton, ce qui cree deux paiements lies a l'adhesion.
+  const submittingPaiementRef = useRef(false);
+
+  const handleEnregistrerPaiement = async (e) => {
+    e.preventDefault();
+    if (submittingPaiementRef.current) return;
+    submittingPaiementRef.current = true;
+    try {
+      await enregistrerPaiement.mutateAsync({
+        id,
+        data: { montant: parseFloat(paiementForm.montant), mode: paiementForm.mode },
+      });
+      setShowPaiementModal(false);
+      setPaiementForm({ montant: "", mode: "Espèces" });
+    } catch (error) {
+      // toast déjà géré par le hook
+    } finally {
+      submittingPaiementRef.current = false;
+    }
+  };
+
+  const handleDownloadAttestation = async () => {
+    setDownloading(true);
+    try {
+      await adhesionService.downloadAttestation(
+        adhesion.num_adherent,
+        adhesion.annee_adhesion,
+      );
+    } catch (error) {
+      toast.error("Erreur lors du téléchargement de l'attestation");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const adhesion = data?.data;
   const adherent = adherentsData?.data?.find(
@@ -62,10 +112,9 @@ const AdhesionDetails = () => {
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      toast.success("Adhésion supprimée avec succès");
       navigate("/adhesions");
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      // toast déjà géré par le hook
     }
   };
 
@@ -103,6 +152,8 @@ const AdhesionDetails = () => {
       </motion.div>
     );
   }
+
+  const isClub = adhesion.type === "Club";
 
   const InfoItem = ({
     icon: Icon,
@@ -238,22 +289,43 @@ const AdhesionDetails = () => {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Link
-            to={`/adhesions/edit/${adhesion.id_adhesion}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
-          >
-            <FiEdit className="w-4 h-4" />
-            Modifier
-          </Link>
+        <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+            onClick={handleDownloadAttestation}
+            disabled={downloading}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl transition-all duration-300 disabled:opacity-60"
           >
-            <FiTrash2 className="w-4 h-4" />
-            Supprimer
+            <FiDownload className="w-4 h-4" />
+            Télécharger l'attestation
           </button>
+          {isClub && canManageAdhesion && adhesion.statut_paiement === "Partiel" && (
+            <button
+              onClick={() => setShowPaiementModal(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-xl transition-all duration-300 shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5"
+            >
+              <FiPlusCircle className="w-4 h-4" />
+              Enregistrer un paiement
+            </button>
+          )}
         </div>
+        {canManageAdhesion && (
+          <div className="flex gap-2">
+            <Link
+              to={`/adhesions/edit/${adhesion.id_adhesion}`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+            >
+              <FiEdit className="w-4 h-4" />
+              Modifier
+            </Link>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+            >
+              <FiTrash2 className="w-4 h-4" />
+              Supprimer
+            </button>
+          </div>
+        )}
       </motion.div>
 
       {/* Carte récapitulative */}
@@ -265,22 +337,33 @@ const AdhesionDetails = () => {
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
             <p className="text-sm font-medium text-blue-100/80 uppercase tracking-wider">
-              Statut du paiement
+              {isClub ? "Statut du paiement" : "Statut"}
             </p>
             <div className="flex items-center gap-3 mt-2">
-              <StatusBadge status={adhesion.statut_paiement} />
+              {isClub ? (
+                <StatusBadge status={adhesion.statut_paiement} />
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-white/15">
+                  <FiCheckCircle className="w-4 h-4" />
+                  Validée
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-8 flex-wrap">
-            <div className="text-center">
-              <p className="text-3xl font-bold">
-                {formatCurrency(adhesion.montant_paye)}
-              </p>
-              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
-                Montant
-              </p>
-            </div>
-            <div className="w-px h-12 bg-white/20 hidden sm:block" />
+            {isClub && (
+              <>
+                <div className="text-center">
+                  <p className="text-3xl font-bold">
+                    {formatCurrency(adhesion.montant)}
+                  </p>
+                  <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+                    Montant
+                  </p>
+                </div>
+                <div className="w-px h-12 bg-white/20 hidden sm:block" />
+              </>
+            )}
             <div className="text-center">
               <p className="text-2xl font-bold">{adhesion.type}</p>
               <p className="text-xs text-blue-100/70 uppercase tracking-wider">
@@ -357,16 +440,27 @@ const AdhesionDetails = () => {
             label="Date de fin"
             value={formatDate(adhesion.date_fin)}
           />
-          <InfoItem
-            icon={FiDollarSign}
-            label="Montant payé"
-            value={formatCurrency(adhesion.montant_paye)}
-          />
-          <InfoItem
-            icon={FiClock}
-            label="Statut du paiement"
-            value={<StatusBadge status={adhesion.statut_paiement} />}
-          />
+          {isClub && (
+            <>
+              <InfoItem
+                icon={FiDollarSign}
+                label="Montant"
+                value={formatCurrency(adhesion.montant)}
+              />
+              <InfoItem
+                icon={FiDollarSign}
+                label="Montant payé / Solde restant"
+                value={`${formatCurrency(adhesion.montant_paye || 0)} / ${formatCurrency(
+                  Math.max((adhesion.montant || 0) - (adhesion.montant_paye || 0), 0),
+                )}`}
+              />
+              <InfoItem
+                icon={FiClock}
+                label="Statut du paiement"
+                value={<StatusBadge status={adhesion.statut_paiement} />}
+              />
+            </>
+          )}
           <InfoItem
             icon={FiHash}
             label="N° Licence FFESM"
@@ -377,10 +471,23 @@ const AdhesionDetails = () => {
             label="Année"
             value={adhesion.annee_adhesion}
           />
+          {adhesion.document_path && (
+            <InfoItem icon={FiPaperclip} label="Document">
+              <a
+                href={`http://localhost:5000${adhesion.document_path}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-0.5 inline-block"
+              >
+                Voir le document
+              </a>
+            </InfoItem>
+          )}
         </SectionCard>
       </motion.div>
 
       {/* Statut détaillé */}
+      {isClub && (
       <motion.div
         variants={fadeInUp}
         initial="initial"
@@ -442,12 +549,89 @@ const AdhesionDetails = () => {
             <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Montant{" "}
               <span className="font-bold text-gray-900 dark:text-white">
-                {formatCurrency(adhesion.montant_paye)}
+                {formatCurrency(adhesion.montant)}
               </span>
             </p>
           </div>
         </div>
       </motion.div>
+      )}
+
+      {/* Modal paiement complémentaire */}
+      {showPaiementModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.form
+            onSubmit={handleEnregistrerPaiement}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", damping: 25 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800"
+          >
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+              Enregistrer un paiement complémentaire
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Solde restant :{" "}
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {formatCurrency(
+                  Math.max((adhesion.montant || 0) - (adhesion.montant_paye || 0), 0),
+                )}
+              </span>
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Montant (€) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={paiementForm.montant}
+                  onChange={(e) =>
+                    setPaiementForm((prev) => ({ ...prev, montant: e.target.value }))
+                  }
+                  className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Mode de paiement
+                </label>
+                <select
+                  value={paiementForm.mode}
+                  onChange={(e) =>
+                    setPaiementForm((prev) => ({ ...prev, mode: e.target.value }))
+                  }
+                  className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  {MODE_PAIEMENT_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setShowPaiementModal(false)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={enregistrerPaiement.isPending}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-xl transition-all duration-300 shadow-lg shadow-green-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Enregistrer
+              </button>
+            </div>
+          </motion.form>
+        </div>
+      )}
 
       {/* Modal suppression */}
       {showDeleteModal && (

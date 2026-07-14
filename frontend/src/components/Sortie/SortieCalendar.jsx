@@ -7,7 +7,6 @@ import {
   FiMapPin,
   FiClock,
   FiUsers,
-  FiDollarSign,
   FiInfo,
   FiX,
   FiEye,
@@ -36,7 +35,7 @@ import { fr } from "date-fns/locale";
 import { useSorties } from "../../hooks/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
-import { formatDate, formatCurrency } from "../../utils/helpers";
+import { formatDate } from "../../utils/helpers";
 
 // ✅ Animations
 const fadeInUp = {
@@ -535,12 +534,6 @@ const SortieCalendar = () => {
                     value: `${selectedSortie.nb_places} places`,
                     sub: `Niveau: ${selectedSortie.niveau_requis}`,
                     color: "green",
-                  },
-                  {
-                    icon: FiDollarSign,
-                    label: "Tarif",
-                    value: formatCurrency(selectedSortie.tarif),
-                    color: "amber",
                   },
                 ].map((item, index) => (
                   <motion.div

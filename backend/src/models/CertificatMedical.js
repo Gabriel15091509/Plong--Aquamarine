@@ -10,7 +10,7 @@ const CertificatMedical = sequelize.define(
       autoIncrement: true,
     },
     num_adherent: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(20),
       allowNull: false,
     },
     type_certificat: {
@@ -32,6 +32,10 @@ const CertificatMedical = sequelize.define(
     },
     scan_document: {
       type: DataTypes.BLOB,
+      allowNull: true,
+    },
+    document_path: {
+      type: DataTypes.STRING(255),
       allowNull: true,
     },
     statut: {

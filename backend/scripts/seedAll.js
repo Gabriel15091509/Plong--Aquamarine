@@ -15,9 +15,12 @@ const {
   Formation,
   Competence,
   Alerte,
+  Incident,
   User,
+  Moniteur,
+  President,
+  Tresorier,
 } = require("../src/models");
-const bcrypt = require("bcryptjs");
 const { faker } = require("@faker-js/faker/locale/fr");
 
 // Configuration
@@ -37,11 +40,12 @@ const CONFIG = {
   FORMATIONS: 25,
   COMPETENCES: 60,
   ALERTES: 30,
+  INCIDENTS: 12,
+  MONITEURS: 4,
 };
 
 // ============ FONCTIONS UTILITAIRES ============
 
-// Générer un numéro de téléphone aléatoire
 function randomPhone() {
   return `0${Math.floor(Math.random() * 6) + 1}${Math.floor(
     Math.random() * 100000000,
@@ -50,7 +54,6 @@ function randomPhone() {
     .padStart(8, "0")}`;
 }
 
-// Générer un email aléatoire
 function randomEmail(nom, prenom) {
   const domains = [
     "gmail.com",
@@ -62,10 +65,15 @@ function randomEmail(nom, prenom) {
     "plongee.com",
     "diving.fr",
   ];
-  return `${prenom.toLowerCase()}.${nom.toLowerCase()}${Math.floor(Math.random() * 100)}@${domains[Math.floor(Math.random() * domains.length)]}`;
+  const slug = (s) =>
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]/g, "");
+  return `${slug(prenom)}.${slug(nom)}${Math.floor(Math.random() * 10000)}@${domains[Math.floor(Math.random() * domains.length)]}`;
 }
 
-// Générer une adresse aléatoire
 function randomAddress() {
   const rue = [
     "Rue de la Plongée",
@@ -117,7 +125,6 @@ function randomAddress() {
   return `${Math.floor(Math.random() * 200) + 1} ${rue[Math.floor(Math.random() * rue.length)]}, ${codesPostaux[Math.floor(Math.random() * codesPostaux.length)]} ${villes[Math.floor(Math.random() * villes.length)]}`;
 }
 
-// ✅ Générer un niveau aléatoire
 function randomNiveau() {
   const niveaux = [
     "Débutant",
@@ -130,7 +137,6 @@ function randomNiveau() {
   return niveaux[Math.floor(Math.random() * niveaux.length)];
 }
 
-// ✅ Générer un statut aléatoire
 function randomStatut() {
   const statuts = ["Actif", "Inactif", "Suspendu"];
   const weights = [0.8, 0.15, 0.05];
@@ -143,10 +149,9 @@ function randomStatut() {
   return statuts[0];
 }
 
-// ✅ Générer un type d'adhésion aléatoire
 function randomTypeAdhesion() {
-  const types = ["Adhésion annuelle", "Licence FFESM", "Assurance"];
-  const weights = [0.6, 0.3, 0.1];
+  const types = ["Club", "FFESM", "Assurance RC", "Assurance IA"];
+  const weights = [0.4, 0.3, 0.2, 0.1];
   const rand = Math.random();
   let cumul = 0;
   for (let i = 0; i < weights.length; i++) {
@@ -156,7 +161,6 @@ function randomTypeAdhesion() {
   return types[0];
 }
 
-// ✅ Générer un statut de paiement aléatoire
 function randomStatutPaiement() {
   const statuts = ["Payé", "En attente", "Partiel", "Annulé"];
   const weights = [0.7, 0.15, 0.1, 0.05];
@@ -169,19 +173,21 @@ function randomStatutPaiement() {
   return statuts[0];
 }
 
-// ✅ Générer un mode de paiement aléatoire
 function randomModePaiement() {
-  const modes = ["Espèces", "Carte", "Chèque", "Virement"];
+  const modes = ["Especes", "Cheque", "Virement", "Carte"];
   return modes[Math.floor(Math.random() * modes.length)];
 }
 
-// ✅ Générer un type de sortie aléatoire
-function randomTypeSortie() {
-  const types = ["Plongée", "Formation", "Exploration", "Nettoyage"];
+function randomTypePaiement() {
+  const types = ["Adhesion", "Caution", "Autre"];
   return types[Math.floor(Math.random() * types.length)];
 }
 
-// ✅ Générer un statut de sortie aléatoire
+function randomTypeSortie() {
+  const types = ["Exploration", "Bapteme", "Formation", "Nettoyage", "Nuit"];
+  return types[Math.floor(Math.random() * types.length)];
+}
+
 function randomStatutSortie() {
   const statuts = ["Planifiée", "En cours", "Terminée", "Annulée"];
   const weights = [0.4, 0.1, 0.4, 0.1];
@@ -194,13 +200,11 @@ function randomStatutSortie() {
   return statuts[0];
 }
 
-// ✅ Générer un type de plongée aléatoire
 function randomTypePlongee() {
   const types = ["Loisir", "Formation", "Exploration", "Nuit", "Épave"];
   return types[Math.floor(Math.random() * types.length)];
 }
 
-// ✅ Générer une visibilité aléatoire
 function randomVisibilite() {
   const visibilites = [
     "Très bonne",
@@ -212,21 +216,19 @@ function randomVisibilite() {
   return visibilites[Math.floor(Math.random() * visibilites.length)];
 }
 
-// ✅ Générer une catégorie de matériel aléatoire
 function randomCategorieMateriel() {
   const categories = [
     "Bloc",
-    "Détendeur",
-    "Gilet",
+    "Detendeur",
     "Combinaison",
-    "Palmes",
+    "Stabilisateur",
     "Masque",
     "Ordinateur",
+    "Accessoire",
   ];
   return categories[Math.floor(Math.random() * categories.length)];
 }
 
-// ✅ Générer un état de matériel aléatoire
 function randomEtatMateriel() {
   const etats = ["Neuf", "Bon", "Usagé", "À réparer", "Hors service"];
   const weights = [0.1, 0.5, 0.3, 0.07, 0.03];
@@ -239,10 +241,9 @@ function randomEtatMateriel() {
   return etats[0];
 }
 
-// ✅ Générer un niveau de formation aléatoire
 function randomNiveauFormation() {
-  const niveaux = ["N1", "N2", "N3", "N4", "MF1"];
-  const weights = [0.4, 0.3, 0.15, 0.1, 0.05];
+  const niveaux = ["N1", "N2", "N3", "N4", "Nitrox", "Profonde"];
+  const weights = [0.3, 0.25, 0.15, 0.1, 0.1, 0.1];
   const rand = Math.random();
   let cumul = 0;
   for (let i = 0; i < weights.length; i++) {
@@ -252,7 +253,6 @@ function randomNiveauFormation() {
   return niveaux[0];
 }
 
-// ✅ Générer un statut de formation aléatoire
 function randomStatutFormation() {
   const statuts = ["En cours", "Terminée", "Abandonnée", "Suspendue"];
   const weights = [0.3, 0.5, 0.1, 0.1];
@@ -265,7 +265,6 @@ function randomStatutFormation() {
   return statuts[0];
 }
 
-// ✅ Générer un type d'alerte aléatoire
 function randomTypeAlerte() {
   const types = [
     "Certificat expiré",
@@ -276,13 +275,11 @@ function randomTypeAlerte() {
   return types[Math.floor(Math.random() * types.length)];
 }
 
-// ✅ Générer un canal d'alerte aléatoire (court - max 10 caractères)
 function randomCanal() {
-  const canaux = ["Email", "SMS", "Notif"]; // ✅ 'Notification' devient 'Notif'
+  const canaux = ["Email", "SMS"];
   return canaux[Math.floor(Math.random() * canaux.length)];
 }
 
-// ✅ Générer un statut d'alerte aléatoire
 function randomStatutAlerte() {
   const statuts = ["Envoyé", "Lu", "Erreur"];
   const weights = [0.7, 0.25, 0.05];
@@ -295,10 +292,28 @@ function randomStatutAlerte() {
   return statuts[0];
 }
 
-// ✅ Générer un niveau de compétence aléatoire (court)
 function randomNiveauCompetence() {
-  const niveaux = ["Début.", "Inter.", "Avancé", "Expert"];
+  const niveaux = ["Débutant", "Intermédiaire", "Avancé", "Expert"];
   return niveaux[Math.floor(Math.random() * niveaux.length)];
+}
+
+function randomTypeIncident() {
+  const types = ["Materiel", "Medical", "Meteo", "Autre"];
+  return types[Math.floor(Math.random() * types.length)];
+}
+
+function randomSpecialites() {
+  const pool = ["Nitrox", "Profondeur", "Biologie marine", "Épave", "Nuit", "Photo sous-marine"];
+  const count = Math.floor(Math.random() * 3) + 1;
+  const shuffled = [...pool].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+}
+
+function randomDisponibilites() {
+  const pool = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+  const count = Math.floor(Math.random() * 4) + 2;
+  const shuffled = [...pool].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
 }
 
 // ============ SEED PRINCIPAL ============
@@ -311,86 +326,102 @@ async function seedAll() {
 
     // Vider les tables
     console.log("🔄 Vidage des tables...");
-    await sequelize.query(
-      'TRUNCATE TABLE "attributions" RESTART IDENTITY CASCADE',
-    );
+    await sequelize.query('TRUNCATE TABLE "incidents" RESTART IDENTITY CASCADE');
+    await sequelize.query('TRUNCATE TABLE "attributions" RESTART IDENTITY CASCADE');
     await sequelize.query('TRUNCATE TABLE "composer" RESTART IDENTITY CASCADE');
-    await sequelize.query(
-      'TRUNCATE TABLE "palanquees" RESTART IDENTITY CASCADE',
-    );
+    await sequelize.query('TRUNCATE TABLE "palanquees" RESTART IDENTITY CASCADE');
     await sequelize.query('TRUNCATE TABLE "plongees" RESTART IDENTITY CASCADE');
-    await sequelize.query(
-      'TRUNCATE TABLE "inscriptions" RESTART IDENTITY CASCADE',
-    );
+    await sequelize.query('TRUNCATE TABLE "inscriptions" RESTART IDENTITY CASCADE');
     await sequelize.query('TRUNCATE TABLE "sorties" RESTART IDENTITY CASCADE');
-    await sequelize.query(
-      'TRUNCATE TABLE "reparations" RESTART IDENTITY CASCADE',
-    );
-    await sequelize.query(
-      'TRUNCATE TABLE "materiels" RESTART IDENTITY CASCADE',
-    );
-    await sequelize.query(
-      'TRUNCATE TABLE "competences" RESTART IDENTITY CASCADE',
-    );
-    await sequelize.query(
-      'TRUNCATE TABLE "formations" RESTART IDENTITY CASCADE',
-    );
+    await sequelize.query('TRUNCATE TABLE "reparations" RESTART IDENTITY CASCADE');
+    await sequelize.query('TRUNCATE TABLE "materiels" RESTART IDENTITY CASCADE');
+    await sequelize.query('TRUNCATE TABLE "competences" RESTART IDENTITY CASCADE');
+    await sequelize.query('TRUNCATE TABLE "formations" RESTART IDENTITY CASCADE');
     await sequelize.query('TRUNCATE TABLE "alertes" RESTART IDENTITY CASCADE');
-    await sequelize.query(
-      'TRUNCATE TABLE "paiements" RESTART IDENTITY CASCADE',
-    );
-    await sequelize.query(
-      'TRUNCATE TABLE "certificats_medicaux" RESTART IDENTITY CASCADE',
-    );
-    await sequelize.query(
-      'TRUNCATE TABLE "adhesions" RESTART IDENTITY CASCADE',
-    );
-    await sequelize.query(
-      'TRUNCATE TABLE "adherents" RESTART IDENTITY CASCADE',
-    );
+    await sequelize.query('TRUNCATE TABLE "paiements" RESTART IDENTITY CASCADE');
+    await sequelize.query('TRUNCATE TABLE "certificats_medicaux" RESTART IDENTITY CASCADE');
+    await sequelize.query('TRUNCATE TABLE "adhesions" RESTART IDENTITY CASCADE');
+    await sequelize.query('TRUNCATE TABLE "adherents" RESTART IDENTITY CASCADE');
+    await sequelize.query('TRUNCATE TABLE "tresoriers" RESTART IDENTITY CASCADE');
+    await sequelize.query('TRUNCATE TABLE "president" RESTART IDENTITY CASCADE');
+    await sequelize.query('TRUNCATE TABLE "moniteurs" RESTART IDENTITY CASCADE');
     await sequelize.query('TRUNCATE TABLE "users" RESTART IDENTITY CASCADE');
     console.log("✅ Tables vidées");
 
-    // ==================== USERS ====================
-    console.log("🔄 Création des utilisateurs...");
-    const salt = await bcrypt.genSalt(10);
-    await User.create({
-      email: "admin@plongee.com",
-      password: await bcrypt.hash("admin123", salt),
-      name: "Administrateur",
-      role: "admin",
+    const currentYear = new Date().getFullYear();
+
+    // ==================== PRESIDENT (user + moniteur + president) ====================
+    console.log("🔄 Création du président...");
+    const presidentUser = await User.create({
+      email: "president@plongee.com",
+      password: "president123",
+      name: "Jean Dupont",
+      role: "president",
+      phone: randomPhone(),
       active: true,
+      must_change_password: false,
     });
+    const presidentMoniteur = await Moniteur.create({
+      user_id: presidentUser.id,
+      num_brevet: `MF2-${Math.floor(Math.random() * 9000 + 1000)}`,
+      date_obtention_brevet: faker.date.past({ years: 15 }),
+      specialites: randomSpecialites(),
+      disponibilites: randomDisponibilites(),
+    });
+    const president = await President.create({
+      id_moniteur: presidentMoniteur.id_moniteur,
+      annee_en_poste: currentYear,
+      acces: ["all"],
+    });
+    console.log("✅ Président créé (president@plongee.com / president123)");
 
-    await User.bulkCreate([
-      {
-        email: "user1@plongee.com",
-        password: await bcrypt.hash("user123", salt),
-        name: "Jean Martin",
-        role: "user",
-        active: true,
-      },
-      {
-        email: "user2@plongee.com",
-        password: await bcrypt.hash("user123", salt),
-        name: "Sophie Dubois",
-        role: "user",
-        active: true,
-      },
-      {
-        email: "moniteur@plongee.com",
-        password: await bcrypt.hash("moniteur123", salt),
-        name: "Pierre Bernard",
+    // ==================== MONITEURS ====================
+    console.log("🔄 Création des moniteurs...");
+    const moniteurIds = [presidentMoniteur.id_moniteur];
+    for (let i = 0; i < CONFIG.MONITEURS; i++) {
+      const nom = faker.person.lastName();
+      const prenom = faker.person.firstName();
+      const user = await User.create({
+        email: i === 0 ? "moniteur@plongee.com" : randomEmail(nom, prenom),
+        password: "moniteur123",
+        name: `${prenom} ${nom}`,
         role: "moniteur",
+        phone: randomPhone(),
         active: true,
-      },
-    ]);
-    console.log(`✅ ${4} utilisateurs créés`);
+        must_change_password: false,
+      });
+      const moniteur = await Moniteur.create({
+        user_id: user.id,
+        num_brevet: `MF1-${Math.floor(Math.random() * 9000 + 1000)}`,
+        date_obtention_brevet: faker.date.past({ years: 10 }),
+        specialites: randomSpecialites(),
+        disponibilites: randomDisponibilites(),
+      });
+      moniteurIds.push(moniteur.id_moniteur);
+    }
+    console.log(`✅ ${moniteurIds.length} moniteurs créés (dont le président ; moniteur@plongee.com / moniteur123)`);
 
-    // ==================== ADHERENTS ====================
+    // ==================== TRESORIER ====================
+    console.log("🔄 Création du trésorier...");
+    const tresorierUser = await User.create({
+      email: "tresorier@plongee.com",
+      password: "tresorier123",
+      name: "Pierre Durand",
+      role: "tresorier",
+      phone: randomPhone(),
+      active: true,
+      must_change_password: false,
+    });
+    const tresorier = await Tresorier.create({
+      user_id: tresorierUser.id,
+      annee_en_poste: currentYear,
+    });
+    console.log("✅ Trésorier créé (tresorier@plongee.com / tresorier123)");
+
+    // ==================== ADHERENTS (user + adherent) ====================
     console.log("🔄 Création des adhérents...");
-    const adherents = [];
     const civilites = ["M.", "Mme", "Mlle"];
+    const adherentIdList = [];
     for (let i = 0; i < CONFIG.ADHERENTS; i++) {
       const nom = faker.person.lastName();
       const prenom = faker.person.firstName();
@@ -400,31 +431,41 @@ async function seedAll() {
         mode: "year",
       });
       const niveau = randomNiveau();
-      adherents.push({
+      const email =
+        i === 0 ? "adherent@plongee.com" : randomEmail(nom, prenom);
+
+      const user = await User.create({
+        email,
+        password: "adherent123",
+        name: `${prenom} ${nom}`,
+        role: "adherent",
+        phone: randomPhone(),
+        active: true,
+        must_change_password: false,
+      });
+
+      const numAdherent = `ADH-${currentYear}-${String(i + 1).padStart(4, "0")}`;
+      await Adherent.create({
+        num_adherent: numAdherent,
+        user_id: user.id,
         civilite: civilites[Math.floor(Math.random() * civilites.length)],
         nom,
         prenom,
         date_naissance: dateNaissance,
         adresse: randomAddress(),
         telephone: randomPhone(),
-        email: randomEmail(nom, prenom),
+        email,
         contact_urgence: `${faker.person.firstName()} ${faker.person.lastName()} - ${randomPhone()}`,
-        niveau: niveau,
+        niveau,
         date_obtention_niveau:
           niveau !== "Débutant" ? faker.date.past({ years: 10 }) : null,
         statut: randomStatut(),
         date_inscription: faker.date.past({ years: 5 }),
         nb_plongees_total: Math.floor(Math.random() * 100),
       });
+      adherentIdList.push(numAdherent);
     }
-    await Adherent.bulkCreate(adherents);
-    console.log(`✅ ${adherents.length} adhérents créés`);
-
-    // Récupérer les IDs des adhérents
-    const adherentIds = await Adherent.findAll({
-      attributes: ["num_adherent"],
-    });
-    const adherentIdList = adherentIds.map((a) => a.num_adherent);
+    console.log(`✅ ${adherentIdList.length} adhérents créés (adherent@plongee.com / adherent123)`);
 
     // ==================== ADHESIONS ====================
     console.log("🔄 Création des adhésions...");
@@ -432,19 +473,26 @@ async function seedAll() {
     for (let i = 0; i < CONFIG.ADHESIONS; i++) {
       const numAdherent =
         adherentIdList[Math.floor(Math.random() * adherentIdList.length)];
-      const annee = new Date().getFullYear() - Math.floor(Math.random() * 3);
+      const annee = currentYear - Math.floor(Math.random() * 3);
       const dateDebut = new Date(annee, 0, 1);
       const dateFin = new Date(annee, 11, 31);
+      const type = randomTypeAdhesion();
+      // Seule l'adhésion Club a un tarif/paiement suivi dans l'app : les
+      // autres types (FFESM, assurances) sont couverts par la cotisation
+      // Club et sont donc directement "Payé" sans montant.
+      const montant = type === "Club" ? parseFloat((Math.random() * 150 + 50).toFixed(2)) : 0;
+      const statutPaiement = type === "Club" ? randomStatutPaiement() : "Payé";
       adhesions.push({
         num_adherent: numAdherent,
-        type: randomTypeAdhesion(),
+        type,
         date_debut: dateDebut,
         date_fin: dateFin,
-        montant_paye: parseFloat((Math.random() * 150 + 50).toFixed(2)),
+        montant,
+        montant_paye: statutPaiement === "Payé" ? montant : 0,
         num_licence_ffesm: `FF${Math.floor(Math.random() * 100000)
           .toString()
           .padStart(5, "0")}`,
-        statut_paiement: randomStatutPaiement(),
+        statut_paiement: statutPaiement,
         annee_adhesion: annee,
       });
     }
@@ -517,6 +565,10 @@ async function seedAll() {
       dateOuverture.setDate(
         dateOuverture.getDate() - Math.floor(Math.random() * 30 + 7),
       );
+      const nbEncadrants = Math.floor(Math.random() * 2) + 1;
+      const encadrants = [...moniteurIds]
+        .sort(() => 0.5 - Math.random())
+        .slice(0, nbEncadrants);
       sorties.push({
         date_heure: dateSortie,
         lieu: lieux[Math.floor(Math.random() * lieux.length)],
@@ -530,17 +582,17 @@ async function seedAll() {
         )
           .toString()
           .padStart(2, "0")}`,
-        tarif: parseFloat((Math.random() * 80 + 20).toFixed(2)),
         statut: randomStatutSortie(),
         description_site: faker.lorem.sentence({ min: 10, max: 30 }),
         date_ouverture_inscriptions: dateOuverture,
         condition_affectation: faker.lorem.sentence({ min: 5, max: 15 }),
+        encadrants,
+        created_by: president.id_president,
       });
     }
     await Sortie.bulkCreate(sorties);
     console.log(`✅ ${sorties.length} sorties créées`);
 
-    // Récupérer les IDs des sorties
     const sortieIds = await Sortie.findAll({ attributes: ["id_sortie"] });
     const sortieIdList = sortieIds.map((s) => s.id_sortie);
 
@@ -585,8 +637,12 @@ async function seedAll() {
     for (let i = 0; i < CONFIG.PLONGEES; i++) {
       const numAdherent =
         adherentIdList[Math.floor(Math.random() * adherentIdList.length)];
+      const idSortie =
+        sortieIdList[Math.floor(Math.random() * sortieIdList.length)];
+      const estValidee = Math.random() > 0.3;
       plongees.push({
         num_adherent: numAdherent,
+        id_sortie: idSortie,
         date: faker.date.past({ years: 3 }),
         profondeur_max: Math.floor(Math.random() * 40 + 5),
         duree: Math.floor(Math.random() * 60 + 15),
@@ -594,7 +650,9 @@ async function seedAll() {
         visibilite: randomVisibilite(),
         type_plongee: randomTypePlongee(),
         observations_faune: faker.lorem.sentence({ min: 5, max: 15 }),
-        valide_moniteur: Math.random() > 0.3,
+        id_moniteur_validateur: estValidee
+          ? moniteurIds[Math.floor(Math.random() * moniteurIds.length)]
+          : null,
         lien_photos:
           Math.random() > 0.5
             ? `https://images.unsplash.com/photo-${Math.random().toString(36).substring(2, 15)}`
@@ -604,19 +662,22 @@ async function seedAll() {
     await Plongee.bulkCreate(plongees);
     console.log(`✅ ${plongees.length} plongées créées`);
 
-    // Récupérer les IDs des plongées
-    const plongeeIds = await Plongee.findAll({ attributes: ["id_plongee"] });
-    const plongeeIdList = plongeeIds.map((p) => p.id_plongee);
+    const plongeeRows = await Plongee.findAll({
+      attributes: ["id_plongee", "id_sortie"],
+    });
 
     // ==================== PALANQUEES ====================
     console.log("🔄 Création des palanquées...");
     const palanquees = [];
     for (let i = 0; i < CONFIG.PALANQUEES; i++) {
-      const idPlongee =
-        plongeeIdList[Math.floor(Math.random() * plongeeIdList.length)];
+      const plongee =
+        plongeeRows[Math.floor(Math.random() * plongeeRows.length)];
       palanquees.push({
-        id_plongee: idPlongee,
+        id_plongee: plongee.id_plongee,
+        id_sortie: plongee.id_sortie,
         nom_palanquee: `Palanquée ${String.fromCharCode(65 + Math.floor(Math.random() * 5))}`,
+        id_moniteur_encadrant:
+          moniteurIds[Math.floor(Math.random() * moniteurIds.length)],
         profondeur_max_realisee: Math.floor(Math.random() * 35 + 5),
         duree_reelle: Math.floor(Math.random() * 55 + 10),
       });
@@ -624,7 +685,6 @@ async function seedAll() {
     await Palanquee.bulkCreate(palanquees);
     console.log(`✅ ${palanquees.length} palanquées créées`);
 
-    // Récupérer les IDs des palanquées
     const palanqueeIds = await Palanquee.findAll({
       attributes: ["id_palanquee"],
     });
@@ -632,16 +692,19 @@ async function seedAll() {
 
     // ==================== COMPOSER ====================
     console.log("🔄 Création des compositions...");
+    const composerSeen = new Set();
     const composer = [];
-    for (let i = 0; i < CONFIG.COMPOSER; i++) {
+    let attempts = 0;
+    while (composer.length < CONFIG.COMPOSER && attempts < CONFIG.COMPOSER * 5) {
+      attempts++;
       const idPalanquee =
         palanqueeIdList[Math.floor(Math.random() * palanqueeIdList.length)];
       const numAdherent =
         adherentIdList[Math.floor(Math.random() * adherentIdList.length)];
-      composer.push({
-        id_palanquee: idPalanquee,
-        num_adherent: numAdherent,
-      });
+      const key = `${idPalanquee}-${numAdherent}`;
+      if (composerSeen.has(key)) continue;
+      composerSeen.add(key);
+      composer.push({ id_palanquee: idPalanquee, num_adherent: numAdherent });
     }
     await Composer.bulkCreate(composer);
     console.log(`✅ ${composer.length} compositions créées`);
@@ -698,12 +761,12 @@ async function seedAll() {
         date_revision_technique:
           Math.random() > 0.5 ? faker.date.past({ years: 1 }) : null,
         date_prochaine_echeance: faker.date.future({ years: 1 }),
+        created_by: president.id_president,
       });
     }
     await Materiel.bulkCreate(materiels);
     console.log(`✅ ${materiels.length} matériels créés`);
 
-    // Récupérer les IDs des matériels
     const materielIds = await Materiel.findAll({
       attributes: ["num_inventaire"],
     });
@@ -722,6 +785,8 @@ async function seedAll() {
     for (let i = 0; i < CONFIG.REPARATIONS; i++) {
       const numInventaire =
         materielIdList[Math.floor(Math.random() * materielIdList.length)];
+      const dateRetour =
+        Math.random() > 0.3 ? faker.date.past({ years: 1 }) : null;
       reparations.push({
         num_inventaire: numInventaire,
         date_constat: faker.date.past({ years: 1 }),
@@ -729,7 +794,8 @@ async function seedAll() {
         prestataire:
           prestataires[Math.floor(Math.random() * prestataires.length)],
         cout: parseFloat((Math.random() * 200 + 20).toFixed(2)),
-        date_retour: Math.random() > 0.3 ? faker.date.past({ years: 1 }) : null,
+        date_retour: dateRetour,
+        statut: dateRetour ? "Terminée" : "En cours",
       });
     }
     await Reparation.bulkCreate(reparations);
@@ -737,7 +803,6 @@ async function seedAll() {
 
     // ==================== ATTRIBUTIONS ====================
     console.log("🔄 Création des attributions...");
-    const typesAttribution = ["Prêt", "Location", "Formation"];
     const attributions = [];
     for (let i = 0; i < CONFIG.ATTRIBUTIONS; i++) {
       const numInventaire =
@@ -751,21 +816,21 @@ async function seedAll() {
       dateRetourPrevue.setDate(
         dateRetourPrevue.getDate() + Math.floor(Math.random() * 7 + 1),
       );
+      const dejaRetourne = Math.random() > 0.4;
       attributions.push({
         num_inventaire: numInventaire,
         num_adherent: numAdherent,
         id_sortie: idSortie,
         date_attribution: dateAttribution,
         etat_depart: ["Bon", "Très bon", "Neuf"][Math.floor(Math.random() * 3)],
-        etat_retour:
-          Math.random() > 0.7
-            ? ["Bon", "Usagé", "À réparer"][Math.floor(Math.random() * 3)]
-            : null,
+        etat_retour: dejaRetourne
+          ? ["Bon", "Usagé", "À réparer"][Math.floor(Math.random() * 3)]
+          : null,
         date_retour_prevue: dateRetourPrevue,
+        date_retour_reel: dejaRetourne
+          ? faker.date.between({ from: dateAttribution, to: new Date() })
+          : null,
         constat_deterioration: faker.lorem.sentence({ min: 5, max: 15 }),
-        type: typesAttribution[
-          Math.floor(Math.random() * typesAttribution.length)
-        ],
       });
     }
     await Attribution.bulkCreate(attributions);
@@ -785,9 +850,14 @@ async function seedAll() {
       const statut = randomStatutFormation();
       formations.push({
         num_adherent: numAdherent,
+        id_moniteur: moniteurIds[Math.floor(Math.random() * moniteurIds.length)],
         niveau_vise: randomNiveauFormation(),
         date_debut: dateDebut,
         date_fin_prevue: dateFinPrevue,
+        date_fin_reelle:
+          statut === "Terminée"
+            ? faker.date.between({ from: dateDebut, to: dateFinPrevue })
+            : null,
         statut: statut,
         nb_seances_realisees:
           statut === "Terminée"
@@ -799,7 +869,6 @@ async function seedAll() {
     await Formation.bulkCreate(formations);
     console.log(`✅ ${formations.length} formations créées`);
 
-    // Récupérer les IDs des formations
     const formationIds = await Formation.findAll({
       attributes: ["id_formation"],
     });
@@ -835,11 +904,34 @@ async function seedAll() {
         niveau_requis: randomNiveauCompetence(),
         acquise: acquise,
         date_validation: acquise ? faker.date.past({ years: 1 }) : null,
-        validee_par: acquise ? `Moniteur ${faker.person.lastName()}` : null,
+        validee_par: acquise ? String(moniteurIds[Math.floor(Math.random() * moniteurIds.length)]) : null,
       });
     }
     await Competence.bulkCreate(competences);
     console.log(`✅ ${competences.length} compétences créées`);
+
+    // ==================== PAIEMENTS ====================
+    console.log("🔄 Création des paiements...");
+    const paiements = [];
+    for (let i = 0; i < CONFIG.PAIEMENTS; i++) {
+      const numAdherent =
+        adherentIdList[Math.floor(Math.random() * adherentIdList.length)];
+      paiements.push({
+        num_adherent: numAdherent,
+        id_tresorier: tresorier.id_tresorier,
+        date_paiement: faker.date.past({ years: 1 }),
+        montant: parseFloat((Math.random() * 200 + 20).toFixed(2)),
+        mode: randomModePaiement(),
+        type_paiement: randomTypePaiement(),
+        statut: randomStatutPaiement(),
+        reference_id: `REF-${currentYear}-${Math.floor(Math.random() * 100000)
+          .toString()
+          .padStart(5, "0")}`,
+        description: faker.lorem.sentence({ min: 5, max: 12 }),
+      });
+    }
+    await Paiement.bulkCreate(paiements);
+    console.log(`✅ ${paiements.length} paiements créés`);
 
     // ==================== ALERTES ====================
     console.log("🔄 Création des alertes...");
@@ -851,16 +943,45 @@ async function seedAll() {
         num_adherent: numAdherent,
         type: randomTypeAlerte(),
         date_envoi: faker.date.past({ years: 1 }),
-        canal: randomCanal(), // ✅ Utilise 'Email', 'SMS' ou 'Notif'
+        canal: randomCanal(),
         statut: randomStatutAlerte(),
       });
     }
     await Alerte.bulkCreate(alertes);
     console.log(`✅ ${alertes.length} alertes créées`);
 
+    // ==================== INCIDENTS ====================
+    console.log("🔄 Création des incidents...");
+    const incidents = [];
+    for (let i = 0; i < CONFIG.INCIDENTS; i++) {
+      const idSortie =
+        sortieIdList[Math.floor(Math.random() * sortieIdList.length)];
+      const cloture = Math.random() > 0.4;
+      const dateHeure = faker.date.past({ years: 1 });
+      incidents.push({
+        id_sortie: idSortie,
+        date_heure: dateHeure,
+        type: randomTypeIncident(),
+        description: faker.lorem.sentence({ min: 10, max: 25 }),
+        mesures_prises: cloture
+          ? faker.lorem.sentence({ min: 5, max: 15 })
+          : null,
+        cloture,
+        date_cloture: cloture
+          ? faker.date.between({ from: dateHeure, to: new Date() })
+          : null,
+        declared_by: president.id_president,
+      });
+    }
+    await Incident.bulkCreate(incidents);
+    console.log(`✅ ${incidents.length} incidents créés`);
+
     console.log("\n🎉 SEEDING TERMINÉ AVEC SUCCÈS !");
     console.log("📊 Récapitulatif des données créées :");
-    console.log(`   👥 Adhérents : ${CONFIG.ADHERENTS}`);
+    console.log(`   👑 Président : 1 (president@plongee.com / president123)`);
+    console.log(`   🏊 Moniteurs : ${moniteurIds.length} (moniteur@plongee.com / moniteur123)`);
+    console.log(`   💰 Trésorier : 1 (tresorier@plongee.com / tresorier123)`);
+    console.log(`   👥 Adhérents : ${adherentIdList.length} (adherent@plongee.com / adherent123)`);
     console.log(`   📋 Adhésions : ${CONFIG.ADHESIONS}`);
     console.log(`   📄 Certificats : ${CONFIG.CERTIFICATS}`);
     console.log(`   💰 Paiements : ${CONFIG.PAIEMENTS}`);
@@ -868,13 +989,14 @@ async function seedAll() {
     console.log(`   📝 Inscriptions : ${CONFIG.INSCRIPTIONS}`);
     console.log(`   🤿 Plongées : ${CONFIG.PLONGEES}`);
     console.log(`   📊 Palanquées : ${CONFIG.PALANQUEES}`);
-    console.log(`   🔗 Compositions : ${CONFIG.COMPOSER}`);
+    console.log(`   🔗 Compositions : ${composer.length}`);
     console.log(`   🔧 Matériels : ${CONFIG.MATERIELS}`);
     console.log(`   🔨 Réparations : ${CONFIG.REPARATIONS}`);
     console.log(`   📦 Attributions : ${CONFIG.ATTRIBUTIONS}`);
     console.log(`   🎓 Formations : ${CONFIG.FORMATIONS}`);
     console.log(`   🏆 Compétences : ${CONFIG.COMPETENCES}`);
     console.log(`   🔔 Alertes : ${CONFIG.ALERTES}`);
+    console.log(`   🚨 Incidents : ${CONFIG.INCIDENTS}`);
 
     process.exit(0);
   } catch (error) {

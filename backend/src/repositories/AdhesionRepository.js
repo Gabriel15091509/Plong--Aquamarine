@@ -45,7 +45,7 @@ class AdhesionRepository extends BaseRepository {
       attributes: [
         'type',
         [this.model.sequelize.fn('COUNT', this.model.sequelize.col('id_adhesion')), 'count'],
-        [this.model.sequelize.fn('SUM', this.model.sequelize.col('montant_paye')), 'total_amount']
+        [this.model.sequelize.fn('SUM', this.model.sequelize.col('montant')), 'total_amount']
       ],
       group: ['type']
     });

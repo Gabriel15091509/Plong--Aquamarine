@@ -5,9 +5,17 @@ const Adherent = sequelize.define(
   "Adherent",
   {
     num_adherent: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(20),
       primaryKey: true,
-      autoIncrement: true,
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      unique: true,
+      references: {
+        model: "users",
+        key: "id",
+      },
     },
     civilite: {
       type: DataTypes.ENUM("M.", "Mme", "Mlle"),
@@ -84,6 +92,18 @@ const Adherent = sequelize.define(
       type: DataTypes.BLOB,
       allowNull: true,
     },
+    archived_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "president",
+        key: "id_president",
+      },
+    },
+    archived_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: "adherents",
@@ -91,12 +111,5 @@ const Adherent = sequelize.define(
     underscored: true,
   },
 );
-
-Adherent.associate = (models) => {
-  Adherent.hasMany(models.Inscription, {
-    foreignKey: "num_adherent",
-    as: "inscriptions"
-  });
-};
 
 module.exports = Adherent;

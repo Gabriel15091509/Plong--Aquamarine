@@ -22,9 +22,16 @@ import {
   FiMoon,
   FiShield,
   FiUser,
+  FiCompass,
+  FiStar,
+  FiBriefcase,
+  FiAlertTriangle,
+  FiTool,
+  FiDollarSign,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { photoUrl } from "../../utils/photoUrl";
 import Logo from "../Common/Logo";
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
@@ -57,9 +64,24 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   ];
 
   const adminMenu = [
-    { path: "/paiements", icon: FiCreditCard, label: "Paiements" },
     { path: "/materiels", icon: FiPackage, label: "Matériel" },
+    { path: "/attributions", icon: FiBriefcase, label: "Attributions" },
+    { path: "/reparations", icon: FiTool, label: "Réparations" },
     { path: "/formations", icon: FiAward, label: "Formations" },
+  ];
+
+  const paiementsMenu = [
+    { path: "/paiements", icon: FiCreditCard, label: "Paiements" },
+  ];
+
+  const securiteMenu = [
+    { path: "/incidents", icon: FiAlertTriangle, label: "Incidents" },
+  ];
+
+  const rolesMenu = [
+    { path: "/moniteurs", icon: FiCompass, label: "Moniteurs" },
+    { path: "/presidents", icon: FiStar, label: "Présidents" },
+    { path: "/tresoriers", icon: FiDollarSign, label: "Trésoriers" },
   ];
 
   const usersMenu = [{ path: "/users", icon: FiShield, label: "Utilisateurs" }];
@@ -68,9 +90,12 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const canSeeSorties = hasRole(["president", "moniteur", "adherent"]);
   const canSeeAdministration = hasRole(["president", "moniteur", "tresorier"]);
   const canSeeUsers = hasRole(["president"]);
-  const canSeePaiements = hasRole(["president", "tresorier"]);
+  const canSeePaiements = hasRole(["president", "tresorier", "adherent"]);
+  const canSeeAdherentsList = hasRole(["president", "moniteur", "tresorier"]);
   const canSeeMateriel = hasRole(["president"]);
   const canSeeFormations = hasRole(["president", "moniteur"]);
+  const canSeeIncidents = hasRole(["president", "moniteur"]);
+  const canSeeRoles = hasRole(["president"]);
 
   const themeTransition = {
     duration: 0.3,
@@ -159,7 +184,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         )}
         {items.map((item) => {
           if (item.path === "/paiements" && !canSeePaiements) return null;
+          if (item.path === "/adherents" && !canSeeAdherentsList) return null;
           if (item.path === "/materiels" && !canSeeMateriel) return null;
+          if (item.path === "/attributions" && !canSeeMateriel) return null;
+          if (item.path === "/reparations" && !canSeeMateriel) return null;
           if (item.path === "/formations" && !canSeeFormations) return null;
           if (item.path === "/users" && !canSeeUsers) return null;
           if (item.path === "/profile" && !user) return null;
@@ -438,9 +466,24 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           )}
 
           <MenuSection
+            title="Paiements"
+            items={paiementsMenu}
+            isVisible={canSeePaiements}
+          />
+          <MenuSection
             title="Administration"
             items={adminMenu}
             isVisible={canSeeAdministration}
+          />
+          <MenuSection
+            title="Sécurité"
+            items={securiteMenu}
+            isVisible={canSeeIncidents}
+          />
+          <MenuSection
+            title="Rôles"
+            items={rolesMenu}
+            isVisible={canSeeRoles}
           />
           <MenuSection
             title="Utilisateurs"
@@ -494,7 +537,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           >
             <div className="relative flex-shrink-0">
               <motion.div
-                className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg"
+                className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg overflow-hidden"
                 whileHover={getHoverAnimation("icon")}
                 animate={{
                   boxShadow:
@@ -504,7 +547,15 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 }}
                 transition={themeTransition}
               >
-                {user?.name?.charAt(0) || "A"}
+                {user?.photo ? (
+                  <img
+                    src={photoUrl(user.photo)}
+                    alt={user?.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  user?.name?.charAt(0) || "A"
+                )}
               </motion.div>
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full dark:border-gray-900" />
               <motion.div

@@ -14,25 +14,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { sorties } from "../../api/endpoints";
 import SearchBar from "../../components/common/SearchBar";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
+import StatusBadge from "../../components/common/StatusBadge";
+import AppHeader from "../../components/common/AppHeader";
 import { useTheme } from "../../context/ThemeContext";
+import { formatDateTime } from "../../utils/helpers";
 
-// ✅ Fonctions utilitaires
-const formatDateTime = (date) => {
-  if (!date) return "—";
-  const d = new Date(date);
-  return d.toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const formatCurrency = (amount) => {
-  if (amount === null || amount === undefined) return "—";
-  return `${amount.toFixed(2)} €`;
-};
+// Memes options que le <select> de frontend/src/components/Sortie/SortieList.jsx
+const STATUT_FILTERS = [
+  { value: "all", label: "Toutes" },
+  { value: "Planifiée", label: "Planifiées" },
+  { value: "En cours", label: "En cours" },
+  { value: "Terminée", label: "Terminées" },
+  { value: "Annulée", label: "Annulées" },
+];
 
 const SortiesListScreen = () => {
   const [sortiesList, setSortiesList] = useState([]);
@@ -41,7 +35,6 @@ const SortiesListScreen = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [inscriptionLoading, setInscriptionLoading] = useState(false);
   const itemsPerPage = 10;
 
   const navigation = useNavigation();
@@ -68,20 +61,14 @@ const SortiesListScreen = () => {
     loadSorties();
   }, []);
 
-  // Filtrage et recherche
+  // Filtrage et recherche (meme logique que SortieList.jsx cote web)
   const filteredSorties = useMemo(() => {
     let result = sortiesList;
 
-    // Filtre par statut
     if (filter !== "all") {
-      if (filter === "upcoming") {
-        result = result.filter((s) => new Date(s.date_heure) > new Date());
-      } else if (filter === "past") {
-        result = result.filter((s) => new Date(s.date_heure) < new Date());
-      }
+      result = result.filter((s) => s.statut === filter);
     }
 
-    // Recherche
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       result = result.filter(
@@ -103,93 +90,73 @@ const SortiesListScreen = () => {
     startIndex + itemsPerPage
   );
 
-  const handleInscription = async (sortieId) => {
-    // Fonction d'inscription à implémenter avec AuthContext
-    console.log("Inscription à la sortie:", sortieId);
+  const handleInscription = (sortieId) => {
+    navigation.navigate("Inscription", { sortieId });
   };
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <AppHeader />
+        <LoadingSpinner />
+      </View>
+    );
+  }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Barre de recherche */}
-      <View style={styles.searchContainer}>
-        <SearchBar
-          value={searchTerm}
-          onChange={setSearchTerm}
-          placeholder="Rechercher par lieu, site, type..."
-        />
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+      <AppHeader />
+      <View style={styles.container}>
+      {/* Barre de recherche + acces aux inscriptions (comme le lien
+          "Inscriptions" du menu web) */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchContainer}>
+          <SearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Rechercher par lieu, site, type..."
+          />
+        </View>
+        <TouchableOpacity
+          style={[styles.myInscriptionsButton, { backgroundColor: colors.primary + '20' }]}
+          onPress={() => navigation.navigate('InscriptionsList')}
+        >
+          <Ionicons name="clipboard-outline" size={20} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
-      {/* Filtres horizontaux */}
+      {/* Filtres horizontaux (statut, comme le select web) */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filterScrollContainer}
         contentContainerStyle={styles.filterContainer}
       >
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filter === "all" && {
-              backgroundColor: colors.primary + "20",
-              borderColor: colors.primary,
-            },
-          ]}
-          onPress={() => setFilter("all")}
-        >
-          <Text
+        {STATUT_FILTERS.map((f) => (
+          <TouchableOpacity
+            key={f.value}
             style={[
-              styles.filterText,
-              { color: filter === "all" ? colors.primary : colors.textSecondary },
-            ]}
-          >
-            Toutes
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filter === "upcoming" && {
-              backgroundColor: colors.primary + "20",
-              borderColor: colors.primary,
-            },
-          ]}
-          onPress={() => setFilter("upcoming")}
-        >
-          <Text
-            style={[
-              styles.filterText,
-              {
-                color:
-                  filter === "upcoming" ? colors.primary : colors.textSecondary,
+              styles.filterButton,
+              filter === f.value && {
+                backgroundColor: colors.primary + "20",
+                borderColor: colors.primary,
               },
             ]}
+            onPress={() => {
+              setFilter(f.value);
+              setCurrentPage(1);
+            }}
           >
-            À venir
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            filter === "past" && {
-              backgroundColor: colors.primary + "20",
-              borderColor: colors.primary,
-            },
-          ]}
-          onPress={() => setFilter("past")}
-        >
-          <Text
-            style={[
-              styles.filterText,
-              {
-                color: filter === "past" ? colors.primary : colors.textSecondary,
-              },
-            ]}
-          >
-            Passées
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.filterText,
+                { color: filter === f.value ? colors.primary : colors.textSecondary },
+              ]}
+            >
+              {f.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
 
       {/* Liste des sorties */}
@@ -200,6 +167,9 @@ const SortiesListScreen = () => {
           const sortieId = item.id_sortie || item.id;
           const isPastSortie = new Date(item.date_heure) < new Date();
           const isFull = (item.nb_places || 0) <= (item.nb_inscrits || 0);
+          // Meme contrainte que le backend (InscriptionService.createInscription) :
+          // seule une sortie encore "Planifiée" accepte des inscriptions.
+          const isNotPlanifiee = (item.statut || "Planifiée") !== "Planifiée";
 
           return (
             <View
@@ -227,29 +197,7 @@ const SortiesListScreen = () => {
                   </Text>
                 </View>
 
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor: isPastSortie
-                        ? colors.border
-                        : colors.primary + "20",
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusText,
-                      {
-                        color: isPastSortie
-                          ? colors.textSecondary
-                          : colors.primary,
-                      },
-                    ]}
-                  >
-                    {isPastSortie ? "Passée" : "À venir"}
-                  </Text>
-                </View>
+                <StatusBadge status={item.statut || "Planifiée"} />
               </View>
 
               {/* Lieu */}
@@ -297,45 +245,32 @@ const SortiesListScreen = () => {
                   <Text
                     style={[styles.detailText, { color: colors.textSecondary }]}
                   >
-                    Niveau {item.niveau_requis || "—"}
+                    Niveau {item.niveau_requis || "Tous niveaux"}
                   </Text>
                 </View>
                 <View style={styles.detailItem}>
-                  <Text style={[styles.priceText, { color: colors.text }]}>
-                    {formatCurrency(item.tarif)}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.statutBadge,
-                    {
-                      backgroundColor:
-                        item.statut === "Planifiée"
-                          ? "#2196f3"
-                          : item.statut === "En cours"
-                          ? "#4caf50"
-                          : item.statut === "Terminée"
-                          ? "#9e9e9e"
-                          : "#f44336",
-                    },
-                  ]}
-                >
-                  <Text style={styles.statutBadgeText}>
-                    {item.statut || "Planifiée"}
+                  <Ionicons
+                    name="water-outline"
+                    size={14}
+                    color={colors.textSecondary}
+                  />
+                  <Text
+                    style={[styles.detailText, { color: colors.textSecondary }]}
+                  >
+                    {item.profondeur_max}m
                   </Text>
                 </View>
               </View>
 
               {/* Actions */}
               <View style={styles.actionsContainer}>
-                {!isPastSortie && !isFull && (
+                {!isPastSortie && !isFull && !isNotPlanifiee && (
                   <TouchableOpacity
                     style={[
                       styles.actionButton,
                       { backgroundColor: colors.success + "20" },
                     ]}
                     onPress={() => handleInscription(sortieId)}
-                    disabled={inscriptionLoading}
                   >
                     <Ionicons
                       name="person-add-outline"
@@ -366,40 +301,6 @@ const SortiesListScreen = () => {
                   />
                   <Text style={[styles.actionText, { color: colors.primary }]}>
                     Voir
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    { backgroundColor: colors.warning + "20" },
-                  ]}
-                  onPress={() => {}}
-                >
-                  <Ionicons
-                    name="create-outline"
-                    size={18}
-                    color={colors.warning}
-                  />
-                  <Text style={[styles.actionText, { color: colors.warning }]}>
-                    Modifier
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    { backgroundColor: colors.error + "20" },
-                  ]}
-                  onPress={() => {}}
-                >
-                  <Ionicons
-                    name="trash-outline"
-                    size={18}
-                    color={colors.error}
-                  />
-                  <Text style={[styles.actionText, { color: colors.error }]}>
-                    Supprimer
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -472,18 +373,36 @@ const SortiesListScreen = () => {
           </TouchableOpacity>
         </View>
       )}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 12,
   },
-  searchContainer: {
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     marginBottom: 8,
+  },
+  searchContainer: {
+    flex: 1,
+  },
+  myInscriptionsButton: {
+    width: 46,
+    height: 46,
+    marginBottom: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterScrollContainer: {
     flexGrow: 0,
@@ -541,15 +460,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
   lieu: {
     fontSize: 18,
     fontWeight: "bold",
@@ -573,24 +483,10 @@ const styles = StyleSheet.create({
   detailText: {
     fontSize: 13,
   },
-  priceText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
   completText: {
     fontSize: 12,
     fontWeight: "600",
     marginLeft: 2,
-  },
-  statutBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  statutBadgeText: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#fff",
   },
   actionsContainer: {
     flexDirection: "row",

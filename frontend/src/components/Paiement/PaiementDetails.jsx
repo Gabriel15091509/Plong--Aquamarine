@@ -19,12 +19,15 @@ import {
   FiInfo,
   FiTrendingUp,
   FiAward,
+  FiDownload,
 } from "react-icons/fi";
 import { usePaiements } from "../../hooks/usePaiements";
 import { useAdherents } from "../../hooks/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
+import paiementService from "../../services/paiementService";
 
 // Animations
 const fadeInUp = {
@@ -53,12 +56,15 @@ const scaleIn = {
 const PaiementDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const canManagePaiement = hasRole(["president", "tresorier"]);
   const { useGetById, useRemove } = usePaiements();
   const { useGetAll } = useAdherents();
   const { data, isLoading } = useGetById(id);
   const { data: adherentsData } = useGetAll();
   const remove = useRemove();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const paiement = data?.data;
   const adherent = adherentsData?.data?.find(
@@ -68,10 +74,20 @@ const PaiementDetails = () => {
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      toast.success("Paiement supprimé avec succès");
       navigate("/paiements");
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      console.error("Delete error:", error);
+    }
+  };
+
+  const handleDownloadRecu = async () => {
+    setDownloading(true);
+    try {
+      await paiementService.downloadRecu(id);
+    } catch (error) {
+      toast.error("Erreur lors du téléchargement du reçu");
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -221,7 +237,7 @@ const PaiementDetails = () => {
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                   Paiement{" "}
                   <span className="text-blue-600 dark:text-blue-400">
-                    {paiement.motif}
+                    {paiement.type_paiement}
                   </span>
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
@@ -246,6 +262,17 @@ const PaiementDetails = () => {
             </div>
           </div>
         </div>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={handleDownloadRecu}
+            disabled={downloading}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl transition-all duration-300 disabled:opacity-60"
+          >
+            <FiDownload className="w-4 h-4" />
+            Télécharger le reçu
+          </button>
+        </div>
+        {canManagePaiement && (
         <div className="flex gap-2">
           <Link
             to={`/paiements/edit/${paiement.id_paiement}`}
@@ -262,6 +289,7 @@ const PaiementDetails = () => {
             Supprimer
           </button>
         </div>
+        )}
       </motion.div>
 
       {/* Carte récapitulative */}
@@ -394,7 +422,11 @@ const PaiementDetails = () => {
             label="Mode de paiement"
             value={paiement.mode}
           />
-          <InfoItem icon={FiFileText} label="Motif" value={paiement.motif} />
+          <InfoItem
+            icon={FiFileText}
+            label="Type de paiement"
+            value={paiement.type_paiement}
+          />
           <InfoItem
             icon={FiClock}
             label="Statut"
@@ -403,7 +435,12 @@ const PaiementDetails = () => {
           <InfoItem
             icon={FiHash}
             label="Référence"
-            value={paiement.reference || "Non renseignée"}
+            value={paiement.reference_id || "Non renseignée"}
+          />
+          <InfoItem
+            icon={FiFileText}
+            label="Description"
+            value={paiement.description || "Non renseignée"}
           />
           <InfoItem
             icon={FiCalendar}
@@ -431,7 +468,7 @@ const PaiementDetails = () => {
             <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
               Êtes-vous sûr de vouloir supprimer ce paiement{" "}
               <span className="font-semibold text-gray-900 dark:text-white">
-                {paiement.motif}
+                {paiement.type_paiement}
               </span>
               ?
               <br />

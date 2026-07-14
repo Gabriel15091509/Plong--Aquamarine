@@ -29,7 +29,6 @@ const User = sequelize.define(
     role: {
       type: DataTypes.ENUM(
         "president",
-        "directeur_technique",
         "moniteur",
         "adherent",
         "tresorier",
@@ -45,14 +44,6 @@ const User = sequelize.define(
       type: DataTypes.STRING(20),
       allowNull: true,
     },
-    contact_urgence: {
-      type: DataTypes.STRING(100),
-      allowNull: true,
-    },
-    niveau: {
-      type: DataTypes.STRING(50),
-      allowNull: true,
-    },
     last_login: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -60,6 +51,10 @@ const User = sequelize.define(
     must_change_password: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
+    },
+    photo: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
     },
     preferences: {
       type: DataTypes.JSON,
@@ -110,24 +105,6 @@ User.prototype.comparePassword = async function (password) {
 User.prototype.hasPermission = function (permission) {
   const permissions = {
     president: [
-      "all",
-      "manage_users",
-      "manage_staff",
-      "view_stats",
-      "manage_settings",
-      "manage_sorties",
-      "validate_plongees",
-      "manage_formations",
-      "view_adherents",
-      "manage_paiements",
-      "exports",
-      "change_niveau",
-      "change_role",
-      "disable_account",
-      "delete_account",
-      "reset_password",
-    ],
-    directeur_technique: [
       "all",
       "manage_users",
       "manage_staff",

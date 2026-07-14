@@ -43,6 +43,13 @@ class InscriptionService {
     return response.data;
   }
 
+  async getPresentsBySortie(id_sortie) {
+    const response = await api.get(`/inscriptions/sortie/${id_sortie}`, {
+      params: { presents: "true" },
+    });
+    return response.data;
+  }
+
   async getWaitlistBySortie(id_sortie) {
     const response = await api.get(
       `/inscriptions/sortie/${id_sortie}/waitlist`,
@@ -62,12 +69,23 @@ class InscriptionService {
     return response.data;
   }
 
+  async getByAdherent(num_adherent) {
+    const response = await api.get(`/inscriptions/adherent/${num_adherent}`);
+    return response.data;
+  }
+
   async getByAdherentAndSortie(num_adherent, id_sortie) {
     const response = await api.get(
       `/inscriptions/adherent/${num_adherent}/sortie/${id_sortie}`,
     );
     return response.data;
   }
+
+  async enregistrerPaiement(id, data) {
+    const response = await api.post(`/inscriptions/${id}/paiement`, data);
+    return response.data;
+  }
+
 }
 
 export default new InscriptionService();

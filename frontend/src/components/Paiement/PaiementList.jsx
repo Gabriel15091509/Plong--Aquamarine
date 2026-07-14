@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -19,11 +18,15 @@ import {
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { usePaiements } from "../../hooks/usePaiements";
 import { useAdherents } from "../../hooks/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
+import { photoUrl } from "../../utils/photoUrl";
 
 const PaiementList = () => {
   // ✅ 1. TOUS LES HOOKS au même niveau, avant toute condition
+  const { hasRole } = useAuth();
+  const canManagePaiement = hasRole(["president", "tresorier"]);
   const { useGetAll, useRemove, useProcess, useCancel } = usePaiements();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
@@ -73,8 +76,8 @@ const PaiementList = () => {
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         return (
-          p.motif?.toLowerCase().includes(search) ||
-          p.reference?.toLowerCase().includes(search) ||
+          p.type_paiement?.toLowerCase().includes(search) ||
+          p.reference_id?.toLowerCase().includes(search) ||
           adherentName.toLowerCase().includes(search)
         );
       }
@@ -95,11 +98,9 @@ const PaiementList = () => {
     try {
       setLoading(true);
       await remove.mutateAsync(id);
-      toast.success("Paiement supprimé avec succès");
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
       console.error("Delete error:", error);
     } finally {
       setLoading(false);
@@ -110,10 +111,8 @@ const PaiementList = () => {
     try {
       setLoading(true);
       await process.mutateAsync(id);
-      toast.success("Paiement validé avec succès");
       refetch();
     } catch (error) {
-      toast.error("Erreur lors de la validation");
       console.error("Process error:", error);
     } finally {
       setLoading(false);
@@ -126,10 +125,8 @@ const PaiementList = () => {
     try {
       setLoading(true);
       await cancel.mutateAsync(id);
-      toast.success("Paiement annulé avec succès");
       refetch();
     } catch (error) {
-      toast.error("Erreur lors de l'annulation");
       console.error("Cancel error:", error);
     } finally {
       setLoading(false);
@@ -161,12 +158,14 @@ const PaiementList = () => {
             ? "Aucun résultat pour vos critères"
             : "Commencez par créer un nouveau paiement"}
         </p>
-        <Link
-          to="/paiements/create"
-          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-        >
-          <FiPlus className="w-4 h-4" /> Nouveau paiement
-        </Link>
+        {canManagePaiement && (
+          <Link
+            to="/paiements/create"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+          >
+            <FiPlus className="w-4 h-4" /> Nouveau paiement
+          </Link>
+        )}
       </motion.div>
     );
   }
@@ -178,7 +177,7 @@ const PaiementList = () => {
         <div className="flex-1">
           <input
             type="text"
-            placeholder="Rechercher par adhérent, motif ou référence..."
+            placeholder="Rechercher par adhérent, type ou référence..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -202,13 +201,15 @@ const PaiementList = () => {
             <option value="Partiel">Partiels</option>
             <option value="Annulé">Annulés</option>
           </select>
-          <Link
-            to="/paiements/create"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <FiPlus className="w-4 h-4" />
-            Nouveau
-          </Link>
+          {canManagePaiement && (
+            <Link
+              to="/paiements/create"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <FiPlus className="w-4 h-4" />
+              Nouveau
+            </Link>
+          )}
         </div>
       </div>
 
@@ -255,7 +256,7 @@ const PaiementList = () => {
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
                         <img
-                          src={adherentInfo.photo}
+                          src={photoUrl(adherentInfo.photo)}
                           alt={adherentName}
                           className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
                         />
@@ -283,15 +284,15 @@ const PaiementList = () => {
                               •
                             </span>
                             <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                              {paiement.motif}
+                              {paiement.type_paiement}
                             </span>
-                            {paiement.reference && (
+                            {paiement.reference_id && (
                               <>
                                 <span className="text-sm text-gray-400 dark:text-gray-500">
                                   •
                                 </span>
                                 <span className="text-xs text-gray-400 dark:text-gray-500">
-                                  Réf: {paiement.reference}
+                                  Réf: {paiement.reference_id}
                                 </span>
                               </>
                             )}
@@ -319,7 +320,7 @@ const PaiementList = () => {
                         {/* Actions */}
                         <div className="flex items-center gap-1 flex-shrink-0">
                           {/* Valider - uniquement si En attente */}
-                          {paiement.statut === "En attente" && (
+                          {canManagePaiement && paiement.statut === "En attente" && (
                             <>
                               <button
                                 onClick={() =>
@@ -351,21 +352,25 @@ const PaiementList = () => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          <Link
-                            to={`/paiements/edit/${paiement.id_paiement}`}
-                            className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                            title="Modifier"
-                          >
-                            <FiEdit className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={() => setDeleteModal(paiement.id_paiement)}
-                            disabled={loading}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                            title="Supprimer"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
+                          {canManagePaiement && (
+                            <>
+                              <Link
+                                to={`/paiements/edit/${paiement.id_paiement}`}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                title="Modifier"
+                              >
+                                <FiEdit className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() => setDeleteModal(paiement.id_paiement)}
+                                disabled={loading}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="Supprimer"
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

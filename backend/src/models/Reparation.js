@@ -34,6 +34,27 @@ const Reparation = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    statut: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: "En cours",
+    },
+    id_attribution: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "attributions",
+        key: "id_attribution",
+      },
+    },
+    montant_couvert_caution: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    montant_complement_du: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
   },
   {
     tableName: "reparations",

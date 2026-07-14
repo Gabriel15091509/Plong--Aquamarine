@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiPackage,
   FiTag,
@@ -25,11 +24,17 @@ import {
   FiShield,
   FiDroplet,
   FiAnchor,
+  FiUser,
+  FiPlus,
+  FiDollarSign,
 } from "react-icons/fi";
 import { useMateriels } from "../../hooks/useMateriels";
+import { useAttributions } from "../../hooks/useAttributions";
+import { useReparations } from "../../hooks/useReparations";
+import { useAdherents } from "../../hooks/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
-import { formatDate } from "../../utils/helpers";
+import { formatDate, formatCurrency } from "../../utils/helpers";
 
 // Animations
 const fadeInUp = {
@@ -59,19 +64,35 @@ const MaterielDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { useGetById, useRemove } = useMateriels();
+  const { useGetByMateriel: useGetAttributionsByMateriel } =
+    useAttributions();
+  const { useGetByMateriel: useGetReparationsByMateriel } = useReparations();
+  const { useGetAll: useGetAllAdherents } = useAdherents();
   const { data, isLoading } = useGetById(id);
   const remove = useRemove();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const materiel = data?.data;
 
+  const { data: attributionsData, isLoading: loadingAttributions } =
+    useGetAttributionsByMateriel(materiel?.num_inventaire);
+  const { data: reparationsData, isLoading: loadingReparations } =
+    useGetReparationsByMateriel(materiel?.num_inventaire);
+  const { data: adherentsData } = useGetAllAdherents();
+
+  const attributions = attributionsData?.data || [];
+  const reparations = reparationsData?.data || [];
+  const adherentMap = {};
+  adherentsData?.data?.forEach((a) => {
+    adherentMap[a.num_adherent] = `${a.nom} ${a.prenom}`;
+  });
+
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      toast.success("Matériel supprimé avec succès");
       navigate("/materiels");
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      // toast déjà géré par le hook useRemove
     }
   };
 
@@ -412,6 +433,132 @@ const MaterielDetails = () => {
             }
           />
         </SectionCard>
+      </motion.div>
+
+      {/* Attributions du matériel */}
+      <motion.div
+        variants={fadeInUp}
+        initial="initial"
+        animate="animate"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <FiUser className="w-5 h-5" />
+            </span>
+            Attributions ({attributions.length})
+          </h3>
+          <Link
+            to={`/attributions/create?num_inventaire=${materiel.num_inventaire}`}
+            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            <FiPlus className="w-4 h-4" />
+            Nouvelle attribution
+          </Link>
+        </div>
+        {loadingAttributions ? (
+          <LoadingSpinner />
+        ) : attributions.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Aucune attribution enregistrée pour ce matériel.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {attributions.map((attribution) => (
+              <Link
+                key={attribution.id_attribution}
+                to={`/attributions/${attribution.id_attribution}`}
+                className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+              >
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {adherentMap[attribution.num_adherent] ||
+                      `Adhérent #${attribution.num_adherent}`}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {formatDate(attribution.date_attribution)} →{" "}
+                    {formatDate(attribution.date_retour_prevue)}
+                  </p>
+                </div>
+                <span
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                    attribution.date_retour_reel
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                  }`}
+                >
+                  {attribution.date_retour_reel ? "Retourné" : "En cours"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Réparations du matériel */}
+      <motion.div
+        variants={fadeInUp}
+        initial="initial"
+        animate="animate"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/10 text-orange-600 dark:text-orange-400">
+              <FiTool className="w-5 h-5" />
+            </span>
+            Réparations ({reparations.length})
+          </h3>
+          <Link
+            to={`/reparations/create?num_inventaire=${materiel.num_inventaire}`}
+            className="inline-flex items-center gap-1 text-sm font-medium text-orange-600 dark:text-orange-400 hover:underline"
+          >
+            <FiPlus className="w-4 h-4" />
+            Nouvelle réparation
+          </Link>
+        </div>
+        {loadingReparations ? (
+          <LoadingSpinner />
+        ) : reparations.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Aucune réparation enregistrée pour ce matériel.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {reparations.map((reparation) => (
+              <Link
+                key={reparation.id_reparation}
+                to={`/reparations/${reparation.id_reparation}`}
+                className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+              >
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white line-clamp-1">
+                    {reparation.description_panne}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                    {formatDate(reparation.date_constat)}
+                    {reparation.cout && (
+                      <span className="flex items-center gap-1">
+                        <FiDollarSign className="w-3 h-3" />
+                        {formatCurrency(reparation.cout)}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <span
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                    reparation.date_retour
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                  }`}
+                >
+                  {reparation.date_retour ? "Terminée" : "En cours"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
       </motion.div>
 
       {/* Modal suppression */}

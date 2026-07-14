@@ -34,7 +34,12 @@ class UserService {
   }
 
   async updateProfile(data) {
-    const response = await api.put("/users/profile", data);
+    const isFormData = data instanceof FormData;
+    const response = await api.put(
+      "/users/profile",
+      data,
+      isFormData ? { headers: { "Content-Type": "multipart/form-data" } } : undefined,
+    );
     return response.data;
   }
 

@@ -61,11 +61,47 @@ export const useAdhesions = () => {
     });
   };
 
+  const useEnregistrerPaiement = () => {
+    return useMutation({
+      mutationFn: ({ id, data }) => adhesionService.enregistrerPaiement(id, data),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['adhesions']);
+        // Le versement crée aussi une ligne Paiement liée côté backend.
+        queryClient.invalidateQueries(['paiements']);
+        toast.success(response.message || 'Paiement enregistré avec succès');
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Erreur lors de l\'enregistrement du paiement');
+      },
+    });
+  };
+
+  const useGetByAdherent = (numAdherent) => {
+    return useQuery({
+      queryKey: ['adhesions', 'adherent', numAdherent],
+      queryFn: () => adhesionService.getByAdherent(numAdherent),
+      enabled: !!numAdherent,
+      staleTime: 2 * 60 * 1000,
+    });
+  };
+
+  const useDossierStatus = (numAdherent) => {
+    return useQuery({
+      queryKey: ['adhesions', 'dossier-status', numAdherent],
+      queryFn: () => adhesionService.getDossierStatus(numAdherent),
+      enabled: !!numAdherent,
+      staleTime: 5 * 60 * 1000,
+    });
+  };
+
   return {
     useGetAll,
     useGetById,
+    useGetByAdherent,
     useCreate,
     useUpdate,
     useRemove,
+    useDossierStatus,
+    useEnregistrerPaiement,
   };
 };

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiUser,
   FiMail,
@@ -28,6 +27,9 @@ import {
   FiBriefcase,
 } from "react-icons/fi";
 import { useAdherents } from "../../hooks/useAdherents";
+import { useAdhesions } from "../../hooks/useAdhesions";
+import { useCertificats } from "../../hooks/useCertificats";
+import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
@@ -56,6 +58,9 @@ const staggerContainer = {
 const AdherentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const canManageAdherent = hasRole(["president"]);
+  const canViewDossier = hasRole(["president", "moniteur", "tresorier"]);
   const { useGetById, useRemove } = useAdherents();
   const { data, isLoading } = useGetById(id);
   const remove = useRemove();
@@ -63,13 +68,22 @@ const AdherentDetails = () => {
 
   const adherent = data?.data;
 
+  const { useDossierStatus } = useAdhesions();
+  const { useStatus } = useCertificats();
+  const { data: dossierData } = useDossierStatus(
+    canViewDossier ? adherent?.num_adherent : undefined,
+  );
+  const { data: certStatusData } = useStatus(
+    canViewDossier ? adherent?.num_adherent : undefined,
+  );
+  const dossier = dossierData?.data;
+  const certStatus = certStatusData?.data;
+
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      toast.success("Adhérent supprimé avec succès");
       navigate("/adherents");
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
       console.error("Delete error:", error); // J'ai ajouté le log pour debug
     }
   };
@@ -208,22 +222,24 @@ const AdherentDetails = () => {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Link
-            to={`/adherents/edit/${adherent.num_adherent}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
-          >
-            <FiEdit className="w-4 h-4" />
-            Modifier
-          </Link>
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
-          >
-            <FiTrash2 className="w-4 h-4" />
-            Supprimer
-          </button>
-        </div>
+        {canManageAdherent && (
+          <div className="flex gap-2">
+            <Link
+              to={`/adherents/edit/${adherent.num_adherent}`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+            >
+              <FiEdit className="w-4 h-4" />
+              Modifier
+            </Link>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+            >
+              <FiTrash2 className="w-4 h-4" />
+              Supprimer
+            </button>
+          </div>
+        )}
       </motion.div>
 
       {/* Statut - Carte d'identité */}
@@ -355,6 +371,67 @@ const AdherentDetails = () => {
           />
         </SectionCard>
       </motion.div>
+
+      {/* Dossier adhésion : validité adhésion + certificat médical */}
+      {canViewDossier && (dossier || certStatus) && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <FiCheckCircle className="w-5 h-5" />
+            </span>
+            Dossier adhésion
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div
+              className={`flex items-center gap-3 p-4 rounded-xl border ${
+                dossier?.valid
+                  ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                  : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+              }`}
+            >
+              {dossier?.valid ? (
+                <FiCheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+              ) : (
+                <FiXCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
+              )}
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  Adhésion {dossier?.valid ? "complète" : "incomplète"}
+                </p>
+                {!dossier?.valid && dossier?.missing?.length > 0 && (
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    Manquant : {dossier.missing.join(", ")}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div
+              className={`flex items-center gap-3 p-4 rounded-xl border ${
+                certStatus?.hasValidCertificate
+                  ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                  : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+              }`}
+            >
+              {certStatus?.hasValidCertificate ? (
+                <FiCheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
+              ) : (
+                <FiXCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
+              )}
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  Certificat médical{" "}
+                  {certStatus?.hasValidCertificate ? "valide" : "expiré ou manquant"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Remarques */}
       {adherent.remarques && (

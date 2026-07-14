@@ -15,6 +15,15 @@ const formationRoutes = require("./formationRoutes");
 const alerteRoutes = require("./alerteRoutes");
 const userRoutes = require("./userRoutes");
 const emailRoutes = require("./emailRoutes");
+const moniteurRoutes = require("./moniteurRoutes");
+const presidentRoutes = require("./presidentRoutes");
+const tresorierRoutes = require("./tresorierRoutes");
+const incidentRoutes = require("./incidentRoutes");
+const palanqueeRoutes = require("./palanqueeRoutes");
+const attributionRoutes = require("./attributionRoutes");
+const reparationRoutes = require("./reparationRoutes");
+const competenceRoutes = require("./competenceRoutes");
+const dashboardRoutes = require("./dashboardRoutes");
 
 // Routes
 router.use("/auth", authRoutes);
@@ -30,6 +39,15 @@ router.use("/formations", formationRoutes);
 router.use("/alertes", alerteRoutes);
 router.use("/users", userRoutes);
 router.use("/email", emailRoutes);
+router.use("/moniteurs", moniteurRoutes);
+router.use("/president", presidentRoutes);
+router.use("/tresoriers", tresorierRoutes);
+router.use("/incidents", incidentRoutes);
+router.use("/palanquees", palanqueeRoutes);
+router.use("/attributions", attributionRoutes);
+router.use("/reparations", reparationRoutes);
+router.use("/competences", competenceRoutes);
+router.use("/dashboard", dashboardRoutes);
 
 // Route racine API
 router.get("/", (req, res) => {
@@ -50,6 +68,14 @@ router.get("/", (req, res) => {
       formations: "/api/formations",
       alertes: "/api/alertes",
       emails: "/api/emails",
+      moniteurs: "/api/moniteurs",
+      president: "/api/president",
+      tresoriers: "/api/tresoriers",
+      incidents: "/api/incidents",
+      palanquees: "/api/palanquees",
+      attributions: "/api/attributions",
+      reparations: "/api/reparations",
+      competences: "/api/competences",
     },
   });
 });

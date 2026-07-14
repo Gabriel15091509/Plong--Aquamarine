@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiUser,
   FiCalendar,
@@ -13,6 +12,8 @@ import {
   FiTag,
   FiClock,
   FiHash,
+  FiUpload,
+  FiFile,
 } from "react-icons/fi";
 import { useAdhesions } from "../../hooks/useAdhesions";
 import { useAdherents } from "../../hooks/useAdherents";
@@ -21,6 +22,7 @@ import SearchableSelect from "../Common/SearchableSelect";
 import {
   TYPE_ADHESION_OPTIONS,
   STATUT_PAIEMENT_OPTIONS,
+  MODE_PAIEMENT_OPTIONS,
 } from "../../utils/constants";
 
 const fadeInUp = {
@@ -45,33 +47,40 @@ const AdhesionForm = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [focused, setFocused] = useState(null);
+  const submittingRef = useRef(false);
 
   const [formData, setFormData] = useState({
     num_adherent: "",
-    type: "Adhésion annuelle",
+    type: "Club",
     date_debut: "",
     date_fin: "",
-    montant_paye: "",
+    montant: "",
     num_licence_ffesm: "",
     statut_paiement: "En attente",
     annee_adhesion: new Date().getFullYear(),
+    montant_paye: "",
+    mode: "Espèces",
   });
+  const [documentFile, setDocumentFile] = useState(null);
+  const [existingDocumentPath, setExistingDocumentPath] = useState(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState(null);
 
   useEffect(() => {
     if (editMode && id && adhesionData?.data) {
       const adhesion = adhesionData.data;
       setFormData({
         num_adherent: adhesion.num_adherent || "",
-        type: adhesion.type || "Adhésion annuelle",
+        type: adhesion.type || "Club",
         date_debut: adhesion.date_debut
           ? adhesion.date_debut.split("T")[0]
           : "",
         date_fin: adhesion.date_fin ? adhesion.date_fin.split("T")[0] : "",
-        montant_paye: adhesion.montant_paye || "",
+        montant: adhesion.montant || "",
         num_licence_ffesm: adhesion.num_licence_ffesm || "",
         statut_paiement: adhesion.statut_paiement || "En attente",
         annee_adhesion: adhesion.annee_adhesion || new Date().getFullYear(),
       });
+      setExistingDocumentPath(adhesion.document_path || null);
     }
   }, [editMode, id, adhesionData]);
 
@@ -81,8 +90,27 @@ const AdhesionForm = () => {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setDocumentFile(file);
+    setFilePreviewUrl((prevUrl) => {
+      if (prevUrl) URL.revokeObjectURL(prevUrl);
+      return file && file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : null;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    };
+  }, [filePreviewUrl]);
+
   const handleFocus = (name) => setFocused(name);
   const handleBlur = () => setFocused(null);
+
+  const isClub = formData.type === "Club";
 
   const validate = () => {
     const newErrors = {};
@@ -92,8 +120,8 @@ const AdhesionForm = () => {
     if (!formData.date_debut)
       newErrors.date_debut = "La date de début est requise";
     if (!formData.date_fin) newErrors.date_fin = "La date de fin est requise";
-    if (!formData.montant_paye || formData.montant_paye <= 0) {
-      newErrors.montant_paye = "Le montant doit être supérieur à 0";
+    if (isClub && (!formData.montant || formData.montant <= 0)) {
+      newErrors.montant = "Le montant doit être supérieur à 0";
     }
     if (!formData.annee_adhesion)
       newErrors.annee_adhesion = "L'année est requise";
@@ -103,23 +131,29 @@ const AdhesionForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     if (!validate()) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
+      let payload = formData;
+      if (documentFile) {
+        payload = new FormData();
+        Object.entries(formData).forEach(([key, value]) => {
+          payload.append(key, value);
+        });
+        payload.append("document", documentFile);
+      }
       if (editMode && id) {
-        await update.mutateAsync({ id, data: formData });
-        toast.success("Adhésion modifiée avec succès");
+        await update.mutateAsync({ id, data: payload });
       } else {
-        await create.mutateAsync(formData);
-        toast.success("Adhésion créée avec succès");
+        await create.mutateAsync(payload);
       }
       navigate("/adhesions");
     } catch (error) {
       console.error("Error:", error);
-      toast.error(
-        error.response?.data?.message || "Erreur lors de l'enregistrement",
-      );
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
@@ -205,8 +239,8 @@ const AdhesionForm = () => {
               className={inputClasses("type")}
             >
               {TYPE_ADHESION_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
+                <option key={opt.value} value={opt.value}>
+                  {opt.label} {opt.obligatoire ? "*" : "(facultatif)"}
                 </option>
               ))}
             </select>
@@ -257,53 +291,115 @@ const AdhesionForm = () => {
             )}
           </motion.div>
 
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiDollarSign className="w-4 h-4 text-gray-400" />
-                Montant (€) *
-              </span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              name="montant_paye"
-              value={formData.montant_paye}
-              onChange={handleChange}
-              onFocus={() => handleFocus("montant_paye")}
-              onBlur={handleBlur}
-              className={inputClasses("montant_paye")}
-              placeholder="0.00"
-            />
-            {errors.montant_paye && (
-              <p className="mt-1.5 text-sm text-red-500">
-                {errors.montant_paye}
-              </p>
-            )}
-          </motion.div>
+          {isClub && (
+            <motion.div {...fadeInUp}>
+              <label className={labelClasses}>
+                <span className="flex items-center gap-2">
+                  <FiDollarSign className="w-4 h-4 text-gray-400" />
+                  Montant (€) *
+                </span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                name="montant"
+                value={formData.montant}
+                onChange={handleChange}
+                onFocus={() => handleFocus("montant")}
+                onBlur={handleBlur}
+                className={inputClasses("montant")}
+                placeholder="0.00"
+              />
+              {errors.montant && (
+                <p className="mt-1.5 text-sm text-red-500">
+                  {errors.montant}
+                </p>
+              )}
+            </motion.div>
+          )}
 
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiClock className="w-4 h-4 text-gray-400" />
-                Statut paiement
-              </span>
-            </label>
-            <select
-              name="statut_paiement"
-              value={formData.statut_paiement}
-              onChange={handleChange}
-              onFocus={() => handleFocus("statut_paiement")}
-              onBlur={handleBlur}
-              className={inputClasses("statut_paiement")}
-            >
-              {STATUT_PAIEMENT_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </motion.div>
+          {isClub && editMode && (
+            <motion.div {...fadeInUp}>
+              <label className={labelClasses}>
+                <span className="flex items-center gap-2">
+                  <FiClock className="w-4 h-4 text-gray-400" />
+                  Statut paiement
+                </span>
+              </label>
+              <select
+                name="statut_paiement"
+                value={formData.statut_paiement}
+                onChange={handleChange}
+                onFocus={() => handleFocus("statut_paiement")}
+                onBlur={handleBlur}
+                className={inputClasses("statut_paiement")}
+              >
+                {STATUT_PAIEMENT_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </motion.div>
+          )}
+          {isClub && !editMode && (
+            <>
+              <motion.div {...fadeInUp}>
+                <label className={labelClasses}>
+                  <span className="flex items-center gap-2">
+                    <FiDollarSign className="w-4 h-4 text-gray-400" />
+                    Montant reçu maintenant (€)
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="montant_paye"
+                  value={formData.montant_paye}
+                  onChange={handleChange}
+                  onFocus={() => handleFocus("montant_paye")}
+                  onBlur={handleBlur}
+                  className={inputClasses("montant_paye")}
+                  placeholder={formData.montant || "0.00"}
+                />
+                <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  Laisser vide pour un paiement intégral. Si inférieur au montant, le solde restera
+                  à régler ultérieurement (statut "Partiel").
+                </p>
+              </motion.div>
+
+              <motion.div {...fadeInUp}>
+                <label className={labelClasses}>
+                  <span className="flex items-center gap-2">
+                    <FiCreditCard className="w-4 h-4 text-gray-400" />
+                    Mode de paiement
+                  </span>
+                </label>
+                <select
+                  name="mode"
+                  value={formData.mode}
+                  onChange={handleChange}
+                  onFocus={() => handleFocus("mode")}
+                  onBlur={handleBlur}
+                  className={inputClasses("mode")}
+                >
+                  {MODE_PAIEMENT_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </motion.div>
+            </>
+          )}
+          {!isClub && (
+            <motion.div {...fadeInUp} className="md:col-span-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 rounded-lg px-4 py-2.5 border border-gray-200 dark:border-gray-700">
+                Ce type d'adhésion n'a pas de tarif ni de paiement à saisir : seule
+                l'adhésion Club fait l'objet d'un règlement dans l'application.
+              </p>
+            </motion.div>
+          )}
 
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>
@@ -345,6 +441,48 @@ const AdhesionForm = () => {
               <p className="mt-1.5 text-sm text-red-500">
                 {errors.annee_adhesion}
               </p>
+            )}
+          </motion.div>
+
+          <motion.div {...fadeInUp} className="md:col-span-2">
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiUpload className="w-4 h-4 text-gray-400" />
+                Photo / scan du document (facultatif)
+              </span>
+            </label>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={handleFileChange}
+              className={inputClasses("document")}
+            />
+            {documentFile ? (
+              <div className="mt-1.5">
+                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                  <FiFile className="w-3.5 h-3.5" />
+                  {documentFile.name}
+                </p>
+                {filePreviewUrl && (
+                  <img
+                    src={filePreviewUrl}
+                    alt="Aperçu du document"
+                    className="mt-2 max-h-48 rounded-lg border border-gray-200 dark:border-gray-600 object-contain"
+                  />
+                )}
+              </div>
+            ) : (
+              existingDocumentPath && (
+                <a
+                  href={`http://localhost:5000${existingDocumentPath}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
+                >
+                  <FiFile className="w-3.5 h-3.5" />
+                  Voir le document actuel
+                </a>
+              )
             )}
           </motion.div>
         </div>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiPackage,
   FiTag,
@@ -119,17 +118,12 @@ const MaterielForm = () => {
     try {
       if (editMode && id) {
         await update.mutateAsync({ id, data: formData });
-        toast.success("Matériel modifié avec succès");
       } else {
         await create.mutateAsync(formData);
-        toast.success("Matériel créé avec succès");
       }
       navigate("/materiels");
     } catch (error) {
       console.error("Error:", error);
-      toast.error(
-        error.response?.data?.message || "Erreur lors de l'enregistrement",
-      );
     } finally {
       setLoading(false);
     }

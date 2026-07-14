@@ -1,6 +1,5 @@
 const BaseService = require("./BaseService");
 const UserRepository = require("../repositories/UserRepository");
-const bcrypt = require("bcryptjs");
 
 class UserService extends BaseService {
   constructor() {
@@ -16,8 +15,6 @@ class UserService extends BaseService {
       name,
       role = "adherent",
       phone,
-      contact_urgence,
-      niveau,
       password, // ✅ mot de passe déjà généré et envoyé par email côté frontend
     } = data;
 
@@ -36,8 +33,6 @@ class UserService extends BaseService {
       name,
       role,
       phone,
-      contact_urgence,
-      niveau,
       created_by: createdBy,
       must_change_password: true,
       active: true,
@@ -83,10 +78,10 @@ class UserService extends BaseService {
       throw new Error("Ancien mot de passe incorrect");
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
-
-    user.password = hashedPassword;
+    // ✅ Mot de passe en clair ici : le hook beforeUpdate du modèle User le
+    // hashe déjà à la sauvegarde (le hasher ici en plus produirait un
+    // double hash, et le mot de passe communiqué ne fonctionnerait jamais).
+    user.password = newPassword;
     user.must_change_password = false;
     await user.save();
 
@@ -118,10 +113,11 @@ class UserService extends BaseService {
     }
 
     const tempPassword = this.generateTempPassword();
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(tempPassword, salt);
 
-    user.password = hashedPassword;
+    // ✅ Mot de passe en clair ici : le hook beforeUpdate du modèle User le
+    // hashe déjà à la sauvegarde (le hasher ici en plus produirait un
+    // double hash, et le mot de passe communiqué ne fonctionnerait jamais).
+    user.password = tempPassword;
     user.must_change_password = true;
     await user.save();
 
@@ -129,12 +125,18 @@ class UserService extends BaseService {
   }
 
   async changeNiveau(userId, niveau) {
+    const { Adherent } = require("../models");
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("Utilisateur non trouvé");
     }
-    user.niveau = niveau;
-    await user.save();
+    const adherent = await Adherent.findOne({ where: { user_id: userId } });
+    if (!adherent) {
+      throw new Error("Aucune fiche adhérent associée à cet utilisateur");
+    }
+    adherent.niveau = niveau;
+    adherent.date_obtention_niveau = new Date();
+    await adherent.save();
     return user;
   }
 
@@ -178,17 +180,27 @@ class UserService extends BaseService {
   }
 
   async updateProfile(userId, data) {
+    const { Adherent } = require("../models");
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("Utilisateur non trouvé");
     }
-    const allowedFields = ["email", "phone", "contact_urgence", "name"];
+    const allowedFields = ["email", "phone", "name", "photo"];
     allowedFields.forEach((field) => {
       if (data[field] !== undefined) {
         user[field] = data[field];
       }
     });
     await user.save();
+
+    if (data.contact_urgence !== undefined) {
+      const adherent = await Adherent.findOne({ where: { user_id: userId } });
+      if (adherent) {
+        adherent.contact_urgence = data.contact_urgence;
+        await adherent.save();
+      }
+    }
+
     return user;
   }
 

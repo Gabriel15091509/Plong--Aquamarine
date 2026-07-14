@@ -10,7 +10,6 @@ import {
   FiCalendar,
   FiMapPin,
   FiUsers,
-  FiDollarSign,
   FiAnchor,
   FiUserPlus,
 } from "react-icons/fi";
@@ -19,7 +18,7 @@ import { useSorties } from "../../hooks/useSorties";
 import { useInscriptions } from "../../hooks/useInscriptions";
 import { useAdherents } from "../../hooks/useAdherents";
 import { useAuth } from "../../context/AuthContext";
-import { formatDateTime, formatCurrency } from "../../utils/helpers";
+import { formatDateTime } from "../../utils/helpers";
 
 // TODO: Ajouter un filtre par niveau requis
 const SortieList = ({ sorties: sortiesProp }) => {
@@ -30,7 +29,8 @@ const SortieList = ({ sorties: sortiesProp }) => {
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 10;
 
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const canManageSortie = hasRole(["president", "moniteur"]);
   const { useGetAll: useGetAllAdherents } = useAdherents();
   const { useCreate: useCreateInscription } = useInscriptions();
   const { useRemove } = useSorties();
@@ -75,10 +75,8 @@ const SortieList = ({ sorties: sortiesProp }) => {
     try {
       setLoading(true);
       await remove.mutateAsync(id);
-      toast.success("Sortie supprimée avec succès");
       setDeleteModal(null);
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
       console.error("Delete error:", error);
     } finally {
       setLoading(false);
@@ -131,12 +129,14 @@ const SortieList = ({ sorties: sortiesProp }) => {
             ? "Aucun résultat pour vos critères"
             : "Commencez par créer votre première sortie"}
         </p>
-        <Link
-          to="/sorties/create"
-          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-        >
-          <FiPlus className="w-4 h-4" /> Créer une sortie
-        </Link>
+        {canManageSortie && (
+          <Link
+            to="/sorties/create"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+          >
+            <FiPlus className="w-4 h-4" /> Créer une sortie
+          </Link>
+        )}
       </motion.div>
     );
   }
@@ -172,13 +172,15 @@ const SortieList = ({ sorties: sortiesProp }) => {
             <option value="Terminée">Terminées</option>
             <option value="Annulée">Annulées</option>
           </select>
-          <Link
-            to="/sorties/create"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <FiPlus className="w-4 h-4" />
-            Nouvelle
-          </Link>
+          {canManageSortie && (
+            <Link
+              to="/sorties/create"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <FiPlus className="w-4 h-4" />
+              Nouvelle
+            </Link>
+          )}
         </div>
       </div>
 
@@ -275,11 +277,6 @@ const SortieList = ({ sorties: sortiesProp }) => {
                               Niveau {sortie.niveau_requis || "—"}
                             </span>
                             <span>•</span>
-                            <span className="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
-                              <FiDollarSign className="w-3.5 h-3.5 text-indigo-500" />
-                              {formatCurrency(sortie.tarif)}
-                            </span>
-                            <span>•</span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                 sortie.statut === "Planifiée"
@@ -317,21 +314,25 @@ const SortieList = ({ sorties: sortiesProp }) => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          <Link
-                            to={`/sorties/edit/${sortieId}`}
-                            className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                            title="Modifier"
-                          >
-                            <FiEdit className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={() => setDeleteModal(sortieId)}
-                            disabled={loading}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                            title="Supprimer"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
+                          {canManageSortie && (
+                            <>
+                              <Link
+                                to={`/sorties/edit/${sortieId}`}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                title="Modifier"
+                              >
+                                <FiEdit className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() => setDeleteModal(sortieId)}
+                                disabled={loading}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="Supprimer"
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

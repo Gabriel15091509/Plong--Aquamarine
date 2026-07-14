@@ -3,6 +3,7 @@ const router = express.Router();
 const UserController = require("../controllers/UserController");
 const AuthMiddleware = require("../middlewares/authMiddleware");
 const authorize = require("../middlewares/authorize");
+const { uploadUserPhoto } = require("../middlewares/upload");
 
 const userController = new UserController();
 
@@ -10,6 +11,7 @@ const userController = new UserController();
 router.put(
   "/profile",
   AuthMiddleware.authenticate,
+  ...uploadUserPhoto,
   userController.updateProfile.bind(userController),
 );
 

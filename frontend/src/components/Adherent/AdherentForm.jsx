@@ -19,9 +19,17 @@ import {
 } from "react-icons/fi";
 import { useAdherents } from "../../hooks/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import { sendWelcomeEmailIfNeeded } from "../../utils/welcomeEmail";
 
 const CIVILITE_OPTIONS = ["M.", "Mme", "Mlle"];
-const NIVEAU_OPTIONS = ["Débutant", "Confirmé", "Expert", "Moniteur"];
+const NIVEAU_OPTIONS = [
+  "Débutant",
+  "Niveau 1",
+  "Niveau 2",
+  "Niveau 3",
+  "Niveau 4",
+  "Moniteur",
+];
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -117,10 +125,9 @@ const AdherentForm = () => {
     try {
       if (editMode && id) {
         await update.mutateAsync({ id, data: formData });
-        toast.success("Adhérent modifié avec succès");
       } else {
-        await create.mutateAsync(formData);
-        toast.success("Adhérent créé avec succès");
+        const result = await create.mutateAsync(formData);
+        await sendWelcomeEmailIfNeeded(result);
       }
       navigate("/adherents");
     } catch (error) {

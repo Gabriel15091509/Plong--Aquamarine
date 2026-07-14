@@ -20,10 +20,13 @@ export const STATUT_ADHERENT_OPTIONS = [
 ];
 
 export const TYPE_ADHESION_OPTIONS = [
-  'Adhésion annuelle',
-  'Licence FFESM',
-  'Assurance'
+  { value: 'Club', label: 'Adhésion club', obligatoire: true },
+  { value: 'FFESM', label: 'Licence FFESM', obligatoire: true },
+  { value: 'Assurance RC', label: 'Assurance Responsabilité Civile', obligatoire: true },
+  { value: 'Assurance IA', label: 'Assurance Individuelle Accident', obligatoire: false },
 ];
+
+export const TYPES_ADHESION_OBLIGATOIRES = ['Club', 'FFESM', 'Assurance RC'];
 
 export const STATUT_PAIEMENT_OPTIONS = [
   'En attente',
@@ -37,6 +40,14 @@ export const MODE_PAIEMENT_OPTIONS = [
   'Carte',
   'Chèque',
   'Virement'
+];
+
+export const TYPE_PAIEMENT_OPTIONS = [
+  'Adhesion',
+  'Sortie',
+  'Formation',
+  'Caution',
+  'Autre'
 ];
 
 export const TYPE_SORTIE_OPTIONS = [

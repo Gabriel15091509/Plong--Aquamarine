@@ -22,12 +22,20 @@ class InscriptionRepository {
     });
   }
 
-  async findById(id) {
+  async findById(id, options = {}) {
+    // Sans jointure quand un verrou de ligne est demandé : Postgres/Sequelize
+    // ignore silencieusement "FOR UPDATE" sur une requête avec LEFT OUTER
+    // JOIN, ce qui désactivait le verrou anti-doublon de enregistrerPaiement
+    // sans erreur ni avertissement.
+    if (options.lock) {
+      return await Inscription.findByPk(id, options);
+    }
     return await Inscription.findByPk(id, {
       include: [
         { model: Adherent, as: "adherent" },
         { model: Sortie, as: "sortie" },
       ],
+      ...options,
     });
   }
 
@@ -36,7 +44,7 @@ class InscriptionRepository {
 
     try {
       const cleanData = {
-        num_adherent: parseInt(data.num_adherent),
+        num_adherent: data.num_adherent,
         id_sortie: parseInt(data.id_sortie),
         statut: data.statut || "En attente",
         rang_liste_attente: data.rang_liste_attente || null,
@@ -56,15 +64,15 @@ class InscriptionRepository {
     }
   }
 
-  async update(id, data) {
+  async update(id, data, options = {}) {
     console.log("📝 Repository update - ID:", id, "Data:", data);
 
-    const inscription = await Inscription.findByPk(id);
+    const inscription = await Inscription.findByPk(id, options);
     if (!inscription) {
       throw new Error("Inscription non trouvée");
     }
 
-    await inscription.update(data);
+    await inscription.update(data, options);
     return inscription;
   }
 

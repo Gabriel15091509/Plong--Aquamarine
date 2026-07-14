@@ -17,7 +17,6 @@ import {
   FiEdit,
   FiTrash2,
   FiSearch,
-  FiDollarSign,
   FiFilter,
   FiX,
   FiAnchor,
@@ -29,7 +28,7 @@ import { useInscriptions } from "../hooks/useInscriptions";
 import { useAdherents } from "../hooks/useAdherents";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/Common/LoadingSpinner";
-import { formatDateTime, formatCurrency } from "../utils/helpers";
+import { formatDateTime } from "../utils/helpers";
 
 // Configuration des statuts de sortie
 const SORTIE_STATUS = [
@@ -47,7 +46,8 @@ const SortiesPage = () => {
   const { useGetAll, useRemove } = useSorties();
   const { useCreate: useCreateInscription } = useInscriptions();
   const { useGetAll: useGetAllAdherents } = useAdherents();
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const canManageSortie = hasRole(["president", "moniteur"]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
@@ -74,14 +74,9 @@ const SortiesPage = () => {
   }, [sortiesData]);
 
   // Vérifier le rôle de l'utilisateur
-  const isAdmin = [
-    "president",
-    "directeur_technique",
-    "moniteur",
-    "tresorier",
-    "admin",
-    "secretaire",
-  ].includes(user?.role);
+  const isAdmin = ["president", "moniteur", "tresorier"].includes(
+    user?.role,
+  );
   const isAdherent = !isAdmin && user?.role === "adherent";
 
   // Récupérer l'adhérent connecté
@@ -130,11 +125,9 @@ const SortiesPage = () => {
     try {
       setLoading(true);
       await remove.mutateAsync(id);
-      toast.success("Sortie supprimée avec succès");
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
       console.error("Delete error:", error);
     } finally {
       setLoading(false);
@@ -233,12 +226,14 @@ const SortiesPage = () => {
             ? "Aucun résultat pour vos critères"
             : "Organisez une nouvelle sortie de plongée"}
         </p>
-        <Link
-          to="/sorties/create"
-          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-        >
-          <FiPlus className="w-4 h-4" /> Créer une sortie
-        </Link>
+        {canManageSortie && (
+          <Link
+            to="/sorties/create"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+          >
+            <FiPlus className="w-4 h-4" /> Créer une sortie
+          </Link>
+        )}
       </motion.div>
     );
   }
@@ -261,13 +256,15 @@ const SortiesPage = () => {
             {filteredSorties.length} sorties trouvées
           </p>
         </div>
-        <Link
-          to="/sorties/create"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-        >
-          <FiPlus className="w-4 h-4" />
-          Nouvelle sortie
-        </Link>
+        {canManageSortie && (
+          <Link
+            to="/sorties/create"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+          >
+            <FiPlus className="w-4 h-4" />
+            Nouvelle sortie
+          </Link>
+        )}
       </div>
 
       {/* Barre de recherche et filtres */}
@@ -344,7 +341,8 @@ const SortiesPage = () => {
               const isPastSortie = new Date(sortie.date_heure) < new Date();
               const isFull =
                 (sortie.nb_places || 0) <= (sortie.nb_inscrits || 0);
-              const canInscribe = !isPastSortie && !isFull;
+              const canInscribe =
+                !isPastSortie && !isFull && sortie.statut === "Planifiée";
 
               return (
                 <motion.div
@@ -415,10 +413,6 @@ const SortiesPage = () => {
                               Niveau {sortie.niveau_requis || "—"}
                             </span>
                             <span>•</span>
-                            <span className="font-medium text-gray-700 dark:text-gray-300">
-                              {formatCurrency(sortie.tarif)}
-                            </span>
-                            <span>•</span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                 sortie.statut === "Planifiée"
@@ -468,21 +462,25 @@ const SortiesPage = () => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          <Link
-                            to={`/sorties/edit/${sortieId}`}
-                            className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                            title="Modifier"
-                          >
-                            <FiEdit className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={() => setDeleteModal(sortieId)}
-                            disabled={loading}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                            title="Supprimer"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
+                          {canManageSortie && (
+                            <>
+                              <Link
+                                to={`/sorties/edit/${sortieId}`}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                title="Modifier"
+                              >
+                                <FiEdit className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() => setDeleteModal(sortieId)}
+                                disabled={loading}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="Supprimer"
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

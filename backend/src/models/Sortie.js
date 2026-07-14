@@ -41,10 +41,6 @@ const Sortie = sequelize.define(
       type: DataTypes.TIME,
       allowNull: false,
     },
-    tarif: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-    },
     statut: {
       type: DataTypes.STRING(20),
       allowNull: false,
@@ -62,6 +58,27 @@ const Sortie = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    tarif_adherent: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    tarif_non_adherent: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    encadrants: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+    created_by: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "president",
+        key: "id_president",
+      },
+    },
   },
   {
     tableName: "sorties",
@@ -69,12 +86,5 @@ const Sortie = sequelize.define(
     underscored: true,
   },
 );
-
-Sortie.associate = (models) => {
-  Sortie.hasMany(models.Inscription, {
-    foreignKey: "id_sortie",
-    as: "inscriptions", // ✅ Alias important !
-  });
-};
 
 module.exports = Sortie;

@@ -1,4 +1,5 @@
 import api from './api';
+import { downloadFile } from '../utils/downloadFile';
 
 class AdhesionService {
   async getAll(params = {}) {
@@ -32,13 +33,36 @@ class AdhesionService {
   }
 
   async create(data) {
-    const response = await api.post('/adhesions', data);
+    const isFormData = data instanceof FormData;
+    const response = await api.post('/adhesions', data, isFormData
+      ? { headers: { 'Content-Type': 'multipart/form-data' } }
+      : undefined);
     return response.data;
   }
 
   async update(id, data) {
-    const response = await api.put(`/adhesions/${id}`, data);
+    const isFormData = data instanceof FormData;
+    const response = await api.put(`/adhesions/${id}`, data, isFormData
+      ? { headers: { 'Content-Type': 'multipart/form-data' } }
+      : undefined);
     return response.data;
+  }
+
+  async getDossierStatus(numAdherent) {
+    const response = await api.get(`/adhesions/adherent/${numAdherent}/dossier-status`);
+    return response.data;
+  }
+
+  async enregistrerPaiement(id, data) {
+    const response = await api.post(`/adhesions/${id}/paiement`, data);
+    return response.data;
+  }
+
+  async downloadAttestation(numAdherent, annee) {
+    return downloadFile(
+      `/adhesions/adherent/${numAdherent}/attestation?annee=${annee}`,
+      `attestation-adhesion-${numAdherent}-${annee}.pdf`,
+    );
   }
 
   async delete(id) {

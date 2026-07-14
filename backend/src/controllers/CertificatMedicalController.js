@@ -8,6 +8,43 @@ class CertificatMedicalController extends BaseController {
     this.certificatService = service;
   }
 
+  async getAll(req, res) {
+    try {
+      const results = await this.certificatService.getAll(req.user);
+      res.json({
+        success: true,
+        data: results,
+        message: "Opération réussie",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  async getById(req, res) {
+    try {
+      const result = await this.certificatService.getById(req.params.id, req.user);
+      if (!result) {
+        return res.status(404).json({
+          success: false,
+          message: "Certificat non trouvé",
+        });
+      }
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      res.status(403).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
   async getValidCertificates(req, res) {
     try {
       const results = await this.certificatService.getValidCertificates();
@@ -43,14 +80,14 @@ class CertificatMedicalController extends BaseController {
   async getByAdherent(req, res) {
     try {
       const { num_adherent } = req.params;
-      const results = await this.certificatService.getCertificatesByAdherent(parseInt(num_adherent));
+      const results = await this.certificatService.getCertificatesByAdherent(num_adherent, req.user);
       res.json({
         success: true,
         data: results,
         count: results.length
       });
     } catch (error) {
-      res.status(500).json({
+      res.status(403).json({
         success: false,
         message: error.message
       });
@@ -60,7 +97,7 @@ class CertificatMedicalController extends BaseController {
   async checkStatus(req, res) {
     try {
       const { num_adherent } = req.params;
-      const status = await this.certificatService.checkCertificateStatus(parseInt(num_adherent));
+      const status = await this.certificatService.checkCertificateStatus(num_adherent);
       res.json({
         success: true,
         data: status

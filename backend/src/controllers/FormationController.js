@@ -12,7 +12,7 @@ class FormationController extends BaseController {
     try {
       const { num_adherent } = req.params;
       const results = await this.formationService.getFormationsByAdherent(
-        parseInt(num_adherent),
+        num_adherent,
       );
       res.json({
         success: true,
@@ -82,6 +82,22 @@ class FormationController extends BaseController {
     }
   }
 
+  async create(req, res) {
+    try {
+      const result = await this.formationService.create(req.body, req.user);
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: "Formation créée avec succès",
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
   async incrementSessions(req, res) {
     try {
       const result = await this.formationService.incrementSessions(
@@ -109,6 +125,27 @@ class FormationController extends BaseController {
         success: true,
         data: result,
         message: "Formation terminée avec succès",
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  // ✅ POST - Enregistrer un paiement (acompte/solde) sur le tarif de la formation
+  async enregistrerPaiement(req, res) {
+    try {
+      const result = await this.formationService.enregistrerPaiement(
+        req.params.id,
+        req.body,
+        req.user,
+      );
+      res.json({
+        success: true,
+        data: result,
+        message: "Paiement enregistré avec succès",
       });
     } catch (error) {
       res.status(400).json({

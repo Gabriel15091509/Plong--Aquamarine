@@ -1,13 +1,25 @@
 ﻿// src/api/client.js
 import axios from "axios";
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const DEFAULT_API_URL = "http://172.16.12.179:5000/api";
 
-// Pour un vrai telephone, lance Expo avec:
-// EXPO_PUBLIC_API_URL=http://IP_DE_TON_PC:5000/api npm start
-const API_URL = "http://172.25.144.1:5000/api";
+const IPV4_HOST_REGEX = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
+const getLanHost = () => {
+  const hostUri =
+    Constants.expoConfig?.hostUri || Constants.expoGoConfig?.debuggerHost;
+  const host = hostUri?.split(":")[0];
+  return host && IPV4_HOST_REGEX.test(host) ? host : null;
+};
+
+const lanHost = getLanHost();
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (lanHost ? `http://${lanHost}:5000/api` : "http://localhost:5000/api");
+
+console.log("[client.js] API_URL utilisee :", API_URL);
 
 const apiClient = axios.create({
   baseURL: API_URL,

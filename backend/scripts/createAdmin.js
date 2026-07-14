@@ -24,7 +24,7 @@ const createAdmin = async () => {
       email: "admin@plongee.com",
       password: "admin123",
       name: "Administrateur",
-      role: "admin",
+      role: "president",
       active: true,
     });
 

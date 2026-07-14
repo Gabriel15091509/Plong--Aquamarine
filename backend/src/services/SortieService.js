@@ -1,6 +1,7 @@
 const BaseService = require("./BaseService");
 const SortieRepository = require("../repositories/SortieRepository");
 const InscriptionRepository = require("../repositories/InscriptionRepository");
+const { getAdherentForUser, isNiveauCompatible } = require("../utils/roleScope");
 
 class SortieService extends BaseService {
   constructor() {
@@ -10,12 +11,41 @@ class SortieService extends BaseService {
     this.inscriptionRepository = new InscriptionRepository();
   }
 
-  async getAll() {
-    return await this.sortieRepository.findAll();
+  async filterByNiveauForUser(sorties, user) {
+    const adherent = await getAdherentForUser(user);
+    if (!adherent) return sorties;
+    return sorties.filter((s) =>
+      isNiveauCompatible(adherent.niveau, s.niveau_requis),
+    );
   }
 
-  async getUpcomingSorties() {
-    return await this.sortieRepository.findUpcoming();
+  // ✅ Places réellement disponibles = nb_places - inscriptions Confirmée.
+  // On retire le détail des inscriptions de la réponse : seul le compte
+  // importe ici, pas les coordonnées des inscrits.
+  attachCapacity(sortieInstance) {
+    const plain = sortieInstance.toJSON();
+    const nb_inscrits = (plain.inscriptions || []).filter(
+      (i) => i.statut === "Confirmée",
+    ).length;
+    delete plain.inscriptions;
+    return {
+      ...plain,
+      nb_inscrits,
+      places_disponibles: Math.max((plain.nb_places || 0) - nb_inscrits, 0),
+    };
+  }
+
+  async getAll(user = null) {
+    const sorties = await this.sortieRepository.findAllWithInscriptionCounts();
+    const filtered = await this.filterByNiveauForUser(sorties, user);
+    return filtered.map((s) => this.attachCapacity(s));
+  }
+
+  async getUpcomingSorties(user = null) {
+    const sorties =
+      await this.sortieRepository.findUpcomingWithInscriptionCounts();
+    const filtered = await this.filterByNiveauForUser(sorties, user);
+    return filtered.map((s) => this.attachCapacity(s));
   }
 
   async getSortiesWithInscriptions() {
@@ -68,7 +98,9 @@ class SortieService extends BaseService {
   }
 
   async getById(id) {
-    return await this.sortieRepository.findById(id);
+    const sortie = await this.sortieRepository.findByIdWithInscriptions(id);
+    if (!sortie) return null;
+    return this.attachCapacity(sortie);
   }
 
   async create(data) {
@@ -104,6 +136,25 @@ class SortieService extends BaseService {
     for (const insc of inscriptions) {
       const inscription = await this.inscriptionRepository.findById(insc.id);
       if (!inscription) continue;
+
+      // Un inscrit qui n'a pas commencé à régler le tarif de la sortie ne
+      // peut pas être pointé présent : le paiement doit avoir débuté avant
+      // que la sortie ne débute pour lui. Il reste possible de le pointer
+      // absent, ou de l'exclure du groupe (cancelInscription) si rien n'a
+      // été réglé du tout.
+      if (
+        insc.presence &&
+        Number(inscription.montant_du) > 0 &&
+        Number(inscription.montant_paye || 0) <= 0
+      ) {
+        const nom = inscription.adherent
+          ? `${inscription.adherent.prenom} ${inscription.adherent.nom}`
+          : `l'inscrit #${inscription.num_adherent}`;
+        throw new Error(
+          `Impossible de pointer ${nom} présent : aucun paiement n'a encore été enregistré pour cette sortie.`,
+        );
+      }
+
       const updated = await this.inscriptionRepository.update(insc.id, {
         presence: insc.presence,
         presence_checked: true,
@@ -123,6 +174,15 @@ class SortieService extends BaseService {
     if (!inscription) throw new Error("Inscription non trouvée");
     if (!inscription.presence_checked)
       throw new Error("Cette inscription n'a pas encore été pointée");
+    if (
+      data.presence &&
+      Number(inscription.montant_du) > 0 &&
+      Number(inscription.montant_paye || 0) <= 0
+    ) {
+      throw new Error(
+        "Impossible de marquer cet inscrit présent : aucun paiement n'a encore été enregistré pour cette sortie.",
+      );
+    }
     return await this.inscriptionRepository.update(id_inscription, {
       presence: data.presence,
       absence_reason: data.absence_reason || null,

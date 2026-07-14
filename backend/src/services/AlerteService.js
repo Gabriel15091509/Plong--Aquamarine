@@ -23,13 +23,7 @@ class AlerteService extends BaseService {
 
   canManageAlertes(role) {
     const normalizedRole = this.normalizeRole(role);
-    return [
-      "president",
-      "directeur_technique",
-      "moniteur",
-      "tresorier",
-      "admin",
-    ].includes(normalizedRole);
+    return ["president", "moniteur", "tresorier"].includes(normalizedRole);
   }
 
   normalizeRole(role) {
@@ -43,7 +37,7 @@ class AlerteService extends BaseService {
 
   async getAdherentForUser(user) {
     if (!user || this.canManageAlertes(user.role)) return null;
-    const adherent = await Adherent.findOne({ where: { email: user.email } });
+    const adherent = await Adherent.findOne({ where: { user_id: user.id } });
     if (!adherent) {
       throw new Error("Profil adhérent introuvable pour cet utilisateur");
     }

@@ -10,10 +10,27 @@ class AdherentController extends BaseController {
 
   // ============ MÉTHODES DE LECTURE ============
 
-  async getWithDetails(req, res) {
+  async getAll(req, res) {
     try {
-      const result = await this.adherentService.getAdherentWithDetails(
+      const results = await this.adherentService.getAll(req.user);
+      res.json({
+        success: true,
+        data: results,
+        message: "Opération réussie",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  async getById(req, res) {
+    try {
+      const result = await this.adherentService.getById(
         req.params.id,
+        req.user,
       );
       if (!result) {
         return res.status(404).json({
@@ -26,7 +43,31 @@ class AdherentController extends BaseController {
         data: result,
       });
     } catch (error) {
-      res.status(500).json({
+      res.status(403).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  }
+
+  async getWithDetails(req, res) {
+    try {
+      const result = await this.adherentService.getAdherentWithDetails(
+        req.params.id,
+        req.user,
+      );
+      if (!result) {
+        return res.status(404).json({
+          success: false,
+          message: "Adhérent non trouvé",
+        });
+      }
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      res.status(403).json({
         success: false,
         message: error.message,
       });
@@ -149,6 +190,9 @@ class AdherentController extends BaseController {
     try {
       // ✅ Validation des dates avant création
       const validatedData = this.validateDates(req.body);
+      if (req.user?.id) {
+        validatedData.created_by = req.user.id;
+      }
 
       const result = await this.adherentService.create(validatedData);
       res.status(201).json({
@@ -164,7 +208,7 @@ class AdherentController extends BaseController {
           errors: error.errors.map((e) => e.message),
         });
       }
-      res.status(500).json({
+      res.status(400).json({
         success: false,
         message: error.message,
       });
@@ -200,7 +244,13 @@ class AdherentController extends BaseController {
           errors: error.errors.map((e) => e.message),
         });
       }
-      res.status(500).json({
+      if (error.name === "SequelizeUniqueConstraintError") {
+        return res.status(400).json({
+          success: false,
+          message: "Un autre adhérent utilise déjà cet email",
+        });
+      }
+      res.status(400).json({
         success: false,
         message: error.message,
       });
@@ -299,7 +349,7 @@ class AdherentController extends BaseController {
 
   async validateBeforeUpdate(req, res, next) {
     try {
-      const data = { ...req.body, num_adherent: parseInt(req.params.id) };
+      const data = { ...req.body, num_adherent: req.params.id };
       const errors = await this.adherentService.validateAdherentData(
         data,
         true,

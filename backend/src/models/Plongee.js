@@ -10,8 +10,16 @@ const Plongee = sequelize.define(
       autoIncrement: true,
     },
     num_adherent: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    id_sortie: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    id_palanquee: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
     date: {
       type: DataTypes.DATE,
@@ -41,10 +49,17 @@ const Plongee = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    valide_moniteur: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
+    observations_moniteur: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    id_moniteur_validateur: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "moniteurs",
+        key: "id_moniteur",
+      },
     },
     lien_photos: {
       type: DataTypes.STRING(200),

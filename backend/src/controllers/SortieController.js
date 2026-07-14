@@ -11,7 +11,7 @@ class SortieController extends BaseController {
   // ✅ EXISTANT - Récupérer toutes les sorties
   async getAll(req, res) {
     try {
-      const results = await this.sortieService.getAll();
+      const results = await this.sortieService.getAll(req.user);
       res.json({
         success: true,
         data: results,
@@ -28,7 +28,7 @@ class SortieController extends BaseController {
   // ✅ EXISTANT - Récupérer les sorties à venir
   async getUpcomingSorties(req, res) {
     try {
-      const results = await this.sortieService.getUpcomingSorties();
+      const results = await this.sortieService.getUpcomingSorties(req.user);
       res.json({
         success: true,
         data: results,

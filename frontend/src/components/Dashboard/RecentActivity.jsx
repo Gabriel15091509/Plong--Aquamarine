@@ -75,7 +75,7 @@ const RecentActivity = () => {
         iconColor: "text-purple-600",
         bgColor: "bg-purple-100",
         title: "Paiement en attente",
-        description: `${paiement.motif} - ${paiement.montant} €`,
+        description: `${paiement.type_paiement} - ${paiement.montant} €`,
         time: formatRelativeTime(paiement.date_paiement),
       });
     });

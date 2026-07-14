@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { useAdherents } from "../hooks/useAdherents";
 import { usePlongees } from "../hooks/usePlongees";
@@ -35,8 +34,10 @@ import {
   FiBarChart2,
   FiDollarSign,
   FiBookOpen,
+  FiCamera,
 } from "react-icons/fi";
 import { formatDate, formatDateTime } from "../utils/helpers";
+import { photoUrl } from "../utils/photoUrl";
 import LoadingSpinner from "../components/Common/LoadingSpinner";
 
 // Animations
@@ -66,6 +67,23 @@ const ProfilePage = () => {
     phone: user?.phone || "",
     email: user?.email || "",
   });
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setPhotoFile(file);
+    setPhotoPreview((prevUrl) => {
+      if (prevUrl) URL.revokeObjectURL(prevUrl);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
 
   // ✅ Récupération des données API
   const { useGetAll: useGetAllAdherents } = useAdherents();
@@ -74,6 +92,8 @@ const ProfilePage = () => {
   const { useGetAll: useGetAllFormations } = useFormations();
   const { useGetAll: useGetAllInscriptions } = useInscriptions();
   const { useGetAll: useGetAllUsers } = useUsers();
+  const { useUpdateProfile } = useUsers();
+  const updateProfile = useUpdateProfile();
 
   // ✅ Appels API
   const { data: adherentsData, isLoading: loadingAdherents } =
@@ -159,9 +179,9 @@ const ProfilePage = () => {
       moniteur: {
         ...commonStats,
         plongeesValidees:
-          allPlongees.filter((p) => p.valide_moniteur === true).length || 0,
+          allPlongees.filter((p) => !!p.id_moniteur_validateur).length || 0,
         plongeesEnAttente:
-          allPlongees.filter((p) => p.valide_moniteur === false).length || 0,
+          allPlongees.filter((p) => !p.id_moniteur_validateur).length || 0,
         formationsEncadrees:
           allFormations.filter(
             (f) => f.num_adherent === currentAdherent?.num_adherent,
@@ -243,14 +263,24 @@ const ProfilePage = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // ✅ Ici vous pouvez appeler l'API pour mettre à jour le profil
-      // await updateProfile(formData);
-      // updateUser(formData);
+      let payload = formData;
+      if (photoFile) {
+        payload = new FormData();
+        Object.entries(formData).forEach(([key, value]) => {
+          payload.append(key, value);
+        });
+        payload.append("photo", photoFile);
+      }
+      const response = await updateProfile.mutateAsync(payload);
+      updateUser(response.data);
+      setPhotoFile(null);
+      setPhotoPreview((prevUrl) => {
+        if (prevUrl) URL.revokeObjectURL(prevUrl);
+        return null;
+      });
       setIsEditing(false);
-      toast.success("Profil mis à jour avec succès !");
     } catch (error) {
       console.error("Erreur lors de la mise à jour:", error);
-      toast.error("Erreur lors de la mise à jour du profil");
     } finally {
       setLoading(false);
     }
@@ -460,8 +490,16 @@ const ProfilePage = () => {
         </div>
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-3xl md:text-4xl font-bold border-2 border-white/30 shadow-xl relative">
-              {user?.name?.charAt(0) || "A"}
+            <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-3xl md:text-4xl font-bold border-2 border-white/30 shadow-xl relative overflow-hidden">
+              {photoUrl(user?.photo) ? (
+                <img
+                  src={photoUrl(user.photo)}
+                  alt={user?.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                user?.name?.charAt(0) || "A"
+              )}
               <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full border-2 border-white" />
             </div>
             <div>
@@ -514,6 +552,36 @@ const ProfilePage = () => {
           className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-100/80 dark:border-gray-800/80"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center text-xl font-bold text-gray-500 flex-shrink-0">
+                {photoPreview || photoUrl(user?.photo) ? (
+                  <img
+                    src={photoPreview || photoUrl(user.photo)}
+                    alt={user?.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  user?.name?.charAt(0) || "A"
+                )}
+              </div>
+              <div>
+                <label className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl cursor-pointer transition-colors">
+                  <FiCamera className="w-4 h-4" />
+                  Changer la photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="hidden"
+                  />
+                </label>
+                {photoFile && (
+                  <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    {photoFile.name}
+                  </p>
+                )}
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

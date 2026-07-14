@@ -29,6 +29,26 @@ export const formatDateTime = (date) => {
 };
 
 /**
+ * Formate une date en temps relatif (« il y a 5 minutes », etc.), comme
+ * formatRelativeTime de frontend/src/utils/helpers.js (sans dépendance
+ * date-fns côté mobile).
+ */
+export const formatRelativeTime = (date) => {
+  if (!date) return '—';
+  const diffMs = new Date() - new Date(date);
+  const diffSec = Math.round(diffMs / 1000);
+  const diffMin = Math.round(diffSec / 60);
+  const diffH = Math.round(diffMin / 60);
+  const diffDay = Math.round(diffH / 24);
+
+  if (diffSec < 60) return "à l'instant";
+  if (diffMin < 60) return `il y a ${diffMin} min`;
+  if (diffH < 24) return `il y a ${diffH} h`;
+  if (diffDay < 30) return `il y a ${diffDay} j`;
+  return formatDate(date);
+};
+
+/**
  * Vérifie si une date est passée
  */
 export const isPast = (date) => {

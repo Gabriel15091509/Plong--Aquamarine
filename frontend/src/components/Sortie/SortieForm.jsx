@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiCalendar,
   FiMapPin,
@@ -11,12 +10,12 @@ import {
   FiUsers,
   FiDroplet,
   FiClock,
-  FiDollarSign,
   FiSave,
   FiX,
   FiFileText,
   FiClipboard,
   FiInfo,
+  FiDollarSign,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
@@ -58,11 +57,12 @@ const SortieForm = () => {
     nb_places: 10,
     profondeur_max: 20,
     duree_estimee: "01:00",
-    tarif: 0,
     statut: "Planifiée",
     description_site: "",
     date_ouverture_inscriptions: "",
     condition_affectation: "",
+    tarif_adherent: 0,
+    tarif_non_adherent: "",
   });
 
   useEffect(() => {
@@ -77,13 +77,14 @@ const SortieForm = () => {
         nb_places: s.nb_places || 10,
         profondeur_max: s.profondeur_max || 20,
         duree_estimee: s.duree_estimee || "01:00",
-        tarif: s.tarif || 0,
         statut: s.statut || "Planifiée",
         description_site: s.description_site || "",
         date_ouverture_inscriptions: formatDateForInput(
           s.date_ouverture_inscriptions,
         ),
         condition_affectation: s.condition_affectation || "",
+        tarif_adherent: s.tarif_adherent ?? 0,
+        tarif_non_adherent: s.tarif_non_adherent ?? "",
       });
     }
   }, [editMode, id, data]);
@@ -107,8 +108,6 @@ const SortieForm = () => {
       newErrors.nb_places = "Minimum 1 place";
     if (!formData.profondeur_max || formData.profondeur_max < 0)
       newErrors.profondeur_max = "La profondeur est requise";
-    if (!formData.tarif || formData.tarif < 0)
-      newErrors.tarif = "Le tarif est requis";
     if (!formData.date_ouverture_inscriptions)
       newErrors.date_ouverture_inscriptions = "La date d'ouverture est requise";
     setErrors(newErrors);
@@ -122,17 +121,12 @@ const SortieForm = () => {
     try {
       if (editMode && id) {
         await update.mutateAsync({ id, data: formData });
-        toast.success("Sortie modifiée avec succès");
       } else {
         await create.mutateAsync(formData);
-        toast.success("Sortie créée avec succès");
       }
       navigate("/sorties");
     } catch (error) {
       console.error("Error:", error);
-      toast.error(
-        error.response?.data?.message || "Erreur lors de l'enregistrement",
-      );
     } finally {
       setLoading(false);
     }
@@ -364,24 +358,45 @@ const SortieForm = () => {
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
                 <FiDollarSign className="w-4 h-4 text-gray-400" />
-                Tarif (€) *
+                Tarif adhérent (€)
               </span>
             </label>
             <input
               type="number"
               step="0.01"
-              name="tarif"
-              value={formData.tarif}
+              name="tarif_adherent"
+              value={formData.tarif_adherent}
               onChange={handleChange}
-              onFocus={() => handleFocus("tarif")}
+              onFocus={() => handleFocus("tarif_adherent")}
               onBlur={handleBlur}
-              className={inputClasses("tarif")}
-              min="0"
+              className={inputClasses("tarif_adherent")}
               placeholder="0.00"
+              min="0"
             />
-            {errors.tarif && (
-              <p className="mt-1.5 text-sm text-red-500">{errors.tarif}</p>
-            )}
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+              Montant dû par chaque adhérent inscrit à cette sortie (0 = gratuit).
+            </p>
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiDollarSign className="w-4 h-4 text-gray-400" />
+                Tarif non-adhérent (€)
+              </span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              name="tarif_non_adherent"
+              value={formData.tarif_non_adherent}
+              onChange={handleChange}
+              onFocus={() => handleFocus("tarif_non_adherent")}
+              onBlur={handleBlur}
+              className={inputClasses("tarif_non_adherent")}
+              placeholder="Facultatif"
+              min="0"
+            />
           </motion.div>
 
           <motion.div {...fadeInUp}>

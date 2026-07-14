@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiUser,
   FiFileText,
@@ -19,9 +18,11 @@ import {
   FiFile,
   FiHeart,
   FiUserCheck,
+  FiPaperclip,
 } from "react-icons/fi";
 import { useCertificats } from "../../hooks/useCertificats";
 import { useAdherents } from "../../hooks/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
@@ -47,6 +48,8 @@ const staggerContainer = {
 const CertificatDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const canManageCertificat = hasRole(["president"]);
   const { useGetById, useRemove } = useCertificats();
   const { useGetAll } = useAdherents();
   const { data, isLoading } = useGetById(id);
@@ -62,10 +65,9 @@ const CertificatDetails = () => {
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      toast.success("Certificat supprimé avec succès");
       navigate("/certificats");
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
+      // toast déjà géré par le hook
     }
   };
 
@@ -215,22 +217,24 @@ const CertificatDetails = () => {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Link
-            to={`/certificats/edit/${certificat.id_certificat}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
-          >
-            <FiEdit className="w-4 h-4" />
-            Modifier
-          </Link>
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
-          >
-            <FiTrash2 className="w-4 h-4" />
-            Supprimer
-          </button>
-        </div>
+        {canManageCertificat && (
+          <div className="flex gap-2">
+            <Link
+              to={`/certificats/edit/${certificat.id_certificat}`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+            >
+              <FiEdit className="w-4 h-4" />
+              Modifier
+            </Link>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+            >
+              <FiTrash2 className="w-4 h-4" />
+              Supprimer
+            </button>
+          </div>
+        )}
       </motion.div>
 
       {/* Carte récapitulative - Statut */}
@@ -401,6 +405,18 @@ const CertificatDetails = () => {
                 </span>
               }
             />
+          )}
+          {certificat.document_path && (
+            <InfoItem icon={FiPaperclip} label="Document">
+              <a
+                href={`http://localhost:5000${certificat.document_path}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-0.5 inline-block"
+              >
+                Voir le document
+              </a>
+            </InfoItem>
           )}
         </SectionCard>
       </motion.div>

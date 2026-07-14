@@ -30,6 +30,40 @@ class SortieRepository extends BaseRepository {
     });
   }
 
+  // ✅ Légère (pas d'infos adhérent) : utilisée pour calculer le nombre de
+  // places restantes sans exposer les coordonnées des inscrits à toute
+  // personne consultant la liste des sorties.
+  async findAllWithInscriptionCounts() {
+    return await this.model.findAll({
+      include: [
+        {
+          model: Inscription,
+          as: "inscriptions",
+          attributes: ["id_inscription", "statut"],
+        },
+      ],
+      order: [["date_heure", "ASC"]],
+    });
+  }
+
+  async findUpcomingWithInscriptionCounts() {
+    const today = new Date();
+    return await this.model.findAll({
+      where: {
+        date_heure: { [Op.gte]: today },
+        statut: { [Op.in]: ["Planifiée", "En cours"] },
+      },
+      include: [
+        {
+          model: Inscription,
+          as: "inscriptions",
+          attributes: ["id_inscription", "statut"],
+        },
+      ],
+      order: [["date_heure", "ASC"]],
+    });
+  }
+
   async findAllWithInscriptions() {
     return await this.model.findAll({
       include: [

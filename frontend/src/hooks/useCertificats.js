@@ -61,11 +61,31 @@ export const useCertificats = () => {
     });
   };
 
+  const useStatus = (numAdherent) => {
+    return useQuery({
+      queryKey: ['certificats', 'status', numAdherent],
+      queryFn: () => certificatService.getStatus(numAdherent),
+      enabled: !!numAdherent,
+      staleTime: 5 * 60 * 1000,
+    });
+  };
+
+  const useGetByAdherent = (numAdherent) => {
+    return useQuery({
+      queryKey: ['certificats', 'adherent', numAdherent],
+      queryFn: () => certificatService.getByAdherent(numAdherent),
+      enabled: !!numAdherent,
+      staleTime: 5 * 60 * 1000,
+    });
+  };
+
   return {
     useGetAll,
     useGetById,
     useCreate,
     useUpdate,
     useRemove,
+    useStatus,
+    useGetByAdherent,
   };
 };

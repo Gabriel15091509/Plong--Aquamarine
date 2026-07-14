@@ -1,10 +1,28 @@
 const BaseRepository = require('./BaseRepository');
-const { Plongee, Palanquee, Composer } = require('../models');
+const { Plongee, Palanquee, Composer, Adherent } = require('../models');
 const { Op } = require('sequelize');
+
+const WITH_PALANQUEE = [
+  {
+    model: Palanquee,
+    as: 'palanquee',
+    include: [
+      {
+        model: Composer,
+        as: 'composers',
+        include: [{ model: Adherent, as: 'adherent' }],
+      },
+    ],
+  },
+];
 
 class PlongeeRepository extends BaseRepository {
   constructor() {
     super(Plongee);
+  }
+
+  async findById(id) {
+    return await this.model.findByPk(id, { include: WITH_PALANQUEE });
   }
 
   async findPlongeesByAdherent(num_adherent) {
@@ -15,18 +33,7 @@ class PlongeeRepository extends BaseRepository {
   }
 
   async findPlongeesWithDetails(id) {
-    return await this.model.findByPk(id, {
-      include: [
-        {
-          model: Palanquee,
-          as: 'palanquees',
-          include: [{
-            model: Composer,
-            as: 'compositions'
-          }]
-        }
-      ]
-    });
+    return await this.model.findByPk(id, { include: WITH_PALANQUEE });
   }
 
   // ✅ Ajout de getStats

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -33,9 +32,6 @@ const MaterielList = () => {
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 10;
 
-  if (isLoading) return <LoadingSpinner />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
-
   const allMateriels = data?.data || [];
 
   const filteredMateriels = useMemo(() => {
@@ -56,6 +52,9 @@ const MaterielList = () => {
     });
   }, [allMateriels, filter, searchTerm]);
 
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+
   const totalPages = Math.ceil(filteredMateriels.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedMateriels = filteredMateriels.slice(
@@ -67,11 +66,9 @@ const MaterielList = () => {
     try {
       setLoading(true);
       await remove.mutateAsync(id);
-      toast.success("Matériel supprimé avec succès");
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      toast.error("Erreur lors de la suppression");
       console.error("Delete error:", error);
     } finally {
       setLoading(false);

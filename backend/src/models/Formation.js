@@ -10,8 +10,16 @@ const Formation = sequelize.define(
       autoIncrement: true,
     },
     num_adherent: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    id_moniteur: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      references: {
+        model: "moniteurs",
+        key: "id_moniteur",
+      },
     },
     niveau_vise: {
       type: DataTypes.STRING(10),
@@ -24,6 +32,10 @@ const Formation = sequelize.define(
     date_fin_prevue: {
       type: DataTypes.DATE,
       allowNull: false,
+    },
+    date_fin_reelle: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     statut: {
       type: DataTypes.STRING(20),
@@ -38,6 +50,20 @@ const Formation = sequelize.define(
     commentaire_moniteur: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    montant_total: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    montant_paye: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
+    statut_paiement: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: "En attente",
     },
   },
   {
