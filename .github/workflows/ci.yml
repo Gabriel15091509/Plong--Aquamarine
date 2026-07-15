@@ -18,7 +18,17 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       short_sha: ${{ steps.sha.outputs.value }}
     steps:
+      # fetch-depth: 0 (historique complet) est nécessaire ici : par défaut
+      # actions/checkout ne récupère que le dernier commit, et quand un push
+      # groupe plusieurs commits, dorny/paths-filter ne peut alors pas
+      # comparer avec `github.event.before` (absent du clone superficiel) —
+      # il retombe silencieusement sur une comparaison au commit précédent
+      # seulement, ratant les changements des commits plus anciens du même
+      # push (bug vérifié : un push de 4 commits touchant `frontend/**` a vu
+      # `build-frontend` marqué "skipped").
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -91,6 +101,15 @@ jobs:
           tags: |
             ${{ env.IMAGE_NS }}/${{ matrix.service }}:sha-${{ needs.detect-changes.outputs.short_sha }}
             ${{ env.IMAGE_NS }}/${{ matrix.service }}:main
+          # Labels OCI standard : identifient sans ambiguïté, dans GHCR et via
+          # `docker inspect`, quel microservice et quel commit ont produit
+          # cette image précise — utile pour le suivi par service en démo.
+          labels: |
+            org.opencontainers.image.title=${{ matrix.service }}
+            org.opencontainers.image.description=Microservice ${{ matrix.service }} (Plongée Aquamarine)
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=sha-${{ needs.detect-changes.outputs.short_sha }}
 
       - name: Scan image (advisory only)
         uses: aquasecurity/trivy-action@master
@@ -145,6 +164,12 @@ jobs:
           tags: |
             ${{ env.IMAGE_NS }}/frontend:sha-${{ needs.detect-changes.outputs.short_sha }}
             ${{ env.IMAGE_NS }}/frontend:main
+          labels: |
+            org.opencontainers.image.title=frontend
+            org.opencontainers.image.description=Frontend web (Plongée Aquamarine)
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=sha-${{ needs.detect-changes.outputs.short_sha }}
 
       - name: Scan image (advisory only)
         uses: aquasecurity/trivy-action@master
