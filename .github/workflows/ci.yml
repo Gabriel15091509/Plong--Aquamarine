@@ -179,11 +179,17 @@ jobs:
       - name: Bump image tags in k8s/kustomization.yaml
         working-directory: k8s
         run: |
+          # La clé passée à `kustomize edit set image` doit être le nom
+          # COMPLET de l'image (celui déjà écrit dans le littéral `image:`
+          # de chaque manifest), pas le nom court du service — sinon
+          # l'entrée `images:` ne matche jamais rien à la résolution
+          # (kustomize compare par égalité exacte, sans normalisation) et
+          # le bump est un no-op silencieux.
           for svc in $(echo '${{ needs.detect-changes.outputs.services }}' | jq -r '.[]'); do
-            /tmp/kustomize edit set image "${svc}=${{ env.IMAGE_NS }}/${svc}:sha-${{ needs.detect-changes.outputs.short_sha }}"
+            /tmp/kustomize edit set image "${{ env.IMAGE_NS }}/${svc}=${{ env.IMAGE_NS }}/${svc}:sha-${{ needs.detect-changes.outputs.short_sha }}"
           done
           if [ "${{ needs.detect-changes.outputs.frontend }}" = "true" ]; then
-            /tmp/kustomize edit set image "frontend=${{ env.IMAGE_NS }}/frontend:sha-${{ needs.detect-changes.outputs.short_sha }}"
+            /tmp/kustomize edit set image "${{ env.IMAGE_NS }}/frontend=${{ env.IMAGE_NS }}/frontend:sha-${{ needs.detect-changes.outputs.short_sha }}"
           fi
 
       - name: Commit and push
