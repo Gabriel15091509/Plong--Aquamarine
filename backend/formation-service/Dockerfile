@@ -10,6 +10,7 @@ COPY . .
 ENV NODE_ENV=production
 EXPOSE 5010
 
+RUN mkdir -p logs && chown -R node:node /app
 USER node
 
 CMD ["node", "server.js"]
