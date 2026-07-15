@@ -35,7 +35,9 @@ jobs:
         # `changes` agrège TOUS les filtres définis ci-dessus, y compris
         # `frontend` (job dédié `build-frontend` plus bas) — on l'exclut ici
         # pour que la matrice `build` ne reçoive que des services backend.
-        run: echo "value=$(echo '${{ steps.filter.outputs.changes }}' | jq -c 'map(select(. != \"frontend\"))')" >> "$GITHUB_OUTPUT"
+        env:
+          CHANGES: ${{ steps.filter.outputs.changes }}
+        run: echo "value=$(echo "$CHANGES" | jq -c 'map(select(. != "frontend"))')" >> "$GITHUB_OUTPUT"
       - id: sha
         run: echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
@@ -158,7 +160,7 @@ jobs:
       always() &&
       github.ref == 'refs/heads/main' &&
       (needs.build.result == 'success' || needs.build.result == 'skipped') &&
-      (needs.build-frontend.result == 'success' || needs.build-frontend.result == 'skipped') &&
+      (needs['build-frontend'].result == 'success' || needs['build-frontend'].result == 'skipped') &&
       (needs.detect-changes.outputs.services != '[]' || needs.detect-changes.outputs.frontend == 'true')
     runs-on: ubuntu-latest
     permissions:
