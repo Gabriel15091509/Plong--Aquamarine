@@ -8,8 +8,9 @@
 #
 # Chaque domaine migré gagne sa propre règle ici et perd son relais interne
 # dans la passerelle (voir backend/gateway-service/src/middlewares/proxyTo.js)
-# — tout ce qui n'a pas encore de règle dédiée continue de tomber sur
-# `gateway-service` via le `/` générique en dernier recours.
+# — seul `/api/dashboard` reste servi directement par `gateway-service`
+# (agrégation HTTP jamais migrée vers un microservice dédié). Le `/`
+# générique sert désormais le frontend statique (k8s/11-frontend.yaml).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -164,9 +165,15 @@ spec:
               service:
                 name: activites-service
                 port: { number: 5015 }
-          - path: /
+          - path: /api/dashboard
             pathType: Prefix
             backend:
               service:
                 name: gateway-service
                 port: { number: 5000 }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { number: 80 }
