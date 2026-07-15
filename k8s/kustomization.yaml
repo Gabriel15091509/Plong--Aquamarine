@@ -35,6 +35,9 @@ images:
   newTag: sha-914a959
 - name: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
   newTag: sha-914a959
+- name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
+  newTag: sha-fce9517
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newTag: sha-914a959
 - name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
@@ -43,5 +46,3 @@ images:
   newTag: sha-914a959
 - name: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
   newTag: sha-914a959
-- name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
-  newTag: main
