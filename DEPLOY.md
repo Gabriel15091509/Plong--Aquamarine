@@ -64,8 +64,8 @@ kubectl apply -f argocd/application.yaml
 
 À partir de cette commande, ArgoCD prend en charge tout ce qui est listé
 dans `k8s/kustomization.yaml` (namespace, configmap, postgres, les 7
-services, l'ingress). Ne plus jamais lancer `kubectl apply -k k8s/` à la
-main après ça — laisser ArgoCD le faire.
+services backend, le frontend, l'ingress). Ne plus jamais lancer
+`kubectl apply -k k8s/` à la main après ça — laisser ArgoCD le faire.
 
 ## 5. Rendre les images GHCR publiques
 
@@ -77,7 +77,17 @@ Ceci évite d'avoir à gérer un `imagePullSecrets`/PAT sur la machine de
 démo — les manifests utilisent déjà `imagePullPolicy: IfNotPresent` (correct
 avec des tags `sha-` immuables).
 
-## 6. Ensuite
+## 6. Accéder à l'application déployée
+
+Une fois `frontend` synchronisé (`kubectl get pods -n plongee-app`), l'appli
+complète est servie par l'Ingress sur **http://localhost** (port 80, exposé
+directement par Docker Desktop) : le frontend statique sur `/`, chaque
+`/api/...` routé vers le microservice propriétaire (voir
+`k8s/08-ingress.yaml`). C'est différent du `http://localhost:3000` du
+serveur de dev Vite (`npm run dev`), qui reste utilisable en parallèle pour
+développer sans repasser par le cluster à chaque changement.
+
+## 7. Ensuite
 
 Un simple `git push` sur `main` suffit :
 `CI (lint → test → build → scan → push GHCR → bump tag) → ArgoCD sync → pods à jour`.
