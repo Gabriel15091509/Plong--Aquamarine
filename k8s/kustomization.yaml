@@ -30,19 +30,26 @@ resources:
 # `kustomize edit set image`.
 images:
 - name: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
-  newTag: sha-914a959
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
+  newTag: sha-ae5d5f9
 - name: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
-  newTag: sha-914a959
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
+  newTag: sha-ae5d5f9
 - name: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
-  newTag: sha-914a959
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
+  newTag: sha-ae5d5f9
 - name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newTag: sha-fce9517
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
-  newTag: sha-914a959
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
+  newTag: sha-ae5d5f9
 - name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
-  newTag: sha-914a959
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
+  newTag: sha-ae5d5f9
 - name: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
-  newTag: sha-914a959
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
+  newTag: sha-ae5d5f9
 - name: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
-  newTag: sha-914a959
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
+  newTag: sha-ae5d5f9
