@@ -16,9 +16,9 @@ import {
   FiDollarSign,
   FiShield,
 } from "react-icons/fi";
-import { useAttributions } from "../../hooks/useAttributions";
-import { useMateriels } from "../../hooks/useMateriels";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useAttributions } from "../../hooks/Attribution/useAttributions";
+import { useMateriels } from "../../hooks/Materiel/useMateriels";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { formatDate, formatDateForInput, formatCurrency } from "../../utils/helpers";
 import { ETAT_MATERIEL_OPTIONS, MODE_PAIEMENT_OPTIONS } from "../../utils/constants";

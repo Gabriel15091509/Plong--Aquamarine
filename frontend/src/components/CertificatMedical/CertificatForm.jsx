@@ -16,8 +16,8 @@ import {
   FiUpload,
   FiFile,
 } from "react-icons/fi";
-import { useCertificats } from "../../hooks/useCertificats";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 

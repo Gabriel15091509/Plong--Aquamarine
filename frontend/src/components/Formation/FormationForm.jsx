@@ -15,8 +15,8 @@ import {
   FiDollarSign,
   FiCreditCard,
 } from "react-icons/fi";
-import { useFormations } from "../../hooks/useFormations";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useFormations } from "../../hooks/Formation/useFormations";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import {

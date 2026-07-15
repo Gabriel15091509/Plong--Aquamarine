@@ -21,9 +21,11 @@ import {
   FiKey,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
-import { useAlertes } from "../../hooks/useAlertes";
+import { useAlertes } from "../../hooks/Alerte/useAlertes";
 import { formatRelativeTime } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import Logo from "../Common/Logo";
@@ -152,10 +154,18 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
     return roles[role] || "👤 Utilisateur";
   };
 
+  const today = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
+  const formattedToday = today.charAt(0).toUpperCase() + today.slice(1);
+
   return (
     <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200/80 sticky top-0 z-40 transition-colors duration-300 dark:bg-gray-800/80 dark:border-gray-700/80 h-16">
       <div className="px-4 sm:px-6 h-full flex items-center justify-between">
-        <div className="flex items-center gap-3 sm:gap-4"></div>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <span className="hidden sm:flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+            <FiCalendar className="w-4 h-4 text-cyan-500" />
+            {formattedToday}
+          </span>
+        </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Bouton Toggle Thème */}

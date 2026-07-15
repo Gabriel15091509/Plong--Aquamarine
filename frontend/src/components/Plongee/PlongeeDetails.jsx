@@ -23,8 +23,8 @@ import {
   FiMapPin,
   FiUsers,
 } from "react-icons/fi";
-import { usePlongees } from "../../hooks/usePlongees";
-import { useAdherents } from "../../hooks/useAdherents";
+import { usePlongees } from "../../hooks/Plongee/usePlongees";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";

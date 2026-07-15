@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import ConfirmModal from "../Common/ConfirmModal";
 import {
   FiCalendar,
   FiMapPin,
@@ -22,13 +23,14 @@ import {
   FiBarChart2,
   FiAlertTriangle,
 } from "react-icons/fi";
-import { useSorties } from "../../hooks/useSorties";
-import { useIncidents } from "../../hooks/useIncidents";
+import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useIncidents } from "../../hooks/Incident/useIncidents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import PalanqueesManager from "../Palanquee/PalanqueesManager";
 import { formatDateTime } from "../../utils/helpers";
+import { STATUT_SORTIE } from "../../utils/constants";
 
 // Animations
 const fadeInUp = {
@@ -75,7 +77,7 @@ const SortieDetails = () => {
   const needsStatusUpdate =
     sortie &&
     new Date(sortie.date_heure) < new Date() &&
-    ["Planifiée", "En cours"].includes(sortie.statut);
+    [STATUT_SORTIE.PLANIFIEE, STATUT_SORTIE.EN_COURS].includes(sortie.statut);
 
   const handleChangeStatut = async (statut) => {
     try {
@@ -184,26 +186,26 @@ const SortieDetails = () => {
 
   const getStatutColor = (statut) => {
     const colors = {
-      Planifiée:
+      [STATUT_SORTIE.PLANIFIEE]:
         "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
       Confirmée:
         "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
-      Annulée:
+      [STATUT_SORTIE.ANNULEE]:
         "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
-      Terminée:
+      [STATUT_SORTIE.TERMINEE]:
         "bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800",
       Reportée:
         "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800",
     };
-    return colors[statut] || colors["Planifiée"];
+    return colors[statut] || colors[STATUT_SORTIE.PLANIFIEE];
   };
 
   const getStatutIcon = (statut) => {
     const icons = {
-      Planifiée: FiCalendar,
+      [STATUT_SORTIE.PLANIFIEE]: FiCalendar,
       Confirmée: FiCheckCircle,
-      Annulée: FiXCircle,
-      Terminée: FiTrendingUp,
+      [STATUT_SORTIE.ANNULEE]: FiXCircle,
+      [STATUT_SORTIE.TERMINEE]: FiTrendingUp,
       Reportée: FiClock,
     };
     return icons[statut] || FiCalendar;
@@ -211,10 +213,10 @@ const SortieDetails = () => {
 
   const getStatutText = (statut) => {
     const texts = {
-      Planifiée: "La sortie est planifiée et en attente",
+      [STATUT_SORTIE.PLANIFIEE]: "La sortie est planifiée et en attente",
       Confirmée: "La sortie est confirmée et prête",
-      Annulée: "La sortie a été annulée",
-      Terminée: "La sortie est terminée",
+      [STATUT_SORTIE.ANNULEE]: "La sortie a été annulée",
+      [STATUT_SORTIE.TERMINEE]: "La sortie est terminée",
       Reportée: "La sortie a été reportée à une date ultérieure",
     };
     return texts[statut] || "Statut inconnu";
@@ -344,9 +346,9 @@ const SortieDetails = () => {
                 className={`p-3 rounded-full ${
                   sortie.statut === "Confirmée"
                     ? "bg-green-100 dark:bg-green-900/30"
-                    : sortie.statut === "Annulée"
+                    : sortie.statut === STATUT_SORTIE.ANNULEE
                       ? "bg-red-100 dark:bg-red-900/30"
-                      : sortie.statut === "Terminée"
+                      : sortie.statut === STATUT_SORTIE.TERMINEE
                         ? "bg-gray-100 dark:bg-gray-800/30"
                         : sortie.statut === "Reportée"
                           ? "bg-yellow-100 dark:bg-yellow-900/30"
@@ -357,9 +359,9 @@ const SortieDetails = () => {
                   className={`w-7 h-7 ${
                     sortie.statut === "Confirmée"
                       ? "text-green-600 dark:text-green-400"
-                      : sortie.statut === "Annulée"
+                      : sortie.statut === STATUT_SORTIE.ANNULEE
                         ? "text-red-600 dark:text-red-400"
-                        : sortie.statut === "Terminée"
+                        : sortie.statut === STATUT_SORTIE.TERMINEE
                           ? "text-gray-600 dark:text-gray-400"
                           : sortie.statut === "Reportée"
                             ? "text-yellow-600 dark:text-yellow-400"
@@ -599,49 +601,23 @@ const SortieDetails = () => {
       )}
 
       {/* Modal suppression */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", damping: 25 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800"
-          >
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
-              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
-                <FiAlertCircle className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold">Confirmer la suppression</h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-              Êtes-vous sûr de vouloir supprimer la sortie{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {sortie.type} - {sortie.lieu}
-              </span>
-              ?
-              <br />
-              <span className="text-sm text-red-500 font-medium">
-                ⚠️ Cette action est irréversible.
-              </span>
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35"
-              >
-                <FiTrash2 className="w-4 h-4 inline mr-2" />
-                Confirmer la suppression
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        icon={FiAlertCircle}
+        message={
+          <>
+            Êtes-vous sûr de vouloir supprimer la sortie{" "}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {sortie.type} - {sortie.lieu}
+            </span>
+            ?
+          </>
+        }
+        warningText="⚠️ Cette action est irréversible."
+        confirmLabel="Confirmer la suppression"
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+      />
     </motion.div>
   );
 };

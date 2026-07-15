@@ -22,14 +22,14 @@ import {
   FiDollarSign,
   FiPlusCircle,
 } from "react-icons/fi";
-import { useInscriptions } from "../../hooks/useInscriptions";
-import { useAdherents } from "../../hooks/useAdherents";
-import { useSorties } from "../../hooks/useSorties";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatDateTime, formatCurrency } from "../../utils/helpers";
-import { MODE_PAIEMENT_OPTIONS } from "../../utils/constants";
+import { MODE_PAIEMENT_OPTIONS, STATUT_INSCRIPTION } from "../../utils/constants";
 
 // Animations
 const fadeInUp = {
@@ -263,34 +263,34 @@ const InscriptionDetails = () => {
 
   const getStatutColor = (statut) => {
     const colors = {
-      Confirmée:
+      [STATUT_INSCRIPTION.CONFIRMEE]:
         "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
-      Annulée:
+      [STATUT_INSCRIPTION.ANNULEE]:
         "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
-      "Liste d'attente":
+      [STATUT_INSCRIPTION.LISTE_ATTENTE]:
         "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800",
-      "En attente":
+      [STATUT_INSCRIPTION.EN_ATTENTE]:
         "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
     };
-    return colors[statut] || colors["En attente"];
+    return colors[statut] || colors[STATUT_INSCRIPTION.EN_ATTENTE];
   };
 
   const getStatutIcon = (statut) => {
     const icons = {
-      Confirmée: FiCheckCircle,
-      Annulée: FiXCircle,
-      "Liste d'attente": FiClock,
-      "En attente": FiClock,
+      [STATUT_INSCRIPTION.CONFIRMEE]: FiCheckCircle,
+      [STATUT_INSCRIPTION.ANNULEE]: FiXCircle,
+      [STATUT_INSCRIPTION.LISTE_ATTENTE]: FiClock,
+      [STATUT_INSCRIPTION.EN_ATTENTE]: FiClock,
     };
     return icons[statut] || FiClock;
   };
 
   const getStatutText = (statut) => {
     const texts = {
-      Confirmée: "L'inscription est confirmée et validée",
-      Annulée: "L'inscription a été annulée",
-      "Liste d'attente": "En attente d'une place disponible",
-      "En attente": "En attente de confirmation par le moniteur",
+      [STATUT_INSCRIPTION.CONFIRMEE]: "L'inscription est confirmée et validée",
+      [STATUT_INSCRIPTION.ANNULEE]: "L'inscription a été annulée",
+      [STATUT_INSCRIPTION.LISTE_ATTENTE]: "En attente d'une place disponible",
+      [STATUT_INSCRIPTION.EN_ATTENTE]: "En attente de confirmation par le moniteur",
     };
     return texts[statut] || "Statut inconnu";
   };
@@ -508,18 +508,18 @@ const InscriptionDetails = () => {
         >
           <div
             className={`p-3 rounded-full ${
-              inscription.statut === "Confirmée"
+              inscription.statut === STATUT_INSCRIPTION.CONFIRMEE
                 ? "bg-green-100 dark:bg-green-900/30"
-                : inscription.statut === "Annulée"
+                : inscription.statut === STATUT_INSCRIPTION.ANNULEE
                   ? "bg-red-100 dark:bg-red-900/30"
                   : "bg-yellow-100 dark:bg-yellow-900/30"
             }`}
           >
             <StatutIcon
               className={`w-7 h-7 ${
-                inscription.statut === "Confirmée"
+                inscription.statut === STATUT_INSCRIPTION.CONFIRMEE
                   ? "text-green-600 dark:text-green-400"
-                  : inscription.statut === "Annulée"
+                  : inscription.statut === STATUT_INSCRIPTION.ANNULEE
                     ? "text-red-600 dark:text-red-400"
                     : "text-yellow-600 dark:text-yellow-400"
               }`}
@@ -528,9 +528,9 @@ const InscriptionDetails = () => {
           <div className="flex-1">
             <p
               className={`font-bold text-lg ${
-                inscription.statut === "Confirmée"
+                inscription.statut === STATUT_INSCRIPTION.CONFIRMEE
                   ? "text-green-800 dark:text-green-400"
-                  : inscription.statut === "Annulée"
+                  : inscription.statut === STATUT_INSCRIPTION.ANNULEE
                     ? "text-red-800 dark:text-red-400"
                     : "text-yellow-800 dark:text-yellow-400"
               }`}

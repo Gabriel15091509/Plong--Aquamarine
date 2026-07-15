@@ -14,9 +14,9 @@ import {
   FiUserPlus,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { useSorties } from "../../hooks/useSorties";
-import { useInscriptions } from "../../hooks/useInscriptions";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import { formatDateTime } from "../../utils/helpers";
 

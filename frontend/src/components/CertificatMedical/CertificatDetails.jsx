@@ -20,8 +20,8 @@ import {
   FiUserCheck,
   FiPaperclip,
 } from "react-icons/fi";
-import { useCertificats } from "../../hooks/useCertificats";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";

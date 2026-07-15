@@ -303,9 +303,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       <div className="flex flex-col h-full">
         {/* ✅ Logo avec taille fixe - bien aligné */}
         <div
-          className={`h-16 flex items-center px-4 border-b flex-shrink-0 transition-colors duration-300 ${
-            theme === "dark" ? "border-cyan-800/30" : "border-cyan-100/50"
-          }`}
+          className={`h-16 flex items-center border-b flex-shrink-0 transition-colors duration-300 ${
+            isOpen ? "px-4" : "px-1.5"
+          } ${theme === "dark" ? "border-cyan-800/30" : "border-cyan-100/50"}`}
         >
           {/* ✅ Logo toujours visible avec taille fixe */}
           <div className="flex items-center gap-2 overflow-hidden flex-shrink-0">
@@ -314,8 +314,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               transition={{ type: "spring", stiffness: 300 }}
               className="relative flex-shrink-0"
             >
-              <div className="w-10 h-10 flex-shrink-0">
-                <Logo size="md" className="flex-shrink-0" />
+              <div
+                className={`flex-shrink-0 ${isOpen ? "w-10 h-10" : "w-8 h-8"}`}
+              >
+                <Logo size={isOpen ? "md" : "sm"} className="flex-shrink-0" />
               </div>
               <motion.div
                 className={`absolute inset-0 rounded-xl blur-xl -z-10 transition-colors duration-300 ${
@@ -356,7 +358,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               whileHover={getHoverAnimation("button")}
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsOpen(!isOpen)}
-              className={`p-1.5 rounded-lg transition-colors duration-300 flex-shrink-0 ${
+              className={`rounded-lg transition-colors duration-300 flex-shrink-0 ${
+                isOpen ? "p-1.5" : "p-1"
+              } ${
                 theme === "dark"
                   ? "hover:bg-cyan-900/30 text-cyan-400"
                   : "hover:bg-cyan-100/50 text-cyan-600"

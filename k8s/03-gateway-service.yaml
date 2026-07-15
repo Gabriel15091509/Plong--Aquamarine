@@ -1,0 +1,48 @@
+# Passerelle API (ancien monolithe, dossier `backend/gateway-service/`) :
+# tous les domaines métier en ont quitté le process (identite-service et
+# activites-service ont absorbé les derniers) — il ne reste que l'agrégation
+# HTTP du Dashboard et le relais "strangler fig" vers chaque microservice
+# (voir backend/gateway-service/src/routes/index.js). Plus d'upload local :
+# les photos/documents vivent désormais sur leur microservice propriétaire
+# respectif.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-service
+  namespace: plongee-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: gateway-service }
+  template:
+    metadata:
+      labels: { app: gateway-service }
+    spec:
+      containers:
+        - name: gateway-service
+          # Référence littérale de secours (kubectl apply -f direct, sans
+          # kustomize) — en usage normal, k8s/kustomization.yaml réécrit ce
+          # champ vers ghcr.io/.../gateway-service:sha-<shortsha> à chaque
+          # déploiement GitOps (voir DEPLOY.md).
+          image: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service:main
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - configMapRef: { name: plongee-config }
+            - secretRef: { name: plongee-secrets }
+          readinessProbe:
+            httpGet: { path: /health, port: 5000 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+  namespace: plongee-app
+spec:
+  selector: { app: gateway-service }
+  ports:
+    - port: 5000
+      targetPort: 5000

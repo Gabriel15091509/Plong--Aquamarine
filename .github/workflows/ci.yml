@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.filter.outputs.changes }}
+      short_sha: ${{ steps.sha.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            gateway-service: backend/gateway-service/**
+            formation-service: backend/formation-service/**
+            materiel-service: backend/materiel-service/**
+            finance-service: backend/finance-service/**
+            vie-associative-service: backend/vie-associative-service/**
+            identite-service: backend/identite-service/**
+            activites-service: backend/activites-service/**
+      - id: sha
+        run: echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/${{ matrix.service }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend/${{ matrix.service }}
+        run: npm ci
+
+      - name: Lint
+        working-directory: backend/${{ matrix.service }}
+        run: npm run lint
+
+      - name: Test
+        working-directory: backend/${{ matrix.service }}
+        run: npm test
+
+      - name: Compute lowercase image namespace
+        run: echo "IMAGE_NS=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: backend/${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_NS }}/${{ matrix.service }}:sha-${{ needs.detect-changes.outputs.short_sha }}
+            ${{ env.IMAGE_NS }}/${{ matrix.service }}:main
+
+      - name: Scan image (advisory only)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NS }}/${{ matrix.service }}:sha-${{ needs.detect-changes.outputs.short_sha }}
+          severity: CRITICAL
+          exit-code: "0"
+          format: table
+
+  update-manifests:
+    needs: [detect-changes, build]
+    if: github.ref == 'refs/heads/main' && needs.detect-changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute lowercase image namespace
+        run: echo "IMAGE_NS=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Install kustomize
+        run: |
+          curl -sLo /tmp/kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz
+          tar -xzf /tmp/kustomize.tar.gz -C /tmp
+
+      - name: Bump image tags in k8s/kustomization.yaml
+        working-directory: k8s
+        run: |
+          for svc in $(echo '${{ needs.detect-changes.outputs.services }}' | jq -r '.[]'); do
+            /tmp/kustomize edit set image "${svc}=${{ env.IMAGE_NS }}/${svc}:sha-${{ needs.detect-changes.outputs.short_sha }}"
+          done
+
+      - name: Commit and push
+        run: |
+          git config user.name "gitops-bot"
+          git config user.email "gitops-bot@users.noreply.github.com"
+          git add k8s/kustomization.yaml
+          git diff --cached --quiet || git commit -m "chore(gitops): bump image tag(s) to sha-${{ needs.detect-changes.outputs.short_sha }} [skip ci]"
+          git push

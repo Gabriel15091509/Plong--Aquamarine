@@ -15,9 +15,9 @@ import {
   FiInfo,
   FiMapPin,
 } from "react-icons/fi";
-import { useInscriptions } from "../../hooks/useInscriptions";
-import { useAdherents } from "../../hooks/useAdherents";
-import { useSorties } from "../../hooks/useSorties";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";

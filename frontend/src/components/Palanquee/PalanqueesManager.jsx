@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { FiUsers, FiPlus, FiBarChart2 } from "react-icons/fi";
-import { usePalanquees } from "../../hooks/usePalanquees";
-import { useInscriptions } from "../../hooks/useInscriptions";
-import { useMoniteurs } from "../../hooks/useMoniteurs";
-import { useMateriels } from "../../hooks/useMateriels";
+import { usePalanquees } from "../../hooks/Palanquee/usePalanquees";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import SearchableSelect from "../Common/SearchableSelect";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import PalanqueeCard from "./PalanqueeCard";

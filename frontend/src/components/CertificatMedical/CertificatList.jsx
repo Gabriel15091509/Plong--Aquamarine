@@ -14,8 +14,8 @@ import {
   FiAlertCircle,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { useCertificats } from "../../hooks/useCertificats";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";

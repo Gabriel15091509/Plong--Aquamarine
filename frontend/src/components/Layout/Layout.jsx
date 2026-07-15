@@ -13,7 +13,7 @@ const Layout = ({ children }) => {
     <div className="min-h-screen bg-gray-50">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-[260px]' : 'ml-[72px]'}`}>
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
         
         <main className="p-6 min-h-[calc(100vh-140px)]">

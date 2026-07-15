@@ -16,7 +16,7 @@ import {
   FiTag,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { useMateriels } from "../../hooks/useMateriels";
+import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { formatDate } from "../../utils/helpers";
 
 // TODO: Ajouter un filtre par catégorie

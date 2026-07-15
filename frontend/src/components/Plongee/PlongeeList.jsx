@@ -17,8 +17,8 @@ import {
   FiMapPin,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { usePlongees } from "../../hooks/usePlongees";
-import { useAdherents } from "../../hooks/useAdherents";
+import { usePlongees } from "../../hooks/Plongee/usePlongees";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";

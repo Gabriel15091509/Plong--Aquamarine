@@ -11,12 +11,12 @@ import {
   FiClock,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
-import { useAdherents } from "../../hooks/useAdherents";
-import { useAdhesions } from "../../hooks/useAdhesions";
-import { useCertificats } from "../../hooks/useCertificats";
-import { usePlongees } from "../../hooks/usePlongees";
-import { usePaiements } from "../../hooks/usePaiements";
-import { useInscriptions } from "../../hooks/useInscriptions";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
+import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
+import { usePlongees } from "../../hooks/Plongee/usePlongees";
+import { usePaiements } from "../../hooks/Paiement/usePaiements";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import StatsCard from "../Common/StatsCard";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import DashboardHero from "./DashboardHero";

@@ -9,10 +9,10 @@ import {
   FiPackage,
   FiFileText,
 } from "react-icons/fi";
-import { useAdherents } from "../../hooks/useAdherents";
-import { useSorties } from "../../hooks/useSorties";
-import { usePaiements } from "../../hooks/usePaiements";
-import { useFormations } from "../../hooks/useFormations";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useSorties } from "../../hooks/Sortie/useSorties";
+import { usePaiements } from "../../hooks/Paiement/usePaiements";
+import { useFormations } from "../../hooks/Formation/useFormations";
 import { formatRelativeTime } from "../../utils/helpers";
 
 const RecentActivity = () => {

@@ -13,9 +13,9 @@ import {
   FiHash,
   FiKey,
 } from "react-icons/fi";
-import { usePresidents } from "../../hooks/usePresidents";
-import { useMoniteurs } from "../../hooks/useMoniteurs";
-import { useUsers } from "../../hooks/useUsers";
+import { usePresidents } from "../../hooks/President/usePresidents";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { useUsers } from "../../hooks/User/useUsers";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { formatDateForInput } from "../../utils/helpers";

@@ -1,47 +1,53 @@
 import React from "react";
+import {
+  STATUT_SORTIE,
+  STATUT_INSCRIPTION,
+  STATUT_PAIEMENT,
+  STATUT_FORMATION,
+} from "../../utils/constants";
 
 // ✅ Configuration complète des statuts (sans icônes)
 const statusConfig = {
   // 📌 Statuts des sorties
-  Planifiée: {
+  [STATUT_SORTIE.PLANIFIEE]: {
     color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
     border: "border-blue-200 dark:border-blue-800/30",
-    label: "Planifiée",
+    label: STATUT_SORTIE.PLANIFIEE,
   },
-  "En cours": {
+  [STATUT_SORTIE.EN_COURS]: {
     color:
       "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
     border: "border-green-200 dark:border-green-800/30",
-    label: "En cours",
+    label: STATUT_SORTIE.EN_COURS,
   },
-  Terminée: {
+  [STATUT_SORTIE.TERMINEE]: {
     color: "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-400",
     border: "border-gray-200 dark:border-gray-600",
-    label: "Terminée",
+    label: STATUT_SORTIE.TERMINEE,
   },
-  Annulée: {
+  [STATUT_SORTIE.ANNULEE]: {
     color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     border: "border-red-200 dark:border-red-800/30",
-    label: "Annulée",
+    label: STATUT_SORTIE.ANNULEE,
   },
 
   // 📌 Statuts des inscriptions
-  "En attente": {
+  [STATUT_INSCRIPTION.EN_ATTENTE]: {
     color:
       "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
     border: "border-yellow-200 dark:border-yellow-800/30",
-    label: "En attente",
+    label: STATUT_INSCRIPTION.EN_ATTENTE,
   },
-  Confirmée: {
+  [STATUT_INSCRIPTION.CONFIRMEE]: {
     color:
       "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
     border: "border-green-200 dark:border-green-800/30",
-    label: "Confirmée",
+    label: STATUT_INSCRIPTION.CONFIRMEE,
   },
-  "Liste d'attente": {
+  [STATUT_INSCRIPTION.LISTE_ATTENTE]: {
     color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
     border: "border-blue-200 dark:border-blue-800/30",
-    label: "Liste d'attente",
+    label: STATUT_INSCRIPTION.LISTE_ATTENTE,
   },
 
   // 📌 Statuts des adhérents
@@ -64,17 +70,17 @@ const statusConfig = {
   },
 
   // 📌 Statuts des paiements
-  Payé: {
+  [STATUT_PAIEMENT.PAYE]: {
     color:
       "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
     border: "border-green-200 dark:border-green-800/30",
-    label: "Payé",
+    label: STATUT_PAIEMENT.PAYE,
   },
-  Partiel: {
+  [STATUT_PAIEMENT.PARTIEL]: {
     color:
       "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
     border: "border-yellow-200 dark:border-yellow-800/30",
-    label: "Partiel",
+    label: STATUT_PAIEMENT.PARTIEL,
   },
   Remboursé: {
     color:
@@ -97,16 +103,16 @@ const statusConfig = {
   },
 
   // 📌 Statuts des formations
-  Abandonnée: {
+  [STATUT_FORMATION.ABANDONNEE]: {
     color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     border: "border-red-200 dark:border-red-800/30",
-    label: "Abandonnée",
+    label: STATUT_FORMATION.ABANDONNEE,
   },
-  Suspendue: {
+  [STATUT_FORMATION.SUSPENDUE]: {
     color:
       "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
     border: "border-orange-200 dark:border-orange-800/30",
-    label: "Suspendue",
+    label: STATUT_FORMATION.SUSPENDUE,
   },
 
   // 📌 Statuts du matériel

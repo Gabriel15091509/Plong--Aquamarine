@@ -1,0 +1,172 @@
+# Passerelle unique du frontend (baseURL unique `/api/...`) — reproduit
+# exactement la table de préfixes de monolith/src/routes/index.js. Nécessite
+# le contrôleur nginx-ingress activé sur le cluster local
+# (`minikube addons enable ingress`, ou l'ingress-nginx par défaut de kind).
+# Aucune réécriture de chemin : chaque backend (monolithe ou microservice)
+# monte déjà ses routes sous `/api`, donc le chemin d'origine est transmis
+# tel quel.
+#
+# Chaque domaine migré gagne sa propre règle ici et perd son relais interne
+# dans la passerelle (voir backend/gateway-service/src/middlewares/proxyTo.js)
+# — tout ce qui n'a pas encore de règle dédiée continue de tomber sur
+# `gateway-service` via le `/` générique en dernier recours.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: plongee-ingress
+  namespace: plongee-app
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api/formations
+            pathType: Prefix
+            backend:
+              service:
+                name: formation-service
+                port: { number: 5010 }
+          - path: /api/competences
+            pathType: Prefix
+            backend:
+              service:
+                name: formation-service
+                port: { number: 5010 }
+          - path: /api/materiels
+            pathType: Prefix
+            backend:
+              service:
+                name: materiel-service
+                port: { number: 5011 }
+          - path: /api/reparations
+            pathType: Prefix
+            backend:
+              service:
+                name: materiel-service
+                port: { number: 5011 }
+          - path: /api/paiements
+            pathType: Prefix
+            backend:
+              service:
+                name: finance-service
+                port: { number: 5012 }
+          - path: /api/adhesions
+            pathType: Prefix
+            backend:
+              service:
+                name: vie-associative-service
+                port: { number: 5013 }
+          - path: /api/certificats-medicaux
+            pathType: Prefix
+            backend:
+              service:
+                name: vie-associative-service
+                port: { number: 5013 }
+          - path: /api/alertes
+            pathType: Prefix
+            backend:
+              service:
+                name: vie-associative-service
+                port: { number: 5013 }
+          - path: /uploads/adhesions
+            pathType: Prefix
+            backend:
+              service:
+                name: vie-associative-service
+                port: { number: 5013 }
+          - path: /uploads/certificats
+            pathType: Prefix
+            backend:
+              service:
+                name: vie-associative-service
+                port: { number: 5013 }
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: identite-service
+                port: { number: 5014 }
+          - path: /api/adherents
+            pathType: Prefix
+            backend:
+              service:
+                name: identite-service
+                port: { number: 5014 }
+          - path: /api/users
+            pathType: Prefix
+            backend:
+              service:
+                name: identite-service
+                port: { number: 5014 }
+          - path: /api/email
+            pathType: Prefix
+            backend:
+              service:
+                name: identite-service
+                port: { number: 5014 }
+          - path: /api/moniteurs
+            pathType: Prefix
+            backend:
+              service:
+                name: identite-service
+                port: { number: 5014 }
+          - path: /api/president
+            pathType: Prefix
+            backend:
+              service:
+                name: identite-service
+                port: { number: 5014 }
+          - path: /api/tresoriers
+            pathType: Prefix
+            backend:
+              service:
+                name: identite-service
+                port: { number: 5014 }
+          - path: /uploads/avatars
+            pathType: Prefix
+            backend:
+              service:
+                name: identite-service
+                port: { number: 5014 }
+          - path: /api/sorties
+            pathType: Prefix
+            backend:
+              service:
+                name: activites-service
+                port: { number: 5015 }
+          - path: /api/inscriptions
+            pathType: Prefix
+            backend:
+              service:
+                name: activites-service
+                port: { number: 5015 }
+          - path: /api/plongees
+            pathType: Prefix
+            backend:
+              service:
+                name: activites-service
+                port: { number: 5015 }
+          - path: /api/palanquees
+            pathType: Prefix
+            backend:
+              service:
+                name: activites-service
+                port: { number: 5015 }
+          - path: /api/attributions
+            pathType: Prefix
+            backend:
+              service:
+                name: activites-service
+                port: { number: 5015 }
+          - path: /api/incidents
+            pathType: Prefix
+            backend:
+              service:
+                name: activites-service
+                port: { number: 5015 }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-service
+                port: { number: 5000 }

@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plongee-config
+  namespace: plongee-app
+data:
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: plongee_db
+  DB_USER: postgres
+  NODE_ENV: production
+  # DNS interne k8s (namespace plongee-app) — au format court, résolu par
+  # CoreDNS sans avoir besoin du nom pleinement qualifié.
+  FORMATION_SERVICE_URL: http://formation-service:5010
+  MATERIEL_SERVICE_URL: http://materiel-service:5011
+  FINANCE_SERVICE_URL: http://finance-service:5012
+  VIE_ASSOCIATIVE_SERVICE_URL: http://vie-associative-service:5013
+  IDENTITE_SERVICE_URL: http://identite-service:5014/api
+  ACTIVITES_SERVICE_URL: http://activites-service:5015
+  PAIEMENT_SERVICE_URL: http://finance-service:5012/api
+  ADHESION_SERVICE_URL: http://vie-associative-service:5013
+  INSCRIPTION_SERVICE_URL: http://activites-service:5015

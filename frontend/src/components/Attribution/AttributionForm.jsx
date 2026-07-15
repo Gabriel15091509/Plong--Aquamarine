@@ -8,10 +8,10 @@ import {
   FiCalendar,
   FiTag,
 } from "react-icons/fi";
-import { useAttributions } from "../../hooks/useAttributions";
-import { useMateriels } from "../../hooks/useMateriels";
-import { useAdherents } from "../../hooks/useAdherents";
-import { useSorties } from "../../hooks/useSorties";
+import { useAttributions } from "../../hooks/Attribution/useAttributions";
+import { useMateriels } from "../../hooks/Materiel/useMateriels";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { ETAT_MATERIEL_OPTIONS } from "../../utils/constants";

@@ -12,8 +12,8 @@ import {
   FiClock,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { useIncidents } from "../../hooks/useIncidents";
-import { useSorties } from "../../hooks/useSorties";
+import { useIncidents } from "../../hooks/Incident/useIncidents";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import { formatDateTime } from "../../utils/helpers";
 
 const IncidentList = () => {

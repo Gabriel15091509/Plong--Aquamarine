@@ -12,9 +12,9 @@ import {
   FiClock,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { useAttributions } from "../../hooks/useAttributions";
-import { useMateriels } from "../../hooks/useMateriels";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useAttributions } from "../../hooks/Attribution/useAttributions";
+import { useMateriels } from "../../hooks/Materiel/useMateriels";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { formatDate } from "../../utils/helpers";
 
 const AttributionList = () => {
