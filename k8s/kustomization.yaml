@@ -3,40 +3,40 @@ kind: Kustomization
 namespace: plongee-app
 
 resources:
-  - 00-namespace.yaml
-  - 01-configmap.yaml
-  - 02-postgres.yaml
-  - 03-gateway-service.yaml
-  - 04-formation-service.yaml
-  - 05-materiel-service.yaml
-  - 06-finance-service.yaml
-  - 07-vie-associative-service.yaml
-  - 09-identite-service.yaml
-  - 10-activites-service.yaml
-  - 08-ingress.yaml
+- 00-namespace.yaml
+- 01-configmap.yaml
+- 02-postgres.yaml
+- 03-gateway-service.yaml
+- 04-formation-service.yaml
+- 05-materiel-service.yaml
+- 06-finance-service.yaml
+- 07-vie-associative-service.yaml
+- 09-identite-service.yaml
+- 10-activites-service.yaml
+- 08-ingress.yaml
   # secret.yaml n'est jamais listé ici : le Secret réel reste appliqué à la
   # main (kubectl apply -f k8s/secret.yaml, gitignoré) et hors de portée
   # d'ArgoCD (jamais tracké, donc jamais pruné/recréé par lui).
 
 images:
-  - name: gateway-service
-    newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
-    newTag: main
-  - name: formation-service
-    newName: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
-    newTag: main
-  - name: materiel-service
-    newName: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
-    newTag: main
-  - name: finance-service
-    newName: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
-    newTag: main
-  - name: vie-associative-service
-    newName: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
-    newTag: main
-  - name: identite-service
-    newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
-    newTag: main
-  - name: activites-service
-    newName: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
-    newTag: main
+- name: activites-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
+  newTag: sha-914a959
+- name: finance-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
+  newTag: sha-914a959
+- name: formation-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
+  newTag: sha-914a959
+- name: gateway-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
+  newTag: sha-914a959
+- name: identite-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
+  newTag: sha-914a959
+- name: materiel-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
+  newTag: sha-914a959
+- name: vie-associative-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
+  newTag: sha-914a959
