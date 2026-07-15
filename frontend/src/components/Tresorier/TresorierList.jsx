@@ -12,8 +12,8 @@ import {
   FiDollarSign,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { useTresoriers } from "../../hooks/useTresoriers";
-import { useUsers } from "../../hooks/useUsers";
+import { useTresoriers } from "../../hooks/Tresorier/useTresoriers";
+import { useUsers } from "../../hooks/User/useUsers";
 import { photoUrl } from "../../utils/photoUrl";
 
 const TresorierList = () => {

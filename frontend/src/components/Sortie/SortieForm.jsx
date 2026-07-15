@@ -17,7 +17,7 @@ import {
   FiInfo,
   FiDollarSign,
 } from "react-icons/fi";
-import { useSorties } from "../../hooks/useSorties";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import {
   TYPE_SORTIE_OPTIONS,

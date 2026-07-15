@@ -16,8 +16,8 @@ import {
   FiTrash2,
   FiInfo,
 } from "react-icons/fi";
-import { useMoniteurs } from "../../hooks/useMoniteurs";
-import { useUsers } from "../../hooks/useUsers";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { useUsers } from "../../hooks/User/useUsers";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { formatDate } from "../../utils/helpers";
 

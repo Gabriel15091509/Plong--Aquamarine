@@ -1,9 +1,9 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { FiActivity, FiAnchor, FiDollarSign, FiCalendar } from "react-icons/fi";
-import { usePlongees } from "../../hooks/usePlongees";
-import { usePaiements } from "../../hooks/usePaiements";
-import { useInscriptions } from "../../hooks/useInscriptions";
+import { usePlongees } from "../../hooks/Plongee/usePlongees";
+import { usePaiements } from "../../hooks/Paiement/usePaiements";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { formatRelativeTime } from "../../utils/helpers";
 
 // Équivalent personnel de RecentActivity.jsx : ne montre que les plongées,

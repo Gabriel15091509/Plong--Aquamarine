@@ -2,29 +2,16 @@ import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import {
-  FiEye,
-  FiEdit,
-  FiTrash2,
-  FiPlus,
-  FiCheck,
-  FiX,
-  FiFilter,
-  FiClipboard,
-  FiUsers,
-  FiCalendar,
-  FiClock,
-  FiChevronRight,
-  FiUser,
-} from "react-icons/fi";
+import { FiPlus, FiClipboard } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { useInscriptions } from "../../hooks/useInscriptions";
-import { useAdherents } from "../../hooks/useAdherents";
-import { useSorties } from "../../hooks/useSorties";
+import ConfirmModal from "../Common/ConfirmModal";
+import InscriptionRow from "./InscriptionRow";
+import InscriptionActionModals from "./InscriptionActionModals";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
-import StatusBadge from "../Common/StatusBadge";
-import { formatDate } from "../../utils/helpers";
-import { photoUrl } from "../../utils/photoUrl";
+import { STATUT_INSCRIPTION } from "../../utils/constants";
 
 // TODO: Ajouter un filtre par date de sortie
 const InscriptionList = () => {
@@ -93,13 +80,13 @@ const InscriptionList = () => {
           (inscription) => inscription.id_sortie === sortie.id_sortie,
         );
         const confirmees = sortieInscriptions.filter(
-          (inscription) => inscription.statut === "Confirmée",
+          (inscription) => inscription.statut === STATUT_INSCRIPTION.CONFIRMEE,
         ).length;
         const listeAttente = sortieInscriptions.filter(
-          (inscription) => inscription.statut === "Liste d'attente",
+          (inscription) => inscription.statut === STATUT_INSCRIPTION.LISTE_ATTENTE,
         ).length;
         const enAttente = sortieInscriptions.filter(
-          (inscription) => inscription.statut === "En attente",
+          (inscription) => inscription.statut === STATUT_INSCRIPTION.EN_ATTENTE,
         ).length;
 
         map[sortie.id_sortie] = {
@@ -395,175 +382,38 @@ const InscriptionList = () => {
                 nom: `#${inscription.num_adherent}`,
                 photo: null,
               };
-              const adherentName = adherentInfo.nom;
               const sortieInfo = sortieMap[inscription.id_sortie] || {
                 label: `#${inscription.id_sortie}`,
               };
               const capacityInfo = capacityBySortie[inscription.id_sortie] || {};
-              const hasAvailablePlace = (capacityInfo.placesDisponibles || 0) > 0;
-              const canConfirm =
-                isAdmin &&
-                ["En attente", "Liste d'attente"].includes(inscription.statut) &&
-                hasAvailablePlace;
-              const canMoveToWaitlist =
-                isAdmin &&
-                inscription.statut === "En attente" &&
-                !hasAvailablePlace;
               const isOwnInscription =
                 isAdherent &&
                 currentAdherent &&
                 inscription.num_adherent === currentAdherent.num_adherent;
 
               return (
-                <motion.div
+                <InscriptionRow
                   key={inscription.id_inscription}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center gap-4">
-                    {/* Photo en évidence */}
-                    <div className="flex-shrink-0">
-                      {adherentInfo.photo ? (
-                        <img
-                          src={photoUrl(adherentInfo.photo)}
-                          alt={adherentName}
-                          className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
-                          <FiUser className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
-                        </div>
-                      )}
-                      <div className="text-center mt-1">
-                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                          #{inscription.num_adherent}
-                          {isOwnInscription && (
-                            <span className="ml-1 text-blue-600 dark:text-blue-400">
-                              (Vous)
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Informations */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {adherentName}
-                            </h3>
-                            <span className="text-sm text-gray-400 dark:text-gray-500">•</span>
-                            <span className="text-sm text-indigo-600 dark:text-indigo-400">
-                              {sortieInfo.label}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            <span className="flex items-center gap-1">
-                              <FiCalendar className="w-3.5 h-3.5" />
-                              {formatDate(inscription.date_inscription)}
-                            </span>
-                            <span>•</span>
-                            {inscription.presence_checked ? (
-                              inscription.presence ? (
-                                <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                                  <FiCheck className="w-3.5 h-3.5" /> Présent
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
-                                  <FiX className="w-3.5 h-3.5" /> Absent
-                                </span>
-                              )
-                            ) : (
-                              <span className="flex items-center gap-1 text-gray-400">
-                                <FiClock className="w-3.5 h-3.5" /> Non pointé
-                              </span>
-                            )}
-                            <span>•</span>
-                            <StatusBadge status={inscription.statut} />
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          {/* Pointage */}
-                          {isAdmin && (
-                            <Link
-                              to={`/sorties/${inscription.id_sortie}/pointage`}
-                              className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
-                              title="Gérer le pointage"
-                            >
-                              <FiClipboard className="w-4 h-4" />
-                            </Link>
-                          )}
-
-                          {/* Confirmer */}
-                          {canConfirm && (
-                            <button
-                              onClick={() => setConfirmModal(inscription.id_inscription)}
-                              disabled={loading}
-                              className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
-                              title="Confirmer"
-                            >
-                              <FiCheck className="w-4 h-4" />
-                            </button>
-                          )}
-
-                          {/* Liste d'attente */}
-                          {canMoveToWaitlist && (
-                            <button
-                              onClick={() => setWaitlistModal(inscription.id_inscription)}
-                              disabled={loading}
-                              className="p-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors disabled:opacity-50"
-                              title="Mettre en liste d'attente"
-                            >
-                              <FiClock className="w-4 h-4" />
-                            </button>
-                          )}
-
-                          {/* Annuler */}
-                          {(inscription.statut === "En attente" ||
-                            inscription.statut === "Confirmée" ||
-                            inscription.statut === "Liste d'attente") &&
-                            (isAdmin || isOwnInscription) && (
-                              <button
-                                onClick={() => setCancelModal(inscription.id_inscription)}
-                                disabled={loading}
-                                className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                title="Annuler"
-                              >
-                                <FiX className="w-4 h-4" />
-                              </button>
-                            )}
-
-                          {/* Voir */}
-                          <Link
-                            to={`/inscriptions/${inscription.id_inscription}`}
-                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                            title="Voir"
-                          >
-                            <FiEye className="w-4 h-4" />
-                          </Link>
-
-                          {/* Supprimer */}
-                          {isAdmin && (
-                            <button
-                              onClick={() => setDeleteModal(inscription.id_inscription)}
-                              disabled={loading}
-                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                              title="Supprimer"
-                            >
-                              <FiTrash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
+                  inscription={inscription}
+                  adherentInfo={adherentInfo}
+                  sortieInfo={sortieInfo}
+                  capacityInfo={capacityInfo}
+                  isAdmin={isAdmin}
+                  isOwnInscription={isOwnInscription}
+                  loading={loading}
+                  onRequestConfirm={() =>
+                    setConfirmModal(inscription.id_inscription)
+                  }
+                  onRequestWaitlist={() =>
+                    setWaitlistModal(inscription.id_inscription)
+                  }
+                  onRequestCancel={() =>
+                    setCancelModal(inscription.id_inscription)
+                  }
+                  onRequestDelete={() =>
+                    setDeleteModal(inscription.id_inscription)
+                  }
+                />
               );
             })}
           </motion.div>
@@ -600,160 +450,24 @@ const InscriptionList = () => {
       )}
 
       {/* Modal Suppression */}
-      {deleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
-          >
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
-              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
-                <FiTrash2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold">Confirmer la suppression</h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Êtes-vous sûr de vouloir supprimer cette inscription ?
-              <br />
-              <span className="text-sm text-red-500 font-medium">
-                Cette action est irréversible.
-              </span>
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteModal(null)}
-                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={() => handleDelete(deleteModal)}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
-              >
-                Supprimer
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!deleteModal}
+        message="Êtes-vous sûr de vouloir supprimer cette inscription ?"
+        onCancel={() => setDeleteModal(null)}
+        onConfirm={() => handleDelete(deleteModal)}
+      />
 
-      {/* Modal Confirmation */}
-      {confirmModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
-          >
-            <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400 mb-4">
-              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-                <FiCheck className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold">Confirmer l'inscription</h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Êtes-vous sûr de vouloir confirmer cette inscription ?
-              <br />
-              <span className="text-sm text-gray-500">
-                L'adhérent sera officiellement inscrit à la sortie.
-              </span>
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmModal(null)}
-                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={() => handleConfirm(confirmModal)}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors"
-              >
-                Confirmer
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Modal Annulation */}
-      {cancelModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
-          >
-            <div className="flex items-center gap-3 text-orange-600 dark:text-orange-400 mb-4">
-              <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/30">
-                <FiX className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold">Annuler l'inscription</h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Êtes-vous sûr de vouloir annuler cette inscription ?
-              <br />
-              <span className="text-sm text-gray-500">
-                Cette action peut être annulée si nécessaire.
-              </span>
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setCancelModal(null)}
-                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={() => handleCancel(cancelModal)}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-xl transition-colors"
-              >
-                Annuler l'inscription
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Modal Liste d'attente */}
-      {waitlistModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
-          >
-            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400 mb-4">
-              <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/30">
-                <FiClock className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold">Liste d'attente</h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Ajouter cette inscription à la liste d'attente ?
-              <br />
-              <span className="text-sm text-gray-500">
-                L'adhérent sera notifié si une place se libère.
-              </span>
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setWaitlistModal(null)}
-                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={() => handleWaitlist(waitlistModal)}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-colors"
-              >
-                Mettre en liste d'attente
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <InscriptionActionModals
+        confirmModal={confirmModal}
+        onCancelConfirm={() => setConfirmModal(null)}
+        onConfirm={handleConfirm}
+        cancelModal={cancelModal}
+        onCancelCancel={() => setCancelModal(null)}
+        onCancel={handleCancel}
+        waitlistModal={waitlistModal}
+        onCancelWaitlist={() => setWaitlistModal(null)}
+        onWaitlist={handleWaitlist}
+      />
     </div>
   );
 };

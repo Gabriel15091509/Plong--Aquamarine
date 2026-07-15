@@ -12,8 +12,8 @@ import {
   FiCalendar,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { useAdhesions } from "../../hooks/useAdhesions";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";

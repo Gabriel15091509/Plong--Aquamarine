@@ -14,8 +14,8 @@ import {
   FiClock,
   FiHash,
 } from "react-icons/fi";
-import { useMoniteurs } from "../../hooks/useMoniteurs";
-import { useUsers } from "../../hooks/useUsers";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { useUsers } from "../../hooks/User/useUsers";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { formatDateForInput } from "../../utils/helpers";

@@ -11,18 +11,19 @@ import {
   FiX,
   FiClock,
 } from "react-icons/fi";
-import { usePaiements } from "../../hooks/usePaiements";
-import { useAdherents } from "../../hooks/useAdherents";
-import { useAdhesions } from "../../hooks/useAdhesions";
-import { useAttributions } from "../../hooks/useAttributions";
-import { useInscriptions } from "../../hooks/useInscriptions";
-import { useFormations } from "../../hooks/useFormations";
+import { usePaiements } from "../../hooks/Paiement/usePaiements";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
+import { useAttributions } from "../../hooks/Attribution/useAttributions";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useFormations } from "../../hooks/Formation/useFormations";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import {
   MODE_PAIEMENT_OPTIONS,
   STATUT_PAIEMENT_OPTIONS,
   TYPE_PAIEMENT_OPTIONS,
+  STATUT_PAIEMENT,
 } from "../../utils/constants";
 
 // Types de paiement pour lesquels la référence pointe vers un enregistrement
@@ -141,7 +142,7 @@ const PaiementForm = () => {
       // sont couvertes par cette cotisation et n'ont rien à régler ici), et
       // seules celles avec un solde restant ont un intérêt à apparaître.
       return (adhesionsData?.data || [])
-        .filter((a) => a.type === "Club" && a.statut_paiement !== "Payé")
+        .filter((a) => a.type === "Club" && a.statut_paiement !== STATUT_PAIEMENT.PAYE)
         .map((a) => {
           const solde = Math.max(0, money(a.montant) - money(a.montant_paye));
           return {
@@ -186,7 +187,7 @@ const PaiementForm = () => {
 
     if (formData.type_paiement === "Formation") {
       return (formationsData?.data || [])
-        .filter((f) => money(f.montant_total) > 0 && f.statut_paiement !== "Payé")
+        .filter((f) => money(f.montant_total) > 0 && f.statut_paiement !== STATUT_PAIEMENT.PAYE)
         .map((f) => {
           const solde = Math.max(0, money(f.montant_total) - money(f.montant_paye));
           return {

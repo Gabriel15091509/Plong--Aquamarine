@@ -13,8 +13,8 @@ import {
   FiTrash2,
   FiInfo,
 } from "react-icons/fi";
-import { useTresoriers } from "../../hooks/useTresoriers";
-import { useUsers } from "../../hooks/useUsers";
+import { useTresoriers } from "../../hooks/Tresorier/useTresoriers";
+import { useUsers } from "../../hooks/User/useUsers";
 import LoadingSpinner from "../Common/LoadingSpinner";
 
 const fadeInUp = {

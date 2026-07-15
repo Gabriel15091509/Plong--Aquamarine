@@ -12,9 +12,9 @@ import {
   FiShield,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { usePresidents } from "../../hooks/usePresidents";
-import { useMoniteurs } from "../../hooks/useMoniteurs";
-import { useUsers } from "../../hooks/useUsers";
+import { usePresidents } from "../../hooks/President/usePresidents";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { useUsers } from "../../hooks/User/useUsers";
 import { photoUrl } from "../../utils/photoUrl";
 
 const toArray = (value) => {

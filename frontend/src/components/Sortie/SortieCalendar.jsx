@@ -32,7 +32,7 @@ import {
   differenceInDays,
 } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useSorties } from "../../hooks/useSorties";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";

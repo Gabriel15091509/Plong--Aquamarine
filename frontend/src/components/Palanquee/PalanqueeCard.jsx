@@ -10,8 +10,8 @@ import {
   FiLock,
   FiCheckCircle,
 } from "react-icons/fi";
-import { usePalanquees } from "../../hooks/usePalanquees";
-import { useAttributions } from "../../hooks/useAttributions";
+import { usePalanquees } from "../../hooks/Palanquee/usePalanquees";
+import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import SearchableSelect from "../Common/SearchableSelect";
 import { ETAT_MATERIEL_OPTIONS } from "../../utils/constants";
 

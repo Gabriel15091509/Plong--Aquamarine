@@ -16,8 +16,8 @@ import {
   FiX,
   FiActivity,
 } from "react-icons/fi";
-import { usePlongees } from "../../hooks/usePlongees";
-import { useAdherents } from "../../hooks/useAdherents";
+import { usePlongees } from "../../hooks/Plongee/usePlongees";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { TYPE_PLONGEE_OPTIONS } from "../../utils/constants";

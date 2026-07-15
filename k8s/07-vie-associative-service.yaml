@@ -1,0 +1,65 @@
+# Documents d'adhésion / certificats médicaux uploadés — PVC dédié, comme
+# `backend-uploads-pvc` pour le monolithe (voir 03-monolith.yaml).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vie-associative-uploads-pvc
+  namespace: plongee-app
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vie-associative-service
+  namespace: plongee-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: vie-associative-service }
+  template:
+    metadata:
+      labels: { app: vie-associative-service }
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: vie-associative-service
+          # Référence littérale de secours (kubectl apply -f direct, sans
+          # kustomize) — en usage normal, k8s/kustomization.yaml réécrit ce
+          # champ vers ghcr.io/.../vie-associative-service:sha-<shortsha> à
+          # chaque déploiement GitOps (voir DEPLOY.md).
+          image: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service:main
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5013
+          env:
+            - name: DB_SCHEMA
+              value: vie_associative
+          envFrom:
+            - configMapRef: { name: plongee-config }
+            - secretRef: { name: plongee-secrets }
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+          readinessProbe:
+            httpGet: { path: /health, port: 5013 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: uploads
+          persistentVolumeClaim: { claimName: vie-associative-uploads-pvc }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vie-associative-service
+  namespace: plongee-app
+spec:
+  selector: { app: vie-associative-service }
+  ports:
+    - port: 5013
+      targetPort: 5013

@@ -21,13 +21,14 @@ import {
   FiAward,
   FiDownload,
 } from "react-icons/fi";
-import { usePaiements } from "../../hooks/usePaiements";
-import { useAdherents } from "../../hooks/useAdherents";
+import { usePaiements } from "../../hooks/Paiement/usePaiements";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
-import paiementService from "../../services/paiementService";
+import paiementService from "../../services/Paiement/paiementService";
+import { STATUT_PAIEMENT } from "../../utils/constants";
 
 // Animations
 const fadeInUp = {
@@ -183,20 +184,20 @@ const PaiementDetails = () => {
     const colors = {
       Confirmé:
         "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
-      "En attente":
+      [STATUT_PAIEMENT.EN_ATTENTE]:
         "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800",
-      Annulé: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
+      [STATUT_PAIEMENT.ANNULE]: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
       Remboursé:
         "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
     };
-    return colors[statut] || colors["En attente"];
+    return colors[statut] || colors[STATUT_PAIEMENT.EN_ATTENTE];
   };
 
   const getStatutIcon = (statut) => {
     const icons = {
       Confirmé: FiCheckCircle,
-      "En attente": FiClock,
-      Annulé: FiXCircle,
+      [STATUT_PAIEMENT.EN_ATTENTE]: FiClock,
+      [STATUT_PAIEMENT.ANNULE]: FiXCircle,
       Remboursé: FiTrendingUp,
     };
     return icons[statut] || FiClock;
@@ -205,8 +206,8 @@ const PaiementDetails = () => {
   const getStatutText = (statut) => {
     const texts = {
       Confirmé: "Le paiement a été confirmé avec succès",
-      "En attente": "Le paiement est en attente de validation",
-      Annulé: "Le paiement a été annulé",
+      [STATUT_PAIEMENT.EN_ATTENTE]: "Le paiement est en attente de validation",
+      [STATUT_PAIEMENT.ANNULE]: "Le paiement a été annulé",
       Remboursé: "Le paiement a été remboursé",
     };
     return texts[statut] || "Statut inconnu";
@@ -308,7 +309,7 @@ const PaiementDetails = () => {
                 className={`p-3 rounded-full ${
                   paiement.statut === "Confirmé"
                     ? "bg-green-100 dark:bg-green-900/30"
-                    : paiement.statut === "Annulé"
+                    : paiement.statut === STATUT_PAIEMENT.ANNULE
                       ? "bg-red-100 dark:bg-red-900/30"
                       : paiement.statut === "Remboursé"
                         ? "bg-blue-100 dark:bg-blue-900/30"
@@ -319,7 +320,7 @@ const PaiementDetails = () => {
                   className={`w-7 h-7 ${
                     paiement.statut === "Confirmé"
                       ? "text-green-600 dark:text-green-400"
-                      : paiement.statut === "Annulé"
+                      : paiement.statut === STATUT_PAIEMENT.ANNULE
                         ? "text-red-600 dark:text-red-400"
                         : paiement.statut === "Remboursé"
                           ? "text-blue-600 dark:text-blue-400"

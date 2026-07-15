@@ -15,8 +15,8 @@ import {
   FiUser,
   FiFileText,
 } from "react-icons/fi";
-import { useReparations } from "../../hooks/useReparations";
-import { useMateriels } from "../../hooks/useMateriels";
+import { useReparations } from "../../hooks/Reparation/useReparations";
+import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { formatDate, formatCurrency, formatDateForInput } from "../../utils/helpers";
 

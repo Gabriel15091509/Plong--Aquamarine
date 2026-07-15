@@ -26,9 +26,9 @@ import {
   FiAnchor,
   FiBriefcase,
 } from "react-icons/fi";
-import { useAdherents } from "../../hooks/useAdherents";
-import { useAdhesions } from "../../hooks/useAdhesions";
-import { useCertificats } from "../../hooks/useCertificats";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
+import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";

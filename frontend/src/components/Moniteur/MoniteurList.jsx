@@ -13,8 +13,8 @@ import {
   FiTag,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { useMoniteurs } from "../../hooks/useMoniteurs";
-import { useUsers } from "../../hooks/useUsers";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { useUsers } from "../../hooks/User/useUsers";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 

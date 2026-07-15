@@ -28,12 +28,38 @@ export const TYPE_ADHESION_OPTIONS = [
 
 export const TYPES_ADHESION_OBLIGATOIRES = ['Club', 'FFESM', 'Assurance RC'];
 
-export const STATUT_PAIEMENT_OPTIONS = [
-  'En attente',
-  'Payé',
-  'Partiel',
-  'Annulé'
-];
+// Constantes nommées (comparaisons d'égalité dans le code) — les tableaux
+// `_OPTIONS` ci-dessous (utilisés pour peupler les <select>) en dérivent pour
+// n'avoir qu'une seule source de vérité par vocabulaire de statut.
+export const STATUT_PAIEMENT = {
+  EN_ATTENTE: 'En attente',
+  PARTIEL: 'Partiel',
+  PAYE: 'Payé',
+  ANNULE: 'Annulé',
+};
+
+export const STATUT_INSCRIPTION = {
+  CONFIRMEE: 'Confirmée',
+  LISTE_ATTENTE: "Liste d'attente",
+  EN_ATTENTE: 'En attente',
+  ANNULEE: 'Annulée',
+};
+
+export const STATUT_SORTIE = {
+  PLANIFIEE: 'Planifiée',
+  EN_COURS: 'En cours',
+  TERMINEE: 'Terminée',
+  ANNULEE: 'Annulée',
+};
+
+export const STATUT_FORMATION = {
+  EN_COURS: 'En cours',
+  TERMINEE: 'Terminée',
+  ABANDONNEE: 'Abandonnée',
+  SUSPENDUE: 'Suspendue',
+};
+
+export const STATUT_PAIEMENT_OPTIONS = Object.values(STATUT_PAIEMENT);
 
 export const MODE_PAIEMENT_OPTIONS = [
   'Espèces',
@@ -57,12 +83,7 @@ export const TYPE_SORTIE_OPTIONS = [
   'Nettoyage'
 ];
 
-export const STATUT_SORTIE_OPTIONS = [
-  'Planifiée',
-  'En cours',
-  'Terminée',
-  'Annulée'
-];
+export const STATUT_SORTIE_OPTIONS = Object.values(STATUT_SORTIE);
 
 export const TYPE_PLONGEE_OPTIONS = [
   'Loisir',
@@ -98,9 +119,4 @@ export const NIVEAU_FORMATION_OPTIONS = [
   'MF1'
 ];
 
-export const STATUT_FORMATION_OPTIONS = [
-  'En cours',
-  'Terminée',
-  'Abandonnée',
-  'Suspendue'
-];
+export const STATUT_FORMATION_OPTIONS = Object.values(STATUT_FORMATION);

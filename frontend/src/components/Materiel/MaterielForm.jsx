@@ -18,7 +18,7 @@ import {
   FiClock,
   FiHash,
 } from "react-icons/fi";
-import { useMateriels } from "../../hooks/useMateriels";
+import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import {
   CATEGORIE_MATERIEL_OPTIONS,

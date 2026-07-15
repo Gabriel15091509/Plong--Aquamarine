@@ -1,0 +1,52 @@
+{
+  "name": "gateway-service",
+  "version": "1.0.0",
+  "description": "Passerelle API (proxy + agrégation Dashboard) du club de plongée — relaie chaque domaine vers son microservice",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "lint": "eslint .",
+    "test": "node --test tests/",
+    "migrate": "node scripts/migrate.js",
+    "seed:all": "node scripts/seedAll.js",
+    "seed:all:reset": "node scripts/seedAll.js --reset",
+    "create-admin": "node scripts/createAdmin.js",
+    "create-test-alertes": "node scripts/createTestAlertes.js"
+  },
+  "keywords": [
+    "plongee",
+    "api",
+    "express",
+    "sequelize",
+    "postgresql"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@faker-js/faker": "^10.5.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.11.2",
+    "express-validator": "^7.3.2",
+    "helmet": "^7.2.0",
+    "joi": "^17.9.2",
+    "jsonwebtoken": "^9.0.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^9.0.3",
+    "pdfkit": "^0.19.1",
+    "pg": "^8.11.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.32.1",
+    "winston": "^3.9.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "nodemon": "^2.0.22",
+    "supertest": "^6.3.4"
+  }
+}

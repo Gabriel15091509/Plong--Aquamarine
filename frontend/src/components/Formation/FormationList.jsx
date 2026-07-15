@@ -14,8 +14,8 @@ import {
   FiRefreshCw,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { useFormations } from "../../hooks/useFormations";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useFormations } from "../../hooks/Formation/useFormations";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";

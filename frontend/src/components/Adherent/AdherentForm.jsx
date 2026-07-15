@@ -17,7 +17,7 @@ import {
   FiBriefcase,
   FiHeart,
 } from "react-icons/fi";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { sendWelcomeEmailIfNeeded } from "../../utils/welcomeEmail";
 

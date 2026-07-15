@@ -9,8 +9,8 @@ import {
   FiFileText,
   FiTool,
 } from "react-icons/fi";
-import { useIncidents } from "../../hooks/useIncidents";
-import { useSorties } from "../../hooks/useSorties";
+import { useIncidents } from "../../hooks/Incident/useIncidents";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import ConfirmModal from "../Common/ConfirmModal";
 import {
   FiPackage,
   FiTag,
@@ -28,10 +29,10 @@ import {
   FiPlus,
   FiDollarSign,
 } from "react-icons/fi";
-import { useMateriels } from "../../hooks/useMateriels";
-import { useAttributions } from "../../hooks/useAttributions";
-import { useReparations } from "../../hooks/useReparations";
-import { useAdherents } from "../../hooks/useAdherents";
+import { useMateriels } from "../../hooks/Materiel/useMateriels";
+import { useAttributions } from "../../hooks/Attribution/useAttributions";
+import { useReparations } from "../../hooks/Reparation/useReparations";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
@@ -562,49 +563,23 @@ const MaterielDetails = () => {
       </motion.div>
 
       {/* Modal suppression */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", damping: 25 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800"
-          >
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
-              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
-                <FiAlertCircle className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold">Confirmer la suppression</h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-              Êtes-vous sûr de vouloir supprimer ce matériel{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {materiel.marque} {materiel.modele}
-              </span>
-              ?
-              <br />
-              <span className="text-sm text-red-500 font-medium">
-                ⚠️ Cette action est irréversible.
-              </span>
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35"
-              >
-                <FiTrash2 className="w-4 h-4 inline mr-2" />
-                Confirmer la suppression
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        icon={FiAlertCircle}
+        message={
+          <>
+            Êtes-vous sûr de vouloir supprimer ce matériel{" "}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {materiel.marque} {materiel.modele}
+            </span>
+            ?
+          </>
+        }
+        warningText="⚠️ Cette action est irréversible."
+        confirmLabel="Confirmer la suppression"
+        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+      />
     </motion.div>
   );
 };

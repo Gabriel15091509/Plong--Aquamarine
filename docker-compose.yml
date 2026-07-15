@@ -1,0 +1,136 @@
+# Environnement local de validation des microservices, avant tout passage à
+# Kubernetes (voir le plan de découpage en microservices). Le frontend
+# continue de tourner en `npm run dev` (Vite) en dehors de ce compose : seule
+# la partie backend est containerisée pour l'instant.
+#
+# Arborescence : `backend/gateway-service/` = passerelle API (proxy +
+# agrégation Dashboard, ancien monolithe) ; `backend/<service>/` = chaque
+# microservice de domaine (formation-service, materiel-service, ...).
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: noumsnahitan
+      POSTGRES_DB: plongee_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - plongee_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  gateway-service:
+    build: ./backend/gateway-service
+    restart: unless-stopped
+    env_file: ./backend/gateway-service/.env
+    environment:
+      DB_HOST: postgres
+      FORMATION_SERVICE_URL: http://formation-service:5010
+      MATERIEL_SERVICE_URL: http://materiel-service:5011
+      FINANCE_SERVICE_URL: http://finance-service:5012
+      VIE_ASSOCIATIVE_SERVICE_URL: http://vie-associative-service:5013
+      IDENTITE_SERVICE_URL: http://identite-service:5014
+      ACTIVITES_SERVICE_URL: http://activites-service:5015
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  identite-service:
+    build: ./backend/identite-service
+    restart: unless-stopped
+    env_file: ./backend/identite-service/.env
+    environment:
+      DB_HOST: postgres
+      FINANCE_SERVICE_URL: http://finance-service:5012
+      VIE_ASSOCIATIVE_SERVICE_URL: http://vie-associative-service:5013
+    ports:
+      - "5014:5014"
+    volumes:
+      - ./backend/identite-service/uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  activites-service:
+    build: ./backend/activites-service
+    restart: unless-stopped
+    env_file: ./backend/activites-service/.env
+    environment:
+      DB_HOST: postgres
+      IDENTITE_SERVICE_URL: http://identite-service:5014/api
+      MATERIEL_SERVICE_URL: http://materiel-service:5011
+      FINANCE_SERVICE_URL: http://finance-service:5012
+      VIE_ASSOCIATIVE_SERVICE_URL: http://vie-associative-service:5013
+    ports:
+      - "5015:5015"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  formation-service:
+    build: ./backend/formation-service
+    restart: unless-stopped
+    env_file: ./backend/formation-service/.env
+    environment:
+      DB_HOST: postgres
+      IDENTITE_SERVICE_URL: http://identite-service:5014/api
+      PAIEMENT_SERVICE_URL: http://finance-service:5012/api
+    ports:
+      - "5010:5010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  materiel-service:
+    build: ./backend/materiel-service
+    restart: unless-stopped
+    env_file: ./backend/materiel-service/.env
+    environment:
+      DB_HOST: postgres
+    ports:
+      - "5011:5011"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  finance-service:
+    build: ./backend/finance-service
+    restart: unless-stopped
+    env_file: ./backend/finance-service/.env
+    environment:
+      DB_HOST: postgres
+      IDENTITE_SERVICE_URL: http://identite-service:5014/api
+      ADHESION_SERVICE_URL: http://vie-associative-service:5013
+      INSCRIPTION_SERVICE_URL: http://activites-service:5015
+      FORMATION_SERVICE_URL: http://formation-service:5010
+    ports:
+      - "5012:5012"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  vie-associative-service:
+    build: ./backend/vie-associative-service
+    restart: unless-stopped
+    env_file: ./backend/vie-associative-service/.env
+    environment:
+      DB_HOST: postgres
+      IDENTITE_SERVICE_URL: http://identite-service:5014/api
+      FINANCE_SERVICE_URL: http://finance-service:5012
+    ports:
+      - "5013:5013"
+    volumes:
+      - ./backend/vie-associative-service/uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  plongee_pgdata:
