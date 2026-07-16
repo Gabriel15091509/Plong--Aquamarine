@@ -19,10 +19,11 @@ import {
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSeances } from "../../hooks/Formation/useSeances";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { TYPE_PLONGEE_OPTIONS } from "../../utils/constants";
-import { formatDate } from "../../utils/helpers";
+import { formatDate, formatDateTime } from "../../utils/helpers";
 
 const VISIBILITE_OPTIONS = [
   "Très bonne",
@@ -46,9 +47,11 @@ const PlongeeForm = () => {
   const { useGetById, useCreate, useUpdate } = usePlongees();
   const { useGetAll } = useAdherents();
   const { useGetPlanifieesByAdherent } = useSeances();
+  const { useGetAll: useGetAllSorties } = useSorties();
 
   const { data, isLoading: loadingData } = useGetById(id);
   const { data: adherentsData, isLoading: loadingAdherents } = useGetAll();
+  const { data: sortiesData, isLoading: loadingSorties } = useGetAllSorties();
 
   const create = useCreate();
   const update = useUpdate();
@@ -58,6 +61,7 @@ const PlongeeForm = () => {
 
   const [formData, setFormData] = useState({
     num_adherent: "",
+    id_sortie: "",
     date: "",
     profondeur_max: "",
     duree: "",
@@ -78,6 +82,7 @@ const PlongeeForm = () => {
       const p = data.data;
       setFormData({
         num_adherent: p.num_adherent || "",
+        id_sortie: p.id_sortie || "",
         date: p.date ? p.date.split("T")[0] : "",
         profondeur_max: p.profondeur_max || "",
         duree: p.duree || "",
@@ -107,6 +112,7 @@ const PlongeeForm = () => {
     const newErrors = {};
     if (!formData.num_adherent)
       newErrors.num_adherent = "L'adhérent est requis";
+    if (!formData.id_sortie) newErrors.id_sortie = "La sortie est requise";
     if (!formData.date) newErrors.date = "La date est requise";
     if (!formData.profondeur_max || formData.profondeur_max <= 0)
       newErrors.profondeur_max = "La profondeur est requise";
@@ -196,6 +202,30 @@ const PlongeeForm = () => {
               getOptionValue={(a) => a.num_adherent}
               placeholder="Rechercher un adhérent..."
               error={errors.num_adherent}
+              required={true}
+            />
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <SearchableSelect
+              label="Sortie *"
+              value={formData.id_sortie}
+              onChange={(value) => {
+                setFormData((prev) => ({ ...prev, id_sortie: value }));
+                if (errors.id_sortie)
+                  setErrors((prev) => ({ ...prev, id_sortie: "" }));
+              }}
+              options={sortiesData?.data || []}
+              getOptionLabel={(s) =>
+                `${s.type} — ${s.site} — ${formatDateTime(s.date_heure)}`
+              }
+              getOptionValue={(s) => s.id_sortie}
+              placeholder={
+                loadingSorties
+                  ? "Chargement des sorties..."
+                  : "Rechercher une sortie..."
+              }
+              error={errors.id_sortie}
               required={true}
             />
           </motion.div>
