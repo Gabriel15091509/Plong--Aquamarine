@@ -28,4 +28,22 @@ async function getTresorierIdForUser(user) {
   return body.data ? body.data.id_tresorier : null;
 }
 
-module.exports = { getAdherentById, getTresorierIdForUser };
+// Appelé quand une formation est marquée terminée (toutes les compétences de
+// la check-list validées) pour répercuter le niveau obtenu sur l'adhérent.
+async function updateNiveau(numAdherent, niveau, authHeader) {
+  const response = await fetch(`${BASE_URL}/adherents/${numAdherent}/niveau`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(authHeader ? { Authorization: authHeader } : {}),
+    },
+    body: JSON.stringify({ niveau }),
+  });
+  if (!response.ok) {
+    throw new Error(`identite-service: échec mise à jour niveau adhérent ${numAdherent} (${response.status})`);
+  }
+  const body = await response.json();
+  return body.data;
+}
+
+module.exports = { getAdherentById, getTresorierIdForUser, updateNiveau };

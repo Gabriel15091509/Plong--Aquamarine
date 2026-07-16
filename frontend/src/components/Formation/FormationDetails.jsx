@@ -28,6 +28,7 @@ import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import ConfirmModal from "../Common/ConfirmModal";
 import FormationCompetences from "./FormationCompetences";
+import FormationSeances from "./FormationSeances";
 import FormationPaiementModal from "./FormationPaiementModal";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 import { STATUT_PAIEMENT } from "../../utils/constants";
@@ -405,6 +406,11 @@ const FormationDetails = () => {
             value={formatDate(formation.date_fin_prevue)}
           />
           <InfoItem
+            icon={FiCalendar}
+            label="Date de passage du brevet"
+            value={formatDate(formation.date_examen_brevet)}
+          />
+          <InfoItem
             icon={FiClock}
             label="Statut"
             value={<StatusBadge status={formation.statut} />}
@@ -476,6 +482,9 @@ const FormationDetails = () => {
           </div>
         </motion.div>
       )}
+
+      {/* Séances de la formation */}
+      <FormationSeances formation={formation} />
 
       {/* Compétences de la formation */}
       <FormationCompetences formation={formation} user={user} />

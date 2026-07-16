@@ -90,6 +90,12 @@ router.patch(
   adherentController.incrementPlongees.bind(adherentController),
 );
 
+router.patch(
+  "/adherents/:id/niveau",
+  AuthMiddleware.authenticate,
+  adherentController.updateNiveau.bind(adherentController),
+);
+
 router.delete(
   "/adherents/:id",
   AuthMiddleware.authenticate,

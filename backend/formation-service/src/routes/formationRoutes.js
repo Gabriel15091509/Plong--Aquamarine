@@ -37,12 +37,6 @@ router.put(
 );
 
 router.patch(
-  "/:id/increment-sessions",
-  AuthMiddleware.authenticate,
-  formationController.incrementSessions.bind(formationController),
-);
-
-router.patch(
   "/:id/complete",
   AuthMiddleware.authenticate,
   formationController.completeFormation.bind(formationController),

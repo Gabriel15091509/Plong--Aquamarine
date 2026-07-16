@@ -108,21 +108,6 @@ export const useFormations = () => {
     });
   };
 
-  const useIncrementSessions = () => {
-    return useMutation({
-      mutationFn: (id) => formationService.incrementSessions(id),
-      onSuccess: (response) => {
-        queryClient.invalidateQueries(["formations"]);
-        toast.success(response.message || "Séance incrémentée avec succès");
-      },
-      onError: (error) => {
-        toast.error(
-          error.response?.data?.message || "Erreur lors de l'incrémentation",
-        );
-      },
-    });
-  };
-
   const useEnregistrerPaiement = () => {
     return useMutation({
       mutationFn: ({ id, data }) => formationService.enregistrerPaiement(id, data),
@@ -150,7 +135,6 @@ export const useFormations = () => {
     useUpdate,
     useRemove,
     useComplete,
-    useIncrementSessions,
     useEnregistrerPaiement,
   };
 };

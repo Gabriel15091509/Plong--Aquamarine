@@ -82,6 +82,7 @@ services:
       DB_HOST: postgres
       IDENTITE_SERVICE_URL: http://identite-service:5014/api
       PAIEMENT_SERVICE_URL: http://finance-service:5012/api
+      VIE_ASSOCIATIVE_SERVICE_URL: http://vie-associative-service:5013
     ports:
       - "5010:5010"
     depends_on:
