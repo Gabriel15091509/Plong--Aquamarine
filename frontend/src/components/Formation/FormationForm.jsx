@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  FiUser,
   FiAward,
   FiCalendar,
   FiClock,
@@ -17,6 +16,7 @@ import {
 } from "react-icons/fi";
 import { useFormations } from "../../hooks/Formation/useFormations";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import {
@@ -38,9 +38,11 @@ const FormationForm = () => {
 
   const { useGetById, useCreate, useUpdate } = useFormations();
   const { useGetAll } = useAdherents();
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
 
   const { data, isLoading: loadingData } = useGetById(id);
   const { data: adherentsData, isLoading: loadingAdherents } = useGetAll();
+  const { data: moniteursData, isLoading: loadingMoniteurs } = useGetAllMoniteurs();
 
   const create = useCreate();
   const update = useUpdate();
@@ -51,6 +53,7 @@ const FormationForm = () => {
 
   const [formData, setFormData] = useState({
     num_adherent: "",
+    id_moniteur: "",
     niveau_vise: "N1",
     date_debut: "",
     date_fin_prevue: "",
@@ -68,6 +71,7 @@ const FormationForm = () => {
       const f = data.data;
       setFormData({
         num_adherent: f.num_adherent || "",
+        id_moniteur: f.id_moniteur || "",
         niveau_vise: f.niveau_vise || "N1",
         date_debut: f.date_debut ? f.date_debut.split("T")[0] : "",
         date_fin_prevue: f.date_fin_prevue
@@ -99,6 +103,8 @@ const FormationForm = () => {
     const newErrors = {};
     if (!formData.num_adherent)
       newErrors.num_adherent = "L'adhérent est requis";
+    if (!formData.id_moniteur)
+      newErrors.id_moniteur = "Le moniteur responsable est requis";
     if (!formData.niveau_vise) newErrors.niveau_vise = "Le niveau est requis";
     if (!formData.date_debut)
       newErrors.date_debut = "La date de début est requise";
@@ -130,7 +136,12 @@ const FormationForm = () => {
   };
 
   if (editMode && loadingData) return <LoadingSpinner />;
-  if (loadingAdherents) return <LoadingSpinner />;
+  if (loadingAdherents || loadingMoniteurs) return <LoadingSpinner />;
+
+  const moniteurOptions = (moniteursData?.data || []).map((m) => ({
+    ...m,
+    label: m.user?.name || `Moniteur #${m.id_moniteur}`,
+  }));
 
   const inputClasses = (fieldName) =>
     `w-full pl-4 pr-4 py-2.5 text-sm border rounded-lg focus:outline-none transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
@@ -190,6 +201,24 @@ const FormationForm = () => {
               getOptionValue={(a) => a.num_adherent}
               placeholder="Rechercher un adhérent..."
               error={errors.num_adherent}
+              required={true}
+            />
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <SearchableSelect
+              label="Moniteur responsable *"
+              value={formData.id_moniteur}
+              onChange={(value) => {
+                setFormData((prev) => ({ ...prev, id_moniteur: value }));
+                if (errors.id_moniteur)
+                  setErrors((prev) => ({ ...prev, id_moniteur: "" }));
+              }}
+              options={moniteurOptions}
+              getOptionLabel={(m) => m.label}
+              getOptionValue={(m) => m.id_moniteur}
+              placeholder="Rechercher un moniteur..."
+              error={errors.id_moniteur}
               required={true}
             />
           </motion.div>
