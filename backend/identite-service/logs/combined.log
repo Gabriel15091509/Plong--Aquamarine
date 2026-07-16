@@ -810,3 +810,4 @@
 {"level":"info","message":"127.0.0.1 - - [14/Jul/2026:18:24:35 +0000] \"GET /api/adherents/ADH-2026-0012 HTTP/1.1\" 200 654 \"-\" \"node\"","service":"identite-service","timestamp":"2026-07-14 21:24:35"}
 {"level":"info","message":"127.0.0.1 - - [14/Jul/2026:18:24:35 +0000] \"GET /api/adherents/ADH-2026-0038 HTTP/1.1\" 200 627 \"-\" \"node\"","service":"identite-service","timestamp":"2026-07-14 21:24:35"}
 {"level":"info","message":"::ffff:127.0.0.1 - - [15/Jul/2026:07:13:00 +0000] \"GET /health HTTP/1.1\" 200 103 \"-\" \"-\"","service":"identite-service","timestamp":"2026-07-15 10:13:00"}
+{"level":"info","message":"::ffff:127.0.0.1 - - [16/Jul/2026:07:12:25 +0000] \"GET /health HTTP/1.1\" 200 102 \"-\" \"-\"","service":"identite-service","timestamp":"2026-07-16 10:12:25"}

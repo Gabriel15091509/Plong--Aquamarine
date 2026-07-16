@@ -39,6 +39,12 @@ spec:
               service:
                 name: formation-service
                 port: { number: 5010 }
+          - path: /api/seances
+            pathType: Prefix
+            backend:
+              service:
+                name: formation-service
+                port: { number: 5010 }
           - path: /api/materiels
             pathType: Prefix
             backend:

@@ -99,25 +99,11 @@ class FormationController extends BaseController {
     }
   }
 
-  async incrementSessions(req, res, next) {
-    try {
-      const result = await this.formationService.incrementSessions(
-        req.params.id,
-      );
-      res.json({
-        success: true,
-        data: result,
-        message: "Nombre de séances incrémenté",
-      });
-    } catch (error) {
-      next(withStatus(error, 400));
-    }
-  }
-
   async completeFormation(req, res, next) {
     try {
       const result = await this.formationService.completeFormation(
         req.params.id,
+        req.headers.authorization,
       );
       res.json({
         success: true,

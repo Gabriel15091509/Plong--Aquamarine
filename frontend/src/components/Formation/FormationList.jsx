@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -22,8 +23,7 @@ import { photoUrl } from "../../utils/photoUrl";
 
 // TODO: Ajouter un filtre par niveau de formation
 const FormationList = () => {
-  const { useGetAll, useRemove, useComplete, useIncrementSessions } =
-    useFormations();
+  const { useGetAll, useRemove, useComplete } = useFormations();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
   const { data, isLoading, error, refetch } = useGetAll();
@@ -32,7 +32,6 @@ const FormationList = () => {
 
   const remove = useRemove();
   const complete = useComplete();
-  const incrementSessions = useIncrementSessions();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
@@ -110,19 +109,10 @@ const FormationList = () => {
       refetch();
       setCompleteModal(null);
     } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Erreur lors de la finalisation de la formation",
+      );
       console.error("Complete error:", error);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleIncrementSession = async (id) => {
-    try {
-      setActionLoading(`session-${id}`);
-      await incrementSessions.mutateAsync(id);
-      refetch();
-    } catch (error) {
-      console.error("Session error:", error);
     } finally {
       setActionLoading(null);
     }
@@ -229,8 +219,7 @@ const FormationList = () => {
               const formationId = formation.id_formation || formation.id;
               const isLoading =
                 actionLoading === `delete-${formationId}` ||
-                actionLoading === `complete-${formationId}` ||
-                actionLoading === `session-${formationId}`;
+                actionLoading === `complete-${formationId}`;
 
               return (
                 <motion.div
@@ -299,24 +288,6 @@ const FormationList = () => {
 
                         {/* Actions */}
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {/* Ajouter séance */}
-                          {formation.statut === "En cours" && (
-                            <button
-                              onClick={() =>
-                                handleIncrementSession(formationId)
-                              }
-                              disabled={isLoading}
-                              className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors disabled:opacity-50"
-                              title="Ajouter une séance"
-                            >
-                              {actionLoading === `session-${formationId}` ? (
-                                <FiRefreshCw className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <FiClock className="w-4 h-4" />
-                              )}
-                            </button>
-                          )}
-
                           {/* Terminer */}
                           {formation.statut === "En cours" && (
                             <button

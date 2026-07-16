@@ -283,6 +283,29 @@ class AdherentController extends BaseController {
     }
   }
 
+  async updateNiveau(req, res, next) {
+    try {
+      const { niveau } = req.body;
+      if (!niveau) {
+        return res.status(400).json({
+          success: false,
+          message: "Le niveau est requis",
+        });
+      }
+      const result = await this.adherentService.updateNiveau(
+        req.params.id,
+        niveau,
+      );
+      res.json({
+        success: true,
+        data: result,
+        message: "Niveau mis à jour avec succès",
+      });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async validateBeforeCreate(req, res, next) {
     try {
       const errors = await this.adherentService.validateAdherentData(req.body);

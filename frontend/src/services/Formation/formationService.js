@@ -41,11 +41,6 @@ class FormationService {
     return response.data;
   }
 
-  async incrementSessions(id) {
-    const response = await api.patch(`/formations/${id}/increment-sessions`);
-    return response.data;
-  }
-
   async complete(id) {
     const response = await api.patch(`/formations/${id}/complete`);
     return response.data;

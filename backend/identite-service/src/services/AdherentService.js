@@ -152,6 +152,19 @@ class AdherentService extends BaseService {
     return adherent;
   }
 
+  // Appelé par formation-service (résolu par HTTP) à la fin d'une formation
+  // dont toutes les compétences de la check-list sont validées.
+  async updateNiveau(num_adherent, niveau) {
+    const adherent = await this.repository.findById(num_adherent);
+    if (!adherent) throw new Error("Adhérent non trouvé");
+
+    adherent.niveau = niveau;
+    adherent.date_obtention_niveau = new Date();
+    await adherent.save();
+
+    return adherent;
+  }
+
   async getAdherentStats() {
     const total = await this.repository.count();
     const active = await this.repository.count({ statut: "Actif" });

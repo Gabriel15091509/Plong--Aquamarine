@@ -1,6 +1,7 @@
 const { sequelize } = require("../config/database");
 const Formation = require("./Formation");
 const Competence = require("./Competence");
+const Seance = require("./Seance");
 
 // Relation interne au domaine Formation — reste une vraie FK Postgres
 // puisque les deux tables vivent dans le même schéma `formation`.
@@ -13,4 +14,13 @@ Competence.belongsTo(Formation, {
   as: "formation",
 });
 
-module.exports = { sequelize, Formation, Competence };
+Formation.hasMany(Seance, {
+  foreignKey: "id_formation",
+  as: "seances",
+});
+Seance.belongsTo(Formation, {
+  foreignKey: "id_formation",
+  as: "formation",
+});
+
+module.exports = { sequelize, Formation, Competence, Seance };

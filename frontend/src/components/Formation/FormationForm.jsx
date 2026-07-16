@@ -54,6 +54,7 @@ const FormationForm = () => {
     niveau_vise: "N1",
     date_debut: "",
     date_fin_prevue: "",
+    date_examen_brevet: "",
     statut: "En cours",
     nb_seances_realisees: 0,
     commentaire_moniteur: "",
@@ -71,6 +72,9 @@ const FormationForm = () => {
         date_debut: f.date_debut ? f.date_debut.split("T")[0] : "",
         date_fin_prevue: f.date_fin_prevue
           ? f.date_fin_prevue.split("T")[0]
+          : "",
+        date_examen_brevet: f.date_examen_brevet
+          ? f.date_examen_brevet.split("T")[0]
           : "",
         statut: f.statut || "En cours",
         nb_seances_realisees: f.nb_seances_realisees || 0,
@@ -260,6 +264,24 @@ const FormationForm = () => {
                 {errors.date_fin_prevue}
               </p>
             )}
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiAward className="w-4 h-4 text-gray-400" />
+                Date de passage du brevet
+              </span>
+            </label>
+            <input
+              type="date"
+              name="date_examen_brevet"
+              value={formData.date_examen_brevet}
+              onChange={handleChange}
+              onFocus={() => handleFocus("date_examen_brevet")}
+              onBlur={handleBlur}
+              className={inputClasses("date_examen_brevet")}
+            />
           </motion.div>
 
           <motion.div {...fadeInUp}>

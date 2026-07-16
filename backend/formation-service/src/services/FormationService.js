@@ -1,7 +1,9 @@
 const BaseService = require("./BaseService");
 const FormationRepository = require("../repositories/FormationRepository");
+const CompetenceRepository = require("../repositories/CompetenceRepository");
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const paiementClient = require("../utils/serviceClients/paiementClient");
+const vieAssociativeClient = require("../utils/serviceClients/vieAssociativeClient");
 const { NIVEAU_ORDER, computeStatutPaiement } = require("../utils/roleScope");
 const { sendFormationPaymentEmail } = require("../utils/email");
 
@@ -15,6 +17,16 @@ const PREREQUIS_FORMATION = {
   MF1: { niveauMin: "Niveau 4", nbPlongeesMin: 150, ageMin: 18 },
 };
 
+// Niveau adhérent obtenu une fois la formation visée terminée (voir
+// NIVEAU_ORDER dans roleScope.js pour les valeurs acceptées côté identite-service).
+const NIVEAU_OBTENU = {
+  N1: "Niveau 1",
+  N2: "Niveau 2",
+  N3: "Niveau 3",
+  N4: "Niveau 4",
+  MF1: "Moniteur",
+};
+
 function getAge(dateNaissance) {
   if (!dateNaissance) return 0;
   const diff = Date.now() - new Date(dateNaissance).getTime();
@@ -26,6 +38,7 @@ class FormationService extends BaseService {
     const repository = new FormationRepository();
     super(repository);
     this.formationRepository = repository;
+    this.competenceRepository = new CompetenceRepository();
   }
 
   async getAll() {
@@ -141,6 +154,16 @@ class FormationService extends BaseService {
     if (getAge(adherent.date_naissance) < prerequis.ageMin) {
       errors.push(`Âge minimum requis : ${prerequis.ageMin} ans`);
     }
+
+    // Dossier d'adhésion complet requis (Club, FFESM, Assurance RC) — même
+    // règle que pour une inscription à une sortie (voir
+    // InscriptionService.js côté activites-service). Adhesion vit dans
+    // vie-associative-service : vérifiée par HTTP.
+    const dossier = await vieAssociativeClient.checkDossierValidity(num_adherent, authHeader);
+    if (!dossier.valid) {
+      errors.push(`Dossier d'adhésion incomplet (manquant : ${dossier.missing.join(", ")})`);
+    }
+
     return errors;
   }
 
@@ -271,17 +294,31 @@ class FormationService extends BaseService {
     return await this.formationRepository.update(id, data);
   }
 
-  async incrementSessions(id) {
+  // Ne peut terminer une formation que si toutes les compétences déjà
+  // saisies sont acquises (check-list du CDC), puis répercute le niveau
+  // obtenu sur l'adhérent (identite-service, résolu par HTTP) avant de
+  // marquer la formation "Terminée" en local — l'appel externe est fait en
+  // premier pour éviter une formation marquée terminée sans mise à jour du
+  // niveau si identite-service est injoignable.
+  async completeFormation(id, authHeader) {
     const formation = await this.getById(id);
     if (!formation) throw new Error("Formation non trouvée");
-    formation.nb_seances_realisees += 1;
-    await formation.save();
-    return formation;
-  }
 
-  async completeFormation(id) {
-    const formation = await this.getById(id);
-    if (!formation) throw new Error("Formation non trouvée");
+    const competences = await this.competenceRepository.findByFormation(id);
+    const nonAcquises = competences.filter((c) => !c.acquise);
+    if (nonAcquises.length > 0) {
+      throw new Error(
+        `Impossible de terminer la formation : ${nonAcquises.length} compétence(s) non validée(s) (${nonAcquises
+          .map((c) => c.libelle)
+          .join(", ")})`,
+      );
+    }
+
+    const niveauObtenu = NIVEAU_OBTENU[formation.niveau_vise];
+    if (niveauObtenu) {
+      await identiteClient.updateNiveau(formation.num_adherent, niveauObtenu, authHeader);
+    }
+
     formation.statut = "Terminée";
     await formation.save();
     return formation;

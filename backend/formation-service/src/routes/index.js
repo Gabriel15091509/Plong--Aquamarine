@@ -3,9 +3,11 @@ const router = express.Router();
 
 const formationRoutes = require("./formationRoutes");
 const competenceRoutes = require("./competenceRoutes");
+const seanceRoutes = require("./seanceRoutes");
 
 router.use("/formations", formationRoutes);
 router.use("/competences", competenceRoutes);
+router.use("/seances", seanceRoutes);
 
 router.get("/", (req, res) => {
   res.json({
@@ -15,6 +17,7 @@ router.get("/", (req, res) => {
     endpoints: {
       formations: "/api/formations",
       competences: "/api/competences",
+      seances: "/api/seances",
     },
   });
 });

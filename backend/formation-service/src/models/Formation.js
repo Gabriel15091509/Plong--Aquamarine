@@ -37,6 +37,10 @@ const Formation = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    date_examen_brevet: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
     statut: {
       type: DataTypes.STRING(20),
       allowNull: false,
