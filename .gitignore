@@ -12,3 +12,9 @@ backend/*/.env
 
 # Secrets Kubernetes (générés localement à partir de k8s/secret.example.yaml)
 k8s/secret.yaml
+
+# Logs (générés localement à l'exécution, ne doivent pas être suivis)
+backend/*/logs/
+backend/*/*.log
+frontend/*.log
+*.log
