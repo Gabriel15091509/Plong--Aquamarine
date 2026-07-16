@@ -18,9 +18,11 @@ import {
 } from "react-icons/fi";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useSeances } from "../../hooks/Formation/useSeances";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { TYPE_PLONGEE_OPTIONS } from "../../utils/constants";
+import { formatDate } from "../../utils/helpers";
 
 const VISIBILITE_OPTIONS = [
   "Très bonne",
@@ -43,6 +45,7 @@ const PlongeeForm = () => {
 
   const { useGetById, useCreate, useUpdate } = usePlongees();
   const { useGetAll } = useAdherents();
+  const { useGetPlanifieesByAdherent } = useSeances();
 
   const { data, isLoading: loadingData } = useGetById(id);
   const { data: adherentsData, isLoading: loadingAdherents } = useGetAll();
@@ -63,7 +66,12 @@ const PlongeeForm = () => {
     type_plongee: "Loisir",
     observations_faune: "",
     lien_photos: "",
+    id_seance: "",
   });
+
+  const { data: seancesPlanifieesData } = useGetPlanifieesByAdherent(
+    formData.type_plongee === "Formation" ? formData.num_adherent : null,
+  );
 
   useEffect(() => {
     if (editMode && id && data?.data) {
@@ -78,6 +86,7 @@ const PlongeeForm = () => {
         type_plongee: p.type_plongee || "Loisir",
         observations_faune: p.observations_faune || "",
         lien_photos: p.lien_photos || "",
+        id_seance: p.id_seance || "",
       });
     }
   }, [editMode, id, data]);
@@ -313,7 +322,16 @@ const PlongeeForm = () => {
             <select
               name="type_plongee"
               value={formData.type_plongee}
-              onChange={handleChange}
+              onChange={(e) => {
+                const { value } = e.target;
+                setFormData((prev) => ({
+                  ...prev,
+                  type_plongee: value,
+                  id_seance: value === "Formation" ? prev.id_seance : "",
+                }));
+                if (errors.type_plongee)
+                  setErrors((prev) => ({ ...prev, type_plongee: "" }));
+              }}
               onFocus={() => handleFocus("type_plongee")}
               onBlur={handleBlur}
               className={inputClasses("type_plongee")}
@@ -330,6 +348,33 @@ const PlongeeForm = () => {
               </p>
             )}
           </motion.div>
+
+          {formData.type_plongee === "Formation" && (
+            <motion.div {...fadeInUp}>
+              <SearchableSelect
+                label="Séance de formation liée (optionnel)"
+                value={formData.id_seance}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, id_seance: value }))
+                }
+                options={seancesPlanifieesData?.data || []}
+                getOptionLabel={(s) =>
+                  `${s.formation?.niveau_vise || "Formation"} — ${formatDate(s.date_seance)}`
+                }
+                getOptionValue={(s) => s.id_seance}
+                placeholder={
+                  formData.num_adherent
+                    ? "Rechercher une séance planifiée..."
+                    : "Sélectionnez d'abord un adhérent"
+                }
+                disabled={!formData.num_adherent}
+              />
+              <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+                Si cette plongée valide une séance pratique planifiée, la séance
+                sera marquée &quot;Réalisée&quot; lors de la validation de la plongée.
+              </p>
+            </motion.div>
+          )}
 
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>

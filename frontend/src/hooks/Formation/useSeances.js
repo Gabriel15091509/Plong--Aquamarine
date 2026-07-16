@@ -14,6 +14,24 @@ export const useSeances = () => {
     });
   };
 
+  const useGetById = (id) => {
+    return useQuery({
+      queryKey: ["seances", id],
+      queryFn: () => seanceService.getById(id),
+      enabled: !!id,
+      staleTime: 5 * 60 * 1000,
+    });
+  };
+
+  const useGetPlanifieesByAdherent = (numAdherent) => {
+    return useQuery({
+      queryKey: ["seances", "adherent", numAdherent, "planifiees"],
+      queryFn: () => seanceService.getPlanifieesByAdherent(numAdherent),
+      enabled: !!numAdherent,
+      staleTime: 2 * 60 * 1000,
+    });
+  };
+
   const useGetEncadrementByMoniteur = (idMoniteur) => {
     return useQuery({
       queryKey: ["seances", "moniteur", idMoniteur, "encadrement"],
@@ -73,6 +91,8 @@ export const useSeances = () => {
 
   return {
     useGetByFormation,
+    useGetById,
+    useGetPlanifieesByAdherent,
     useGetEncadrementByMoniteur,
     useCreate,
     useUpdateStatut,

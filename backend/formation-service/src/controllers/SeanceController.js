@@ -23,6 +23,20 @@ class SeanceController extends BaseController {
     }
   }
 
+  async getPlanifieesByAdherent(req, res, next) {
+    try {
+      const { num_adherent } = req.params;
+      const results = await this.seanceService.getPlanifieesByAdherent(num_adherent);
+      res.json({
+        success: true,
+        data: results,
+        count: results.length,
+      });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async getEncadrementByMoniteur(req, res, next) {
     try {
       const { id_moniteur } = req.params;

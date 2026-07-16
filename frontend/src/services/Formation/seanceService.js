@@ -6,6 +6,16 @@ class SeanceService {
     return response.data;
   }
 
+  async getById(id) {
+    const response = await api.get(`/seances/${id}`);
+    return response.data;
+  }
+
+  async getPlanifieesByAdherent(numAdherent) {
+    const response = await api.get(`/seances/adherent/${numAdherent}/planifiees`);
+    return response.data;
+  }
+
   async create(data) {
     const response = await api.post('/seances', data);
     return response.data;

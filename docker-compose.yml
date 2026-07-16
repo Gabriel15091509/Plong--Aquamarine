@@ -68,6 +68,7 @@ services:
       MATERIEL_SERVICE_URL: http://materiel-service:5011
       FINANCE_SERVICE_URL: http://finance-service:5012
       VIE_ASSOCIATIVE_SERVICE_URL: http://vie-associative-service:5013
+      FORMATION_SERVICE_URL: http://formation-service:5010
     ports:
       - "5015:5015"
     depends_on:
