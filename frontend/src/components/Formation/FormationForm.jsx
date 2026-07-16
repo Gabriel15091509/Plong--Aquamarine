@@ -23,6 +23,7 @@ import {
   NIVEAU_FORMATION_OPTIONS,
   STATUT_FORMATION_OPTIONS,
   MODE_PAIEMENT_OPTIONS,
+  APPRECIATION_MONITEUR_OPTIONS,
 } from "../../utils/constants";
 
 const fadeInUp = {
@@ -61,6 +62,7 @@ const FormationForm = () => {
     statut: "En cours",
     nb_seances_realisees: 0,
     commentaire_moniteur: "",
+    appreciation_moniteur: "",
     montant_total: "",
     montant_paye: "",
     mode: "Espèces",
@@ -83,6 +85,7 @@ const FormationForm = () => {
         statut: f.statut || "En cours",
         nb_seances_realisees: f.nb_seances_realisees || 0,
         commentaire_moniteur: f.commentaire_moniteur || "",
+        appreciation_moniteur: f.appreciation_moniteur || "",
         montant_total: f.montant_total ?? "",
         montant_paye: f.montant_paye ?? "",
         mode: "Espèces",
@@ -426,6 +429,30 @@ const FormationForm = () => {
               min="0"
               placeholder="0"
             />
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiCheckCircle className="w-4 h-4 text-gray-400" />
+                Appréciation du moniteur
+              </span>
+            </label>
+            <select
+              name="appreciation_moniteur"
+              value={formData.appreciation_moniteur}
+              onChange={handleChange}
+              onFocus={() => handleFocus("appreciation_moniteur")}
+              onBlur={handleBlur}
+              className={inputClasses("appreciation_moniteur")}
+            >
+              <option value="">Non évaluée</option>
+              {APPRECIATION_MONITEUR_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
           </motion.div>
 
           <motion.div {...fadeInUp} className="md:col-span-2">

@@ -28,8 +28,14 @@ class MoniteurRepository extends BaseRepository {
     });
   }
 
-  async findDisponibles() {
-    return await this.model.findAll();
+  async findDisponibles(jour) {
+    if (!jour) return await this.findAll();
+    const moniteurs = await this.findAll();
+    return moniteurs.filter((moniteur) => {
+      const disponibilites = moniteur.disponibilites;
+      if (!disponibilites || !Array.isArray(disponibilites)) return false;
+      return disponibilites.some((d) => d.toLowerCase().includes(jour.toLowerCase()));
+    });
   }
 }
 

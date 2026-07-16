@@ -474,8 +474,8 @@ const FormationDetails = () => {
         </SectionCard>
       </motion.div>
 
-      {/* Commentaire du moniteur */}
-      {formation.commentaire_moniteur && (
+      {/* Évaluation du moniteur */}
+      {(formation.commentaire_moniteur || formation.appreciation_moniteur) && (
         <motion.div
           variants={fadeInUp}
           initial="initial"
@@ -486,13 +486,20 @@ const FormationDetails = () => {
             <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
               <FiFileText className="w-5 h-5" />
             </span>
-            Commentaire du moniteur
+            Évaluation du moniteur
           </h3>
-          <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              {formation.commentaire_moniteur}
-            </p>
-          </div>
+          {formation.appreciation_moniteur && (
+            <div className="mb-4">
+              <StatusBadge status={formation.appreciation_moniteur} />
+            </div>
+          )}
+          {formation.commentaire_moniteur && (
+            <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                {formation.commentaire_moniteur}
+              </p>
+            </div>
+          )}
         </motion.div>
       )}
 

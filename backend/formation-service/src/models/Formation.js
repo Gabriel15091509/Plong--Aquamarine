@@ -55,6 +55,10 @@ const Formation = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    appreciation_moniteur: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
     montant_total: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,

@@ -120,3 +120,35 @@ export const NIVEAU_FORMATION_OPTIONS = [
 ];
 
 export const STATUT_FORMATION_OPTIONS = Object.values(STATUT_FORMATION);
+
+export const APPRECIATION_MONITEUR_OPTIONS = [
+  'Insuffisant',
+  'Satisfaisant',
+  'Bien',
+  'Excellent'
+];
+
+export const TYPE_SPECIALITE_OPTIONS = [
+  'Nitrox',
+  'Plongée profonde',
+  'Plongée nocturne',
+  'Photo sous-marine'
+];
+
+export const STATUT_SPECIALITE_OPTIONS = [
+  'En cours',
+  'Terminée',
+  'Abandonnée'
+];
+
+export const NIVEAU_MONITEUR_OPTIONS = [
+  'Niveau 4',
+  'Moniteur'
+];
+
+export const SPECIALITE_ENCADREMENT_OPTIONS = [
+  'Encadrant N1',
+  'Encadrant N2',
+  'Encadrant N3',
+  'Encadrant baptême'
+];

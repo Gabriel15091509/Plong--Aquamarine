@@ -20,6 +20,11 @@ class SeanceService {
     const response = await api.delete(`/seances/${id}`);
     return response.data;
   }
+
+  async getEncadrementByMoniteur(idMoniteur) {
+    const response = await api.get(`/seances/moniteur/${idMoniteur}/encadrement`);
+    return response.data;
+  }
 }
 
 export default new SeanceService();

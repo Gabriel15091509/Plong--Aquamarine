@@ -14,6 +14,15 @@ export const useSeances = () => {
     });
   };
 
+  const useGetEncadrementByMoniteur = (idMoniteur) => {
+    return useQuery({
+      queryKey: ["seances", "moniteur", idMoniteur, "encadrement"],
+      queryFn: () => seanceService.getEncadrementByMoniteur(idMoniteur),
+      enabled: !!idMoniteur,
+      staleTime: 5 * 60 * 1000,
+    });
+  };
+
   const useCreate = () => {
     return useMutation({
       mutationFn: (data) => seanceService.create(data),
@@ -64,6 +73,7 @@ export const useSeances = () => {
 
   return {
     useGetByFormation,
+    useGetEncadrementByMoniteur,
     useCreate,
     useUpdateStatut,
     useRemove,

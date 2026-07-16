@@ -1,0 +1,1 @@
+ALTER TABLE identite.moniteurs ADD COLUMN IF NOT EXISTS niveau VARCHAR(10);
