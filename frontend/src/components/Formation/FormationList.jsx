@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   FiEye,
   FiEdit,
@@ -109,9 +108,6 @@ const FormationList = () => {
       refetch();
       setCompleteModal(null);
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Erreur lors de la finalisation de la formation",
-      );
       console.error("Complete error:", error);
     } finally {
       setActionLoading(null);
