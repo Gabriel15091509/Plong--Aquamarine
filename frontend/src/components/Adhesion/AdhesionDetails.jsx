@@ -474,7 +474,7 @@ const AdhesionDetails = () => {
           {adhesion.document_path && (
             <InfoItem icon={FiPaperclip} label="Document">
               <a
-                href={`http://localhost:5000${adhesion.document_path}`}
+                href={adhesion.document_path}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-0.5 inline-block"

@@ -474,7 +474,7 @@ const AdhesionForm = () => {
             ) : (
               existingDocumentPath && (
                 <a
-                  href={`http://localhost:5000${existingDocumentPath}`}
+                  href={existingDocumentPath}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"

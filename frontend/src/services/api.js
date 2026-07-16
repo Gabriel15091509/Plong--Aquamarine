@@ -19,7 +19,7 @@ export const connectWebSocket = () => {
   const token = localStorage.getItem("token");
   if (!token) return null;
 
-  socket = new WebSocket(`ws://localhost:5000?token=${token}`);
+  socket = new WebSocket(`ws://localhost?token=${token}`);
 
   socket.onopen = () => {
     console.log("WebSocket connected");
