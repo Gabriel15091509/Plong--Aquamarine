@@ -23,6 +23,7 @@ import {
 } from "react-icons/fi";
 import { useFormations } from "../../hooks/Formation/useFormations";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
@@ -56,10 +57,12 @@ const FormationDetails = () => {
   const navigate = useNavigate();
   const { useGetById, useRemove } = useFormations();
   const { useGetAll } = useAdherents();
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
   const { user, hasRole } = useAuth();
   const canManage = hasRole(["president", "tresorier"]);
   const { data, isLoading } = useGetById(id);
   const { data: adherentsData } = useGetAll();
+  const { data: moniteursData } = useGetAllMoniteurs();
   const remove = useRemove();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPaiementModal, setShowPaiementModal] = useState(false);
@@ -67,6 +70,9 @@ const FormationDetails = () => {
   const formation = data?.data;
   const adherent = adherentsData?.data?.find(
     (a) => a.num_adherent === formation?.num_adherent,
+  );
+  const moniteur = moniteursData?.data?.find(
+    (m) => m.id_moniteur === formation?.id_moniteur,
   );
 
   const handleDelete = async () => {
@@ -394,6 +400,13 @@ const FormationDetails = () => {
             label="Niveau visé"
             value={formation.niveau_vise}
             highlight
+          />
+          <InfoItem
+            icon={FiUserCheck}
+            label="Moniteur responsable"
+            value={
+              moniteur?.user?.name || `Moniteur #${formation.id_moniteur}`
+            }
           />
           <InfoItem
             icon={FiCalendar}

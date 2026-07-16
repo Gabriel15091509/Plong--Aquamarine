@@ -811,3 +811,17 @@
 {"level":"info","message":"127.0.0.1 - - [14/Jul/2026:18:24:35 +0000] \"GET /api/adherents/ADH-2026-0038 HTTP/1.1\" 200 627 \"-\" \"node\"","service":"identite-service","timestamp":"2026-07-14 21:24:35"}
 {"level":"info","message":"::ffff:127.0.0.1 - - [15/Jul/2026:07:13:00 +0000] \"GET /health HTTP/1.1\" 200 103 \"-\" \"-\"","service":"identite-service","timestamp":"2026-07-15 10:13:00"}
 {"level":"info","message":"::ffff:127.0.0.1 - - [16/Jul/2026:07:12:25 +0000] \"GET /health HTTP/1.1\" 200 102 \"-\" \"-\"","service":"identite-service","timestamp":"2026-07-16 10:12:25"}
+{"level":"info","message":"🚀 identite-service running on http://localhost:5014","service":"identite-service","timestamp":"2026-07-16 10:32:16"}
+{"level":"info","message":"📊 Health check: http://localhost:5014/health","service":"identite-service","timestamp":"2026-07-16 10:32:16"}
+{"level":"info","message":"📝 API base: http://localhost:5014/api","service":"identite-service","timestamp":"2026-07-16 10:32:16"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:32:19 +0000] \"GET /health HTTP/1.1\" 200 102 \"-\" \"curl/8.19.0\"","service":"identite-service","timestamp":"2026-07-16 10:32:19"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:32:38 +0000] \"GET /health HTTP/1.1\" 200 103 \"-\" \"curl/8.19.0\"","service":"identite-service","timestamp":"2026-07-16 10:32:38"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:32:46 +0000] \"POST /api/auth/login HTTP/1.1\" 200 852 \"-\" \"curl/8.19.0\"","service":"identite-service","timestamp":"2026-07-16 10:32:46"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:32:56 +0000] \"GET /api/adherents HTTP/1.1\" 200 31728 \"-\" \"curl/8.19.0\"","service":"identite-service","timestamp":"2026-07-16 10:32:56"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:33:16 +0000] \"GET /api/adherents/ADH-2026-0003 HTTP/1.1\" 200 649 \"-\" \"node\"","service":"identite-service","timestamp":"2026-07-16 10:33:16"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:35:13 +0000] \"GET /api/adherents/ADH-2026-0010 HTTP/1.1\" 200 641 \"-\" \"node\"","service":"identite-service","timestamp":"2026-07-16 10:35:13"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:37:31 +0000] \"GET /api/adherents/ADH-2026-0010 HTTP/1.1\" 200 641 \"-\" \"curl/8.19.0\"","service":"identite-service","timestamp":"2026-07-16 10:37:31"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:37:31 +0000] \"PATCH /api/adherents/ADH-2026-0010/niveau HTTP/1.1\" 200 657 \"-\" \"node\"","service":"identite-service","timestamp":"2026-07-16 10:37:31"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:37:31 +0000] \"GET /api/adherents/ADH-2026-0010 HTTP/1.1\" 200 641 \"-\" \"curl/8.19.0\"","service":"identite-service","timestamp":"2026-07-16 10:37:31"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:38:21 +0000] \"PATCH /api/adherents/ADH-2026-0010/niveau HTTP/1.1\" 200 657 \"-\" \"curl/8.19.0\"","service":"identite-service","timestamp":"2026-07-16 10:38:21"}
+{"level":"info","message":"127.0.0.1 - - [16/Jul/2026:07:38:21 +0000] \"GET /api/adherents/ADH-2026-0010 HTTP/1.1\" 200 641 \"-\" \"curl/8.19.0\"","service":"identite-service","timestamp":"2026-07-16 10:38:21"}
