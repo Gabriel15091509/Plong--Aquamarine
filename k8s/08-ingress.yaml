@@ -16,6 +16,12 @@ kind: Ingress
 metadata:
   name: plongee-ingress
   namespace: plongee-app
+  annotations:
+    # Défaut ingress-nginx (1m) < MAX_FILE_SIZE des uploads (5 Mo, voir
+    # backend/identite-service/src/middlewares/upload.js et l'équivalent
+    # vie-associative-service) : sans ce réglage, l'Ingress rejette la
+    # requête (413) avant même qu'elle n'atteigne le service.
+    nginx.ingress.kubernetes.io/proxy-body-size: "5m"
 spec:
   ingressClassName: nginx
   rules:
