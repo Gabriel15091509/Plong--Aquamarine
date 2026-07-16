@@ -68,6 +68,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { path: "/attributions", icon: FiBriefcase, label: "Attributions" },
     { path: "/reparations", icon: FiTool, label: "Réparations" },
     { path: "/formations", icon: FiAward, label: "Formations" },
+    { path: "/specialites-formation", icon: FiStar, label: "Spécialités" },
   ];
 
   const paiementsMenu = [
@@ -189,6 +190,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           if (item.path === "/attributions" && !canSeeMateriel) return null;
           if (item.path === "/reparations" && !canSeeMateriel) return null;
           if (item.path === "/formations" && !canSeeFormations) return null;
+          if (item.path === "/specialites-formation" && !canSeeFormations) return null;
           if (item.path === "/users" && !canSeeUsers) return null;
           if (item.path === "/profile" && !user) return null;
 

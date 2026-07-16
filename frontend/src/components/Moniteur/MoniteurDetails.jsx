@@ -15,10 +15,14 @@ import {
   FiAlertCircle,
   FiTrash2,
   FiInfo,
+  FiActivity,
+  FiBookOpen,
 } from "react-icons/fi";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useUsers } from "../../hooks/User/useUsers";
+import { useSeances } from "../../hooks/Formation/useSeances";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 
 const fadeInUp = {
@@ -54,8 +58,10 @@ const MoniteurDetails = () => {
   const navigate = useNavigate();
   const { useGetById, useRemove } = useMoniteurs();
   const { useGetAll: useGetAllUsers } = useUsers();
+  const { useGetEncadrementByMoniteur } = useSeances();
   const { data, isLoading } = useGetById(id);
   const { data: usersData } = useGetAllUsers();
+  const { data: encadrementData } = useGetEncadrementByMoniteur(id);
   const remove = useRemove();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -231,16 +237,77 @@ const MoniteurDetails = () => {
         {/* Informations moniteur */}
         <SectionCard title="Informations du brevet" icon={FiAward}>
           <InfoItem
-            icon={FiHash}
-            label="N° Brevet"
-            value={moniteur.num_brevet}
+            icon={FiAward}
+            label="Niveau"
+            value={moniteur.niveau}
             highlight
           />
+          <InfoItem icon={FiHash} label="N° Brevet" value={moniteur.num_brevet} />
           <InfoItem
             icon={FiCalendar}
             label="Date d'obtention"
             value={formatDate(moniteur.date_obtention_brevet)}
           />
+        </SectionCard>
+      </motion.div>
+
+      {/* Encadrement */}
+      <motion.div
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+        className="grid grid-cols-1 gap-6"
+      >
+        <SectionCard title="Encadrement" icon={FiActivity}>
+          <div className="flex flex-wrap gap-6 p-2 mb-2">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                Heures d&apos;encadrement réalisées
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {encadrementData?.data?.total_heures ?? 0} h
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                Séances réalisées
+              </p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {encadrementData?.data?.nb_seances_realisees ?? 0}
+              </p>
+            </div>
+          </div>
+
+          {encadrementData?.data?.formations?.length > 0 ? (
+            <div className="space-y-2">
+              {encadrementData.data.formations.map((f) => (
+                <div
+                  key={f.id_formation}
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FiBookOpen className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {f.niveau_vise}
+                    </span>
+                    <span className="text-sm text-gray-400 dark:text-gray-500">
+                      N°{f.num_adherent}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {formatDate(f.date_debut)}
+                    </span>
+                    <StatusBadge status={f.statut} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 dark:text-gray-500 p-2">
+              Aucune formation encadrée pour le moment
+            </p>
+          )}
         </SectionCard>
       </motion.div>
 
@@ -251,7 +318,7 @@ const MoniteurDetails = () => {
         animate="animate"
         className="grid grid-cols-1 lg:grid-cols-2 gap-6"
       >
-        <SectionCard title="Spécialités" icon={FiTag}>
+        <SectionCard title="Spécialités d'encadrement" icon={FiTag}>
           {specialites.length > 0 ? (
             <div className="flex flex-wrap gap-2 p-2">
               {specialites.map((s, idx) => (
@@ -266,7 +333,7 @@ const MoniteurDetails = () => {
             </div>
           ) : (
             <p className="text-sm text-gray-400 dark:text-gray-500 p-2">
-              Aucune spécialité renseignée
+              Aucune spécialité d&apos;encadrement renseignée
             </p>
           )}
         </SectionCard>

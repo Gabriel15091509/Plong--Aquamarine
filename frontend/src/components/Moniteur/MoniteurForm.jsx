@@ -20,6 +20,10 @@ import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { formatDateForInput } from "../../utils/helpers";
 import { sendWelcomeEmailIfNeeded } from "../../utils/welcomeEmail";
+import {
+  NIVEAU_MONITEUR_OPTIONS,
+  SPECIALITE_ENCADREMENT_OPTIONS,
+} from "../../utils/constants";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -64,9 +68,10 @@ const MoniteurForm = () => {
     email: "",
     name: "",
     phone: "",
+    niveau: "",
     num_brevet: "",
     date_obtention_brevet: "",
-    specialites: "",
+    specialites: [],
     disponibilites: "",
   });
 
@@ -87,11 +92,12 @@ const MoniteurForm = () => {
       setFormData((prev) => ({
         ...prev,
         user_id: moniteur.user_id || "",
+        niveau: moniteur.niveau || "",
         num_brevet: moniteur.num_brevet || "",
         date_obtention_brevet: moniteur.date_obtention_brevet
           ? formatDateForInput(moniteur.date_obtention_brevet)
           : "",
-        specialites: arrayToText(moniteur.specialites),
+        specialites: Array.isArray(moniteur.specialites) ? moniteur.specialites : [],
         disponibilites: arrayToText(moniteur.disponibilites),
       }));
     }
@@ -106,6 +112,18 @@ const MoniteurForm = () => {
   const handleFocus = (name) => setFocused(name);
   const handleBlur = () => setFocused(null);
 
+  const toggleSpecialite = (value) => {
+    setFormData((prev) => {
+      const has = prev.specialites.includes(value);
+      return {
+        ...prev,
+        specialites: has
+          ? prev.specialites.filter((s) => s !== value)
+          : [...prev.specialites, value],
+      };
+    });
+  };
+
   const validate = () => {
     const newErrors = {};
     if (!editMode) {
@@ -116,6 +134,11 @@ const MoniteurForm = () => {
         if (!formData.email) newErrors.email = "L'email est requis";
         if (!formData.name) newErrors.name = "Le nom est requis";
       }
+    }
+    if (!formData.niveau) {
+      newErrors.niveau = "Le niveau est requis";
+    } else if (!NIVEAU_MONITEUR_OPTIONS.includes(formData.niveau)) {
+      newErrors.niveau = "Niveau 4 minimum requis pour encadrer";
     }
     if (!formData.num_brevet)
       newErrors.num_brevet = "Le numéro de brevet est requis";
@@ -131,9 +154,10 @@ const MoniteurForm = () => {
     setLoading(true);
     try {
       const payload = {
+        niveau: formData.niveau,
         num_brevet: formData.num_brevet,
         date_obtention_brevet: formData.date_obtention_brevet,
-        specialites: textToArray(formData.specialites),
+        specialites: formData.specialites,
         disponibilites: textToArray(formData.disponibilites),
       };
 
@@ -321,6 +345,33 @@ const MoniteurForm = () => {
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
+                <FiAward className="w-4 h-4 text-gray-400" />
+                Niveau *
+              </span>
+            </label>
+            <select
+              name="niveau"
+              value={formData.niveau}
+              onChange={handleChange}
+              onFocus={() => handleFocus("niveau")}
+              onBlur={handleBlur}
+              className={inputClasses("niveau")}
+            >
+              <option value="">Sélectionner...</option>
+              {NIVEAU_MONITEUR_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            {errors.niveau && (
+              <p className="mt-1.5 text-sm text-red-500">{errors.niveau}</p>
+            )}
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
                 <FiHash className="w-4 h-4 text-gray-400" />
                 N° Brevet *
               </span>
@@ -369,22 +420,25 @@ const MoniteurForm = () => {
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
                 <FiTag className="w-4 h-4 text-gray-400" />
-                Spécialités
+                Spécialités d&apos;encadrement
               </span>
             </label>
-            <input
-              type="text"
-              name="specialites"
-              value={formData.specialites}
-              onChange={handleChange}
-              onFocus={() => handleFocus("specialites")}
-              onBlur={handleBlur}
-              className={inputClasses("specialites")}
-              placeholder="Nitrox, Profondeur, Bio"
-            />
-            <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-              Séparez les valeurs par des virgules
-            </p>
+            <div className="flex flex-wrap gap-3 pt-1">
+              {SPECIALITE_ENCADREMENT_OPTIONS.map((opt) => (
+                <label
+                  key={opt}
+                  className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.specialites.includes(opt)}
+                    onChange={() => toggleSpecialite(opt)}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
           </motion.div>
 
           <motion.div {...fadeInUp}>

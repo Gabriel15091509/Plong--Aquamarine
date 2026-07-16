@@ -31,6 +31,13 @@ class FormationRepository extends BaseRepository {
     });
   }
 
+  async findByMoniteur(id_moniteur) {
+    return await this.model.findAll({
+      where: { id_moniteur },
+      order: [["date_debut", "DESC"]],
+    });
+  }
+
   async findWithCompetences(id) {
     return await this.model.findByPk(id, {
       include: [{ model: Competence, as: "competences" }],

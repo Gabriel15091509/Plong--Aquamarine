@@ -1,6 +1,9 @@
 const BaseService = require('./BaseService');
 const MoniteurRepository = require('../repositories/MoniteurRepository');
 const UserService = require('./UserService');
+const { isNiveauCompatible } = require('../utils/roleScope');
+
+const NIVEAU_MIN_MONITEUR = 'Niveau 4';
 
 class MoniteurService extends BaseService {
   constructor() {
@@ -54,6 +57,7 @@ class MoniteurService extends BaseService {
     try {
       const moniteur = await this.moniteurRepository.create({
         user_id,
+        niveau: data.niveau,
         num_brevet: data.num_brevet,
         date_obtention_brevet: data.date_obtention_brevet,
         specialites: data.specialites,
@@ -77,13 +81,18 @@ class MoniteurService extends BaseService {
     return await this.moniteurRepository.findBySpecialite(specialite);
   }
 
-  async getDisponibles() {
-    return await this.moniteurRepository.findDisponibles();
+  async getDisponibles(jour) {
+    return await this.moniteurRepository.findDisponibles(jour);
   }
 
   async validateMoniteurData(data) {
     const errors = [];
 
+    if (!data.niveau) {
+      errors.push('Le niveau est requis');
+    } else if (!isNiveauCompatible(data.niveau, NIVEAU_MIN_MONITEUR)) {
+      errors.push(`Niveau insuffisant pour encadrer (niveau minimum requis : ${NIVEAU_MIN_MONITEUR})`);
+    }
     if (!data.num_brevet) errors.push('Le numéro de brevet est requis');
     if (!data.date_obtention_brevet) errors.push('La date d\'obtention du brevet est requise');
 

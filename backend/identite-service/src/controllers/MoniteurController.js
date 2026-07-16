@@ -44,7 +44,7 @@ class MoniteurController extends BaseController {
 
   async getDisponibles(req, res, next) {
     try {
-      const results = await this.moniteurService.getDisponibles();
+      const results = await this.moniteurService.getDisponibles(req.query.jour);
       res.json({
         success: true,
         data: results,

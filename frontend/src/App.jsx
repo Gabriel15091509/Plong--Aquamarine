@@ -30,6 +30,7 @@ import InscriptionsPage from "./pages/Inscription/InscriptionsPage";
 import PlongeesPage from "./pages/Plongee/PlongeesPage";
 import MaterielsPage from "./pages/Materiel/MaterielsPage";
 import FormationsPage from "./pages/Formation/FormationsPage";
+import SpecialitesFormationPage from "./pages/Formation/SpecialitesFormationPage";
 import CalendrierPage from "./pages/Common/CalendrierPage";
 import AboutPage from "./pages/Common/AboutPage";
 import UsersPage from "./pages/User/UsersPage";
@@ -66,6 +67,7 @@ import InscriptionForm from "./components/Inscription/InscriptionForm";
 import PlongeeForm from "./components/Plongee/PlongeeForm";
 import MaterielForm from "./components/Materiel/MaterielForm";
 import FormationForm from "./components/Formation/FormationForm";
+import SpecialiteFormationForm from "./components/Formation/SpecialiteFormationForm";
 import PaiementForm from "./components/Paiement/PaiementForm";
 import CertificatForm from "./components/CertificatMedical/CertificatForm";
 import AdhesionForm from "./components/Adhesion/AdhesionForm";
@@ -547,6 +549,38 @@ function App() {
                   <ProtectedRoute requiredRoles={["president", "moniteur"]}>
                     <Layout>
                       <FormationDetails />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* ============ SPÉCIALITÉS DE FORMATION ============ */}
+              <Route
+                path="/specialites-formation"
+                element={
+                  <ProtectedRoute requiredRoles={["president", "moniteur"]}>
+                    <Layout>
+                      <SpecialitesFormationPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/specialites-formation/create"
+                element={
+                  <ProtectedRoute requiredRoles={["president", "moniteur"]}>
+                    <Layout>
+                      <SpecialiteFormationForm />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/specialites-formation/edit/:id"
+                element={
+                  <ProtectedRoute requiredRoles={["president", "moniteur"]}>
+                    <Layout>
+                      <SpecialiteFormationForm />
                     </Layout>
                   </ProtectedRoute>
                 }

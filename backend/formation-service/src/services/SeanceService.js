@@ -5,6 +5,10 @@ const FormationRepository = require("../repositories/FormationRepository");
 const TYPES_SEANCE = ["Théorique", "Pratique"];
 const STATUTS_AUTORISES = ["Réalisée", "Absence"];
 
+// Durée forfaitaire par type de séance (pas de saisie manuelle demandée) —
+// sert au calcul des heures d'encadrement réalisées par un moniteur.
+const DUREE_SEANCE_HEURES = { Théorique: 2, Pratique: 3 };
+
 class SeanceService extends BaseService {
   constructor() {
     const repository = new SeanceRepository();
@@ -55,6 +59,30 @@ class SeanceService extends BaseService {
     }
 
     return seance;
+  }
+
+  // Sert à la fois de calcul d'heures d'encadrement et de "planning
+  // d'encadrement" (liste des formations du moniteur) — CDC 3.5.3.
+  async getEncadrementByMoniteur(id_moniteur) {
+    const formations = await this.formationRepository.findByMoniteur(id_moniteur);
+
+    let nbSeancesRealisees = 0;
+    let totalHeures = 0;
+    for (const formation of formations) {
+      const seances = await this.seanceRepository.findByFormation(formation.id_formation);
+      for (const seance of seances) {
+        if (seance.statut === "Réalisée") {
+          nbSeancesRealisees += 1;
+          totalHeures += DUREE_SEANCE_HEURES[seance.type_seance] || 0;
+        }
+      }
+    }
+
+    return {
+      nb_seances_realisees: nbSeancesRealisees,
+      total_heures: totalHeures,
+      formations,
+    };
   }
 }
 

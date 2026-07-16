@@ -23,6 +23,19 @@ class SeanceController extends BaseController {
     }
   }
 
+  async getEncadrementByMoniteur(req, res, next) {
+    try {
+      const { id_moniteur } = req.params;
+      const result = await this.seanceService.getEncadrementByMoniteur(parseInt(id_moniteur, 10));
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async updateStatut(req, res, next) {
     try {
       const result = await this.seanceService.updateStatut(req.params.id, req.body);

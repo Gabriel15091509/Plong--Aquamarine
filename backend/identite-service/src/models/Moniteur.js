@@ -18,6 +18,10 @@ const Moniteur = sequelize.define(
         key: "id",
       },
     },
+    niveau: {
+      type: DataTypes.STRING(10),
+      allowNull: false,
+    },
     num_brevet: {
       type: DataTypes.STRING(50),
       allowNull: false,

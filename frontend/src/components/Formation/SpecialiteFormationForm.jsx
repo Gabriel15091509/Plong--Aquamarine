@@ -4,26 +4,20 @@ import { motion } from "framer-motion";
 import {
   FiAward,
   FiCalendar,
-  FiClock,
   FiCheckCircle,
-  FiList,
   FiFileText,
   FiSave,
   FiX,
   FiBookOpen,
-  FiDollarSign,
-  FiCreditCard,
 } from "react-icons/fi";
-import { useFormations } from "../../hooks/Formation/useFormations";
+import { useSpecialitesFormation } from "../../hooks/Formation/useSpecialitesFormation";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import {
-  NIVEAU_FORMATION_OPTIONS,
-  STATUT_FORMATION_OPTIONS,
-  MODE_PAIEMENT_OPTIONS,
-  APPRECIATION_MONITEUR_OPTIONS,
+  TYPE_SPECIALITE_OPTIONS,
+  STATUT_SPECIALITE_OPTIONS,
 } from "../../utils/constants";
 
 const fadeInUp = {
@@ -32,12 +26,12 @@ const fadeInUp = {
   transition: { duration: 0.3 },
 };
 
-const FormationForm = () => {
+const SpecialiteFormationForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const editMode = !!id;
 
-  const { useGetById, useCreate, useUpdate } = useFormations();
+  const { useGetById, useCreate, useUpdate } = useSpecialitesFormation();
   const { useGetAll } = useAdherents();
   const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
 
@@ -55,40 +49,26 @@ const FormationForm = () => {
   const [formData, setFormData] = useState({
     num_adherent: "",
     id_moniteur: "",
-    niveau_vise: "N1",
+    type_specialite: TYPE_SPECIALITE_OPTIONS[0],
     date_debut: "",
-    date_fin_prevue: "",
-    date_examen_brevet: "",
+    date_obtention_prevue: "",
     statut: "En cours",
-    nb_seances_realisees: 0,
-    commentaire_moniteur: "",
-    appreciation_moniteur: "",
-    montant_total: "",
-    montant_paye: "",
-    mode: "Espèces",
+    commentaire: "",
   });
 
   useEffect(() => {
     if (editMode && id && data?.data) {
-      const f = data.data;
+      const s = data.data;
       setFormData({
-        num_adherent: f.num_adherent || "",
-        id_moniteur: f.id_moniteur || "",
-        niveau_vise: f.niveau_vise || "N1",
-        date_debut: f.date_debut ? f.date_debut.split("T")[0] : "",
-        date_fin_prevue: f.date_fin_prevue
-          ? f.date_fin_prevue.split("T")[0]
+        num_adherent: s.num_adherent || "",
+        id_moniteur: s.id_moniteur || "",
+        type_specialite: s.type_specialite || TYPE_SPECIALITE_OPTIONS[0],
+        date_debut: s.date_debut ? s.date_debut.split("T")[0] : "",
+        date_obtention_prevue: s.date_obtention_prevue
+          ? s.date_obtention_prevue.split("T")[0]
           : "",
-        date_examen_brevet: f.date_examen_brevet
-          ? f.date_examen_brevet.split("T")[0]
-          : "",
-        statut: f.statut || "En cours",
-        nb_seances_realisees: f.nb_seances_realisees || 0,
-        commentaire_moniteur: f.commentaire_moniteur || "",
-        appreciation_moniteur: f.appreciation_moniteur || "",
-        montant_total: f.montant_total ?? "",
-        montant_paye: f.montant_paye ?? "",
-        mode: "Espèces",
+        statut: s.statut || "En cours",
+        commentaire: s.commentaire || "",
       });
     }
   }, [editMode, id, data]);
@@ -108,11 +88,10 @@ const FormationForm = () => {
       newErrors.num_adherent = "L'adhérent est requis";
     if (!formData.id_moniteur)
       newErrors.id_moniteur = "Le moniteur responsable est requis";
-    if (!formData.niveau_vise) newErrors.niveau_vise = "Le niveau est requis";
+    if (!formData.type_specialite)
+      newErrors.type_specialite = "La spécialité est requise";
     if (!formData.date_debut)
       newErrors.date_debut = "La date de début est requise";
-    if (!formData.date_fin_prevue)
-      newErrors.date_fin_prevue = "La date de fin prévue est requise";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -129,7 +108,7 @@ const FormationForm = () => {
       } else {
         await create.mutateAsync(formData);
       }
-      navigate("/formations");
+      navigate("/specialites-formation");
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -166,17 +145,16 @@ const FormationForm = () => {
       onSubmit={handleSubmit}
       className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
     >
-      {/* En-tête */}
       <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier la formation" : "Nouvelle formation"}
+              {editMode ? "Modifier la spécialité" : "Nouvelle spécialité"}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {editMode
-                ? "Mettez à jour les informations de la formation"
-                : "Créez un nouveau programme de formation"}
+                ? "Mettez à jour cette formation de spécialité"
+                : "Inscrivez un adhérent à une formation de spécialité"}
             </p>
           </div>
           <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
@@ -185,7 +163,6 @@ const FormationForm = () => {
         </div>
       </div>
 
-      {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <motion.div {...fadeInUp}>
@@ -230,28 +207,46 @@ const FormationForm = () => {
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
                 <FiAward className="w-4 h-4 text-gray-400" />
-                Niveau visé *
+                Spécialité *
               </span>
             </label>
             <select
-              name="niveau_vise"
-              value={formData.niveau_vise}
+              name="type_specialite"
+              value={formData.type_specialite}
               onChange={handleChange}
-              onFocus={() => handleFocus("niveau_vise")}
+              onFocus={() => handleFocus("type_specialite")}
               onBlur={handleBlur}
-              className={inputClasses("niveau_vise")}
+              className={inputClasses("type_specialite")}
             >
-              {NIVEAU_FORMATION_OPTIONS.map((opt) => (
+              {TYPE_SPECIALITE_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
               ))}
             </select>
-            {errors.niveau_vise && (
-              <p className="mt-1.5 text-sm text-red-500">
-                {errors.niveau_vise}
-              </p>
-            )}
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiCheckCircle className="w-4 h-4 text-gray-400" />
+                Statut
+              </span>
+            </label>
+            <select
+              name="statut"
+              value={formData.statut}
+              onChange={handleChange}
+              onFocus={() => handleFocus("statut")}
+              onBlur={handleBlur}
+              className={inputClasses("statut")}
+            >
+              {STATUT_SPECIALITE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -278,209 +273,46 @@ const FormationForm = () => {
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
-                <FiClock className="w-4 h-4 text-gray-400" />
-                Date fin prévue *
-              </span>
-            </label>
-            <input
-              type="date"
-              name="date_fin_prevue"
-              value={formData.date_fin_prevue}
-              onChange={handleChange}
-              onFocus={() => handleFocus("date_fin_prevue")}
-              onBlur={handleBlur}
-              className={inputClasses("date_fin_prevue")}
-            />
-            {errors.date_fin_prevue && (
-              <p className="mt-1.5 text-sm text-red-500">
-                {errors.date_fin_prevue}
-              </p>
-            )}
-          </motion.div>
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
                 <FiAward className="w-4 h-4 text-gray-400" />
-                Date de passage du brevet
+                Date d&apos;obtention prévue
               </span>
             </label>
             <input
               type="date"
-              name="date_examen_brevet"
-              value={formData.date_examen_brevet}
+              name="date_obtention_prevue"
+              value={formData.date_obtention_prevue}
               onChange={handleChange}
-              onFocus={() => handleFocus("date_examen_brevet")}
+              onFocus={() => handleFocus("date_obtention_prevue")}
               onBlur={handleBlur}
-              className={inputClasses("date_examen_brevet")}
+              className={inputClasses("date_obtention_prevue")}
             />
-          </motion.div>
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiCheckCircle className="w-4 h-4 text-gray-400" />
-                Statut
-              </span>
-            </label>
-            <select
-              name="statut"
-              value={formData.statut}
-              onChange={handleChange}
-              onFocus={() => handleFocus("statut")}
-              onBlur={handleBlur}
-              className={inputClasses("statut")}
-            >
-              {STATUT_FORMATION_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </motion.div>
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiDollarSign className="w-4 h-4 text-gray-400" />
-                Montant total de la formation (€)
-              </span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              name="montant_total"
-              value={formData.montant_total}
-              onChange={handleChange}
-              onFocus={() => handleFocus("montant_total")}
-              onBlur={handleBlur}
-              className={inputClasses("montant_total")}
-              placeholder="Facultatif — laisser vide si gratuite"
-              min="0"
-            />
-          </motion.div>
-
-          {!editMode && Number(formData.montant_total) > 0 && (
-            <>
-              <motion.div {...fadeInUp}>
-                <label className={labelClasses}>
-                  <span className="flex items-center gap-2">
-                    <FiDollarSign className="w-4 h-4 text-gray-400" />
-                    Montant reçu maintenant (€)
-                  </span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  name="montant_paye"
-                  value={formData.montant_paye}
-                  onChange={handleChange}
-                  onFocus={() => handleFocus("montant_paye")}
-                  onBlur={handleBlur}
-                  className={inputClasses("montant_paye")}
-                  placeholder={formData.montant_total || "0.00"}
-                />
-                <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  Laisser vide pour ne rien encaisser maintenant. Un solde restant pourra être
-                  enregistré ultérieurement.
-                </p>
-              </motion.div>
-
-              <motion.div {...fadeInUp}>
-                <label className={labelClasses}>
-                  <span className="flex items-center gap-2">
-                    <FiCreditCard className="w-4 h-4 text-gray-400" />
-                    Mode de paiement
-                  </span>
-                </label>
-                <select
-                  name="mode"
-                  value={formData.mode}
-                  onChange={handleChange}
-                  onFocus={() => handleFocus("mode")}
-                  onBlur={handleBlur}
-                  className={inputClasses("mode")}
-                >
-                  {MODE_PAIEMENT_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </motion.div>
-            </>
-          )}
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiList className="w-4 h-4 text-gray-400" />
-                Séances réalisées
-              </span>
-            </label>
-            <input
-              type="number"
-              name="nb_seances_realisees"
-              value={formData.nb_seances_realisees}
-              onChange={handleChange}
-              onFocus={() => handleFocus("nb_seances_realisees")}
-              onBlur={handleBlur}
-              className={inputClasses("nb_seances_realisees")}
-              min="0"
-              placeholder="0"
-            />
-          </motion.div>
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiCheckCircle className="w-4 h-4 text-gray-400" />
-                Appréciation du moniteur
-              </span>
-            </label>
-            <select
-              name="appreciation_moniteur"
-              value={formData.appreciation_moniteur}
-              onChange={handleChange}
-              onFocus={() => handleFocus("appreciation_moniteur")}
-              onBlur={handleBlur}
-              className={inputClasses("appreciation_moniteur")}
-            >
-              <option value="">Non évaluée</option>
-              {APPRECIATION_MONITEUR_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
           </motion.div>
 
           <motion.div {...fadeInUp} className="md:col-span-2">
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
                 <FiFileText className="w-4 h-4 text-gray-400" />
-                Commentaire du moniteur
+                Commentaire
               </span>
             </label>
             <textarea
-              name="commentaire_moniteur"
-              value={formData.commentaire_moniteur}
+              name="commentaire"
+              value={formData.commentaire}
               onChange={handleChange}
-              onFocus={() => handleFocus("commentaire_moniteur")}
+              onFocus={() => handleFocus("commentaire")}
               onBlur={handleBlur}
               rows="4"
-              className={inputClasses("commentaire_moniteur")}
-              placeholder="Suivi de la formation, progression, remarques..."
+              className={inputClasses("commentaire")}
+              placeholder="Suivi, remarques..."
             />
           </motion.div>
         </div>
       </div>
 
-      {/* Pied de page */}
       <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/formations")}
+          onClick={() => navigate("/specialites-formation")}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -497,11 +329,11 @@ const FormationForm = () => {
           ) : (
             <FiSave className="w-4 h-4" />
           )}
-          {editMode ? "Mettre à jour" : "Créer la formation"}
+          {editMode ? "Mettre à jour" : "Créer la spécialité"}
         </button>
       </div>
     </motion.form>
   );
 };
 
-export default FormationForm;
+export default SpecialiteFormationForm;

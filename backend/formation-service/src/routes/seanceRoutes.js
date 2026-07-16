@@ -9,6 +9,10 @@ const seanceController = new SeanceController();
 
 router.get("/", seanceController.getAll.bind(seanceController));
 router.get("/formation/:id_formation", seanceController.getByFormation.bind(seanceController));
+router.get(
+  "/moniteur/:id_moniteur/encadrement",
+  seanceController.getEncadrementByMoniteur.bind(seanceController),
+);
 router.get("/:id", seanceController.getById.bind(seanceController));
 
 router.post(
