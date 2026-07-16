@@ -10,10 +10,10 @@ const { sendFormationPaymentEmail } = require("../utils/email");
 // Prérequis indicatifs par niveau visé (niveau antérieur minimum, nombre de
 // plongées minimum, âge minimum) — valeurs raisonnables par défaut, ajustables.
 const PREREQUIS_FORMATION = {
-  N1: { niveauMin: null, nbPlongeesMin: 0, ageMin: 14 },
-  N2: { niveauMin: "Niveau 1", nbPlongeesMin: 25, ageMin: 15 },
-  N3: { niveauMin: "Niveau 2", nbPlongeesMin: 60, ageMin: 18 },
-  N4: { niveauMin: "Niveau 3", nbPlongeesMin: 120, ageMin: 18 },
+  N1: { niveauMin: null, nbPlongeesMin: 6, ageMin: 14 },
+  N2: { niveauMin: "Niveau 1", nbPlongeesMin: 8, ageMin: 15 },
+  N3: { niveauMin: "Niveau 2", nbPlongeesMin: 10, ageMin: 18 },
+  N4: { niveauMin: "Niveau 3", nbPlongeesMin: 20, ageMin: 18 },
   MF1: { niveauMin: "Niveau 4", nbPlongeesMin: 150, ageMin: 18 },
 };
 
