@@ -25,6 +25,7 @@ import {
 } from "react-icons/fi";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useSeances } from "../../hooks/Formation/useSeances";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
@@ -61,8 +62,10 @@ const PlongeeDetails = () => {
   const canManagePlongee = hasRole(["president", "moniteur"]);
   const { useGetById, useRemove } = usePlongees();
   const { useGetAll } = useAdherents();
+  const { useGetById: useGetSeanceById } = useSeances();
   const { data, isLoading } = useGetById(id);
   const { data: adherentsData } = useGetAll();
+  const { data: seanceData } = useGetSeanceById(data?.data?.id_seance);
   const remove = useRemove();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -439,6 +442,39 @@ const PlongeeDetails = () => {
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
               {plongee.observations_moniteur}
             </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Lien vers la formation en cours (séance pratique validée par cette plongée) */}
+      {seanceData?.data && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-indigo-500/10 to-blue-500/10 text-indigo-600 dark:text-indigo-400">
+              <FiAward className="w-5 h-5" />
+            </span>
+            Cette plongée compte pour une formation
+          </h3>
+          <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Séance du {formatDate(seanceData.data.date_seance)} ({seanceData.data.type_seance})
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Statut : {seanceData.data.statut}
+              </p>
+            </div>
+            <Link
+              to={`/formations/${seanceData.data.id_formation}`}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline flex-shrink-0"
+            >
+              Voir la formation
+            </Link>
           </div>
         </motion.div>
       )}

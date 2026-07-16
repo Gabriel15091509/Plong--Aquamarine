@@ -21,6 +21,10 @@ class SeanceService extends BaseService {
     return await this.seanceRepository.findByFormation(id_formation);
   }
 
+  async getPlanifieesByAdherent(num_adherent) {
+    return await this.seanceRepository.findPlanifieesByAdherent(num_adherent);
+  }
+
   async validateSeanceData(data) {
     const errors = [];
     if (!data.id_formation) errors.push("La formation est requise");

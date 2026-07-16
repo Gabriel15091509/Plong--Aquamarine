@@ -63,6 +63,12 @@ const Plongee = sequelize.define(
       type: DataTypes.STRING(200),
       allowNull: true,
     },
+    // Référence applicative (pas de FK Postgres, autre service/schéma) vers la
+    // séance pratique de formation-service que cette plongée fait progresser.
+    id_seance: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     schema: process.env.DB_SCHEMA || "activites",

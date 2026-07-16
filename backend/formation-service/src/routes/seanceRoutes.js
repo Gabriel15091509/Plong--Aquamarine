@@ -13,6 +13,10 @@ router.get(
   "/moniteur/:id_moniteur/encadrement",
   seanceController.getEncadrementByMoniteur.bind(seanceController),
 );
+router.get(
+  "/adherent/:num_adherent/planifiees",
+  seanceController.getPlanifieesByAdherent.bind(seanceController),
+);
 router.get("/:id", seanceController.getById.bind(seanceController));
 
 router.post(

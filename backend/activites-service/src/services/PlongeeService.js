@@ -1,6 +1,7 @@
 const BaseService = require('./BaseService');
 const PlongeeRepository = require('../repositories/PlongeeRepository');
 const identiteClient = require('../utils/serviceClients/identiteClient');
+const formationClient = require('../utils/serviceClients/formationClient');
 const { withAdherent } = require('../utils/enrichAdherents');
 
 class PlongeeService extends BaseService {
@@ -89,6 +90,18 @@ class PlongeeService extends BaseService {
     await plongee.save();
 
     await identiteClient.incrementPlongeesCount(plongee.num_adherent, authHeader);
+
+    // Best-effort : si cette plongée de formation est liée à une séance
+    // pratique planifiée, on la fait progresser à "Réalisée" côté
+    // formation-service. Une panne de formation-service ne doit pas bloquer
+    // la validation de la plongée elle-même.
+    if (plongee.id_seance) {
+      try {
+        await formationClient.marquerSeanceRealisee(plongee.id_seance, authHeader);
+      } catch (error) {
+        console.error("Erreur mise à jour séance liée à la plongée:", error.message);
+      }
+    }
 
     return plongee;
   }
