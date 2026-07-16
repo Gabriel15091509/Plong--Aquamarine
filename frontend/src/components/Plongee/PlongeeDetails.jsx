@@ -262,7 +262,7 @@ const PlongeeDetails = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {isValide ? "✅ Validée" : "⏳ En attente"}
+                  {isValide ? "Validée" : "En attente"}
                 </p>
                 <p className="text-sm text-white/80">
                   {isValide
