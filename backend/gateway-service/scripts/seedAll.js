@@ -137,6 +137,22 @@ function randomNiveau() {
   return niveaux[Math.floor(Math.random() * niveaux.length)];
 }
 
+// Minimums réalistes de nombre de plongées par niveau (Baptême exclu, sans
+// minimum) : Niveau 1 initiation, Niveau 2 autonomie 20m, Niveau 3 autonomie
+// 40m, Niveau 4, Moniteur (bien plus que le minimum Niveau 4 en pratique).
+const NB_PLONGEES_MIN = {
+  "Niveau 1": 6,
+  "Niveau 2": 8,
+  "Niveau 3": 10,
+  "Niveau 4": 20,
+  Moniteur: 60,
+};
+
+function randomNbPlongees(niveau) {
+  const min = NB_PLONGEES_MIN[niveau] || 0;
+  return min + Math.floor(Math.random() * 100);
+}
+
 function randomStatut() {
   const statuts = ["Actif", "Inactif", "Suspendu", "En formation", "Ancien"];
   const weights = [0.6, 0.1, 0.05, 0.2, 0.05];
@@ -463,7 +479,7 @@ async function seedAll() {
           niveau !== "Baptême" ? faker.date.past({ years: 10 }) : null,
         statut: randomStatut(),
         date_inscription: faker.date.past({ years: 5 }),
-        nb_plongees_total: Math.floor(Math.random() * 100),
+        nb_plongees_total: randomNbPlongees(niveau),
       });
       adherentIdList.push(numAdherent);
       adherentNiveauMap[numAdherent] = niveau;
