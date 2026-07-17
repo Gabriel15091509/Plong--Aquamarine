@@ -98,6 +98,12 @@ jobs:
         with:
           context: backend/${{ matrix.service }}
           push: true
+          # Cache de couches par service (clé par matrix.service, sinon tous
+          # les services backend écraseraient le même cache `gha` faute de
+          # scope) : les couches `npm ci` ne sont reconstruites que si
+          # package-lock.json change, pas à chaque commit.
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
           tags: |
             ${{ env.IMAGE_NS }}/${{ matrix.service }}:sha-${{ needs.detect-changes.outputs.short_sha }}
             ${{ env.IMAGE_NS }}/${{ matrix.service }}:main
@@ -161,6 +167,8 @@ jobs:
         with:
           context: frontend
           push: true
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
           tags: |
             ${{ env.IMAGE_NS }}/frontend:sha-${{ needs.detect-changes.outputs.short_sha }}
             ${{ env.IMAGE_NS }}/frontend:main

@@ -67,6 +67,26 @@ dans `k8s/kustomization.yaml` (namespace, configmap, postgres, les 7
 services backend, le frontend, l'ingress). Ne plus jamais lancer
 `kubectl apply -k k8s/` à la main après ça — laisser ArgoCD le faire.
 
+## 4bis. Accélérer la détection des changements (optionnel mais recommandé)
+
+Par défaut, ArgoCD ne relit le dépôt git que toutes les 3 minutes
+(`timeout.reconciliation`) — pas de webhook possible ici puisque le
+serveur ArgoCD n'est joignable qu'en local (`port-forward`), pas depuis
+GitHub. Pour réduire ce délai à 30s :
+
+```powershell
+kubectl -n argocd patch cm argocd-cm --type merge -p '{"data":{"timeout.reconciliation":"30s"}}'
+kubectl -n argocd rollout restart deployment argocd-repo-server argocd-server
+kubectl -n argocd rollout restart statefulset argocd-application-controller
+```
+
+Pour forcer une resynchronisation immédiate sans attendre le polling (ex.
+juste après avoir vu la CI terminer) :
+
+```powershell
+kubectl -n argocd annotate application plongee-app argocd.argoproj.io/refresh=hard --overwrite
+```
+
 ## 5. Rendre les images GHCR publiques
 
 Après le premier `git push` qui déclenche la CI pour un service donné, son
