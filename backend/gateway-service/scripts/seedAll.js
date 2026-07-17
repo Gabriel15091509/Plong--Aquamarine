@@ -137,20 +137,21 @@ function randomNiveau() {
   return niveaux[Math.floor(Math.random() * niveaux.length)];
 }
 
-// Minimums réalistes de nombre de plongées par niveau (Baptême exclu, sans
-// minimum) : Niveau 1 initiation, Niveau 2 autonomie 20m, Niveau 3 autonomie
+// Fourchettes réalistes et non chevauchantes de nombre de plongées par
+// niveau : Niveau 1 initiation, Niveau 2 autonomie 20m, Niveau 3 autonomie
 // 40m, Niveau 4, Moniteur (bien plus que le minimum Niveau 4 en pratique).
-const NB_PLONGEES_MIN = {
-  "Niveau 1": 6,
-  "Niveau 2": 8,
-  "Niveau 3": 10,
-  "Niveau 4": 20,
-  Moniteur: 60,
+const NB_PLONGEES_RANGE = {
+  "Baptême": [0, 3],
+  "Niveau 1": [6, 15],
+  "Niveau 2": [8, 25],
+  "Niveau 3": [10, 40],
+  "Niveau 4": [20, 60],
+  Moniteur: [60, 150],
 };
 
 function randomNbPlongees(niveau) {
-  const min = NB_PLONGEES_MIN[niveau] || 0;
-  return min + Math.floor(Math.random() * 100);
+  const [min, max] = NB_PLONGEES_RANGE[niveau] || [0, 0];
+  return min + Math.floor(Math.random() * (max - min + 1));
 }
 
 function randomStatut() {
