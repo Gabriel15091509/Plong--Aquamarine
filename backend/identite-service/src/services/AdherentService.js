@@ -4,6 +4,7 @@ const AdherentRepository = require("../repositories/AdherentRepository");
 const { getAdherentForUser } = require("../utils/roleScope");
 const paiementClient = require("../utils/serviceClients/paiementClient");
 const vieAssociativeClient = require("../utils/serviceClients/vieAssociativeClient");
+const activitesClient = require("../utils/serviceClients/activitesClient");
 
 class AdherentService extends BaseService {
   constructor() {
@@ -26,9 +27,18 @@ class AdherentService extends BaseService {
     }
   }
 
-  async getById(id, user = null) {
+  // ✅ nb_plongees_reelles est calculé à la volée depuis activites-service
+  // (carnets Plongee réellement enregistrés), affiché à côté de
+  // nb_plongees_total qui reste un champ éditable manuellement (point de
+  // départ/historique, pilote le niveau sélectionnable côté formulaire).
+  // Best-effort : si activites-service est indisponible, reste `null` sans
+  // faire échouer l'affichage de la fiche adhérent.
+  async getById(id, user = null, authHeader = null) {
     await this.assertCanAccessAdherent(id, user);
-    return await this.repository.findByIdWithPhoto(id);
+    const adherent = await this.repository.findByIdWithPhoto(id);
+    if (!adherent) return adherent;
+    const nb_plongees_reelles = await activitesClient.getNbPlongeesReelles(id, authHeader);
+    return { ...adherent, nb_plongees_reelles };
   }
 
   // ✅ Crée l'adhérent ; si aucun user_id n'est fourni, réutilise un compte

@@ -27,6 +27,7 @@ class AdherentController extends BaseController {
       const result = await this.adherentService.getById(
         req.params.id,
         req.user,
+        req.headers.authorization,
       );
       if (!result) {
         return res.status(404).json({
