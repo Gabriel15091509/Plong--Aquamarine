@@ -12,6 +12,7 @@ import {
   FiFileText,
   FiHeart,
   FiHash,
+  FiDroplet,
   FiTag,
   FiCamera,
   FiSave,
@@ -22,7 +23,11 @@ import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useUsers } from "../../hooks/User/useUsers";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { sendWelcomeEmailIfNeeded } from "../../utils/welcomeEmail";
-import { NIVEAU_OPTIONS, STATUT_ADHERENT_OPTIONS } from "../../utils/constants";
+import {
+  NIVEAU_OPTIONS,
+  STATUT_ADHERENT_OPTIONS,
+  NB_PLONGEES_MIN_PAR_NIVEAU,
+} from "../../utils/constants";
 import { photoUrl } from "../../utils/photoUrl";
 
 const CIVILITE_OPTIONS = ["M.", "Mme", "Mlle"];
@@ -65,6 +70,7 @@ const AdherentForm = () => {
     date_inscription: "",
     contact_urgence: "",
     statut: "Actif",
+    nb_plongees_total: 0,
   });
 
   useEffect(() => {
@@ -89,21 +95,42 @@ const AdherentForm = () => {
           : "",
         contact_urgence: a.contact_urgence || "",
         statut: a.statut || "Actif",
+        nb_plongees_total: a.nb_plongees_total ?? 0,
       });
     }
   }, [editMode, id, data]);
 
+  // Niveaux réellement accessibles pour un nombre de plongées donné (Baptême
+  // toujours disponible, aucun minimum) — le nombre de plongées de
+  // l'adhérent pilote dynamiquement les niveaux qu'il peut se voir attribuer.
+  const niveauxDisponibles = (nbPlongees) =>
+    NIVEAU_OPTIONS.filter((n) => {
+      const min = NB_PLONGEES_MIN_PAR_NIVEAU[n];
+      return !min || Number(nbPlongees) >= min;
+    });
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "nb_plongees_total") {
+        // Si le niveau actuel n'est plus atteignable avec ce nombre de
+        // plongées, on redescend automatiquement au meilleur niveau encore
+        // valide (jamais l'inverse : on ne force pas les plongées à monter).
+        const disponibles = niveauxDisponibles(value);
+        if (!disponibles.includes(prev.niveau)) {
+          next.niveau = disponibles[disponibles.length - 1] || "Baptême";
+        }
+      }
       // Le baptême n'est pas un niveau breveté : pas de date d'obtention, de
       // brevet, ni de licence FFESM.
-      ...(name === "niveau" && value === "Baptême"
-        ? { date_obtention_niveau: "", num_brevet: "", num_licence_ffesm: "" }
-        : {}),
-    }));
+      if (next.niveau === "Baptême" && prev.niveau !== "Baptême") {
+        next.date_obtention_niveau = "";
+        next.num_brevet = "";
+        next.num_licence_ffesm = "";
+      }
+      return next;
+    });
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -476,12 +503,45 @@ const AdherentForm = () => {
               onBlur={handleBlur}
               className={inputClasses("niveau")}
             >
-              {NIVEAU_OPTIONS.map((opt) => (
+              {niveauxDisponibles(formData.nb_plongees_total).map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
               ))}
             </select>
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiDroplet className="w-4 h-4 text-gray-400" />
+                Nombre de plongées club
+              </span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              name="nb_plongees_total"
+              value={formData.nb_plongees_total}
+              onChange={handleChange}
+              onFocus={() => handleFocus("nb_plongees_total")}
+              onBlur={handleBlur}
+              className={inputClasses("nb_plongees_total")}
+            />
+            {(() => {
+              const prochain = NIVEAU_OPTIONS.find(
+                (n) =>
+                  NB_PLONGEES_MIN_PAR_NIVEAU[n] &&
+                  Number(formData.nb_plongees_total) < NB_PLONGEES_MIN_PAR_NIVEAU[n],
+              );
+              return (
+                <p className="mt-1 text-xs text-gray-400">
+                  {prochain
+                    ? `${NB_PLONGEES_MIN_PAR_NIVEAU[prochain]} plongées requises pour passer "${prochain}"`
+                    : "Nombre suffisant pour tous les niveaux"}
+                </p>
+              );
+            })()}
           </motion.div>
 
           <motion.div {...fadeInUp}>
