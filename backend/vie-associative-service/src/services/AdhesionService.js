@@ -167,11 +167,13 @@ class AdhesionService extends BaseService {
     return await this.adhesionRepository.getAdhesionStats();
   }
 
-  // ✅ Vérifie que l'adhérent a bien, pour la date donnée, les 3 éléments
-  // obligatoires payés et couvrant cette date (Club, FFESM, Assurance RC).
-  async checkDossierValidity(num_adherent, atDate = new Date()) {
+  // ✅ Vérifie que l'adhérent a bien, pour la date donnée, les éléments
+  // obligatoires payés et couvrant cette date (par défaut : Club, FFESM,
+  // Assurance RC). `requiredTypes` permet un dossier allégé pour un niveau
+  // Baptême, qui n'est pas encore licencié FFESM ni assuré à l'année.
+  async checkDossierValidity(num_adherent, atDate = new Date(), requiredTypes = TYPES_OBLIGATOIRES) {
     const adhesions = await this.adhesionRepository.findByAdherent(num_adherent);
-    const missing = TYPES_OBLIGATOIRES.filter((type) => {
+    const missing = requiredTypes.filter((type) => {
       return !adhesions.some((a) => {
         return (
           a.type === type &&
