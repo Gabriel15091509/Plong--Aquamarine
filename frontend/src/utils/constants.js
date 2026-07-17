@@ -5,7 +5,7 @@ export const CIVILITE_OPTIONS = [
 ];
 
 export const NIVEAU_OPTIONS = [
-  'Débutant',
+  'Baptême',
   'Niveau 1',
   'Niveau 2',
   'Niveau 3',
@@ -15,8 +15,10 @@ export const NIVEAU_OPTIONS = [
 
 export const STATUT_ADHERENT_OPTIONS = [
   'Actif',
+  'En formation',
   'Inactif',
-  'Suspendu'
+  'Suspendu',
+  'Ancien'
 ];
 
 export const TYPE_ADHESION_OPTIONS = [

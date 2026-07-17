@@ -170,12 +170,16 @@ class AdherentService extends BaseService {
     const active = await this.repository.count({ statut: "Actif" });
     const inactive = await this.repository.count({ statut: "Inactif" });
     const suspended = await this.repository.count({ statut: "Suspendu" });
+    const enFormation = await this.repository.count({ statut: "En formation" });
+    const ancien = await this.repository.count({ statut: "Ancien" });
 
     return {
       total,
       active,
       inactive,
       suspended,
+      enFormation,
+      ancien,
     };
   }
 

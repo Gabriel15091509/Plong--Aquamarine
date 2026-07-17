@@ -75,6 +75,14 @@ router.put(
   userController.changeRole.bind(userController),
 );
 
+router.put(
+  "/:id/photo",
+  AuthMiddleware.authenticate,
+  authorize(["manage_users"]),
+  ...uploadUserPhoto,
+  userController.updatePhoto.bind(userController),
+);
+
 router.patch(
   "/:id/disable",
   AuthMiddleware.authenticate,

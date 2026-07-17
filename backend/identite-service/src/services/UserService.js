@@ -185,6 +185,19 @@ class UserService extends BaseService {
     return user;
   }
 
+  // Photo prise/uploadée par un président pour le compte d'un autre
+  // utilisateur (ex: adhérent dont le compte n'a jamais été utilisé) —
+  // complète `updateProfile` qui est self-service uniquement.
+  async updatePhoto(userId, photoPath) {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new Error("Utilisateur non trouvé");
+    }
+    user.photo = photoPath;
+    await user.save();
+    return user;
+  }
+
   async disableAccount(userId) {
     const user = await this.userRepository.findById(userId);
     if (!user) {

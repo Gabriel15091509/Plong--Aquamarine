@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import {
   FiUser,
   FiMail,
-  FiPhone,
   FiMapPin,
   FiCalendar,
   FiAward,
@@ -13,18 +12,14 @@ import {
   FiArrowLeft,
   FiHeart,
   FiSmartphone,
-  FiHome,
-  FiClock,
   FiAlertCircle,
   FiTrash2,
   FiCheckCircle,
   FiXCircle,
-  FiUsers,
   FiInfo,
   FiFileText,
   FiDroplet,
   FiAnchor,
-  FiBriefcase,
 } from "react-icons/fi";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
@@ -33,6 +28,7 @@ import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
+import { photoUrl } from "../../utils/photoUrl";
 
 // Animations - j'ai repris les mêmes que sur la page d'accueil
 // Faudrait peut-être mutualiser ça un jour...
@@ -67,6 +63,12 @@ const AdherentDetails = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const adherent = data?.data;
+
+  // Même calcul que ProfilePage.jsx (anneesMembre) : différence en années
+  // pleines depuis l'inscription.
+  const anciennete = adherent?.date_inscription
+    ? `${new Date().getFullYear() - new Date(adherent.date_inscription).getFullYear()} an(s)`
+    : "-";
 
   const { useDossierStatus } = useAdhesions();
   const { useStatus } = useCertificats();
@@ -197,8 +199,16 @@ const AdherentDetails = () => {
         <div className="flex items-center gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
-                <FiUser className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <span className="w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500/10 to-cyan-500/10 flex items-center justify-center flex-shrink-0">
+                {photoUrl(adherent.photo) ? (
+                  <img
+                    src={photoUrl(adherent.photo)}
+                    alt="Photo d'identité"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <FiUser className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                )}
               </span>
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
@@ -268,11 +278,18 @@ const AdherentDetails = () => {
             </div>
             <div className="w-px h-12 bg-white/20" />
             <div className="text-center">
+              <p className="text-2xl font-bold">{anciennete}</p>
+              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+                Ancienneté
+              </p>
+            </div>
+            <div className="w-px h-12 bg-white/20" />
+            <div className="text-center">
               <p className="text-2xl font-bold">
-                {formatDate(adherent.date_adhesion) || "-"}
+                {adherent.nb_plongees_total ?? 0}
               </p>
               <p className="text-xs text-blue-100/70 uppercase tracking-wider">
-                Adhésion
+                Plongées club
               </p>
             </div>
           </div>
@@ -311,15 +328,6 @@ const AdherentDetails = () => {
             label="Adresse"
             value={adherent.adresse || "Non renseignée"}
           />
-          <InfoItem
-            icon={FiHome}
-            label="Code postal / Ville"
-            value={
-              adherent.code_postal && adherent.ville
-                ? `${adherent.code_postal} ${adherent.ville}`
-                : "Non renseigné"
-            }
-          />
         </SectionCard>
 
         {/* Informations club */}
@@ -340,9 +348,14 @@ const AdherentDetails = () => {
             }
           />
           <InfoItem
+            icon={FiFileText}
+            label="Brevet délivré"
+            value={adherent.num_brevet || "Non renseigné"}
+          />
+          <InfoItem
             icon={FiCalendar}
-            label="Date d'adhésion"
-            value={formatDate(adherent.date_adhesion)}
+            label="Date d'inscription"
+            value={formatDate(adherent.date_inscription)}
           />
           <InfoItem
             icon={FiUserCheck}
@@ -355,19 +368,9 @@ const AdherentDetails = () => {
             value={adherent.contact_urgence || "Non renseigné"}
           />
           <InfoItem
-            icon={FiUsers}
-            label="Numéro de licence"
-            value={adherent.numero_licence || "Non renseigné"}
-          />
-          <InfoItem
-            icon={FiBriefcase}
-            label="Profession"
-            value={adherent.profession || "Non renseignée"}
-          />
-          <InfoItem
-            icon={FiHeart}
-            label="Situation familiale"
-            value={adherent.situation_familiale || "Non renseignée"}
+            icon={FiDroplet}
+            label="Nombre de plongées club"
+            value={String(adherent.nb_plongees_total ?? 0)}
           />
         </SectionCard>
       </motion.div>
@@ -429,28 +432,6 @@ const AdherentDetails = () => {
                 </p>
               </div>
             </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Remarques */}
-      {adherent.remarques && (
-        <motion.div
-          variants={fadeInUp}
-          initial="initial"
-          animate="animate"
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
-        >
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
-              <FiFileText className="w-5 h-5" />
-            </span>
-            Remarques
-          </h3>
-          <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              {adherent.remarques}
-            </p>
           </div>
         </motion.div>
       )}
