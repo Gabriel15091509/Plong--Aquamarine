@@ -129,7 +129,14 @@ class AdhesionController extends BaseController {
   async getDossierStatus(req, res, next) {
     try {
       const { num_adherent } = req.params;
-      const status = await this.adhesionService.checkDossierValidity(num_adherent);
+      const requiredTypes = req.query.types
+        ? req.query.types.split(",").filter(Boolean)
+        : undefined;
+      const status = await this.adhesionService.checkDossierValidity(
+        num_adherent,
+        new Date(),
+        requiredTypes,
+      );
       res.json({
         success: true,
         data: status,

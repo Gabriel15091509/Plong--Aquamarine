@@ -6,8 +6,9 @@ const BASE_URL = process.env.VIE_ASSOCIATIVE_SERVICE_URL
   ? `${process.env.VIE_ASSOCIATIVE_SERVICE_URL}/api`
   : "http://localhost:5013/api";
 
-async function checkDossierValidity(num_adherent, authHeader) {
-  const response = await fetch(`${BASE_URL}/adhesions/adherent/${num_adherent}/dossier-status`, {
+async function checkDossierValidity(num_adherent, authHeader, requiredTypes) {
+  const query = requiredTypes ? `?types=${requiredTypes.map(encodeURIComponent).join(",")}` : "";
+  const response = await fetch(`${BASE_URL}/adhesions/adherent/${num_adherent}/dossier-status${query}`, {
     headers: authHeader ? { Authorization: authHeader } : {},
   });
   if (!response.ok) {

@@ -289,12 +289,23 @@ class InscriptionService extends BaseService {
       );
     }
 
+    // ✅ Le niveau de l'adhérent doit être suffisant pour cette sortie.
+    // Adherent vit dans identite-service : résolu par HTTP. Récupéré avant
+    // le contrôle du dossier car un niveau Baptême en allège les exigences.
+    const adherentRecord = await identiteClient.getAdherentById(num_adherent, data.authHeader);
+    if (!isNiveauCompatible(adherentRecord?.niveau, sortie.niveau_requis)) {
+      throw new Error("Niveau insuffisant pour cette sortie");
+    }
+
     // ✅ Un adhérent ne peut pas s'inscrire si son adhésion n'est pas
-    // valide (3 éléments obligatoires) ou si son certificat médical est
-    // expiré/manquant — règle de sécurité, appliquée quel que soit
-    // l'auteur de l'inscription (staff ou adhérent lui-même). Adhesion et
-    // CertificatMedical vivent dans vie-associative-service : vérifiés par HTTP.
-    const dossier = await vieAssociativeClient.checkDossierValidity(num_adherent, data.authHeader);
+    // valide ou si son certificat médical est expiré/manquant — règle de
+    // sécurité, appliquée quel que soit l'auteur de l'inscription (staff ou
+    // adhérent lui-même). Adhesion et CertificatMedical vivent dans
+    // vie-associative-service : vérifiés par HTTP.
+    // Un Baptême n'est pas encore licencié FFESM ni assuré à l'année : seule
+    // l'adhésion Club est exigée pour ce niveau.
+    const requiredTypes = adherentRecord?.niveau === "Baptême" ? ["Club"] : undefined;
+    const dossier = await vieAssociativeClient.checkDossierValidity(num_adherent, data.authHeader, requiredTypes);
     if (!dossier.valid) {
       throw new Error(
         `Adhésion incomplète (manquant : ${dossier.missing.join(", ")})`,
@@ -303,13 +314,6 @@ class InscriptionService extends BaseService {
     const certStatus = await vieAssociativeClient.checkCertificateStatus(num_adherent, data.authHeader);
     if (!certStatus.hasValidCertificate) {
       throw new Error("Le certificat médical est expiré ou manquant");
-    }
-
-    // ✅ Le niveau de l'adhérent doit être suffisant pour cette sortie.
-    // Adherent vit dans identite-service : résolu par HTTP.
-    const adherentRecord = await identiteClient.getAdherentById(num_adherent, data.authHeader);
-    if (!isNiveauCompatible(adherentRecord?.niveau, sortie.niveau_requis)) {
-      throw new Error("Niveau insuffisant pour cette sortie");
     }
 
     const { placesDisponibles } = await this.waitlistService.getSortieCapacity(id_sortie, null, data.authHeader);
