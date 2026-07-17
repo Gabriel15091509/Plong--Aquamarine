@@ -21,6 +21,17 @@ export const STATUT_ADHERENT_OPTIONS = [
   'Ancien'
 ];
 
+// Minimum réaliste de plongées par niveau (Baptême exclu, pas de minimum) :
+// Niveau 1 initiation, Niveau 2 autonomie 20m, Niveau 3 autonomie 40m,
+// Niveau 4, Moniteur (bien au-delà du minimum Niveau 4 en pratique).
+export const NB_PLONGEES_MIN_PAR_NIVEAU = {
+  'Niveau 1': 6,
+  'Niveau 2': 8,
+  'Niveau 3': 10,
+  'Niveau 4': 20,
+  'Moniteur': 60,
+};
+
 export const TYPE_ADHESION_OPTIONS = [
   { value: 'Club', label: 'Adhésion club', obligatoire: true },
   { value: 'FFESM', label: 'Licence FFESM', obligatoire: true },
