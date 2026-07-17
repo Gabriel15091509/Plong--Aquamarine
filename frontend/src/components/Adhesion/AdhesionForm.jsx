@@ -36,7 +36,7 @@ const AdhesionForm = () => {
   const { id } = useParams();
   const editMode = !!id;
 
-  const { useGetById, useCreate, useUpdate } = useAdhesions();
+  const { useGetById, useCreate, useUpdate, useGetByAdherent } = useAdhesions();
   const { useGetAll } = useAdherents();
 
   const { data: adhesionData, isLoading: loadingData } = useGetById(id);
@@ -64,6 +64,25 @@ const AdhesionForm = () => {
   const [documentFile, setDocumentFile] = useState(null);
   const [existingDocumentPath, setExistingDocumentPath] = useState(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
+
+  // ✅ En création, dès qu'on sélectionne l'adhérent, on reprend son n° de
+  // licence FFESM d'une adhésion précédente (s'il en a une) — évite de le
+  // ressaisir à chaque renouvellement. En édition, la valeur vient déjà de
+  // l'adhésion en cours de modification, on ne touche à rien.
+  const { data: adherentAdhesionsData, isLoading: loadingAdherentAdhesions } =
+    useGetByAdherent(!editMode ? formData.num_adherent : undefined);
+
+  useEffect(() => {
+    if (editMode || !formData.num_adherent || loadingAdherentAdhesions) return;
+    const adhesions = adherentAdhesionsData?.data || [];
+    const withLicence = adhesions
+      .filter((a) => a.num_licence_ffesm)
+      .sort((a, b) => (b.annee_adhesion || 0) - (a.annee_adhesion || 0));
+    setFormData((prev) => ({
+      ...prev,
+      num_licence_ffesm: withLicence[0]?.num_licence_ffesm || "",
+    }));
+  }, [formData.num_adherent, adherentAdhesionsData, loadingAdherentAdhesions, editMode]);
 
   useEffect(() => {
     if (editMode && id && adhesionData?.data) {
