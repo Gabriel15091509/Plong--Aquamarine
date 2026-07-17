@@ -388,6 +388,16 @@ const AdherentDetails = () => {
             label="Nombre de plongées club"
             value={String(adherent.nb_plongees_total ?? 0)}
           />
+          <InfoItem
+            icon={FiDroplet}
+            label="Plongées réellement enregistrées"
+            value={
+              adherent.nb_plongees_reelles === null ||
+              adherent.nb_plongees_reelles === undefined
+                ? "Indisponible"
+                : String(adherent.nb_plongees_reelles)
+            }
+          />
         </SectionCard>
       </motion.div>
 
