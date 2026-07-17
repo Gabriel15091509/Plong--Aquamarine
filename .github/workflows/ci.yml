@@ -189,15 +189,24 @@ jobs:
 
   update-manifests:
     needs: [detect-changes, build, build-frontend]
+    # Ne dépend PLUS de la réussite de la totalité du matrix `build` : avec
+    # `fail-fast: false`, un seul service en échec (ex. lint cassé sur
+    # gateway-service) fait passer `needs.build.result` à "failure" pour
+    # TOUT le job, alors même que les autres services de la matrice ont fini
+    # leur build/push avec succès. Ça a déjà fait sauter ce step entièrement
+    # une fois, laissant 6 images fraîches poussées sur GHCR mais jamais
+    # référencées dans kustomization.yaml, donc jamais déployées par ArgoCD.
+    # On tourne désormais toujours (si quelque chose a changé) et on vérifie
+    # image par image, juste avant de la bumper (step suivant), qu'elle a
+    # bien été poussée.
     if: |
       always() &&
       github.ref == 'refs/heads/main' &&
-      (needs.build.result == 'success' || needs.build.result == 'skipped') &&
-      (needs['build-frontend'].result == 'success' || needs['build-frontend'].result == 'skipped') &&
       (needs.detect-changes.outputs.services != '[]' || needs.detect-changes.outputs.frontend == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -205,6 +214,12 @@ jobs:
 
       - name: Compute lowercase image namespace
         run: echo "IMAGE_NS=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install kustomize
         run: |
@@ -220,11 +235,27 @@ jobs:
           # l'entrée `images:` ne matche jamais rien à la résolution
           # (kustomize compare par égalité exacte, sans normalisation) et
           # le bump est un no-op silencieux.
+          #
+          # Chaque service est vérifié individuellement (`docker manifest
+          # inspect`) avant d'être bumpé : si son build a échoué dans cette
+          # run, l'image sha-<courte> n'existe pas sur GHCR, et on le saute
+          # (avec un avertissement) plutôt que d'écrire un tag inexistant ou
+          # de bloquer le bump des autres services qui, eux, ont réussi.
+          bump_if_pushed() {
+            local svc="$1"
+            local image="${{ env.IMAGE_NS }}/${svc}:sha-${{ needs.detect-changes.outputs.short_sha }}"
+            if docker manifest inspect "$image" > /dev/null 2>&1; then
+              /tmp/kustomize edit set image "${{ env.IMAGE_NS }}/${svc}=${image}"
+            else
+              echo "::warning::Image absente sur GHCR pour ${svc} (${image}) — build probablement en échec dans cette run, tag conservé."
+            fi
+          }
+
           for svc in $(echo '${{ needs.detect-changes.outputs.services }}' | jq -r '.[]'); do
-            /tmp/kustomize edit set image "${{ env.IMAGE_NS }}/${svc}=${{ env.IMAGE_NS }}/${svc}:sha-${{ needs.detect-changes.outputs.short_sha }}"
+            bump_if_pushed "$svc"
           done
           if [ "${{ needs.detect-changes.outputs.frontend }}" = "true" ]; then
-            /tmp/kustomize edit set image "${{ env.IMAGE_NS }}/frontend=${{ env.IMAGE_NS }}/frontend:sha-${{ needs.detect-changes.outputs.short_sha }}"
+            bump_if_pushed "frontend"
           fi
 
       - name: Commit and push
