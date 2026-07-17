@@ -224,5 +224,27 @@ jobs:
           git config user.name "gitops-bot"
           git config user.email "gitops-bot@users.noreply.github.com"
           git add k8s/kustomization.yaml
-          git diff --cached --quiet || git commit -m "chore(gitops): bump image tag(s) to sha-${{ needs.detect-changes.outputs.short_sha }} [skip ci]"
-          git push
+          if git diff --cached --quiet; then
+            echo "Aucun changement à committer"
+            exit 0
+          fi
+          git commit -m "chore(gitops): bump image tag(s) to sha-${{ needs.detect-changes.outputs.short_sha }} [skip ci]"
+
+          # Deux workflows déclenchés par des push rapprochés sur main
+          # arrivent régulièrement à ce point en même temps : celui qui pousse
+          # en second se fait rejeter (non-fast-forward) puisque l'autre a
+          # déjà avancé main entre-temps. On rebase le commit de bump sur le
+          # main le plus récent et on retente, plutôt que d'échouer tout le
+          # workflow pour une collision bénigne sur un fichier généré.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push rejeté (tentative $attempt/5), rebase sur origin/main puis nouvelle tentative..."
+            git fetch origin main
+            git rebase origin/main
+            sleep $((RANDOM % 5 + 1))
+          done
+
+          echo "Échec du push après plusieurs tentatives"
+          exit 1
