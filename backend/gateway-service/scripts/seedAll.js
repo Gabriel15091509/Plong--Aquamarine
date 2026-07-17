@@ -422,6 +422,7 @@ async function seedAll() {
     console.log("🔄 Création des adhérents...");
     const civilites = ["M.", "Mme", "Mlle"];
     const adherentIdList = [];
+    const adherentNiveauMap = {};
     for (let i = 0; i < CONFIG.ADHERENTS; i++) {
       const nom = faker.person.lastName();
       const prenom = faker.person.firstName();
@@ -457,13 +458,15 @@ async function seedAll() {
         email,
         contact_urgence: `${faker.person.firstName()} ${faker.person.lastName()} - ${randomPhone()}`,
         niveau,
+        // Un Baptême n'est pas un niveau breveté : pas de date d'obtention.
         date_obtention_niveau:
-          niveau !== "Débutant" ? faker.date.past({ years: 10 }) : null,
+          niveau !== "Baptême" ? faker.date.past({ years: 10 }) : null,
         statut: randomStatut(),
         date_inscription: faker.date.past({ years: 5 }),
         nb_plongees_total: Math.floor(Math.random() * 100),
       });
       adherentIdList.push(numAdherent);
+      adherentNiveauMap[numAdherent] = niveau;
     }
     console.log(`✅ ${adherentIdList.length} adhérents créés (adherent@plongee.com / adherent123)`);
 
@@ -476,7 +479,13 @@ async function seedAll() {
       const annee = currentYear - Math.floor(Math.random() * 3);
       const dateDebut = new Date(annee, 0, 1);
       const dateFin = new Date(annee, 11, 31);
-      const type = randomTypeAdhesion();
+      // Un Baptême n'est pas licencié FFESM ni assuré à l'année (dossier
+      // allégé, cf. checkDossierValidity) : seule une adhésion Club a du
+      // sens pour ce niveau.
+      const type =
+        adherentNiveauMap[numAdherent] === "Baptême"
+          ? "Club"
+          : randomTypeAdhesion();
       // Seule l'adhésion Club a un tarif/paiement suivi dans l'app : les
       // autres types (FFESM, assurances) sont couverts par la cotisation
       // Club et sont donc directement "Payé" sans montant.
@@ -489,9 +498,12 @@ async function seedAll() {
         date_fin: dateFin,
         montant,
         montant_paye: statutPaiement === "Payé" ? montant : 0,
-        num_licence_ffesm: `FF${Math.floor(Math.random() * 100000)
-          .toString()
-          .padStart(5, "0")}`,
+        num_licence_ffesm:
+          adherentNiveauMap[numAdherent] === "Baptême"
+            ? null
+            : `FF${Math.floor(Math.random() * 100000)
+                .toString()
+                .padStart(5, "0")}`,
         statut_paiement: statutPaiement,
         annee_adhesion: annee,
       });
