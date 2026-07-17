@@ -1,4 +1,12 @@
+const path = require("path");
 const PDFDocument = require("pdfkit");
+
+const LOGO_PATH = path.join(__dirname, "../../assets/logo.png");
+const BRAND = { start: "#06b6d4", mid: "#3b82f6", end: "#4f46e5" };
+const INK = "#1a202c";
+const MUTED = "#718096";
+const FAINT = "#a0aec0";
+const RULE = "#e2e8f0";
 
 // Un gestionnaire de téléchargement (IDM "Advanced Integration") intercepte
 // toute réponse HTTP reconnue comme un fichier binaire (Content-Type
@@ -23,28 +31,79 @@ async function sendPdfAsJson(res, doc, filename) {
   res.json({ success: true, filename, data: buffer.toString("base64") });
 }
 
-function drawHeader(doc, title) {
+// En-tête commune à tous les PDF du club : logo + titre du document, puis un
+// filet dégradé aux couleurs de la marque en guise de séparateur.
+function drawHeader(doc, title, subtitle) {
+  const logoSize = 64;
+  const logoX = 50;
+  const logoY = 40;
+
+  try {
+    doc.image(LOGO_PATH, logoX, logoY, { width: logoSize, height: logoSize });
+  } catch (error) {
+    // Logo optionnel : une image manquante ne doit pas empêcher la
+    // génération du document.
+  }
+
+  const textX = logoX + logoSize + 18;
   doc
-    .fillColor("#3b82f6")
-    .fontSize(20)
-    .text("Aquanature Plongée", { align: "left" })
-    .fontSize(12)
-    .fillColor("#718096")
-    .text("Club de plongée")
-    .moveDown(1)
-    .fillColor("#1a202c")
-    .fontSize(16)
-    .text(title, { underline: true })
-    .moveDown(1);
+    .fillColor(INK)
+    .font("Helvetica-Bold")
+    .fontSize(19)
+    .text(title, textX, logoY + 6, { width: 340 });
+  if (subtitle) {
+    doc
+      .font("Helvetica")
+      .fontSize(10)
+      .fillColor(MUTED)
+      .text(subtitle, textX, doc.y + 2, { width: 340 });
+  }
+
+  const barY = logoY + logoSize + 18;
+  const gradient = doc.linearGradient(0, barY, doc.page.width, barY);
+  gradient.stop(0, BRAND.start).stop(0.5, BRAND.mid).stop(1, BRAND.end);
+  doc.rect(0, barY, doc.page.width, 5).fill(gradient);
+
+  doc.font("Helvetica").fillColor(INK);
+  doc.x = 50;
+  doc.y = barY + 25;
 }
 
-function drawRow(doc, label, value) {
+// Titre de section avec un petit accent de couleur, plus marqué qu'un simple
+// soulignement.
+function drawSectionTitle(doc, text) {
+  const y = doc.y;
+  doc.rect(50, y + 3, 4, 13).fill(BRAND.mid);
+  doc.fillColor(INK).font("Helvetica-Bold").fontSize(13).text(text, 62, y);
+  doc.font("Helvetica");
+  doc.moveDown(0.6);
+}
+
+function drawFooter(doc) {
+  // `doc.x` peut avoir été laissé loin à droite par la dernière ligne de
+  // contenu positionnée en absolu : on le réinitialise à la marge gauche
+  // pour que le centrage ci-dessous porte bien sur toute la largeur de la
+  // page, pas sur ce qu'il en reste.
+  doc.x = 50;
+  doc.moveDown(1.5);
+  const y = doc.y;
   doc
-    .fontSize(11)
-    .fillColor("#718096")
-    .text(label, { continued: true })
-    .fillColor("#1a202c")
-    .text(`  ${value}`);
+    .moveTo(50, y)
+    .lineTo(doc.page.width - 50, y)
+    .lineWidth(0.5)
+    .strokeColor(RULE)
+    .stroke();
+  doc
+    .moveDown(0.8)
+    .fontSize(9)
+    .fillColor(FAINT)
+    .font("Helvetica")
+    .text(
+      `Document généré le ${new Date().toLocaleDateString("fr-FR")} — Aquanature Plongée, club de plongée, Saint-Leu, La Réunion.`,
+      50,
+      doc.y,
+      { width: doc.page.width - 100, align: "center" },
+    );
 }
 
 // Attestation d'adhésion : récapitule les lignes d'adhésion de l'adhérent
@@ -53,20 +112,27 @@ async function streamAttestationAdhesion(res, { adherent, adhesions, annee, doss
   const doc = new PDFDocument({ margin: 50 });
   const filename = `attestation-adhesion-${adherent.num_adherent}-${annee}.pdf`;
 
-  drawHeader(doc, `Attestation d'adhésion — ${annee}`);
-  drawRow(doc, "Adhérent :", `${adherent.civilite} ${adherent.nom} ${adherent.prenom}`);
-  drawRow(doc, "N° adhérent :", adherent.num_adherent);
-  drawRow(
+  drawHeader(
     doc,
-    "Statut du dossier :",
-    dossier?.valid
-      ? "Complet (à jour pour Club, FFESM, Assurance RC)"
-      : `Incomplet (manquant : ${(dossier?.missing || []).join(", ") || "-"})`,
+    `Attestation d'adhésion — ${annee}`,
+    `${adherent.civilite} ${adherent.nom} ${adherent.prenom} — N°${adherent.num_adherent}`,
   );
-  doc.moveDown(1);
 
-  doc.fontSize(13).fillColor("#1a202c").text("Détail des adhésions", { underline: true });
-  doc.moveDown(0.5);
+  const dossierColor = dossier?.valid ? "#059669" : "#dc2626";
+  const dossierLabel = dossier?.valid
+    ? "Complet (à jour pour Club, FFESM, Assurance RC)"
+    : `Incomplet (manquant : ${(dossier?.missing || []).join(", ") || "-"})`;
+  doc
+    .fontSize(11)
+    .fillColor(MUTED)
+    .text("Statut du dossier :", { continued: true })
+    .fillColor(dossierColor)
+    .font("Helvetica-Bold")
+    .text(`  ${dossierLabel}`)
+    .font("Helvetica");
+  doc.moveDown(1.2);
+
+  drawSectionTitle(doc, "Détail des adhésions");
 
   adhesions.forEach((a) => {
     const periode = `du ${new Date(a.date_debut).toLocaleDateString("fr-FR")} au ${new Date(
@@ -78,15 +144,11 @@ async function streamAttestationAdhesion(res, { adherent, adhesions, annee, doss
       a.type === "Club" ? ` — ${a.statut_paiement} (${a.montant_paye}/${a.montant} €)` : "";
     doc
       .fontSize(11)
-      .fillColor("#1a202c")
+      .fillColor(INK)
       .text(`${a.type} — ${periode}${detail}`);
   });
 
-  doc.moveDown(2);
-  doc
-    .fontSize(10)
-    .fillColor("#a0aec0")
-    .text(`Document généré le ${new Date().toLocaleDateString("fr-FR")}.`);
+  drawFooter(doc);
 
   await sendPdfAsJson(res, doc, filename);
 }

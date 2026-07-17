@@ -1,4 +1,14 @@
+const path = require("path");
 const PDFDocument = require("pdfkit");
+
+const LOGO_PATH = path.join(__dirname, "../../assets/logo.png");
+const BRAND = { start: "#06b6d4", mid: "#3b82f6", end: "#4f46e5" };
+const INK = "#1a202c";
+const MUTED = "#718096";
+const FAINT = "#a0aec0";
+const RULE = "#e2e8f0";
+const ROW_ALT = "#f8fafc";
+const STAT_BG = "#f0f9ff";
 
 // Même contournement que finance-service/vie-associative-service : un
 // gestionnaire de téléchargement (IDM "Advanced Integration") intercepte
@@ -21,19 +31,108 @@ async function sendPdfAsJson(res, doc, filename) {
   res.json({ success: true, filename, data: buffer.toString("base64") });
 }
 
-function drawHeader(doc, title) {
+// En-tête commune à tous les PDF du club : logo + titre du document, puis un
+// filet dégradé aux couleurs de la marque en guise de séparateur.
+function drawHeader(doc, title, subtitle) {
+  const logoSize = 64;
+  const logoX = 50;
+  const logoY = 40;
+
+  try {
+    doc.image(LOGO_PATH, logoX, logoY, { width: logoSize, height: logoSize });
+  } catch (error) {
+    // Logo optionnel : une image manquante ne doit pas empêcher la
+    // génération du document.
+  }
+
+  const textX = logoX + logoSize + 18;
   doc
-    .fillColor("#3b82f6")
-    .fontSize(20)
-    .text("Aquanature Plongée", { align: "left" })
-    .fontSize(12)
-    .fillColor("#718096")
-    .text("Club de plongée")
-    .moveDown(1)
-    .fillColor("#1a202c")
-    .fontSize(16)
-    .text(title, { underline: true })
-    .moveDown(1);
+    .fillColor(INK)
+    .font("Helvetica-Bold")
+    .fontSize(19)
+    .text(title, textX, logoY + 6, { width: 340 });
+  if (subtitle) {
+    doc
+      .font("Helvetica")
+      .fontSize(10)
+      .fillColor(MUTED)
+      .text(subtitle, textX, doc.y + 2, { width: 340 });
+  }
+
+  const barY = logoY + logoSize + 18;
+  const gradient = doc.linearGradient(0, barY, doc.page.width, barY);
+  gradient.stop(0, BRAND.start).stop(0.5, BRAND.mid).stop(1, BRAND.end);
+  doc.rect(0, barY, doc.page.width, 5).fill(gradient);
+
+  doc.font("Helvetica").fillColor(INK);
+  doc.x = 50;
+  doc.y = barY + 25;
+}
+
+// Titre de section avec un petit accent de couleur, plus marqué qu'un simple
+// soulignement.
+function drawSectionTitle(doc, text) {
+  const y = doc.y;
+  doc.rect(50, y + 3, 4, 13).fill(BRAND.mid);
+  doc.fillColor(INK).font("Helvetica-Bold").fontSize(13).text(text, 62, y);
+  doc.font("Helvetica");
+  doc.moveDown(0.6);
+}
+
+// Trois pastilles chiffrées (nombre de plongées / profondeur max / temps
+// total) — plus lisible qu'une liste de lignes label/valeur pour les
+// agrégats qu'on veut voir en un coup d'œil.
+function drawStatsBoxes(doc, stats) {
+  const startY = doc.y + 4;
+  const gap = 12;
+  const totalWidth = doc.page.width - 100;
+  const boxWidth = (totalWidth - gap * (stats.length - 1)) / stats.length;
+  const boxHeight = 54;
+
+  stats.forEach((stat, i) => {
+    const x = 50 + i * (boxWidth + gap);
+    doc.rect(x, startY, boxWidth, boxHeight).fill(STAT_BG);
+    doc
+      .fillColor(MUTED)
+      .font("Helvetica")
+      .fontSize(9)
+      .text(stat.label.toUpperCase(), x + 12, startY + 10, { width: boxWidth - 24 });
+    doc
+      .fillColor(BRAND.mid)
+      .font("Helvetica-Bold")
+      .fontSize(18)
+      .text(stat.value, x + 12, startY + 26, { width: boxWidth - 24 });
+  });
+
+  doc.font("Helvetica").fillColor(INK);
+  doc.y = startY + boxHeight + 20;
+}
+
+function drawFooter(doc) {
+  // `doc.x` peut avoir été laissé loin à droite par la dernière ligne de
+  // contenu positionnée en absolu (ex. le tableau du carnet de plongée) :
+  // on le réinitialise à la marge gauche pour que le centrage ci-dessous
+  // porte bien sur toute la largeur de la page, pas sur ce qu'il en reste.
+  doc.x = 50;
+  doc.moveDown(1.5);
+  const y = doc.y;
+  doc
+    .moveTo(50, y)
+    .lineTo(doc.page.width - 50, y)
+    .lineWidth(0.5)
+    .strokeColor(RULE)
+    .stroke();
+  doc
+    .moveDown(0.8)
+    .fontSize(9)
+    .fillColor(FAINT)
+    .font("Helvetica")
+    .text(
+      `Document généré le ${new Date().toLocaleDateString("fr-FR")} — Aquanature Plongée, club de plongée, Saint-Leu, La Réunion.`,
+      50,
+      doc.y,
+      { width: doc.page.width - 100, align: "center" },
+    );
 }
 
 // Carnet de plongée (CDC 3.3.3) : une ligne par plongée + un récapitulatif
@@ -42,49 +141,55 @@ async function streamCarnetPlongee(res, { adherent, plongees, profondeurMax, dur
   const doc = new PDFDocument({ margin: 50 });
   const filename = `carnet-plongee-${adherent.num_adherent}.pdf`;
 
-  drawHeader(doc, `Carnet de plongée — ${adherent.civilite} ${adherent.nom} ${adherent.prenom}`);
+  drawHeader(
+    doc,
+    "Carnet de plongée",
+    `${adherent.civilite} ${adherent.nom} ${adherent.prenom} — Niveau ${adherent.niveau || "-"}`,
+  );
 
-  doc
-    .fontSize(11)
-    .fillColor("#718096")
-    .text(`Niveau : `, { continued: true })
-    .fillColor("#1a202c")
-    .text(adherent.niveau || "-");
-  doc
-    .fillColor("#718096")
-    .text(`Nombre de plongées : `, { continued: true })
-    .fillColor("#1a202c")
-    .text(String(plongees.length));
-  doc
-    .fillColor("#718096")
-    .text(`Profondeur maximale réalisée : `, { continued: true })
-    .fillColor("#1a202c")
-    .text(`${profondeurMax} m`);
-  doc
-    .fillColor("#718096")
-    .text(`Temps total sous l'eau : `, { continued: true })
-    .fillColor("#1a202c")
-    .text(`${dureeTotale} minutes`);
+  drawStatsBoxes(doc, [
+    { label: "Plongées", value: String(plongees.length) },
+    { label: "Profondeur max", value: `${profondeurMax} m` },
+    { label: "Temps sous l'eau", value: `${dureeTotale} min` },
+  ]);
 
-  doc.moveDown(1.5);
+  drawSectionTitle(doc, "Historique des plongées");
 
-  for (const p of plongees) {
+  const rowHeight = 20;
+  let rowY = doc.y + 4;
+  plongees.forEach((p, idx) => {
+    if (rowY > 720) {
+      doc.addPage();
+      rowY = 50;
+    }
+    if (idx % 2 === 0) {
+      doc.rect(50, rowY, doc.page.width - 100, rowHeight).fill(ROW_ALT);
+    }
     doc
+      .fillColor(INK)
+      .font("Helvetica")
       .fontSize(10)
-      .fillColor("#1a202c")
       .text(
-        `${new Date(p.date).toLocaleDateString("fr-FR")} — ${p.type_plongee} — ` +
-          `${p.profondeur_max} m / ${p.duree} min` +
-          (p.id_moniteur_validateur ? " (validée)" : " (non validée)"),
+        `${new Date(p.date).toLocaleDateString("fr-FR")}   ${p.type_plongee}   ${p.profondeur_max} m / ${p.duree} min`,
+        58,
+        rowY + 5,
+        { width: doc.page.width - 210, lineBreak: false },
       );
-    if (doc.y > 700) doc.addPage();
-  }
+    const validated = !!p.id_moniteur_validateur;
+    doc
+      .fillColor(validated ? "#059669" : FAINT)
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .text(validated ? "Validée" : "Non validée", doc.page.width - 150, rowY + 6, {
+        width: 100,
+        align: "right",
+      });
+    rowY += rowHeight;
+  });
+  doc.font("Helvetica").fillColor(INK);
+  doc.y = rowY + 10;
 
-  doc.moveDown(2);
-  doc
-    .fontSize(10)
-    .fillColor("#a0aec0")
-    .text(`Document généré le ${new Date().toLocaleDateString("fr-FR")}.`);
+  drawFooter(doc);
 
   await sendPdfAsJson(res, doc, filename);
 }
