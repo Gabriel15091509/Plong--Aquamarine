@@ -92,7 +92,14 @@ const AdherentForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      // Le baptême n'est pas un niveau breveté : pas de date d'obtention ni de brevet.
+      ...(name === "niveau" && value === "Baptême"
+        ? { date_obtention_niveau: "", num_brevet: "" }
+        : {}),
+    }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -170,6 +177,7 @@ const AdherentForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   const currentPhoto = photoPreview || photoUrl(data?.data?.photo);
+  const isBapteme = formData.niveau === "Baptême";
 
   return (
     <motion.form
@@ -486,8 +494,14 @@ const AdherentForm = () => {
               onChange={handleChange}
               onFocus={() => handleFocus("date_obtention_niveau")}
               onBlur={handleBlur}
-              className={inputClasses("date_obtention_niveau")}
+              disabled={isBapteme}
+              className={`${inputClasses("date_obtention_niveau")} ${isBapteme ? "opacity-50 cursor-not-allowed" : ""}`}
             />
+            {isBapteme && (
+              <p className="mt-1 text-xs text-gray-400">
+                Non applicable pour le niveau Baptême
+              </p>
+            )}
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -504,9 +518,15 @@ const AdherentForm = () => {
               onChange={handleChange}
               onFocus={() => handleFocus("num_brevet")}
               onBlur={handleBlur}
-              className={inputClasses("num_brevet")}
+              disabled={isBapteme}
+              className={`${inputClasses("num_brevet")} ${isBapteme ? "opacity-50 cursor-not-allowed" : ""}`}
               placeholder="FFESSM N2-2024-00123"
             />
+            {isBapteme && (
+              <p className="mt-1 text-xs text-gray-400">
+                Non applicable pour le niveau Baptême
+              </p>
+            )}
           </motion.div>
         </div>
       </div>

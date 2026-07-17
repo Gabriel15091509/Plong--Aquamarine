@@ -342,15 +342,21 @@ const AdherentDetails = () => {
             icon={FiCalendar}
             label="Date d'obtention"
             value={
-              adherent.date_obtention_niveau
-                ? formatDate(adherent.date_obtention_niveau)
-                : "Non défini"
+              adherent.niveau === "Baptême"
+                ? "Non applicable"
+                : adherent.date_obtention_niveau
+                  ? formatDate(adherent.date_obtention_niveau)
+                  : "Non défini"
             }
           />
           <InfoItem
             icon={FiFileText}
             label="Brevet délivré"
-            value={adherent.num_brevet || "Non renseigné"}
+            value={
+              adherent.niveau === "Baptême"
+                ? "Non applicable"
+                : adherent.num_brevet || "Non renseigné"
+            }
           />
           <InfoItem
             icon={FiCalendar}
