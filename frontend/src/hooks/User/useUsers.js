@@ -114,6 +114,21 @@ export const useUsers = () => {
     });
   };
 
+  // ✅ Mettre à jour la photo (par un président, pour un autre utilisateur)
+  const useUpdatePhoto = () => {
+    return useMutation({
+      mutationFn: ({ id, formData }) => userService.updatePhoto(id, formData),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['users']);
+        queryClient.invalidateQueries(['adherents']);
+        toast.success(response.message || 'Photo mise à jour avec succès');
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour de la photo');
+      },
+    });
+  };
+
   // ✅ Changer le rôle
   const useChangeRole = () => {
     return useMutation({
@@ -179,6 +194,7 @@ export const useUsers = () => {
     useChangePassword,
     useResetPassword,
     useChangeNiveau,
+    useUpdatePhoto,
     useChangeRole,
     useDisableAccount,
     useEnableAccount,

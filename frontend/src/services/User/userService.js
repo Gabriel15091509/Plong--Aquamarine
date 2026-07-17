@@ -59,6 +59,13 @@ class UserService {
     return response.data;
   }
 
+  async updatePhoto(userId, formData) {
+    const response = await api.put(`/users/${userId}/photo`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  }
+
   async disableAccount(userId) {
     const response = await api.patch(`/users/${userId}/disable`);
     return response.data;

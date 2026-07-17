@@ -127,7 +127,7 @@ function randomAddress() {
 
 function randomNiveau() {
   const niveaux = [
-    "Débutant",
+    "Baptême",
     "Niveau 1",
     "Niveau 2",
     "Niveau 3",
@@ -138,8 +138,8 @@ function randomNiveau() {
 }
 
 function randomStatut() {
-  const statuts = ["Actif", "Inactif", "Suspendu"];
-  const weights = [0.8, 0.15, 0.05];
+  const statuts = ["Actif", "Inactif", "Suspendu", "En formation", "Ancien"];
+  const weights = [0.6, 0.1, 0.05, 0.2, 0.05];
   const rand = Math.random();
   let cumul = 0;
   for (let i = 0; i < weights.length; i++) {

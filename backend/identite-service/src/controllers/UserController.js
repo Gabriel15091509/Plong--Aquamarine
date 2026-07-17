@@ -116,6 +116,24 @@ class UserController extends BaseController {
     }
   }
 
+  async updatePhoto(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { photo_path } = req.body;
+
+      const result = await this.userService.updatePhoto(id, photo_path);
+      const { password, ...safeUser } = result.toJSON();
+
+      res.json({
+        success: true,
+        data: safeUser,
+        message: "Photo mise à jour avec succès",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async disableAccount(req, res, next) {
     try {
       const { id } = req.params;

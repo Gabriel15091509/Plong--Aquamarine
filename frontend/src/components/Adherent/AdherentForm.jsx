@@ -9,27 +9,22 @@ import {
   FiMapPin,
   FiCalendar,
   FiAward,
-  FiUsers,
   FiFileText,
+  FiHeart,
+  FiTag,
+  FiCamera,
   FiSave,
   FiX,
   FiUserPlus,
-  FiBriefcase,
-  FiHeart,
 } from "react-icons/fi";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useUsers } from "../../hooks/User/useUsers";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { sendWelcomeEmailIfNeeded } from "../../utils/welcomeEmail";
+import { NIVEAU_OPTIONS, STATUT_ADHERENT_OPTIONS } from "../../utils/constants";
+import { photoUrl } from "../../utils/photoUrl";
 
 const CIVILITE_OPTIONS = ["M.", "Mme", "Mlle"];
-const NIVEAU_OPTIONS = [
-  "Débutant",
-  "Niveau 1",
-  "Niveau 2",
-  "Niveau 3",
-  "Niveau 4",
-  "Moniteur",
-];
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -43,12 +38,16 @@ const AdherentForm = () => {
   const editMode = !!id;
 
   const { useGetById, useCreate, useUpdate } = useAdherents();
+  const { useUpdatePhoto } = useUsers();
   const { data, isLoading: loadingData } = useGetById(id);
   const create = useCreate();
   const update = useUpdate();
+  const updatePhoto = useUpdatePhoto();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [focused, setFocused] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
 
   const [formData, setFormData] = useState({
     civilite: "M.",
@@ -57,15 +56,13 @@ const AdherentForm = () => {
     email: "",
     telephone: "",
     adresse: "",
-    code_postal: "",
-    ville: "",
     date_naissance: "",
-    niveau: "Débutant",
-    date_adhesion: "",
-    profession: "",
-    numero_licence: "",
-    situation_familiale: "",
-    remarques: "",
+    niveau: "Baptême",
+    date_obtention_niveau: "",
+    num_brevet: "",
+    date_inscription: "",
+    contact_urgence: "",
+    statut: "Actif",
   });
 
   useEffect(() => {
@@ -78,15 +75,17 @@ const AdherentForm = () => {
         email: a.email || "",
         telephone: a.telephone || "",
         adresse: a.adresse || "",
-        code_postal: a.code_postal || "",
-        ville: a.ville || "",
         date_naissance: a.date_naissance ? a.date_naissance.split("T")[0] : "",
-        niveau: a.niveau || "Débutant",
-        date_adhesion: a.date_adhesion ? a.date_adhesion.split("T")[0] : "",
-        profession: a.profession || "",
-        numero_licence: a.numero_licence || "",
-        situation_familiale: a.situation_familiale || "",
-        remarques: a.remarques || "",
+        niveau: a.niveau || "Baptême",
+        date_obtention_niveau: a.date_obtention_niveau
+          ? a.date_obtention_niveau.split("T")[0]
+          : "",
+        num_brevet: a.num_brevet || "",
+        date_inscription: a.date_inscription
+          ? a.date_inscription.split("T")[0]
+          : "",
+        contact_urgence: a.contact_urgence || "",
+        statut: a.statut || "Actif",
       });
     }
   }, [editMode, id, data]);
@@ -95,6 +94,13 @@ const AdherentForm = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
   };
 
   const handleFocus = (name) => setFocused(name);
@@ -112,8 +118,8 @@ const AdherentForm = () => {
     if (!formData.telephone) newErrors.telephone = "Le téléphone est requis";
     if (!formData.date_naissance)
       newErrors.date_naissance = "La date de naissance est requise";
-    if (!formData.date_adhesion)
-      newErrors.date_adhesion = "La date d'adhésion est requise";
+    if (!formData.date_inscription)
+      newErrors.date_inscription = "La date d'inscription est requise";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -123,11 +129,20 @@ const AdherentForm = () => {
     if (!validate()) return;
     setLoading(true);
     try {
+      let result;
       if (editMode && id) {
-        await update.mutateAsync({ id, data: formData });
+        result = await update.mutateAsync({ id, data: formData });
       } else {
-        const result = await create.mutateAsync(formData);
+        result = await create.mutateAsync(formData);
         await sendWelcomeEmailIfNeeded(result);
+      }
+      if (editMode && photoFile && data?.data?.user_id) {
+        const photoFormData = new FormData();
+        photoFormData.append("photo", photoFile);
+        await updatePhoto.mutateAsync({
+          id: data.data.user_id,
+          formData: photoFormData,
+        });
       }
       navigate("/adherents");
     } catch (error) {
@@ -153,6 +168,8 @@ const AdherentForm = () => {
 
   const labelClasses =
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
+
+  const currentPhoto = photoPreview || photoUrl(data?.data?.photo);
 
   return (
     <motion.form
@@ -183,6 +200,36 @@ const AdherentForm = () => {
 
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
+        {editMode && (
+          <motion.div {...fadeInUp} className="flex items-center gap-4">
+            <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600">
+              {currentPhoto ? (
+                <img
+                  src={currentPhoto}
+                  alt="Photo d'identité"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <FiUser className="w-8 h-8 text-gray-400" />
+              )}
+            </div>
+            <div>
+              <label className={labelClasses}>
+                <span className="flex items-center gap-2">
+                  <FiCamera className="w-4 h-4 text-gray-400" />
+                  Photo d'identité
+                </span>
+              </label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePhotoChange}
+                className="text-sm text-gray-600 dark:text-gray-400"
+              />
+            </div>
+          </motion.div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>
@@ -321,6 +368,90 @@ const AdherentForm = () => {
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
+                <FiMapPin className="w-4 h-4 text-gray-400" />
+                Adresse
+              </span>
+            </label>
+            <input
+              type="text"
+              name="adresse"
+              value={formData.adresse}
+              onChange={handleChange}
+              onFocus={() => handleFocus("adresse")}
+              onBlur={handleBlur}
+              className={inputClasses("adresse")}
+              placeholder="12 rue de la Plage"
+            />
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiHeart className="w-4 h-4 text-gray-400" />
+                Contact d'urgence
+              </span>
+            </label>
+            <input
+              type="text"
+              name="contact_urgence"
+              value={formData.contact_urgence}
+              onChange={handleChange}
+              onFocus={() => handleFocus("contact_urgence")}
+              onBlur={handleBlur}
+              className={inputClasses("contact_urgence")}
+              placeholder="Marie Dupont - 06 98 76 54 32"
+            />
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiCalendar className="w-4 h-4 text-gray-400" />
+                Date d'inscription *
+              </span>
+            </label>
+            <input
+              type="date"
+              name="date_inscription"
+              value={formData.date_inscription}
+              onChange={handleChange}
+              onFocus={() => handleFocus("date_inscription")}
+              onBlur={handleBlur}
+              className={inputClasses("date_inscription")}
+            />
+            {errors.date_inscription && (
+              <p className="mt-1.5 text-sm text-red-500">
+                {errors.date_inscription}
+              </p>
+            )}
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiTag className="w-4 h-4 text-gray-400" />
+                Statut
+              </span>
+            </label>
+            <select
+              name="statut"
+              value={formData.statut}
+              onChange={handleChange}
+              onFocus={() => handleFocus("statut")}
+              onBlur={handleBlur}
+              className={inputClasses("statut")}
+            >
+              {STATUT_ADHERENT_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
                 <FiAward className="w-4 h-4 text-gray-400" />
                 Niveau
               </span>
@@ -345,155 +476,36 @@ const AdherentForm = () => {
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
                 <FiCalendar className="w-4 h-4 text-gray-400" />
-                Date d'adhésion *
+                Date d'obtention du niveau
               </span>
             </label>
             <input
               type="date"
-              name="date_adhesion"
-              value={formData.date_adhesion}
+              name="date_obtention_niveau"
+              value={formData.date_obtention_niveau}
               onChange={handleChange}
-              onFocus={() => handleFocus("date_adhesion")}
+              onFocus={() => handleFocus("date_obtention_niveau")}
               onBlur={handleBlur}
-              className={inputClasses("date_adhesion")}
-            />
-            {errors.date_adhesion && (
-              <p className="mt-1.5 text-sm text-red-500">
-                {errors.date_adhesion}
-              </p>
-            )}
-          </motion.div>
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiMapPin className="w-4 h-4 text-gray-400" />
-                Adresse
-              </span>
-            </label>
-            <input
-              type="text"
-              name="adresse"
-              value={formData.adresse}
-              onChange={handleChange}
-              onFocus={() => handleFocus("adresse")}
-              onBlur={handleBlur}
-              className={inputClasses("adresse")}
-              placeholder="12 rue de la Plage"
+              className={inputClasses("date_obtention_niveau")}
             />
           </motion.div>
 
           <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiMapPin className="w-4 h-4 text-gray-400" />
-                Code postal
-              </span>
-            </label>
-            <input
-              type="text"
-              name="code_postal"
-              value={formData.code_postal}
-              onChange={handleChange}
-              onFocus={() => handleFocus("code_postal")}
-              onBlur={handleBlur}
-              className={inputClasses("code_postal")}
-              placeholder="75000"
-            />
-          </motion.div>
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiMapPin className="w-4 h-4 text-gray-400" />
-                Ville
-              </span>
-            </label>
-            <input
-              type="text"
-              name="ville"
-              value={formData.ville}
-              onChange={handleChange}
-              onFocus={() => handleFocus("ville")}
-              onBlur={handleBlur}
-              className={inputClasses("ville")}
-              placeholder="Paris"
-            />
-          </motion.div>
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiBriefcase className="w-4 h-4 text-gray-400" />
-                Profession
-              </span>
-            </label>
-            <input
-              type="text"
-              name="profession"
-              value={formData.profession}
-              onChange={handleChange}
-              onFocus={() => handleFocus("profession")}
-              onBlur={handleBlur}
-              className={inputClasses("profession")}
-              placeholder="Ingénieur"
-            />
-          </motion.div>
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiUsers className="w-4 h-4 text-gray-400" />
-                Numéro de licence
-              </span>
-            </label>
-            <input
-              type="text"
-              name="numero_licence"
-              value={formData.numero_licence}
-              onChange={handleChange}
-              onFocus={() => handleFocus("numero_licence")}
-              onBlur={handleBlur}
-              className={inputClasses("numero_licence")}
-              placeholder="LIC-2024-001"
-            />
-          </motion.div>
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiHeart className="w-4 h-4 text-gray-400" />
-                Situation familiale
-              </span>
-            </label>
-            <input
-              type="text"
-              name="situation_familiale"
-              value={formData.situation_familiale}
-              onChange={handleChange}
-              onFocus={() => handleFocus("situation_familiale")}
-              onBlur={handleBlur}
-              className={inputClasses("situation_familiale")}
-              placeholder="Marié, 2 enfants"
-            />
-          </motion.div>
-
-          <motion.div {...fadeInUp} className="md:col-span-2">
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
                 <FiFileText className="w-4 h-4 text-gray-400" />
-                Remarques
+                Brevet délivré
               </span>
             </label>
-            <textarea
-              name="remarques"
-              value={formData.remarques}
+            <input
+              type="text"
+              name="num_brevet"
+              value={formData.num_brevet}
               onChange={handleChange}
-              onFocus={() => handleFocus("remarques")}
+              onFocus={() => handleFocus("num_brevet")}
               onBlur={handleBlur}
-              rows="3"
-              className={inputClasses("remarques")}
-              placeholder="Informations complémentaires..."
+              className={inputClasses("num_brevet")}
+              placeholder="FFESSM N2-2024-00123"
             />
           </motion.div>
         </div>

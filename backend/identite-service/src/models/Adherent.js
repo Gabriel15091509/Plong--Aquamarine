@@ -58,7 +58,7 @@ const Adherent = sequelize.define(
     },
     niveau: {
       type: DataTypes.ENUM(
-        "Débutant",
+        "Baptême",
         "Niveau 1",
         "Niveau 2",
         "Niveau 3",
@@ -74,8 +74,18 @@ const Adherent = sequelize.define(
         isDate: true,
       },
     },
+    num_brevet: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
     statut: {
-      type: DataTypes.ENUM("Actif", "Inactif", "Suspendu"),
+      type: DataTypes.ENUM(
+        "Actif",
+        "Inactif",
+        "Suspendu",
+        "En formation",
+        "Ancien",
+      ),
       allowNull: false,
       defaultValue: "Actif",
     },

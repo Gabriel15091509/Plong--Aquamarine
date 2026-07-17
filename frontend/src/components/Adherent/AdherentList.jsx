@@ -18,6 +18,7 @@ import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
 import { photoUrl } from "../../utils/photoUrl";
+import { STATUT_ADHERENT_OPTIONS } from "../../utils/constants";
 
 // TODO: Ajouter un filtre par date d'inscription
 const AdherentList = () => {
@@ -128,9 +129,11 @@ const AdherentList = () => {
             className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
           >
             <option value="all">Tous</option>
-            <option value="Actif">Actifs</option>
-            <option value="Inactif">Inactifs</option>
-            <option value="Suspendu">Suspendus</option>
+            {STATUT_ADHERENT_OPTIONS.map((statut) => (
+              <option key={statut} value={statut}>
+                {statut}
+              </option>
+            ))}
           </select>
           {canManageAdherent && (
             <Link

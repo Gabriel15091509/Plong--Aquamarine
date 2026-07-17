@@ -10,7 +10,7 @@ const materielClient = require('../utils/serviceClients/materielClient');
 const { isStaff } = require('../utils/roleScope');
 const { withAdherent } = require('../utils/enrichAdherents');
 
-const NIVEAUX_LIMITANTS = ['Débutant', 'Niveau 1'];
+const NIVEAUX_LIMITANTS = ['Baptême', 'Niveau 1'];
 
 class PalanqueeService extends BaseService {
   constructor() {

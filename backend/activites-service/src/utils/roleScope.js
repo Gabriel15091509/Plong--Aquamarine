@@ -6,7 +6,7 @@
 
 const STAFF_ROLES = ["president", "moniteur", "tresorier"];
 const NIVEAU_ORDER = [
-  "Débutant",
+  "Baptême",
   "Niveau 1",
   "Niveau 2",
   "Niveau 3",
