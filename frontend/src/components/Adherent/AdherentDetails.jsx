@@ -20,6 +20,7 @@ import {
   FiFileText,
   FiDroplet,
   FiAnchor,
+  FiHash,
 } from "react-icons/fi";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
@@ -356,6 +357,15 @@ const AdherentDetails = () => {
               adherent.niveau === "Baptême"
                 ? "Non applicable"
                 : adherent.num_brevet || "Non renseigné"
+            }
+          />
+          <InfoItem
+            icon={FiHash}
+            label="N° Licence FFESM"
+            value={
+              adherent.niveau === "Baptême"
+                ? "Non applicable"
+                : adherent.num_licence_ffesm || "Non renseigné"
             }
           />
           <InfoItem

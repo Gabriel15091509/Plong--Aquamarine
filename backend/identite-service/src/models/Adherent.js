@@ -78,6 +78,13 @@ const Adherent = sequelize.define(
       type: DataTypes.STRING(50),
       allowNull: true,
     },
+    // Source de vérité pour l'auto-remplissage du formulaire d'ajout
+    // d'adhésion (au lieu de la dernière ligne Adhesion.num_licence_ffesm,
+    // peu fiable). Un Baptême n'est pas licencié FFESM : reste null.
+    num_licence_ffesm: {
+      type: DataTypes.STRING(30),
+      allowNull: true,
+    },
     statut: {
       type: DataTypes.ENUM(
         "Actif",

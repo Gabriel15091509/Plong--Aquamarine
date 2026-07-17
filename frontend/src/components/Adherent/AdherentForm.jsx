@@ -11,6 +11,7 @@ import {
   FiAward,
   FiFileText,
   FiHeart,
+  FiHash,
   FiTag,
   FiCamera,
   FiSave,
@@ -60,6 +61,7 @@ const AdherentForm = () => {
     niveau: "Baptême",
     date_obtention_niveau: "",
     num_brevet: "",
+    num_licence_ffesm: "",
     date_inscription: "",
     contact_urgence: "",
     statut: "Actif",
@@ -81,6 +83,7 @@ const AdherentForm = () => {
           ? a.date_obtention_niveau.split("T")[0]
           : "",
         num_brevet: a.num_brevet || "",
+        num_licence_ffesm: a.num_licence_ffesm || "",
         date_inscription: a.date_inscription
           ? a.date_inscription.split("T")[0]
           : "",
@@ -95,9 +98,10 @@ const AdherentForm = () => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      // Le baptême n'est pas un niveau breveté : pas de date d'obtention ni de brevet.
+      // Le baptême n'est pas un niveau breveté : pas de date d'obtention, de
+      // brevet, ni de licence FFESM.
       ...(name === "niveau" && value === "Baptême"
-        ? { date_obtention_niveau: "", num_brevet: "" }
+        ? { date_obtention_niveau: "", num_brevet: "", num_licence_ffesm: "" }
         : {}),
     }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -521,6 +525,31 @@ const AdherentForm = () => {
               disabled={isBapteme}
               className={`${inputClasses("num_brevet")} ${isBapteme ? "opacity-50 cursor-not-allowed" : ""}`}
               placeholder="FFESSM N2-2024-00123"
+            />
+            {isBapteme && (
+              <p className="mt-1 text-xs text-gray-400">
+                Non applicable pour le niveau Baptême
+              </p>
+            )}
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiHash className="w-4 h-4 text-gray-400" />
+                N° Licence FFESM
+              </span>
+            </label>
+            <input
+              type="text"
+              name="num_licence_ffesm"
+              value={formData.num_licence_ffesm}
+              onChange={handleChange}
+              onFocus={() => handleFocus("num_licence_ffesm")}
+              onBlur={handleBlur}
+              disabled={isBapteme}
+              className={`${inputClasses("num_licence_ffesm")} ${isBapteme ? "opacity-50 cursor-not-allowed" : ""}`}
+              placeholder="FF12345"
             />
             {isBapteme && (
               <p className="mt-1 text-xs text-gray-400">
