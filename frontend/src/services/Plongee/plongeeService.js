@@ -1,4 +1,5 @@
 import api from '../api';
+import { downloadFile } from '../../utils/downloadFile';
 
 class PlongeeService {
   async getAll(params = {}) {
@@ -14,6 +15,13 @@ class PlongeeService {
   async getByAdherent(numAdherent) {
     const response = await api.get(`/plongees/adherent/${numAdherent}`);
     return response.data;
+  }
+
+  async downloadCarnet(numAdherent) {
+    return downloadFile(
+      `/plongees/adherent/${numAdherent}/carnet-pdf`,
+      `carnet-plongee-${numAdherent}.pdf`,
+    );
   }
 
   async getWithDetails(id) {

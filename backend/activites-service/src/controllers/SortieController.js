@@ -81,6 +81,15 @@ class SortieController extends BaseController {
     }
   }
 
+  async getTauxRemplissage(req, res, next) {
+    try {
+      const tauxRemplissage = await this.sortieService.getTauxRemplissage();
+      res.json({ success: true, data: { tauxRemplissage } });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async getSortieDetails(req, res, next) {
     try {
       const { id } = req.params;

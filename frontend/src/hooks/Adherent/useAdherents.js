@@ -81,6 +81,19 @@ export const useAdherents = () => {
     });
   };
 
+  const useSendCommunication = () => {
+    return useMutation({
+      mutationFn: (data) => adherentService.sendCommunication(data),
+      onSuccess: (response) => {
+        toast.success(response.message || "Message envoyé");
+      },
+      onError: (error) => {
+        const message = error.response?.data?.message || "Erreur lors de l'envoi";
+        toast.error(message);
+      },
+    });
+  };
+
   return {
     useGetAll,
     useGetById,
@@ -89,5 +102,6 @@ export const useAdherents = () => {
     useCreate,
     useUpdate,
     useRemove,
+    useSendCommunication,
   };
 };

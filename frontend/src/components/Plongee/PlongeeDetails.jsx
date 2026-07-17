@@ -22,6 +22,7 @@ import {
   FiAnchor,
   FiMapPin,
   FiUsers,
+  FiWind,
 } from "react-icons/fi";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
@@ -372,6 +373,11 @@ const PlongeeDetails = () => {
             icon={FiEye}
             label="Visibilité"
             value={plongee.visibilite || "Non renseignée"}
+          />
+          <InfoItem
+            icon={FiWind}
+            label="Courant"
+            value={plongee.courant || "Non renseigné"}
           />
           <InfoItem
             icon={FiTag}

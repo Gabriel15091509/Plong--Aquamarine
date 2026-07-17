@@ -2,6 +2,8 @@
 // pour valider le dossier d'adhésion et le statut du certificat médical d'un
 // adhérent avant de confirmer son inscription à une sortie (anciennement des
 // appels en-process à AdhesionService/CertificatMedicalService).
+const { getSystemAuthHeader } = require("../internalAuth");
+
 const BASE_URL = process.env.VIE_ASSOCIATIVE_SERVICE_URL
   ? `${process.env.VIE_ASSOCIATIVE_SERVICE_URL}/api`
   : "http://localhost:5013/api";
@@ -29,7 +31,26 @@ async function checkCertificateStatus(num_adherent, authHeader) {
   return body.data;
 }
 
+// Utilisé par les crons d'alerte (attribution en retard, inactivité carnet de
+// plongée) qui n'ont pas de requête utilisateur/authHeader à disposition —
+// authentifié via un jeton interne signé avec le JWT_SECRET partagé.
+async function createAlerte(num_adherent, type) {
+  const response = await fetch(`${BASE_URL}/alertes`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: getSystemAuthHeader(),
+    },
+    body: JSON.stringify({ num_adherent, type, canal: "Notification" }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message || `vie-associative-service: échec création alerte (${response.status})`);
+  }
+}
+
 module.exports = {
   checkDossierValidity,
   checkCertificateStatus,
+  createAlerte,
 };

@@ -103,6 +103,26 @@ class SortieRepository extends BaseRepository {
     });
   }
 
+  // Sorties du lendemain (jour calendaire), avec inscriptions incluses —
+  // base du rappel 24h avant sortie (CDC 3.2.2).
+  async findDemainAvecInscriptions() {
+    const now = new Date();
+    const debut = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+    const fin = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 23, 59, 59, 999);
+    return await this.model.findAll({
+      where: {
+        date_heure: { [Op.between]: [debut, fin] },
+        statut: { [Op.ne]: "Annulée" },
+      },
+      include: [
+        {
+          model: Inscription,
+          as: "inscriptions",
+        },
+      ],
+    });
+  }
+
   async countInPeriod(dateField, start, end) {
     return await this.model.count({
       where: { [dateField]: { [Op.gte]: start, [Op.lte]: end } },

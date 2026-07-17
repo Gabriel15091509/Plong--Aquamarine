@@ -28,6 +28,7 @@ router.get(
 );
 router.get("/stats", sortieController.getStats.bind(sortieController));
 router.get("/trend", sortieController.getTrend.bind(sortieController));
+router.get("/taux-remplissage", sortieController.getTauxRemplissage.bind(sortieController));
 router.get(
   "/:id",
   AuthMiddleware.authenticate,

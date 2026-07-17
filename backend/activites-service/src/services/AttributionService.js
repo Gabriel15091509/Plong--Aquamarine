@@ -3,6 +3,7 @@ const AttributionRepository = require('../repositories/AttributionRepository');
 const materielClient = require('../utils/serviceClients/materielClient');
 const paiementClient = require('../utils/serviceClients/paiementClient');
 const identiteClient = require('../utils/serviceClients/identiteClient');
+const vieAssociativeClient = require('../utils/serviceClients/vieAssociativeClient');
 const { withAdherent } = require('../utils/enrichAdherents');
 
 class AttributionService extends BaseService {
@@ -143,6 +144,22 @@ class AttributionService extends BaseService {
     if (!data.date_retour_prevue) errors.push("La date de retour prévue est requise");
 
     return errors;
+  }
+
+  // Alerte "prêt en retard" (CDC 3.4.4) : toute attribution non rendue dont
+  // la date de retour prévue est dépassée génère (ou renouvelle) une alerte
+  // dans vie-associative-service. Appelé par un cron (voir app.js) —
+  // best-effort, une alerte en échec n'interrompt pas les autres.
+  async alerterRetards() {
+    const enRetard = await this.attributionRepository.findEnRetard();
+    for (const attribution of enRetard) {
+      try {
+        await vieAssociativeClient.createAlerte(attribution.num_adherent, "Materiel en retard");
+      } catch (error) {
+        console.error(`Erreur alerte retard matériel (attribution ${attribution.id_attribution}):`, error.message);
+      }
+    }
+    return enRetard.length;
   }
 }
 

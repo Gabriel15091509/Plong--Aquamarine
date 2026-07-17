@@ -41,6 +41,8 @@ export const TYPE_ADHESION_OPTIONS = [
 
 export const TYPES_ADHESION_OBLIGATOIRES = ['Club', 'FFESM', 'Assurance RC'];
 
+export const CERTIFICAT_TYPE_OPTIONS = ['Sportif', 'Plongée', 'Généraliste', 'Médecin hyperbare'];
+
 // Constantes nommées (comparaisons d'égalité dans le code) — les tableaux
 // `_OPTIONS` ci-dessous (utilisés pour peupler les <select>) en dérivent pour
 // n'avoir qu'une seule source de vérité par vocabulaire de statut.

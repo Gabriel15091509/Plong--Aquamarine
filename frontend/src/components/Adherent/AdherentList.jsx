@@ -11,6 +11,7 @@ import {
   FiPhone,
   FiCalendar,
   FiAward,
+  FiSend,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
@@ -135,6 +136,15 @@ const AdherentList = () => {
               </option>
             ))}
           </select>
+          {canManageAdherent && (
+            <Link
+              to="/adherents/communication"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-indigo-600 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+            >
+              <FiSend className="w-4 h-4" />
+              Communication
+            </Link>
+          )}
           {canManageAdherent && (
             <Link
               to="/adherents/create"

@@ -52,6 +52,11 @@ class AdherentService {
     const response = await api.patch(`/adherents/${id}/increment-plongees`);
     return response.data;
   }
+
+  async sendCommunication(data) {
+    const response = await api.post("/adherents/communication", data);
+    return response.data;
+  }
 }
 
 export default new AdherentService();

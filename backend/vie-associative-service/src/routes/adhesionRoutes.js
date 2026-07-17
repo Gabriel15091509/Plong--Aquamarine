@@ -11,6 +11,7 @@ router.get('/', AuthMiddleware.authenticate, adhesionController.getAll.bind(adhe
 router.get('/active', AuthMiddleware.authenticate, adhesionController.getActiveAdhesions.bind(adhesionController));
 router.get('/expiring', AuthMiddleware.authenticate, adhesionController.getExpiringAdhesions.bind(adhesionController));
 router.get('/stats', adhesionController.getStats.bind(adhesionController));
+router.get('/taux-renouvellement', adhesionController.getTauxRenouvellement.bind(adhesionController));
 router.get('/adherent/:num_adherent', AuthMiddleware.authenticate, adhesionController.getByAdherent.bind(adhesionController));
 router.get('/adherent/:num_adherent/dossier-status', AuthMiddleware.authenticate, adhesionController.getDossierStatus.bind(adhesionController));
 router.get('/adherent/:num_adherent/attestation', AuthMiddleware.authenticate, adhesionController.getAttestation.bind(adhesionController));

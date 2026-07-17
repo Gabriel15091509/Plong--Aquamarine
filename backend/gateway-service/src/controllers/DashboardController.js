@@ -14,6 +14,15 @@ class DashboardController {
       next(withStatus(error, 500));
     }
   }
+
+  async getIndicateurs(req, res, next) {
+    try {
+      const indicateurs = await this.dashboardService.getIndicateurs(req.headers.authorization);
+      res.json({ success: true, data: indicateurs });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
 }
 
 module.exports = DashboardController;

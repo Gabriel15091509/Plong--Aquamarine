@@ -198,7 +198,46 @@ Bienvenue au Club de Plongée ! Votre compte a été créé avec succès.
   };
 };
 
+// Communication ciblée (CDC 3.6.1) : message libre du président vers un
+// segment d'adhérents (niveau/ancienneté), pas de gabarit riche comme
+// sendWelcomeEmail — le contenu vient du formulaire.
+const sendCommunicationEmail = async ({ to, adherentName, subject, message }) => {
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f0f4f8; margin: 0; padding: 40px 20px; line-height: 1.6; color: #1a202c; }
+    .container { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #06b6d4, #3b82f6, #4f46e5); padding: 32px 40px; }
+    .header h1 { color: #ffffff; font-size: 22px; font-weight: 800; }
+    .content { padding: 32px 40px; white-space: pre-wrap; }
+    .content p { margin-bottom: 12px; color: #2d3748; }
+    .footer { padding: 20px 40px; border-top: 1px solid #edf2f7; text-align: center; }
+    .footer p { color: #a0aec0; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>🌊 Club de Plongée</h1></div>
+    <div class="content">
+      <p>Bonjour ${adherentName},</p>
+      <p>${message}</p>
+    </div>
+    <div class="footer">
+      <p>© ${new Date().getFullYear()} Club de Plongée — email envoyé par le club</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  return sendEmail({ to, subject, html: htmlContent });
+};
+
 module.exports = {
   sendEmail,
   sendWelcomeEmail,
+  sendCommunicationEmail,
 };

@@ -1,6 +1,7 @@
 const BaseService = require('./BaseService');
 const PaiementRepository = require('../repositories/PaiementRepository');
 const identiteClient = require('../utils/serviceClients/identiteClient');
+const vieAssociativeClient = require('../utils/serviceClients/vieAssociativeClient');
 
 class PaiementService extends BaseService {
   constructor() {
@@ -155,6 +156,23 @@ class PaiementService extends BaseService {
       trend: `${rounded >= 0 ? "+" : ""}${rounded}%`,
       trendUp: rounded >= 0,
     };
+  }
+
+  // Relance automatique (CDC 3.1.4) : tout paiement encore "En attente" plus
+  // de `days` jours après sa création génère (ou renouvelle) une alerte
+  // "Paiement en retard" dans vie-associative-service. Appelé par un cron
+  // (voir app.js) — best-effort, une alerte en échec n'interrompt pas les
+  // autres.
+  async relancerImpayes(days = 15) {
+    const enRetard = await this.paiementRepository.findEnRetard(days);
+    for (const paiement of enRetard) {
+      try {
+        await vieAssociativeClient.createAlerte(paiement.num_adherent, "Paiement en retard");
+      } catch (error) {
+        console.error(`Erreur alerte impayé (paiement ${paiement.id_paiement}):`, error.message);
+      }
+    }
+    return enRetard.length;
   }
 
   // Libellé de la référence requise par type de paiement "lié" — même liste

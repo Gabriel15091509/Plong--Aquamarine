@@ -42,6 +42,10 @@ const Plongee = sequelize.define(
       type: DataTypes.STRING(20),
       allowNull: true,
     },
+    courant: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
     type_plongee: {
       type: DataTypes.STRING(30),
       allowNull: false,

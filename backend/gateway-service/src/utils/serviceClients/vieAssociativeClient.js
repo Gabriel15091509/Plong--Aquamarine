@@ -67,10 +67,22 @@ async function getNumAdherentsWithExpiringCertificates(days = 30) {
   return (body.data || []).map((c) => c.num_adherent);
 }
 
+// Utilisé par DashboardService.getIndicateurs (CDC 3.6.2 — taux de
+// renouvellement des adhésions).
+async function getTauxRenouvellement() {
+  const response = await fetch(`${BASE_URL}/adhesions/taux-renouvellement`);
+  if (!response.ok) {
+    throw new Error(`vie-associative-service: échec récupération taux de renouvellement (${response.status})`);
+  }
+  const body = await response.json();
+  return body.data.tauxRenouvellement;
+}
+
 module.exports = {
   checkDossierValidity,
   checkCertificateStatus,
   getAdhesionsByAdherent,
   getCertificatsByAdherent,
   getNumAdherentsWithExpiringCertificates,
+  getTauxRenouvellement,
 };

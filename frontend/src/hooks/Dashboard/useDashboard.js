@@ -10,5 +10,13 @@ export const useDashboard = () => {
     });
   };
 
-  return { useGetTrends };
+  const useGetIndicateurs = () => {
+    return useQuery({
+      queryKey: ["dashboard", "indicateurs"],
+      queryFn: () => dashboardService.getIndicateurs(),
+      staleTime: 5 * 60 * 1000,
+    });
+  };
+
+  return { useGetTrends, useGetIndicateurs };
 };

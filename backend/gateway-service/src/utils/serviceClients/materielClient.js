@@ -55,4 +55,22 @@ async function getTrend() {
   return body.data;
 }
 
-module.exports = { checkAvailability, getByNumInventaire, createReparation, getTrend };
+// Utilisé par DashboardService.getIndicateurs (CDC 3.6.2 — matériel à
+// réviser, mis en avant sur le dashboard plutôt que relégué à une page
+// dédiée).
+async function getNbNeedingMaintenance() {
+  const response = await fetch(`${BASE_URL}/materiels/needing-maintenance`);
+  if (!response.ok) {
+    throw new Error(`materiel-service: échec récupération matériel à réviser (${response.status})`);
+  }
+  const body = await response.json();
+  return (body.data || []).length;
+}
+
+module.exports = {
+  checkAvailability,
+  getByNumInventaire,
+  createReparation,
+  getTrend,
+  getNbNeedingMaintenance,
+};

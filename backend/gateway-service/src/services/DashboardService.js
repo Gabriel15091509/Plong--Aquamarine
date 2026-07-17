@@ -25,6 +25,26 @@ class DashboardService {
 
     return { adherents, sorties, chiffreAffaires, formations, plongees, materiel };
   }
+
+  // Indicateurs supplémentaires du CDC 3.6.2 absents des tendances ci-dessus
+  // (pas des compteurs période-sur-période, mais des taux/comptes actuels).
+  // Même stratégie de dégradation silencieuse par service indisponible.
+  async getIndicateurs(authHeader) {
+    const [tauxRemplissageSorties, tauxRenouvellementAdhesions, nbMaterielAReviser, nbAdherentsInactifs] =
+      await Promise.all([
+        activitesClient.getTauxRemplissageSorties().catch(() => null),
+        vieAssociativeClient.getTauxRenouvellement().catch(() => null),
+        materielClient.getNbNeedingMaintenance().catch(() => null),
+        activitesClient.getNbAdherentsInactifs(authHeader).catch(() => null),
+      ]);
+
+    return {
+      tauxRemplissageSorties,
+      tauxRenouvellementAdhesions,
+      nbMaterielAReviser,
+      nbAdherentsInactifs,
+    };
+  }
 }
 
 module.exports = DashboardService;

@@ -20,8 +20,8 @@ import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
+import { CERTIFICAT_TYPE_OPTIONS } from "../../utils/constants";
 
-const CERTIFICAT_TYPES = ["Médical", "Sportif", "Plongée", "Révision"];
 const CERTIFICAT_STATUS = ["Valide", "Expiré", "En attente"];
 
 const fadeInUp = {
@@ -223,7 +223,7 @@ const CertificatForm = () => {
               onBlur={handleBlur}
               className={inputClasses("type_certificat")}
             >
-              {CERTIFICAT_TYPES.map((opt) => (
+              {CERTIFICAT_TYPE_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>

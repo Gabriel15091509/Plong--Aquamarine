@@ -221,6 +221,8 @@ class AlerteService extends BaseService {
       "Adhesion expire bientot",
       "Paiement en retard",
       "Formation",
+      "Materiel en retard",
+      "Inactivite plongee",
     ];
     if (data.type && !validTypes.includes(data.type)) {
       errors.push("Type d'alerte invalide");

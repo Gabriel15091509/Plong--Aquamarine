@@ -76,6 +76,13 @@ router.post(
   adherentController.create.bind(adherentController),
 );
 
+router.post(
+  "/adherents/communication",
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  adherentController.sendCommunication.bind(adherentController),
+);
+
 router.put(
   "/adherents/:id",
   AuthMiddleware.authenticate,

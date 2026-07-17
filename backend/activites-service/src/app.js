@@ -3,11 +3,16 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
+const cron = require("node-cron");
 require("dotenv").config();
 
 const routes = require("./routes");
 const ErrorHandler = require("./middlewares/errorHandler");
 const logger = require("./utils/logger");
+const AttributionService = require("./services/AttributionService");
+const PlongeeService = require("./services/PlongeeService");
+const SortieService = require("./services/SortieService");
+const { getSystemAuthHeader } = require("./utils/internalAuth");
 const { sequelize, testConnection } = require("./config/database");
 
 const app = express();
@@ -76,6 +81,25 @@ const initializeApp = async () => {
     logger.error("❌ [activites-service] Database connection failed");
     process.exit(1);
   }
+
+  // Alertes "prêt en retard" (3.4.4) et "inactivité carnet de plongée"
+  // (3.3.2) : un premier passage immédiat au démarrage, puis tous les jours
+  // à 7h — motif identique aux alertes d'expiration de vie-associative-service.
+  const attributionService = new AttributionService();
+  const plongeeService = new PlongeeService();
+  await attributionService.alerterRetards();
+  await plongeeService.alerterInactifs();
+  cron.schedule("0 7 * * *", () => attributionService.alerterRetards());
+  cron.schedule("0 7 * * *", () => plongeeService.alerterInactifs());
+  logger.info("✅ Planification des alertes matériel/plongée active (quotidien 07:00)");
+
+  // Rappel 24h avant sortie (3.2.2) : un premier passage immédiat au
+  // démarrage, puis tous les jours à 18h.
+  const sortieService = new SortieService();
+  const systemAuthHeader = getSystemAuthHeader();
+  await sortieService.envoyerRappels(systemAuthHeader);
+  cron.schedule("0 18 * * *", () => sortieService.envoyerRappels(getSystemAuthHeader()));
+  logger.info("✅ Planification des rappels de sortie active (quotidien 18:00)");
 };
 
 process.on("unhandledRejection", (err) => {

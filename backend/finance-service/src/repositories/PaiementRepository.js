@@ -13,6 +13,19 @@ class PaiementRepository extends BaseRepository {
     });
   }
 
+  // "En retard" faute de date d'échéance dédiée sur Paiement : un paiement
+  // encore "En attente" plus de `days` jours après sa création (date_paiement
+  // vaut la date de création de l'enregistrement, pas une échéance future).
+  async findEnRetard(days) {
+    const seuil = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    return await this.model.findAll({
+      where: {
+        statut: 'En attente',
+        date_paiement: { [Op.lte]: seuil },
+      },
+    });
+  }
+
   async findByAdherent(num_adherent) {
     return await this.model.findAll({
       where: { num_adherent },

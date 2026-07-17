@@ -4,6 +4,14 @@ const InscriptionRepository = require("../repositories/InscriptionRepository");
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const { isNiveauCompatible } = require("../utils/roleScope");
 const { withAdherent } = require("../utils/enrichAdherents");
+const { sendSortieReminderEmail } = require("../utils/email");
+
+function formatSortieLabel(sortie) {
+  const date = sortie?.date_heure
+    ? new Date(sortie.date_heure).toLocaleDateString("fr-FR")
+    : "";
+  return `${sortie?.site || sortie?.lieu || "Sortie"} du ${date}`;
+}
 
 class SortieService extends BaseService {
   constructor() {
@@ -307,6 +315,54 @@ class SortieService extends BaseService {
       trend: `${rounded >= 0 ? "+" : ""}${rounded}%`,
       trendUp: rounded >= 0,
     };
+  }
+
+  // Taux de remplissage moyen des sorties (CDC 3.6.2) : places prises
+  // (inscriptions Confirmée) rapportées aux places offertes, pondéré par le
+  // nombre de places de chaque sortie plutôt qu'une moyenne simple par
+  // sortie (une petite sortie complète ne doit pas peser autant qu'une
+  // grande sortie à moitié pleine). Les sorties annulées ou sans place
+  // définie n'entrent pas dans le calcul.
+  async getTauxRemplissage() {
+    const sorties = await this.sortieRepository.findAllWithInscriptionCounts();
+    const pertinentes = sorties
+      .map((s) => this.attachCapacity(s))
+      .filter((s) => s.statut !== "Annulée" && s.nb_places > 0);
+
+    if (pertinentes.length === 0) return 0;
+
+    const totalPlaces = pertinentes.reduce((sum, s) => sum + s.nb_places, 0);
+    const totalInscrits = pertinentes.reduce((sum, s) => sum + s.nb_inscrits, 0);
+
+    return totalPlaces > 0 ? Math.round((totalInscrits / totalPlaces) * 100) : 0;
+  }
+
+  // Rappel 24h avant sortie (CDC 3.2.2), envoyé aux inscrits Confirmée des
+  // sorties du lendemain. Appelé par un cron (voir app.js) — best-effort,
+  // un email en échec n'interrompt pas les autres.
+  async envoyerRappels(authHeader) {
+    const sorties = await this.sortieRepository.findDemainAvecInscriptions();
+    let envoyes = 0;
+
+    for (const sortie of sorties) {
+      const confirmees = (sortie.inscriptions || []).filter((i) => i.statut === "Confirmée");
+      for (const inscription of confirmees) {
+        try {
+          const adherent = await identiteClient.getAdherentById(inscription.num_adherent, authHeader);
+          if (!adherent?.email) continue;
+          await sendSortieReminderEmail({
+            to: adherent.email,
+            adherentName: `${adherent.prenom} ${adherent.nom}`,
+            sortieLabel: formatSortieLabel(sortie),
+            id_sortie: sortie.id_sortie,
+          });
+          envoyes += 1;
+        } catch (error) {
+          console.error(`Erreur rappel sortie (inscription ${inscription.id_inscription}):`, error.message);
+        }
+      }
+    }
+    return envoyes;
   }
 }
 
