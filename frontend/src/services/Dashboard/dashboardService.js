@@ -5,6 +5,11 @@ class DashboardService {
     const response = await api.get("/dashboard/trends");
     return response.data;
   }
+
+  async getIndicateurs() {
+    const response = await api.get("/dashboard/indicateurs");
+    return response.data;
+  }
 }
 
 export default new DashboardService();

@@ -21,15 +21,19 @@ import {
   FiDroplet,
   FiAnchor,
   FiHash,
+  FiClock,
+  FiDownload,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
-import { formatDate } from "../../utils/helpers";
+import { formatDate, formatDuration } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
+import plongeeService from "../../services/Plongee/plongeeService";
 
 // Animations - j'ai repris les mêmes que sur la page d'accueil
 // Faudrait peut-être mutualiser ça un jour...
@@ -62,8 +66,20 @@ const AdherentDetails = () => {
   const { data, isLoading } = useGetById(id);
   const remove = useRemove();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [downloadingCarnet, setDownloadingCarnet] = useState(false);
 
   const adherent = data?.data;
+
+  const handleDownloadCarnet = async () => {
+    setDownloadingCarnet(true);
+    try {
+      await plongeeService.downloadCarnet(adherent.num_adherent);
+    } catch (error) {
+      toast.error("Erreur lors du téléchargement du carnet");
+    } finally {
+      setDownloadingCarnet(false);
+    }
+  };
 
   // Même calcul que ProfilePage.jsx (anneesMembre) : différence en années
   // pleines depuis l'inscription.
@@ -233,6 +249,16 @@ const AdherentDetails = () => {
             </div>
           </div>
         </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleDownloadCarnet}
+            disabled={downloadingCarnet}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl transition-all duration-300 disabled:opacity-60"
+          >
+            <FiDownload className="w-4 h-4" />
+            Télécharger le carnet
+          </button>
+        </div>
         {canManageAdherent && (
           <div className="flex gap-2">
             <Link
@@ -396,6 +422,26 @@ const AdherentDetails = () => {
               adherent.nb_plongees_reelles === undefined
                 ? "Indisponible"
                 : String(adherent.nb_plongees_reelles)
+            }
+          />
+          <InfoItem
+            icon={FiAnchor}
+            label="Profondeur max réalisée"
+            value={
+              adherent.profondeur_max_reelle === null ||
+              adherent.profondeur_max_reelle === undefined
+                ? "Indisponible"
+                : `${adherent.profondeur_max_reelle} m`
+            }
+          />
+          <InfoItem
+            icon={FiClock}
+            label="Temps total sous l'eau"
+            value={
+              adherent.duree_totale_reelle === null ||
+              adherent.duree_totale_reelle === undefined
+                ? "Indisponible"
+                : formatDuration(adherent.duree_totale_reelle)
             }
           />
         </SectionCard>

@@ -66,6 +66,21 @@ class PlongeeRepository extends BaseRepository {
       where: { [dateField]: { [Op.gte]: start, [Op.lte]: end } },
     });
   }
+
+  // Un adhérent par ligne, avec la date de sa dernière plongée enregistrée —
+  // ne couvre que les adhérents ayant déjà plongé au moins une fois (un
+  // adhérent qui n'a jamais plongé n'a pas de "dernière plongée" à comparer).
+  async findDerniereDatePlongeeParAdherent() {
+    const rows = await this.model.findAll({
+      attributes: [
+        'num_adherent',
+        [this.model.sequelize.fn('MAX', this.model.sequelize.col('date')), 'derniere_plongee'],
+      ],
+      group: ['num_adherent'],
+      raw: true,
+    });
+    return rows;
+  }
 }
 
 module.exports = PlongeeRepository;

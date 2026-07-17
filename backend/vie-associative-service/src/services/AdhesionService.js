@@ -208,6 +208,23 @@ class AdhesionService extends BaseService {
 
     return errors;
   }
+
+  // Taux de renouvellement des adhésions (CDC 3.6.2) : parmi les adhérents
+  // ayant une adhésion Club l'année précédente, quelle proportion en a repris
+  // une cette année.
+  async getTauxRenouvellement() {
+    const anneeCourante = new Date().getFullYear();
+    const anneePrecedente = anneeCourante - 1;
+
+    const numsPrecedents = await this.adhesionRepository.findNumAdherentsClubByAnnee(anneePrecedente);
+    if (numsPrecedents.length === 0) return 0;
+
+    const numsCourants = await this.adhesionRepository.findNumAdherentsClubByAnnee(anneeCourante);
+    const setCourants = new Set(numsCourants);
+    const renouveles = numsPrecedents.filter((num) => setCourants.has(num)).length;
+
+    return Math.round((renouveles / numsPrecedents.length) * 100);
+  }
 }
 
 module.exports = AdhesionService;

@@ -95,6 +95,15 @@ class AdhesionController extends BaseController {
     }
   }
 
+  async getTauxRenouvellement(req, res, next) {
+    try {
+      const tauxRenouvellement = await this.adhesionService.getTauxRenouvellement();
+      res.json({ success: true, data: { tauxRenouvellement } });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async create(req, res, next) {
     try {
       const result = await this.adhesionService.create(req.body, req.user, req.headers.authorization);

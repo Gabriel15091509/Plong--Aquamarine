@@ -23,6 +23,8 @@ const Alerte = sequelize.define(
         "Adhesion expire bientot",
         "Paiement en retard",
         "Formation",
+        "Materiel en retard",
+        "Inactivite plongee",
       ),
       allowNull: false,
     },

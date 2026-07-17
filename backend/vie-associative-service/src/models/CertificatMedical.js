@@ -16,7 +16,7 @@ const CertificatMedical = sequelize.define(
       allowNull: false,
     },
     type_certificat: {
-      type: DataTypes.STRING(30),
+      type: DataTypes.ENUM("Sportif", "Plongée", "Généraliste", "Médecin hyperbare"),
       allowNull: false,
     },
     date_validite: {

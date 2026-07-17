@@ -33,6 +33,8 @@ const VISIBILITE_OPTIONS = [
   "Très mauvaise",
 ];
 
+const COURANT_OPTIONS = ["Nul", "Faible", "Modéré", "Fort", "Très fort"];
+
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -67,6 +69,7 @@ const PlongeeForm = () => {
     duree: "",
     temperature_eau: "",
     visibilite: "Bonne",
+    courant: "Nul",
     type_plongee: "Loisir",
     observations_faune: "",
     lien_photos: "",
@@ -88,6 +91,7 @@ const PlongeeForm = () => {
         duree: p.duree || "",
         temperature_eau: p.temperature_eau || "",
         visibilite: p.visibilite || "Bonne",
+        courant: p.courant || "Nul",
         type_plongee: p.type_plongee || "Loisir",
         observations_faune: p.observations_faune || "",
         lien_photos: p.lien_photos || "",
@@ -335,6 +339,29 @@ const PlongeeForm = () => {
               className={inputClasses("visibilite")}
             >
               {VISIBILITE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiActivity className="w-4 h-4 text-gray-400" />
+                Courant
+              </span>
+            </label>
+            <select
+              name="courant"
+              value={formData.courant}
+              onChange={handleChange}
+              onFocus={() => handleFocus("courant")}
+              onBlur={handleBlur}
+              className={inputClasses("courant")}
+            >
+              {COURANT_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>

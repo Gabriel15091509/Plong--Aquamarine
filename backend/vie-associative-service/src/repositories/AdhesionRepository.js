@@ -40,6 +40,18 @@ class AdhesionRepository extends BaseRepository {
     });
   }
 
+  // Adhérents Club distincts pour une année donnée — base du calcul du taux
+  // de renouvellement (CDC 3.6.2).
+  async findNumAdherentsClubByAnnee(annee) {
+    const rows = await this.model.findAll({
+      where: { type: 'Club', annee_adhesion: annee },
+      attributes: ['num_adherent'],
+      group: ['num_adherent'],
+      raw: true,
+    });
+    return rows.map((r) => r.num_adherent);
+  }
+
   async getAdhesionStats() {
     const stats = await this.model.findAll({
       attributes: [

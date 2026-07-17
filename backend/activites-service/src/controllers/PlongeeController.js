@@ -2,6 +2,7 @@ const BaseController = require('./BaseController');
 const PlongeeService = require('../services/PlongeeService');
 const identiteClient = require('../utils/serviceClients/identiteClient');
 const { withStatus } = require('../utils/errors');
+const { streamCarnetPlongee } = require('../utils/pdf');
 
 class PlongeeController extends BaseController {
   constructor() {
@@ -45,11 +46,37 @@ class PlongeeController extends BaseController {
     try {
       const { num_adherent } = req.params;
       const results = await this.plongeeService.getPlongeesByAdherent(num_adherent, req.user);
+      // Agrégats du carnet de plongée (CDC 3.3.2), calculés ici plutôt qu'en
+      // SQL : `results` est déjà chargé pour la réponse, et la volumétrie par
+      // adhérent reste faible (pas besoin d'une requête d'agrégation dédiée).
+      const profondeurMax = results.reduce((max, p) => Math.max(max, p.profondeur_max || 0), 0);
+      const dureeTotale = results.reduce((total, p) => total + (p.duree || 0), 0);
       res.json({
         success: true,
         data: results,
-        count: results.length
+        count: results.length,
+        profondeurMax,
+        dureeTotale,
       });
+    } catch (error) {
+      next(withStatus(error, 403));
+    }
+  }
+
+  // Export PDF du carnet de plongée (CDC 3.3.3). Adherent (identite-service)
+  // n'appartient plus à ce process : récupéré via HTTP pour l'en-tête du
+  // document.
+  async getCarnetPdf(req, res, next) {
+    try {
+      const { num_adherent } = req.params;
+      const plongees = await this.plongeeService.getPlongeesByAdherent(num_adherent, req.user);
+      const adherent = await identiteClient.getAdherentById(num_adherent, req.headers.authorization);
+      if (!adherent) {
+        return res.status(404).json({ success: false, message: 'Adhérent non trouvé' });
+      }
+      const profondeurMax = plongees.reduce((max, p) => Math.max(max, p.profondeur_max || 0), 0);
+      const dureeTotale = plongees.reduce((total, p) => total + (p.duree || 0), 0);
+      await streamCarnetPlongee(res, { adherent, plongees, profondeurMax, dureeTotale });
     } catch (error) {
       next(withStatus(error, 403));
     }
@@ -80,6 +107,15 @@ class PlongeeController extends BaseController {
         success: true,
         data: stats
       });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
+  async getNbInactifs(req, res, next) {
+    try {
+      const inactifs = await this.plongeeService.getInactifs();
+      res.json({ success: true, data: { nbInactifs: inactifs.length } });
     } catch (error) {
       next(withStatus(error, 500));
     }

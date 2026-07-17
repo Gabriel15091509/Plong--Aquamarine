@@ -1,9 +1,20 @@
 const BaseRepository = require('./BaseRepository');
 const { Attribution } = require('../models');
+const { Op } = require('sequelize');
 
 class AttributionRepository extends BaseRepository {
   constructor() {
     super(Attribution);
+  }
+
+  // Prêt/attribution non rendu alors que la date de retour prévue est passée.
+  async findEnRetard() {
+    return await this.model.findAll({
+      where: {
+        date_retour_reel: null,
+        date_retour_prevue: { [Op.lt]: new Date() },
+      },
+    });
   }
 
   async findByAdherent(num_adherent) {

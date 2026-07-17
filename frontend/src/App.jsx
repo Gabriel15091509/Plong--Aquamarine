@@ -21,6 +21,7 @@ import DashboardPage from "./pages/Dashboard/DashboardPage";
 import AdherentsPage from "./pages/Adherent/AdherentsPage";
 import AdherentCreatePage from "./pages/Adherent/AdherentCreatePage";
 import AdherentEditPage from "./pages/Adherent/AdherentEditPage";
+import AdherentCommunicationPage from "./pages/Adherent/AdherentCommunicationPage";
 import AdherentDetailsPage from "./pages/Adherent/AdherentDetailsPage";
 import AdhesionsPage from "./pages/Adhesion/AdhesionsPage";
 import CertificatsPage from "./pages/CertificatMedical/CertificatsPage";
@@ -191,6 +192,16 @@ function App() {
                   <ProtectedRoute requiredRoles={["president"]}>
                     <Layout>
                       <AdherentEditPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/adherents/communication"
+                element={
+                  <ProtectedRoute requiredRoles={["president"]}>
+                    <Layout>
+                      <AdherentCommunicationPage />
                     </Layout>
                   </ProtectedRoute>
                 }

@@ -2,7 +2,10 @@ const BaseService = require('./BaseService');
 const PlongeeRepository = require('../repositories/PlongeeRepository');
 const identiteClient = require('../utils/serviceClients/identiteClient');
 const formationClient = require('../utils/serviceClients/formationClient');
+const vieAssociativeClient = require('../utils/serviceClients/vieAssociativeClient');
 const { withAdherent } = require('../utils/enrichAdherents');
+
+const SIX_MOIS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
 
 class PlongeeService extends BaseService {
   constructor() {
@@ -136,6 +139,31 @@ class PlongeeService extends BaseService {
       trend: `${rounded >= 0 ? "+" : ""}${rounded}%`,
       trendUp: rounded >= 0,
     };
+  }
+
+  // Alerte "inactivité carnet de plongée" (CDC 3.3.2) : tout adhérent dont la
+  // dernière plongée enregistrée remonte à plus de 6 mois génère (ou
+  // renouvelle) une alerte dans vie-associative-service. Ne couvre que les
+  // adhérents ayant déjà au moins une plongée — un adhérent n'ayant jamais
+  // plongé n'a pas de date de référence à comparer. Appelé par un cron (voir
+  // app.js) — best-effort, une alerte en échec n'interrompt pas les autres.
+  async getInactifs() {
+    const seuil = new Date(Date.now() - SIX_MOIS_MS);
+    const rows = await this.plongeeRepository.findDerniereDatePlongeeParAdherent();
+    return rows.filter((row) => new Date(row.derniere_plongee) < seuil);
+  }
+
+  async alerterInactifs() {
+    const inactifs = await this.getInactifs();
+
+    for (const row of inactifs) {
+      try {
+        await vieAssociativeClient.createAlerte(row.num_adherent, "Inactivite plongee");
+      } catch (error) {
+        console.error(`Erreur alerte inactivité (adhérent ${row.num_adherent}):`, error.message);
+      }
+    }
+    return inactifs.length;
   }
 }
 

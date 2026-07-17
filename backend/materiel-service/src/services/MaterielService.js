@@ -82,7 +82,11 @@ class MaterielService extends BaseService {
     const materiel = await this.getById(num_inventaire);
     if (!materiel) return false;
 
-    return materiel.etat === 'Bon' || materiel.etat === 'Neuf';
+    const bonEtat = materiel.etat === 'Bon' || materiel.etat === 'Neuf';
+    const echeanceDepassee =
+      materiel.date_prochaine_echeance && new Date(materiel.date_prochaine_echeance) < new Date();
+
+    return bonEtat && !echeanceDepassee;
   }
 }
 

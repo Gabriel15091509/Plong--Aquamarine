@@ -12,6 +12,10 @@ import {
   FiBarChart2,
   FiPieChart,
   FiChevronRight,
+  FiPercent,
+  FiRefreshCw,
+  FiTool,
+  FiUserX,
 } from "react-icons/fi";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
@@ -82,11 +86,13 @@ const StaffDashboardContent = () => {
   const { useGetStats: useGetFormationStats } = useFormations();
   const { useGetStats: useGetPlongeeStats } = usePlongees();
   const { useGetStats: useGetMaterielStats } = useMateriels();
-  const { useGetTrends } = useDashboard();
+  const { useGetTrends, useGetIndicateurs } = useDashboard();
 
   // ✅ Données
   const { data: trendsResponse } = useGetTrends();
   const trends = trendsResponse?.data;
+  const { data: indicateursResponse } = useGetIndicateurs();
+  const indicateurs = indicateursResponse?.data;
   const {
     data: adherentStats,
     isLoading: adherentLoading,
@@ -464,6 +470,75 @@ const StaffDashboardContent = () => {
     [statsData, trends],
   );
 
+  // ✅ Indicateurs CDC 3.6.2 non couverts par mainStats/secondaryStats — soit
+  // calculés côté back (taux/comptes agrégés cross-service), soit dérivés ici
+  // des stats déjà chargées (moyenne plongées/adhérent).
+  const tertiaryStats = useMemo(() => {
+    const moyennePlongees =
+      statsData.totalAdherents > 0
+        ? statsData.totalPlongees / statsData.totalAdherents
+        : 0;
+
+    return [
+      {
+        title: "Remplissage sorties",
+        value:
+          indicateurs?.tauxRemplissageSorties === null ||
+          indicateurs?.tauxRemplissageSorties === undefined
+            ? "N/D"
+            : `${indicateurs.tauxRemplissageSorties}%`,
+        icon: FiPercent,
+        bgColor: "bg-indigo-50 dark:bg-indigo-900/20",
+        textColor: "text-indigo-600 dark:text-indigo-400",
+        subValue: "Taux moyen de places occupées",
+      },
+      {
+        title: "Plongées / adhérent",
+        value: moyennePlongees.toFixed(1),
+        icon: FiTrendingUp,
+        bgColor: "bg-teal-50 dark:bg-teal-900/20",
+        textColor: "text-teal-600 dark:text-teal-400",
+        subValue: "Moyenne club",
+      },
+      {
+        title: "Renouvellement adhésions",
+        value:
+          indicateurs?.tauxRenouvellementAdhesions === null ||
+          indicateurs?.tauxRenouvellementAdhesions === undefined
+            ? "N/D"
+            : `${indicateurs.tauxRenouvellementAdhesions}%`,
+        icon: FiRefreshCw,
+        bgColor: "bg-sky-50 dark:bg-sky-900/20",
+        textColor: "text-sky-600 dark:text-sky-400",
+        subValue: "Vs l'année précédente",
+      },
+      {
+        title: "Matériel à réviser",
+        value:
+          indicateurs?.nbMaterielAReviser === null ||
+          indicateurs?.nbMaterielAReviser === undefined
+            ? "N/D"
+            : formatNumber(indicateurs.nbMaterielAReviser),
+        icon: FiTool,
+        bgColor: "bg-amber-50 dark:bg-amber-900/20",
+        textColor: "text-amber-600 dark:text-amber-400",
+        subValue: "Échéance proche ou dépassée",
+      },
+      {
+        title: "Adhérents sans plongée 6 mois",
+        value:
+          indicateurs?.nbAdherentsInactifs === null ||
+          indicateurs?.nbAdherentsInactifs === undefined
+            ? "N/D"
+            : formatNumber(indicateurs.nbAdherentsInactifs),
+        icon: FiUserX,
+        bgColor: "bg-red-50 dark:bg-red-900/20",
+        textColor: "text-red-600 dark:text-red-400",
+        subValue: "À relancer",
+      },
+    ];
+  }, [statsData, indicateurs]);
+
   // ✅ Données graphiques
   const monthlyActivityData = useMemo(() => {
     const months = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun"];
@@ -555,6 +630,24 @@ const StaffDashboardContent = () => {
         className="grid grid-cols-1 md:grid-cols-2 gap-6"
       >
         {secondaryStats.map((stat) => (
+          <motion.div
+            key={stat.title}
+            variants={fadeInUp}
+            whileHover={{ y: -4, transition: { duration: 0.3 } }}
+          >
+            <StatsCard {...stat} />
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* Indicateurs de pilotage (CDC 3.6.2) */}
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6"
+      >
+        {tertiaryStats.map((stat) => (
           <motion.div
             key={stat.title}
             variants={fadeInUp}

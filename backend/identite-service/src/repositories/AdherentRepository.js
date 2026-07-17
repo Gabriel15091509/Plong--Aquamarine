@@ -104,6 +104,22 @@ class AdherentRepository extends BaseRepository {
       ],
     });
   }
+
+  // Segmentation pour la communication ciblée (CDC 3.6.1) : niveau exact
+  // (optionnel) et ancienneté minimale en années, dérivée de
+  // date_inscription (pas de colonne dédiée). Toujours restreint aux
+  // adhérents Actifs — un compte Inactif/Suspendu ne doit pas recevoir de
+  // communication du club.
+  async findBySegment({ niveau, ancienneteMinAnnees }) {
+    const where = { statut: "Actif" };
+    if (niveau) where.niveau = niveau;
+    if (ancienneteMinAnnees) {
+      const seuil = new Date();
+      seuil.setFullYear(seuil.getFullYear() - Number(ancienneteMinAnnees));
+      where.date_inscription = { [Op.lte]: seuil };
+    }
+    return await this.model.findAll({ where });
+  }
 }
 
 module.exports = AdherentRepository;

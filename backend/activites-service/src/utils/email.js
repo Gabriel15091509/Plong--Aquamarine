@@ -178,9 +178,25 @@ const sendWaitlistPromotedEmail = async ({ to, adherentName, sortieLabel }) => {
   });
 };
 
+// Rappel 24h avant sortie (CDC 3.2.2). Le sujet inclut id_sortie : le cache
+// anti-doublon de sendEmail est clé par (destinataire, sujet) et vit pour
+// toute la durée du process — un sujet générique bloquerait silencieusement
+// le rappel de toute sortie future pour cet adhérent après le premier envoi.
+const sendSortieReminderEmail = async ({ to, adherentName, sortieLabel, id_sortie }) => {
+  const introHtml = `<p>Bonjour ${adherentName},</p><p>Rappel : vous êtes inscrit(e) à la sortie "<strong>${sortieLabel}</strong>", qui a lieu demain.</p>`;
+  return sendEmail({
+    to,
+    subject: `Rappel — Sortie demain (#${id_sortie})`,
+    html: buildSimpleEmailHtml("Rappel de sortie", introHtml, [
+      { label: "Sortie", value: sortieLabel },
+    ]),
+  });
+};
+
 module.exports = {
   sendEmail,
   sendInscriptionConfirmationEmail,
   sendInscriptionPaymentEmail,
   sendWaitlistPromotedEmail,
+  sendSortieReminderEmail,
 };

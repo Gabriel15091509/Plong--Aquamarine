@@ -5,6 +5,7 @@ const { getAdherentForUser } = require("../utils/roleScope");
 const paiementClient = require("../utils/serviceClients/paiementClient");
 const vieAssociativeClient = require("../utils/serviceClients/vieAssociativeClient");
 const activitesClient = require("../utils/serviceClients/activitesClient");
+const { sendCommunicationEmail } = require("../utils/email");
 
 class AdherentService extends BaseService {
   constructor() {
@@ -27,18 +28,24 @@ class AdherentService extends BaseService {
     }
   }
 
-  // ✅ nb_plongees_reelles est calculé à la volée depuis activites-service
-  // (carnets Plongee réellement enregistrés), affiché à côté de
-  // nb_plongees_total qui reste un champ éditable manuellement (point de
-  // départ/historique, pilote le niveau sélectionnable côté formulaire).
-  // Best-effort : si activites-service est indisponible, reste `null` sans
-  // faire échouer l'affichage de la fiche adhérent.
+  // ✅ nb_plongees_reelles/profondeur_max_reelle/duree_totale_reelle sont
+  // calculés à la volée depuis activites-service (carnets Plongee réellement
+  // enregistrés), affichés à côté de nb_plongees_total qui reste un champ
+  // éditable manuellement (point de départ/historique, pilote le niveau
+  // sélectionnable côté formulaire). Best-effort : si activites-service est
+  // indisponible, ces champs restent `null` sans faire échouer l'affichage
+  // de la fiche adhérent.
   async getById(id, user = null, authHeader = null) {
     await this.assertCanAccessAdherent(id, user);
     const adherent = await this.repository.findByIdWithPhoto(id);
     if (!adherent) return adherent;
-    const nb_plongees_reelles = await activitesClient.getNbPlongeesReelles(id, authHeader);
-    return { ...adherent, nb_plongees_reelles };
+    const carnetStats = await activitesClient.getCarnetStats(id, authHeader);
+    return {
+      ...adherent,
+      nb_plongees_reelles: carnetStats?.count ?? null,
+      profondeur_max_reelle: carnetStats?.profondeurMax ?? null,
+      duree_totale_reelle: carnetStats?.dureeTotale ?? null,
+    };
   }
 
   // ✅ Crée l'adhérent ; si aucun user_id n'est fourni, réutilise un compte
@@ -263,6 +270,33 @@ class AdherentService extends BaseService {
       trend: `${rounded >= 0 ? "+" : ""}${rounded}%`,
       trendUp: rounded >= 0,
     };
+  }
+
+  // Communication ciblée (CDC 3.6.1) : envoi d'un message libre à tous les
+  // adhérents Actifs correspondant au segment demandé (niveau et/ou
+  // ancienneté minimale). Best-effort — un envoi en échec n'interrompt pas
+  // les autres, le compte retourné ne reflète que les envois réussis.
+  async sendCommunication({ niveau, ancienneteMinAnnees, subject, message }) {
+    if (!subject) throw new Error("L'objet du message est requis");
+    if (!message) throw new Error("Le message est requis");
+
+    const adherents = await this.repository.findBySegment({ niveau, ancienneteMinAnnees });
+    let sent = 0;
+    for (const adherent of adherents) {
+      if (!adherent.email) continue;
+      try {
+        await sendCommunicationEmail({
+          to: adherent.email,
+          adherentName: `${adherent.prenom} ${adherent.nom}`,
+          subject,
+          message,
+        });
+        sent += 1;
+      } catch (error) {
+        console.error(`Erreur envoi communication (adhérent ${adherent.num_adherent}):`, error.message);
+      }
+    }
+    return { matched: adherents.length, sent };
   }
 }
 

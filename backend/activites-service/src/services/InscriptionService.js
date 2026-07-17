@@ -289,6 +289,19 @@ class InscriptionService extends BaseService {
       );
     }
 
+    // ✅ Les inscriptions autonomes ne sont ouvertes qu'à partir de la date
+    // fixée sur la sortie (ex : 7 jours avant) ; le directeur technique/staff
+    // (canManage) peut en revanche préinscrire un adhérent avant cette date.
+    if (
+      !canManage &&
+      sortie.date_ouverture_inscriptions &&
+      new Date() < new Date(sortie.date_ouverture_inscriptions)
+    ) {
+      throw new Error(
+        `Les inscriptions ouvrent le ${new Date(sortie.date_ouverture_inscriptions).toLocaleDateString("fr-FR")}`,
+      );
+    }
+
     // ✅ Le niveau de l'adhérent doit être suffisant pour cette sortie.
     // Adherent vit dans identite-service : résolu par HTTP. Récupéré avant
     // le contrôle du dossier car un niveau Baptême en allège les exigences.

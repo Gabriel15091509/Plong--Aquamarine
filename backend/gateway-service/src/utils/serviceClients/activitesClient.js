@@ -28,4 +28,33 @@ async function getPlongeesTrend() {
   return body.data;
 }
 
-module.exports = { getSortiesTrend, getPlongeesTrend };
+// Utilisé par DashboardService.getIndicateurs (CDC 3.6.2 — taux de
+// remplissage moyen des sorties).
+async function getTauxRemplissageSorties() {
+  const response = await fetch(`${BASE_URL}/sorties/taux-remplissage`);
+  if (!response.ok) {
+    throw new Error(`activites-service: échec récupération taux de remplissage (${response.status})`);
+  }
+  const body = await response.json();
+  return body.data.tauxRemplissage;
+}
+
+// Utilisé par DashboardService.getIndicateurs (CDC 3.6.2 — adhérents sans
+// plongée depuis 6 mois).
+async function getNbAdherentsInactifs(authHeader) {
+  const response = await fetch(`${BASE_URL}/plongees/inactifs/count`, {
+    headers: authHeader ? { Authorization: authHeader } : {},
+  });
+  if (!response.ok) {
+    throw new Error(`activites-service: échec récupération adhérents inactifs (${response.status})`);
+  }
+  const body = await response.json();
+  return body.data.nbInactifs;
+}
+
+module.exports = {
+  getSortiesTrend,
+  getPlongeesTrend,
+  getTauxRemplissageSorties,
+  getNbAdherentsInactifs,
+};

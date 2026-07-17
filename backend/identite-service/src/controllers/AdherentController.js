@@ -22,6 +22,25 @@ class AdherentController extends BaseController {
     }
   }
 
+  async sendCommunication(req, res, next) {
+    try {
+      const { niveau, ancienneteMinAnnees, subject, message } = req.body;
+      const result = await this.adherentService.sendCommunication({
+        niveau,
+        ancienneteMinAnnees,
+        subject,
+        message,
+      });
+      res.json({
+        success: true,
+        data: result,
+        message: `Message envoyé à ${result.sent}/${result.matched} adhérent(s)`,
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async getById(req, res, next) {
     try {
       const result = await this.adherentService.getById(

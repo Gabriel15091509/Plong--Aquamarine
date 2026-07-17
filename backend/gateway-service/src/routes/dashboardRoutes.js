@@ -11,4 +11,10 @@ router.get(
   dashboardController.getTrends.bind(dashboardController),
 );
 
+router.get(
+  "/indicateurs",
+  AuthMiddleware.authenticate,
+  dashboardController.getIndicateurs.bind(dashboardController),
+);
+
 module.exports = router;

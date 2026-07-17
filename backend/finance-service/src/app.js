@@ -3,11 +3,13 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
+const cron = require("node-cron");
 require("dotenv").config();
 
 const routes = require("./routes");
 const ErrorHandler = require("./middlewares/errorHandler");
 const logger = require("./utils/logger");
+const PaiementService = require("./services/PaiementService");
 const { sequelize, testConnection } = require("./config/database");
 
 const app = express();
@@ -76,6 +78,14 @@ const initializeApp = async () => {
     logger.error("❌ [finance-service] Database connection failed");
     process.exit(1);
   }
+
+  // Relance des impayés (CDC 3.1.4) : un premier passage immédiat au
+  // démarrage, puis tous les jours à 7h — motif identique aux alertes
+  // d'expiration de vie-associative-service.
+  const paiementService = new PaiementService();
+  await paiementService.relancerImpayes();
+  cron.schedule("0 7 * * *", () => paiementService.relancerImpayes());
+  logger.info("✅ Planification des relances d'impayés active (quotidien 07:00)");
 };
 
 process.on("unhandledRejection", (err) => {

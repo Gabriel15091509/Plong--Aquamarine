@@ -12,6 +12,11 @@ router.get(
   plongeeController.getAll.bind(plongeeController),
 );
 router.get("/stats", plongeeController.getStats.bind(plongeeController));
+router.get(
+  "/inactifs/count",
+  AuthMiddleware.authenticate,
+  plongeeController.getNbInactifs.bind(plongeeController),
+);
 router.get("/trend", plongeeController.getTrend.bind(plongeeController));
 router.get(
   "/by-date-range",
@@ -21,6 +26,11 @@ router.get(
   "/adherent/:num_adherent",
   AuthMiddleware.authenticate,
   plongeeController.getByAdherent.bind(plongeeController),
+);
+router.get(
+  "/adherent/:num_adherent/carnet-pdf",
+  AuthMiddleware.authenticate,
+  plongeeController.getCarnetPdf.bind(plongeeController),
 );
 router.get(
   "/:id",
