@@ -43,7 +43,7 @@ images:
   newTag: sha-20a3ba9
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
-  newTag: sha-ca92983
+  newTag: sha-ed2c889
 - name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
   newTag: sha-ca92983
