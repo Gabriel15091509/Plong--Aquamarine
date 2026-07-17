@@ -3,6 +3,7 @@ const materielClient = require("../utils/serviceClients/materielClient");
 const paiementClient = require("../utils/serviceClients/paiementClient");
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const activitesClient = require("../utils/serviceClients/activitesClient");
+const vieAssociativeClient = require("../utils/serviceClients/vieAssociativeClient");
 
 class DashboardService {
   // Un badge de tendance par carte du dashboard : nombre (ou montant) de la
