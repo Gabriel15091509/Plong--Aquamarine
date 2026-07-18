@@ -74,6 +74,19 @@ export const STATUT_FORMATION = {
   SUSPENDUE: 'Suspendue',
 };
 
+export const STATUT_ECHEANCIER = {
+  EN_COURS: 'En cours',
+  SOLDE: 'Soldé',
+  ANNULEE: 'Annulée',
+};
+
+export const STATUT_ECHEANCE = {
+  EN_ATTENTE: 'En attente',
+  PAYEE: 'Payée',
+  EN_RETARD: 'En retard',
+  ANNULEE: 'Annulée',
+};
+
 export const STATUT_PAIEMENT_OPTIONS = Object.values(STATUT_PAIEMENT);
 
 export const MODE_PAIEMENT_OPTIONS = [

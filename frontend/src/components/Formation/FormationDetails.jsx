@@ -31,6 +31,7 @@ import ConfirmModal from "../Common/ConfirmModal";
 import FormationCompetences from "./FormationCompetences";
 import FormationSeances from "./FormationSeances";
 import FormationPaiementModal from "./FormationPaiementModal";
+import EcheancierCard from "../Echeancier/EcheancierCard";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 import { STATUT_PAIEMENT } from "../../utils/constants";
 
@@ -473,6 +474,34 @@ const FormationDetails = () => {
           )}
         </SectionCard>
       </motion.div>
+
+      {/* Échéancier de paiement */}
+      {formation.montant_total ? (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <FiDollarSign className="w-5 h-5" />
+            </span>
+            Échéancier
+          </h3>
+          <EcheancierCard
+            type_paiement="Formation"
+            reference_id={formation.id_formation}
+            num_adherent={formation.num_adherent}
+            soldeRestant={Math.max(
+              (formation.montant_total || 0) - (formation.montant_paye || 0),
+              0,
+            )}
+            canManage={canManage}
+            ownerQueryKeys={[["formations"]]}
+          />
+        </motion.div>
+      ) : null}
 
       {/* Évaluation du moniteur */}
       {(formation.commentaire_moniteur || formation.appreciation_moniteur) && (

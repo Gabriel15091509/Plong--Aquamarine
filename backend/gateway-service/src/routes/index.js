@@ -27,6 +27,7 @@ router.use("/adherents", proxyTo(IDENTITE_SERVICE_URL));
 router.use("/adhesions", proxyTo(VIE_ASSOCIATIVE_SERVICE_URL));
 router.use("/certificats-medicaux", proxyTo(VIE_ASSOCIATIVE_SERVICE_URL));
 router.use("/paiements", proxyTo(FINANCE_SERVICE_URL));
+router.use("/echeanciers", proxyTo(FINANCE_SERVICE_URL));
 router.use("/sorties", proxyTo(ACTIVITES_SERVICE_URL));
 router.use("/inscriptions", proxyTo(ACTIVITES_SERVICE_URL));
 router.use("/plongees", proxyTo(ACTIVITES_SERVICE_URL));
@@ -57,6 +58,7 @@ router.get("/", (req, res) => {
       adhesions: "/api/adhesions",
       certificats_medicaux: "/api/certificats-medicaux",
       paiements: "/api/paiements",
+      echeanciers: "/api/echeanciers",
       sorties: "/api/sorties",
       inscriptions: "/api/inscriptions",
       plongees: "/api/plongees",
