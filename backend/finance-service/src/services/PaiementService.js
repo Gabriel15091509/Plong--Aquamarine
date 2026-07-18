@@ -80,6 +80,7 @@ class PaiementService extends BaseService {
       type_paiement: data.type_paiement,
       reference_id: data.reference_id,
       montant: data.montant,
+      description: data.description,
     });
     if (duplicate) return { paiement: duplicate, isDuplicate: true };
 
@@ -209,12 +210,13 @@ class PaiementService extends BaseService {
   // retry réseau) doit être ignorée avant toute mise à jour, sinon le solde
   // serait incrémenté deux fois même si la ligne Paiement, elle, n'est créée
   // qu'une fois par createLinkedPayment.
-  async hasRecentDuplicate({ num_adherent, type_paiement, reference_id, montant }) {
+  async hasRecentDuplicate({ num_adherent, type_paiement, reference_id, montant, description }) {
     const duplicate = await this.paiementRepository.findRecentDuplicate({
       num_adherent,
       type_paiement,
       reference_id,
       montant,
+      description,
     });
     return !!duplicate;
   }
@@ -243,6 +245,7 @@ class PaiementService extends BaseService {
       type_paiement,
       reference_id,
       montant,
+      description,
     });
     if (duplicate) return duplicate;
 

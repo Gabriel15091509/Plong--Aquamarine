@@ -2,8 +2,10 @@ const express = require("express");
 const router = express.Router();
 
 const paiementRoutes = require("./paiementRoutes");
+const echeancierRoutes = require("./echeancierRoutes");
 
 router.use("/paiements", paiementRoutes);
+router.use("/echeanciers", echeancierRoutes);
 
 router.get("/", (req, res) => {
   res.json({
@@ -12,6 +14,7 @@ router.get("/", (req, res) => {
     version: "1.0.0",
     endpoints: {
       paiements: "/api/paiements",
+      echeanciers: "/api/echeanciers",
     },
   });
 });

@@ -10,6 +10,8 @@ const routes = require("./routes");
 const ErrorHandler = require("./middlewares/errorHandler");
 const logger = require("./utils/logger");
 const PaiementService = require("./services/PaiementService");
+const EcheancierService = require("./services/EcheancierService");
+const { getSystemAuthHeader } = require("./utils/internalAuth");
 const { sequelize, testConnection } = require("./config/database");
 
 const app = express();
@@ -86,6 +88,13 @@ const initializeApp = async () => {
   await paiementService.relancerImpayes();
   cron.schedule("0 7 * * *", () => paiementService.relancerImpayes());
   logger.info("✅ Planification des relances d'impayés active (quotidien 07:00)");
+
+  // Rappels d'échéancier (avant échéance + retard) : même schéma que la
+  // relance d'impayés ci-dessus, décalé à 8h pour ne pas se chevaucher.
+  const echeancierService = new EcheancierService();
+  await echeancierService.envoyerRappelsEcheances(getSystemAuthHeader());
+  cron.schedule("0 8 * * *", () => echeancierService.envoyerRappelsEcheances(getSystemAuthHeader()));
+  logger.info("✅ Planification des rappels d'échéancier active (quotidien 08:00)");
 };
 
 process.on("unhandledRejection", (err) => {

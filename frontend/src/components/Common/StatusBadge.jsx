@@ -4,6 +4,8 @@ import {
   STATUT_INSCRIPTION,
   STATUT_PAIEMENT,
   STATUT_FORMATION,
+  STATUT_ECHEANCIER,
+  STATUT_ECHEANCE,
 } from "../../utils/constants";
 
 // ✅ Configuration complète des statuts (sans icônes)
@@ -110,6 +112,26 @@ const statusConfig = {
       "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
     border: "border-green-200 dark:border-green-800/30",
     label: "Valide",
+  },
+
+  // 📌 Statuts de l'échéancier ("En attente"/"En cours"/"Annulée" déjà
+  // couverts ci-dessus par d'autres domaines, mêmes couleurs)
+  [STATUT_ECHEANCE.PAYEE]: {
+    color:
+      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    border: "border-green-200 dark:border-green-800/30",
+    label: STATUT_ECHEANCE.PAYEE,
+  },
+  [STATUT_ECHEANCE.EN_RETARD]: {
+    color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    border: "border-red-200 dark:border-red-800/30",
+    label: STATUT_ECHEANCE.EN_RETARD,
+  },
+  [STATUT_ECHEANCIER.SOLDE]: {
+    color:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+    border: "border-emerald-200 dark:border-emerald-800/30",
+    label: STATUT_ECHEANCIER.SOLDE,
   },
 
   // 📌 Statuts des formations

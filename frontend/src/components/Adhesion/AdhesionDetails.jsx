@@ -28,6 +28,7 @@ import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
+import EcheancierCard from "../Echeancier/EcheancierCard";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 import adhesionService from "../../services/Adhesion/adhesionService";
 import { MODE_PAIEMENT_OPTIONS } from "../../utils/constants";
@@ -485,6 +486,31 @@ const AdhesionDetails = () => {
           )}
         </SectionCard>
       </motion.div>
+
+      {/* Échéancier de paiement */}
+      {isClub && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <FiDollarSign className="w-5 h-5" />
+            </span>
+            Échéancier
+          </h3>
+          <EcheancierCard
+            type_paiement="Adhesion"
+            reference_id={adhesion.id_adhesion}
+            num_adherent={adhesion.num_adherent}
+            soldeRestant={Math.max((adhesion.montant || 0) - (adhesion.montant_paye || 0), 0)}
+            canManage={canManageAdhesion}
+            ownerQueryKeys={[["adhesions"]]}
+          />
+        </motion.div>
+      )}
 
       {/* Statut détaillé */}
       {isClub && (

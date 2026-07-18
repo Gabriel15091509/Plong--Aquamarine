@@ -28,6 +28,7 @@ import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
+import EcheancierCard from "../Echeancier/EcheancierCard";
 import { formatDate, formatDateTime, formatCurrency } from "../../utils/helpers";
 import { MODE_PAIEMENT_OPTIONS, STATUT_INSCRIPTION } from "../../utils/constants";
 
@@ -488,6 +489,34 @@ const InscriptionDetails = () => {
           )}
         </SectionCard>
       </motion.div>
+
+      {/* Échéancier de paiement */}
+      {Number(inscription.montant_du) > 0 && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <FiDollarSign className="w-5 h-5" />
+            </span>
+            Échéancier
+          </h3>
+          <EcheancierCard
+            type_paiement="Sortie"
+            reference_id={inscription.id_inscription}
+            num_adherent={inscription.num_adherent}
+            soldeRestant={Math.max(
+              (inscription.montant_du || 0) - (inscription.montant_paye || 0),
+              0,
+            )}
+            canManage={canManage}
+            ownerQueryKeys={[["inscriptions"], ["inscription", inscription.id_inscription]]}
+          />
+        </motion.div>
+      )}
 
       {/* Statut de l'inscription */}
       <motion.div

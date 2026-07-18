@@ -41,17 +41,28 @@ class PaiementRepository extends BaseRepository {
   }
 
   // Anti-doublon : détecte un paiement identique (même adhérent, type,
-  // référence et montant) créé il y a moins de `windowMs` — un double-clic
-  // ou une double soumission envoie deux requêtes quasi simultanées avant
-  // qu'un garde-fou front-end ne puisse les bloquer, ce qui insérait deux
-  // lignes distinctes pour un seul paiement reçu.
-  async findRecentDuplicate({ num_adherent, type_paiement, reference_id, montant }, windowMs = 10000) {
+  // référence, montant ET description) créé il y a moins de `windowMs` — un
+  // double-clic ou une double soumission envoie deux requêtes quasi
+  // simultanées avant qu'un garde-fou front-end ne puisse les bloquer, ce qui
+  // insérait deux lignes distinctes pour un seul paiement reçu.
+  //
+  // La description est incluse dans le match depuis l'introduction des
+  // échéanciers : deux échéances d'un même échéancier partagent typiquement
+  // le même adhérent/type/référence/montant (parts égales) et peuvent être
+  // réglées à quelques secondes d'intervalle (paiements reçus le même jour) —
+  // sans la description ("Échéance 1/3" vs "Échéance 2/3") elles seraient
+  // incorrectement fusionnées en un seul paiement par ce garde-fou. Les flux
+  // qui ne varient pas leur description (acompte manuel, double-clic) restent
+  // protégés de la même façon qu'avant : les deux soumissions partagent alors
+  // la même description (souvent null), donc toujours détectées comme doublon.
+  async findRecentDuplicate({ num_adherent, type_paiement, reference_id, montant, description }, windowMs = 10000) {
     return await this.model.findOne({
       where: {
         num_adherent,
         type_paiement,
         reference_id: reference_id !== undefined && reference_id !== null ? String(reference_id) : null,
         montant,
+        description: description !== undefined ? description : null,
         created_at: { [Op.gte]: new Date(Date.now() - windowMs) },
       },
       order: [['created_at', 'DESC']],
