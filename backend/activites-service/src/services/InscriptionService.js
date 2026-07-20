@@ -6,6 +6,7 @@ const vieAssociativeClient = require("../utils/serviceClients/vieAssociativeClie
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const InscriptionWaitlistService = require("./InscriptionWaitlistService");
 const { isNiveauCompatible } = require("../utils/roleScope");
+const { withAdherent } = require("../utils/enrichAdherents");
 const {
   sendInscriptionConfirmationEmail,
   sendInscriptionPaymentEmail,
@@ -57,15 +58,13 @@ class InscriptionService extends BaseService {
     return await this.inscriptionRepository.findByAdherent(num_adherent);
   }
 
-  async getAll(user = null) {
+  async getAll(user = null, authHeader = null) {
     try {
       const adherent = await this.getAdherentForUser(user);
-      if (adherent) {
-        return await this.inscriptionRepository.findByAdherent(
-          adherent.num_adherent,
-        );
-      }
-      return await this.inscriptionRepository.findAll();
+      const results = adherent
+        ? await this.inscriptionRepository.findByAdherent(adherent.num_adherent)
+        : await this.inscriptionRepository.findAll();
+      return await withAdherent(results, { authHeader });
     } catch (error) {
       console.error("Erreur getAll:", error);
       return [];

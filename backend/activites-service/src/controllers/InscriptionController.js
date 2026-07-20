@@ -11,7 +11,10 @@ class InscriptionController extends BaseController {
 
   async getAll(req, res) {
     try {
-      const results = await this.inscriptionService.getAll(req.user);
+      const results = await this.inscriptionService.getAll(
+        req.user,
+        req.headers.authorization,
+      );
       res.json({
         success: true,
         data: results || [],
