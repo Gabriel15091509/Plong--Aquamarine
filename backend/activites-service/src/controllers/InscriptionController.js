@@ -193,6 +193,7 @@ class InscriptionController extends BaseController {
         parseInt(id_sortie),
         req.user,
         req.query.presents === "true",
+        req.headers.authorization,
       );
       res.json({
         success: true,

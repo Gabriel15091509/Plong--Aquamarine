@@ -46,6 +46,10 @@ class AttributionService extends BaseService {
     if (!disponible) {
       throw new Error("Ce matériel n'est pas disponible (état ou échéance de révision)");
     }
+    const dejaAttribue = await this.attributionRepository.findActiveByMateriel(data.num_inventaire);
+    if (dejaAttribue) {
+      throw new Error("Ce matériel est déjà attribué à un plongeur et n'a pas encore été rendu");
+    }
     return await this.attributionRepository.create(data);
   }
 

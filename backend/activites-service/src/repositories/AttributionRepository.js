@@ -37,6 +37,14 @@ class AttributionRepository extends BaseRepository {
     });
   }
 
+  // Prêt actif (non rendu) pour ce matériel, s'il existe — empêche
+  // d'attribuer deux fois le même matériel avant son retour.
+  async findActiveByMateriel(num_inventaire) {
+    return await this.model.findOne({
+      where: { num_inventaire, date_retour_reel: null },
+    });
+  }
+
   // Adherent (identite-service) a quitté ce schéma : plus d'include
   // Sequelize possible ici — voir AttributionService.getByPalanquee qui
   // recompose `.adherent` via identiteClient après cet appel.
