@@ -1,6 +1,11 @@
 import axios from "axios";
 
-const API_BASE_URL ="http://localhost/api";
+// URL relative : résolue par le navigateur contre l'origine de la page qui a
+// chargé le frontend. En local, le serveur Vite (vite.config.js) proxifie
+// "/api" vers le gateway-service local ; sur le cluster, l'ingress sert le
+// frontend et l'API sous le même host, donc "/api" les atteint directement.
+// Un host codé en dur devait être permuté manuellement à chaque fois.
+const API_BASE_URL = "/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -19,7 +24,7 @@ export const connectWebSocket = () => {
   const token = localStorage.getItem("token");
   if (!token) return null;
 
-  socket = new WebSocket(`ws://localhost?token=${token}`);
+  socket = new WebSocket(`ws://${window.location.host}?token=${token}`);
 
   socket.onopen = () => {
     console.log("WebSocket connected");

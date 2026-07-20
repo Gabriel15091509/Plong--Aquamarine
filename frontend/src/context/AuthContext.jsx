@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import api from "../services/api";
 import toast from "react-hot-toast";
 
@@ -8,6 +9,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState([]);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -56,6 +58,12 @@ export const AuthProvider = ({ children }) => {
       if (response.data.success) {
         const { token, user } = response.data.data;
 
+        // Un compte peut se reconnecter directement après un autre sans
+        // passer par logout() (session expirée, onglet resté ouvert) : vider
+        // le cache React Query ici aussi évite d'afficher les données du rôle
+        // précédent tant qu'elles n'ont pas expiré (staleTime).
+        queryClient.clear();
+
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -92,6 +100,11 @@ export const AuthProvider = ({ children }) => {
     delete api.defaults.headers.common["Authorization"];
     setUser(null);
     setPermissions([]);
+    // La déconnexion navigue en SPA (pas de rechargement complet de page) :
+    // sans ça, les données du compte précédent restent en cache React Query
+    // et s'affichent encore au prochain compte connecté, selon les mêmes clés
+    // de requête (staleTime 5 min dans App.jsx).
+    queryClient.clear();
     toast.success("Déconnexion réussie");
   };
 
