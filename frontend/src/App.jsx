@@ -82,6 +82,7 @@ import ReparationForm from "./components/Reparation/ReparationForm";
 // Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/Common/ProtectedRoute";
+import OfflineBanner from "./components/Common/OfflineBanner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -110,6 +111,7 @@ const PrivateRoute = ({ children }) => {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <OfflineBanner />
       <AuthProvider>
         <Router>
           <AnimatePresence mode="wait">
