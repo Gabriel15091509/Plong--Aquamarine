@@ -193,7 +193,7 @@ class InscriptionService extends BaseService {
     return await this.waitlistService.getCapacityBySortie(id_sortie, authHeader);
   }
 
-  async getConfirmationsBySortie(id_sortie, user = null, onlyPresent = false) {
+  async getConfirmationsBySortie(id_sortie, user = null, onlyPresent = false, authHeader = null) {
     const results = await this.inscriptionRepository.findConfirmationsBySortie(
       id_sortie,
     );
@@ -201,10 +201,10 @@ class InscriptionService extends BaseService {
       ? results.filter((i) => i.presence && i.presence_checked)
       : results;
     const adherent = await this.getAdherentForUser(user);
-    if (!adherent) return filtered;
-    return filtered.filter(
-      (inscription) => inscription.num_adherent === adherent.num_adherent,
-    );
+    const scoped = adherent
+      ? filtered.filter((inscription) => inscription.num_adherent === adherent.num_adherent)
+      : filtered;
+    return await withAdherent(scoped, { authHeader });
   }
 
   async getByAdherentAndSortie(num_adherent, id_sortie, user = null) {
