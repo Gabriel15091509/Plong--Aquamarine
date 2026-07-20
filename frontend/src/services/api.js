@@ -69,6 +69,25 @@ api.interceptors.response.use(
       localStorage.removeItem("user");
       window.location.href = "/login";
     }
+
+    // Une écriture (POST/PUT/PATCH/DELETE) sans réponse HTTP a été mise en
+    // file par le service worker (src/sw.js, BackgroundSyncPlugin) : elle
+    // sera rejouée automatiquement dès la reconnexion. On enrichit l'erreur
+    // pour que les toasts existants (`error.response?.data?.message`, répétés
+    // dans chaque hook) affichent ce message au lieu d'un "Erreur..." générique
+    // trompeur, sans devoir toucher chaque hook individuellement.
+    const isWrite = ["post", "put", "patch", "delete"].includes(
+      error.config?.method,
+    );
+    if (isWrite && !error.response) {
+      error.response = {
+        data: {
+          message:
+            "Connexion impossible : l'action a été mise en attente et sera envoyée automatiquement dès le retour du réseau.",
+        },
+      };
+    }
+
     return Promise.reject(error);
   },
 );
