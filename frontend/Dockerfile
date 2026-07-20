@@ -1,7 +1,9 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# npm ci refuse ce lock file (dédup ajv/picomatch hoisted signalé "invalid"
+# par npm mais inoffensif à l'exécution — voir ci.yml) ; npm install l'accepte.
+RUN npm install
 COPY . .
 RUN npm run build
 

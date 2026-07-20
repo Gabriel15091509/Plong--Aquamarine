@@ -141,9 +141,18 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # `npm ci` refuse ce lock file : eslint (ajv@6) et workbox-build (ajv@8,
+      # via @apideck/better-ajv-errors) d'une part, tailwind (picomatch@2) et
+      # vite-plugin-pwa (picomatch@4, via tinyglobby/fdir) d'autre part,
+      # cohabitent en hoisted avec un dédup que `npm ls`/`npm ci` signalent
+      # "invalid" alors qu'il est inoffensif à l'exécution (chaque module
+      # retrouve la bonne version en remontant l'arbre node_modules). Testé :
+      # `--install-strategy=nested` élimine le signalement mais casse la
+      # résolution de `workbox-window` au build. `npm install` tolère ce
+      # dédup sans y toucher.
       - name: Install dependencies
         working-directory: frontend
-        run: npm ci
+        run: npm install
 
       # Pas de gate lint/test ici : `npm run lint` du frontend n'a jamais eu
       # de config ESLint fonctionnelle (204 erreurs préexistantes découvertes
