@@ -69,6 +69,12 @@ spec:
               service:
                 name: finance-service
                 port: { number: 5012 }
+          - path: /api/echeanciers
+            pathType: Prefix
+            backend:
+              service:
+                name: finance-service
+                port: { number: 5012 }
           - path: /api/adhesions
             pathType: Prefix
             backend:
