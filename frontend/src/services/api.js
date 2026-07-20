@@ -13,6 +13,12 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
   timeout: 30000,
+  // L'adaptateur XHR par défaut d'axios ne repasse pas de façon fiable par
+  // le service worker (src/sw.js) sous Chromium en émulation hors-ligne :
+  // le cache NetworkFirst des lectures /api/* ne servait jamais son
+  // fallback (confirmé : un fetch() direct passait, un appel axios/XHR
+  // identique échouait). L'adaptateur fetch résout ça.
+  adapter: "fetch",
 });
 
 // Ajouter pour les notifications en temps réel
