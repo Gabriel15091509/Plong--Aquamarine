@@ -30,7 +30,7 @@ import { formatRelativeTime } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import Logo from "../Common/Logo";
 
-const Header = ({ sidebarOpen, setSidebarOpen }) => {
+const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
   const { user, logout, hasPermission } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -161,6 +161,15 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
     <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200/80 sticky top-0 z-40 transition-colors duration-300 dark:bg-gray-800/80 dark:border-gray-700/80 h-16">
       <div className="px-4 sm:px-6 h-full flex items-center justify-between">
         <div className="flex items-center gap-3 sm:gap-4">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onOpenMobileMenu}
+            className="md:hidden p-2 -ml-2 rounded-xl hover:bg-gray-100 transition-colors dark:hover:bg-gray-700"
+            aria-label="Ouvrir le menu"
+          >
+            <FiMenu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </motion.button>
           <span className="hidden sm:flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
             <FiCalendar className="w-4 h-4 text-cyan-500" />
             {formattedToday}
