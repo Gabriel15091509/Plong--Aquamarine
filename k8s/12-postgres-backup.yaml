@@ -1,0 +1,63 @@
+# Sauvegarde quotidienne de la base (exigence 4.3 : sauvegarde automatique
+# quotidienne). pg_dump s'exécute dans un pod éphémère, à distance, contre le
+# Service `postgres` — pas besoin d'un accès exec au pod StatefulSet. Les
+# dumps sont conservés 30 jours glissants (les données elles-mêmes ne sont
+# jamais purgées ailleurs dans le système, ce qui couvre à part la rétention
+# 5 ans exigée sur les données ; ce CronJob ne fait que garantir un point de
+# restauration récent, pas un historique de 5 ans de dumps).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backup-pvc
+  namespace: plongee-app
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: plongee-app
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pg-dump
+              image: postgres:16-alpine
+              env:
+                - name: PGHOST
+                  valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_HOST } }
+                - name: PGPORT
+                  valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_PORT } }
+                - name: PGDATABASE
+                  valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_NAME } }
+                - name: PGUSER
+                  valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_USER } }
+                - name: PGPASSWORD
+                  valueFrom: { secretKeyRef: { name: plongee-secrets, key: DB_PASSWORD } }
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  mkdir -p /backups
+                  fichier="/backups/plongee_db_$(date +%Y-%m-%d_%H%M%S).sql.gz"
+                  pg_dump | gzip > "$fichier"
+                  echo "Sauvegarde créée : $fichier"
+                  find /backups -name '*.sql.gz' -mtime +30 -delete
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              persistentVolumeClaim: { claimName: postgres-backup-pvc }

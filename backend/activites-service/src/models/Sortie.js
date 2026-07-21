@@ -83,6 +83,10 @@ const Sortie = sequelize.define(
     tableName: "sorties",
     timestamps: true,
     underscored: true,
+    // Index créé manuellement via scripts/migrate-sortie-index.sql (pas de
+    // sequelize.sync() dans ce service) — déclaré ici pour documenter le
+    // schéma réel de la table.
+    indexes: [{ name: "idx_sorties_date_heure", fields: ["date_heure"] }],
   },
 );
 
