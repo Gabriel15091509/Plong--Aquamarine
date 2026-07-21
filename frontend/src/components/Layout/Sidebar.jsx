@@ -26,6 +26,7 @@ import {
   FiAlertTriangle,
   FiTool,
   FiDollarSign,
+  FiX,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -40,6 +41,7 @@ const MenuSection = ({
   theme,
   themeTransition,
   getHoverAnimation,
+  onNavigate,
 }) => {
   if (!isVisible || items.length === 0) return null;
 
@@ -60,6 +62,7 @@ const MenuSection = ({
         <NavLink
           key={item.path}
           to={item.path}
+          onClick={onNavigate}
           className={({ isActive }) => `
             relative flex items-center gap-3 px-3 py-2.5 rounded-xl
             transition-all duration-300 ease-out
@@ -152,7 +155,7 @@ const MenuSection = ({
   );
 };
 
-const Sidebar = ({ isOpen, setIsOpen }) => {
+const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const { user, logout, hasRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -310,19 +313,38 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     }
   };
 
-  const menuSectionProps = { isOpen, theme, themeTransition, getHoverAnimation };
+  const closeMobileMenu = () => setMobileOpen(false);
+  const menuSectionProps = {
+    isOpen,
+    theme,
+    themeTransition,
+    getHoverAnimation,
+    onNavigate: closeMobileMenu,
+  };
 
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: isOpen ? 260 : 72 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className={`fixed left-0 top-0 h-full shadow-xl z-50 overflow-hidden transition-colors duration-300 ${
-        theme === "dark"
-          ? "bg-gray-900/95 border-r border-cyan-800/30"
-          : "bg-white/95 backdrop-blur-xl border-r border-cyan-100/50"
-      }`}
-    >
+    <>
+      {/* Fond sombre derrière le tiroir mobile - ferme le menu au clic */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={closeMobileMenu}
+        />
+      )}
+
+      <motion.aside
+        initial={false}
+        animate={{ width: isOpen ? 260 : 72 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className={`fixed left-0 top-0 h-full shadow-xl z-50 overflow-hidden transition-colors duration-300 transform md:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        } ${
+          theme === "dark"
+            ? "bg-gray-900/95 border-r border-cyan-800/30"
+            : "bg-white/95 backdrop-blur-xl border-r border-cyan-100/50"
+        }`}
+        style={{ transitionProperty: "color, background-color, border-color, transform" }}
+      >
       <div className="flex flex-col h-full">
         {/* ✅ Logo avec taille fixe - bien aligné */}
         <div
@@ -375,8 +397,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </AnimatePresence>
           </div>
 
-          {/* ✅ Bouton toggle - toujours visible et bien positionné */}
-          <div className="ml-auto flex-shrink-0">
+          {/* ✅ Bouton toggle collapse - desktop uniquement (le tiroir mobile se ferme via le bouton X ou le fond sombre) */}
+          <div className="ml-auto flex-shrink-0 hidden md:block">
             <motion.button
               whileHover={getHoverAnimation("button")}
               whileTap={{ scale: 0.9 }}
@@ -394,6 +416,21 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               ) : (
                 <FiChevronRight className="w-4 h-4" />
               )}
+            </motion.button>
+          </div>
+
+          {/* ✅ Bouton fermeture - mobile uniquement */}
+          <div className="ml-auto flex-shrink-0 md:hidden">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={closeMobileMenu}
+              className={`p-1.5 rounded-lg transition-colors duration-300 flex-shrink-0 ${
+                theme === "dark"
+                  ? "hover:bg-cyan-900/30 text-cyan-400"
+                  : "hover:bg-cyan-100/50 text-cyan-600"
+              }`}
+            >
+              <FiX className="w-5 h-5" />
             </motion.button>
           </div>
         </div>
@@ -693,7 +730,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           )}
         </div>
       </div>
-    </motion.aside>
+      </motion.aside>
+    </>
   );
 };
 

@@ -7,16 +7,28 @@ import Footer from './Footer';
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
-      
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'ml-[260px]' : 'ml-[72px]'}`}>
-        <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        
-        <main className="p-6 min-h-[calc(100vh-140px)]">
+      <Sidebar
+        isOpen={sidebarOpen}
+        setIsOpen={setSidebarOpen}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
+      />
+
+      <div
+        className={`transition-all duration-300 ml-0 ${sidebarOpen ? "md:ml-[260px]" : "md:ml-[72px]"}`}
+      >
+        <Header
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
+        />
+
+        <main className="p-4 sm:p-6 min-h-[calc(100vh-140px)]">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -29,7 +41,7 @@ const Layout = ({ children }) => {
             </motion.div>
           </AnimatePresence>
         </main>
-        
+
         <Footer />
       </div>
     </div>
