@@ -94,20 +94,6 @@ const queryClient = new QueryClient({
   },
 });
 
-const PrivateRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent" />
-      </div>
-    );
-  }
-
-  return user ? children : <Navigate to="/login" />;
-};
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -123,11 +109,11 @@ function App() {
               <Route
                 path="/"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <Navigate to="/dashboard" replace />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
@@ -135,11 +121,11 @@ function App() {
               <Route
                 path="/dashboard"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <DashboardPage />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
@@ -147,11 +133,11 @@ function App() {
               <Route
                 path="/profile"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <ProfilePage />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
@@ -159,11 +145,11 @@ function App() {
               <Route
                 path="/change-password"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <ChangePasswordPage />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
@@ -211,11 +197,11 @@ function App() {
               <Route
                 path="/adherents/:id"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <AdherentDetailsPage />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
@@ -223,11 +209,11 @@ function App() {
               <Route
                 path="/adhesions"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <AdhesionsPage />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
               <Route
@@ -253,11 +239,11 @@ function App() {
               <Route
                 path="/adhesions/:id"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <AdhesionDetails />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
@@ -265,11 +251,11 @@ function App() {
               <Route
                 path="/certificats"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <CertificatsPage />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
               <Route
@@ -295,11 +281,11 @@ function App() {
               <Route
                 path="/certificats/:id"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <CertificatDetails />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
@@ -379,11 +365,11 @@ function App() {
               <Route
                 path="/sorties/:id"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <SortieDetails />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
@@ -403,41 +389,41 @@ function App() {
               <Route
                 path="/inscriptions"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <InscriptionsPage />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/inscriptions/create"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <InscriptionForm />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/inscriptions/:id"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <InscriptionDetails />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/inscriptions/edit/:id"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <InscriptionForm />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
@@ -603,11 +589,11 @@ function App() {
               <Route
                 path="/calendrier"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <CalendrierPage />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
@@ -615,11 +601,11 @@ function App() {
               <Route
                 path="/about"
                 element={
-                  <PrivateRoute>
+                  <ProtectedRoute>
                     <Layout>
                       <AboutPage />
                     </Layout>
-                  </PrivateRoute>
+                  </ProtectedRoute>
                 }
               />
 
