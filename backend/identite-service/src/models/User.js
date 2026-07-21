@@ -72,6 +72,21 @@ const User = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    // Authentification renforcée du président (2FA par email, exigence
+    // 4.4) — non utilisés pour les autres rôles.
+    otp_code_hash: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    otp_expires_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    otp_attempts: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
   },
   {
     schema: process.env.DB_SCHEMA || "identite",

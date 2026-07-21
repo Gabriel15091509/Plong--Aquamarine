@@ -187,7 +187,10 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const calendrierMenu = [
     { path: "/calendrier", icon: FiCalendar, label: "Calendrier" },
   ];
-  const aboutMenu = [{ path: "/about", icon: FiInfo, label: "À propos" }];
+  const aboutMenu = [
+    { path: "/about", icon: FiInfo, label: "À propos" },
+    { path: "/confidentialite", icon: FiShield, label: "Confidentialité" },
+  ];
 
   const sortieMenu = [
     { path: "/sorties", icon: FiCalendar, label: "Sorties" },

@@ -205,6 +205,21 @@ class UserController extends BaseController {
     }
   }
 
+  // RGPD (droit d'accès/portabilité, exigence 4.4) : export JSON des
+  // données personnelles du compte connecté.
+  async exportMyData(req, res, next) {
+    try {
+      const data = await this.userService.exportMyData(req.user.id);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="mes-donnees-${req.user.id}.json"`,
+      );
+      res.json({ success: true, data });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   // Endpoint interne (public, pas d'AuthMiddleware) : utilisé par
   // activites-service pour afficher qui a pointé une présence.
   async getBasicById(req, res, next) {

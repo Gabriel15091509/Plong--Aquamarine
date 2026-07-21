@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
@@ -35,11 +36,13 @@ import {
   FiDollarSign,
   FiBookOpen,
   FiCamera,
+  FiDownload,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { formatDate, formatDateTime } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
+import api from "../../services/api";
 
 const MAX_PHOTO_SIZE = 8 * 1024 * 1024; // 8 Mo, aligné sur la limite serveur (multer + ingress)
 
@@ -72,6 +75,31 @@ const ProfilePage = () => {
   });
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [exportingData, setExportingData] = useState(false);
+
+  // RGPD (droit d'accès/portabilité, exigence 4.4) : télécharge un export
+  // JSON des données personnelles du compte connecté.
+  const handleExportData = async () => {
+    setExportingData(true);
+    try {
+      const response = await api.get("/users/me/export");
+      const blob = new Blob([JSON.stringify(response.data.data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `mes-donnees-${user?.id || "compte"}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Impossible d'exporter vos données",
+      );
+    } finally {
+      setExportingData(false);
+    }
+  };
 
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0] || null;
@@ -795,6 +823,36 @@ const ProfilePage = () => {
             </div>
           )}
         </motion.div>
+      </motion.div>
+
+      {/* Confidentialité & données personnelles (RGPD) */}
+      <motion.div
+        variants={fadeInUp}
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-100/80 dark:border-gray-800/80"
+      >
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+          <span className="p-2 rounded-xl bg-gradient-to-br from-slate-500/10 to-gray-500/10 text-slate-600 dark:text-slate-400">
+            <FiShield className="w-5 h-5" />
+          </span>
+          Confidentialité & données personnelles
+        </h3>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <button
+            type="button"
+            onClick={handleExportData}
+            disabled={exportingData}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            <FiDownload className="w-4 h-4" />
+            {exportingData ? "Export en cours..." : "Télécharger mes données"}
+          </button>
+          <Link
+            to="/confidentialite"
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+          >
+            Consulter la politique de confidentialité
+          </Link>
+        </div>
       </motion.div>
 
       {/* Badge de membre */}

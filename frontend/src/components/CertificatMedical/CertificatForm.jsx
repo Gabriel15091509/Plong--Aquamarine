@@ -16,11 +16,13 @@ import {
   FiUpload,
   FiFile,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { CERTIFICAT_TYPE_OPTIONS } from "../../utils/constants";
+import api from "../../services/api";
 
 const CERTIFICAT_STATUS = ["Valide", "Expiré", "En attente"];
 
@@ -58,6 +60,27 @@ const CertificatForm = () => {
   const [documentFile, setDocumentFile] = useState(null);
   const [existingDocumentPath, setExistingDocumentPath] = useState(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
+  const [openingDocument, setOpeningDocument] = useState(false);
+
+  // Document chiffré au repos, jamais accessible via une URL statique : on
+  // le récupère par la route authentifiée puis on l'ouvre depuis un blob.
+  const handleViewExistingDocument = async () => {
+    setOpeningDocument(true);
+    try {
+      const response = await api.get(`/certificats-medicaux/${id}/document`, {
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(response.data);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Impossible d'ouvrir le document",
+      );
+    } finally {
+      setOpeningDocument(false);
+    }
+  };
 
   useEffect(() => {
     if (editMode && id && certificatData?.data) {
@@ -351,15 +374,15 @@ const CertificatForm = () => {
               </div>
             ) : (
               existingDocumentPath && (
-                <a
-                  href={existingDocumentPath}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
+                <button
+                  type="button"
+                  onClick={handleViewExistingDocument}
+                  disabled={openingDocument}
+                  className="mt-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <FiFile className="w-3.5 h-3.5" />
-                  Voir le document actuel
-                </a>
+                  {openingDocument ? "Ouverture..." : "Voir le document actuel"}
+                </button>
               )
             )}
           </motion.div>

@@ -34,6 +34,7 @@ import FormationsPage from "./pages/Formation/FormationsPage";
 import SpecialitesFormationPage from "./pages/Formation/SpecialitesFormationPage";
 import CalendrierPage from "./pages/Common/CalendrierPage";
 import AboutPage from "./pages/Common/AboutPage";
+import PrivacyPolicyPage from "./pages/Common/PrivacyPolicyPage";
 import UsersPage from "./pages/User/UsersPage";
 import NotFoundPage from "./pages/Common/NotFoundPage";
 import UnauthorizedPage from "./pages/Auth/UnauthorizedPage";
@@ -604,6 +605,18 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <AboutPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* ============ CONFIDENTIALITÉ (RGPD) ============ */}
+              <Route
+                path="/confidentialite"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <PrivacyPolicyPage />
                     </Layout>
                   </ProtectedRoute>
                 }

@@ -19,7 +19,7 @@ import Logo from "../../components/Common/Logo";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, verifyOtp } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -28,6 +28,8 @@ const LoginPage = () => {
     remember: false,
   });
   const [errors, setErrors] = useState({});
+  const [otpEmail, setOtpEmail] = useState(null);
+  const [otpCode, setOtpCode] = useState("");
 
   // Animations variants
   const containerVariants = {
@@ -102,6 +104,11 @@ const LoginPage = () => {
     try {
       const result = await login(formData.email, formData.password);
 
+      if (result?.otpRequired) {
+        setOtpEmail(result.email);
+        return;
+      }
+
       if (result?.mustChangePassword) {
         navigate("/change-password", { state: { fromLogin: true } });
       } else {
@@ -109,6 +116,25 @@ const LoginPage = () => {
       }
     } catch (error) {
       // toast.error déjà géré dans AuthContext.login()
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const result = await verifyOtp(otpEmail, otpCode);
+
+      if (result?.mustChangePassword) {
+        navigate("/change-password", { state: { fromLogin: true } });
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      // toast.error déjà géré dans AuthContext.verifyOtp()
     } finally {
       setLoading(false);
     }
@@ -181,7 +207,7 @@ const LoginPage = () => {
               whileHover={{ x: 5 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
-              Connexion
+              {otpEmail ? "Vérification" : "Connexion"}
             </motion.h2>
             <motion.p
               className="text-gray-500 dark:text-gray-400 mt-2"
@@ -189,11 +215,72 @@ const LoginPage = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
             >
-              Connectez-vous pour accéder à votre espace de gestion
+              {otpEmail
+                ? `Saisissez le code envoyé à ${otpEmail}`
+                : "Connectez-vous pour accéder à votre espace de gestion"}
             </motion.p>
           </motion.div>
 
-          {/* Formulaire */}
+          {otpEmail ? (
+            /* Étape 2 : code OTP (authentification renforcée président) */
+            <motion.form
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              onSubmit={handleVerifyOtp}
+              className="space-y-6"
+            >
+              <motion.div variants={itemVariants}>
+                <motion.label
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  whileHover={{ x: 3 }}
+                >
+                  Code à usage unique
+                </motion.label>
+                <motion.div className="relative" whileFocus={{ scale: 1.01 }}>
+                  <FiShield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) =>
+                      setOtpCode(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="123456"
+                    autoFocus
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 tracking-[0.5em] text-center text-xl font-mono"
+                  />
+                </motion.div>
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={loading || otpCode.length !== 6}
+                  className="w-full py-3 bg-gradient-to-r from-primary-500 to-ocean-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {loading ? "Vérification..." : "Valider"}
+                </motion.button>
+              </motion.div>
+
+              <motion.button
+                type="button"
+                variants={itemVariants}
+                onClick={() => {
+                  setOtpEmail(null);
+                  setOtpCode("");
+                }}
+                className="w-full text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              >
+                ← Retour à la connexion
+              </motion.button>
+            </motion.form>
+          ) : (
+          /* Formulaire */
           <motion.form
             variants={containerVariants}
             onSubmit={handleSubmit}
@@ -359,6 +446,7 @@ const LoginPage = () => {
               </motion.button>
             </motion.div>
           </motion.form>
+          )}
 
           {/* Footer */}
           <motion.div variants={itemVariants} className="mt-8 text-center">
