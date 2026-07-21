@@ -13,8 +13,6 @@ import {
   FiClipboard,
   FiChevronLeft,
   FiChevronRight,
-  FiSettings,
-  FiHelpCircle,
   FiLogOut,
   FiActivity,
   FiInfo,
@@ -34,6 +32,126 @@ import { useTheme } from "../../context/ThemeContext";
 import { photoUrl } from "../../utils/photoUrl";
 import Logo from "../Common/Logo";
 
+const MenuSection = ({
+  title,
+  items,
+  isVisible = true,
+  isOpen,
+  theme,
+  themeTransition,
+  getHoverAnimation,
+}) => {
+  if (!isVisible || items.length === 0) return null;
+
+  return (
+    <>
+      {isOpen && (
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -5 }}
+          transition={themeTransition}
+          className="px-3 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider dark:text-gray-500"
+        >
+          {title}
+        </motion.p>
+      )}
+      {items.map((item) => (
+        <NavLink
+          key={item.path}
+          to={item.path}
+          className={({ isActive }) => `
+            relative flex items-center gap-3 px-3 py-2.5 rounded-xl
+            transition-all duration-300 ease-out
+            ${
+              isActive
+                ? "bg-gradient-to-r from-cyan-50 to-teal-50 text-cyan-700 shadow-sm dark:from-cyan-900/30 dark:to-teal-900/30 dark:text-cyan-400"
+                : "text-gray-600 hover:text-cyan-700 dark:text-gray-400 dark:hover:text-cyan-400"
+            }
+            ${!isOpen ? "justify-center" : ""}
+            group
+          `}
+        >
+          {({ isActive }) => (
+            <>
+              <motion.div
+                className={`absolute inset-0 rounded-xl transition-all duration-300 ${
+                  isActive
+                    ? "bg-gradient-to-r from-cyan-500/10 to-teal-500/10"
+                    : "group-hover:bg-gradient-to-r group-hover:from-cyan-500/5 group-hover:to-teal-500/5"
+                }`}
+                layoutId={`bg-${item.path}`}
+                transition={themeTransition}
+              />
+
+              <motion.div
+                className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 rounded-full transition-all duration-300 ${
+                  isActive
+                    ? "bg-gradient-to-b from-cyan-500 to-teal-500"
+                    : "group-hover:bg-gradient-to-b group-hover:from-cyan-400/50 group-hover:to-teal-400/50 opacity-0 group-hover:opacity-100"
+                }`}
+                animate={{
+                  height: isActive ? 32 : 8,
+                  opacity: isActive ? 1 : 0.3,
+                }}
+                transition={themeTransition}
+              />
+
+              <motion.div
+                whileHover={getHoverAnimation("icon")}
+                animate={{
+                  scale: isActive ? 1.1 : 1,
+                }}
+                transition={themeTransition}
+              >
+                <item.icon
+                  className={`relative z-10 w-5 h-5 flex-shrink-0 transition-all duration-300 ${
+                    isActive
+                      ? "text-cyan-600 dark:text-cyan-400"
+                      : "text-gray-500 group-hover:text-cyan-600 dark:text-gray-500 dark:group-hover:text-cyan-400"
+                  }`}
+                />
+              </motion.div>
+
+              {isOpen && (
+                <motion.span
+                  className="relative z-10 text-sm font-medium"
+                  whileHover={getHoverAnimation("menu")}
+                  animate={{
+                    color: isActive
+                      ? theme === "dark"
+                        ? "#22d3ee"
+                        : "#0891b2"
+                      : theme === "dark"
+                        ? "#9ca3af"
+                        : "#4b5563",
+                  }}
+                  transition={themeTransition}
+                >
+                  {item.label}
+                </motion.span>
+              )}
+
+              <motion.div
+                className={`absolute right-3 w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                  isActive
+                    ? "bg-cyan-500 shadow-lg shadow-cyan-500/50"
+                    : "group-hover:bg-cyan-400 group-hover:shadow-lg group-hover:shadow-cyan-400/30 opacity-0 group-hover:opacity-100"
+                }`}
+                animate={{
+                  scale: isActive ? 1 : 0.5,
+                  opacity: isActive ? 1 : 0,
+                }}
+                transition={themeTransition}
+              />
+            </>
+          )}
+        </NavLink>
+      ))}
+    </>
+  );
+};
+
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const { user, logout, hasRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -44,13 +162,27 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     navigate("/login");
   };
 
+  const canSeeSorties = hasRole(["president", "moniteur", "adherent"]);
+  const canSeeAdministration = hasRole(["president", "moniteur", "tresorier"]);
+  const canSeeUsers = hasRole(["president"]);
+  const canSeePaiements = hasRole(["president", "tresorier", "adherent"]);
+  const canSeeAdherentsList = hasRole(["president", "moniteur", "tresorier"]);
+  const canSeeMateriel = hasRole(["president"]);
+  const canSeeFormations = hasRole(["president", "moniteur"]);
+  const canSeeIncidents = hasRole(["president", "moniteur"]);
+  const canSeeRoles = hasRole(["president"]);
+
   // ✅ Menu général - visible par tous
   const mainMenu = [
     { path: "/dashboard", icon: FiHome, label: "Tableau de bord" },
-    { path: "/adherents", icon: FiUsers, label: "Adhérents" },
+    canSeeAdherentsList && {
+      path: "/adherents",
+      icon: FiUsers,
+      label: "Adhérents",
+    },
     { path: "/adhesions", icon: FiFileText, label: "Adhésions" },
     { path: "/certificats", icon: FiClipboard, label: "Certificats" },
-  ];
+  ].filter(Boolean);
 
   const calendrierMenu = [
     { path: "/calendrier", icon: FiCalendar, label: "Calendrier" },
@@ -64,12 +196,28 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   ];
 
   const adminMenu = [
-    { path: "/materiels", icon: FiPackage, label: "Matériel" },
-    { path: "/attributions", icon: FiBriefcase, label: "Attributions" },
-    { path: "/reparations", icon: FiTool, label: "Réparations" },
-    { path: "/formations", icon: FiAward, label: "Formations" },
-    { path: "/specialites-formation", icon: FiStar, label: "Spécialités" },
-  ];
+    canSeeMateriel && { path: "/materiels", icon: FiPackage, label: "Matériel" },
+    canSeeMateriel && {
+      path: "/attributions",
+      icon: FiBriefcase,
+      label: "Attributions",
+    },
+    canSeeMateriel && {
+      path: "/reparations",
+      icon: FiTool,
+      label: "Réparations",
+    },
+    canSeeFormations && {
+      path: "/formations",
+      icon: FiAward,
+      label: "Formations",
+    },
+    canSeeFormations && {
+      path: "/specialites-formation",
+      icon: FiStar,
+      label: "Spécialités",
+    },
+  ].filter(Boolean);
 
   const paiementsMenu = [
     { path: "/paiements", icon: FiCreditCard, label: "Paiements" },
@@ -86,17 +234,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   ];
 
   const usersMenu = [{ path: "/users", icon: FiShield, label: "Utilisateurs" }];
-  const profileMenu = [{ path: "/profile", icon: FiUser, label: "Mon profil" }];
-
-  const canSeeSorties = hasRole(["president", "moniteur", "adherent"]);
-  const canSeeAdministration = hasRole(["president", "moniteur", "tresorier"]);
-  const canSeeUsers = hasRole(["president"]);
-  const canSeePaiements = hasRole(["president", "tresorier", "adherent"]);
-  const canSeeAdherentsList = hasRole(["president", "moniteur", "tresorier"]);
-  const canSeeMateriel = hasRole(["president"]);
-  const canSeeFormations = hasRole(["president", "moniteur"]);
-  const canSeeIncidents = hasRole(["president", "moniteur"]);
-  const canSeeRoles = hasRole(["president"]);
+  const profileMenu = user
+    ? [{ path: "/profile", icon: FiUser, label: "Mon profil" }]
+    : [];
 
   const themeTransition = {
     duration: 0.3,
@@ -167,129 +307,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     }
   };
 
-  const MenuSection = ({ title, items, isVisible = true }) => {
-    if (!isVisible || items.length === 0) return null;
-
-    return (
-      <>
-        {isOpen && (
-          <motion.p
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={themeTransition}
-            className="px-3 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider dark:text-gray-500"
-          >
-            {title}
-          </motion.p>
-        )}
-        {items.map((item) => {
-          if (item.path === "/paiements" && !canSeePaiements) return null;
-          if (item.path === "/adherents" && !canSeeAdherentsList) return null;
-          if (item.path === "/materiels" && !canSeeMateriel) return null;
-          if (item.path === "/attributions" && !canSeeMateriel) return null;
-          if (item.path === "/reparations" && !canSeeMateriel) return null;
-          if (item.path === "/formations" && !canSeeFormations) return null;
-          if (item.path === "/specialites-formation" && !canSeeFormations) return null;
-          if (item.path === "/users" && !canSeeUsers) return null;
-          if (item.path === "/profile" && !user) return null;
-
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `
-                relative flex items-center gap-3 px-3 py-2.5 rounded-xl
-                transition-all duration-300 ease-out
-                ${
-                  isActive
-                    ? "bg-gradient-to-r from-cyan-50 to-teal-50 text-cyan-700 shadow-sm dark:from-cyan-900/30 dark:to-teal-900/30 dark:text-cyan-400"
-                    : "text-gray-600 hover:text-cyan-700 dark:text-gray-400 dark:hover:text-cyan-400"
-                }
-                ${!isOpen ? "justify-center" : ""}
-                group
-              `}
-            >
-              {({ isActive }) => (
-                <>
-                  <motion.div
-                    className={`absolute inset-0 rounded-xl transition-all duration-300 ${
-                      isActive
-                        ? "bg-gradient-to-r from-cyan-500/10 to-teal-500/10"
-                        : "group-hover:bg-gradient-to-r group-hover:from-cyan-500/5 group-hover:to-teal-500/5"
-                    }`}
-                    layoutId={`bg-${item.path}`}
-                    transition={themeTransition}
-                  />
-
-                  <motion.div
-                    className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 rounded-full transition-all duration-300 ${
-                      isActive
-                        ? "bg-gradient-to-b from-cyan-500 to-teal-500"
-                        : "group-hover:bg-gradient-to-b group-hover:from-cyan-400/50 group-hover:to-teal-400/50 opacity-0 group-hover:opacity-100"
-                    }`}
-                    animate={{
-                      height: isActive ? 32 : 8,
-                      opacity: isActive ? 1 : 0.3,
-                    }}
-                    transition={themeTransition}
-                  />
-
-                  <motion.div
-                    whileHover={getHoverAnimation("icon")}
-                    animate={{
-                      scale: isActive ? 1.1 : 1,
-                    }}
-                    transition={themeTransition}
-                  >
-                    <item.icon
-                      className={`relative z-10 w-5 h-5 flex-shrink-0 transition-all duration-300 ${
-                        isActive
-                          ? "text-cyan-600 dark:text-cyan-400"
-                          : "text-gray-500 group-hover:text-cyan-600 dark:text-gray-500 dark:group-hover:text-cyan-400"
-                      }`}
-                    />
-                  </motion.div>
-
-                  {isOpen && (
-                    <motion.span
-                      className="relative z-10 text-sm font-medium"
-                      whileHover={getHoverAnimation("menu")}
-                      animate={{
-                        color: isActive
-                          ? theme === "dark"
-                            ? "#22d3ee"
-                            : "#0891b2"
-                          : theme === "dark"
-                            ? "#9ca3af"
-                            : "#4b5563",
-                      }}
-                      transition={themeTransition}
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
-
-                  <motion.div
-                    className={`absolute right-3 w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                      isActive
-                        ? "bg-cyan-500 shadow-lg shadow-cyan-500/50"
-                        : "group-hover:bg-cyan-400 group-hover:shadow-lg group-hover:shadow-cyan-400/30 opacity-0 group-hover:opacity-100"
-                    }`}
-                    animate={{
-                      scale: isActive ? 1 : 0.5,
-                      opacity: isActive ? 1 : 0,
-                    }}
-                    transition={themeTransition}
-                  />
-                </>
-              )}
-            </NavLink>
-          );
-        })}
-      </>
-    );
-  };
+  const menuSectionProps = { isOpen, theme, themeTransition, getHoverAnimation };
 
   return (
     <motion.aside
@@ -385,7 +403,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               : "scrollbar-thumb-cyan-200"
           }`}
         >
-          <MenuSection title="Personnel" items={profileMenu} />
+          <MenuSection title="Personnel" items={profileMenu} {...menuSectionProps} />
 
           {isOpen && (
             <div className="relative my-2">
@@ -412,7 +430,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </div>
           )}
 
-          <MenuSection title="Général" items={mainMenu} />
+          <MenuSection title="Général" items={mainMenu} {...menuSectionProps} />
 
           {isOpen && (
             <div className="relative my-2">
@@ -443,8 +461,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             title="Sorties"
             items={sortieMenu}
             isVisible={canSeeSorties}
+            {...menuSectionProps}
           />
-          <MenuSection title="Calendrier" items={calendrierMenu} />
+          <MenuSection title="Calendrier" items={calendrierMenu} {...menuSectionProps} />
 
           {isOpen && (
             <div className="relative my-2">
@@ -475,26 +494,31 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             title="Paiements"
             items={paiementsMenu}
             isVisible={canSeePaiements}
+            {...menuSectionProps}
           />
           <MenuSection
             title="Administration"
             items={adminMenu}
             isVisible={canSeeAdministration}
+            {...menuSectionProps}
           />
           <MenuSection
             title="Sécurité"
             items={securiteMenu}
             isVisible={canSeeIncidents}
+            {...menuSectionProps}
           />
           <MenuSection
             title="Rôles"
             items={rolesMenu}
             isVisible={canSeeRoles}
+            {...menuSectionProps}
           />
           <MenuSection
             title="Utilisateurs"
             items={usersMenu}
             isVisible={canSeeUsers}
+            {...menuSectionProps}
           />
 
           {isOpen && (
@@ -522,7 +546,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </div>
           )}
 
-          <MenuSection title="À propos" items={aboutMenu} />
+          <MenuSection title="À propos" items={aboutMenu} {...menuSectionProps} />
         </nav>
 
         {/* Footer */}

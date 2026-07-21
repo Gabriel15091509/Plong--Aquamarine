@@ -80,7 +80,7 @@ import AttributionForm from "./components/Attribution/AttributionForm";
 import ReparationForm from "./components/Reparation/ReparationForm";
 
 // Context
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/Common/ProtectedRoute";
 import OfflineBanner from "./components/Common/OfflineBanner";
 
