@@ -41,16 +41,16 @@ images:
   newTag: sha-ec1fca7
 - name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
-  newTag: sha-715ea99
+  newTag: sha-8c01851
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newTag: sha-1c1e108
 - name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
-  newTag: sha-b2db9aa
+  newTag: sha-8c01851
 - name: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
   newTag: sha-1a4e3dc
 - name: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
-  newTag: sha-b2db9aa
+  newTag: sha-8c01851
