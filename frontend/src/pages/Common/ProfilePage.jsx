@@ -462,7 +462,7 @@ const ProfilePage = () => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="max-w-6xl mx-auto space-y-6 px-4"
+      className="space-y-6 px-4"
     >
       {/* En-tête */}
       <motion.div

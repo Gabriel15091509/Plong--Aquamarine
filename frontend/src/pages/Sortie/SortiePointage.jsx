@@ -212,7 +212,7 @@ const SortiePointage = () => {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* En-tête avec effet glassmorphism */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

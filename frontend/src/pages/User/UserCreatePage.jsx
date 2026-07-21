@@ -64,7 +64,7 @@ const UserCreatePage = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="max-w-3xl mx-auto space-y-6 p-4"
+        className="space-y-6 p-4"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
