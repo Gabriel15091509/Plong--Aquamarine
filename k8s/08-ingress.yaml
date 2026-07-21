@@ -39,7 +39,7 @@ spec:
       secretName: plongee-club-tls
   rules:
     - http:
-        paths:
+        paths: &api-paths
           - path: /api/formations
             pathType: Prefix
             backend:
@@ -214,3 +214,11 @@ spec:
               service:
                 name: frontend
                 port: { number: 80 }
+    # Même table de routage, exposée en plus sous le nom d'hôte du
+    # certificat HTTPS — nginx-ingress n'attache un certificat par SNI qu'à
+    # un bloc serveur associé à un `host` explicite (le `tls.hosts` seul ne
+    # suffit pas). Alias YAML *api-paths : mêmes routes que ci-dessus, pas
+    # de duplication à maintenir.
+    - host: plongee-club.duckdns.org
+      http:
+        paths: *api-paths
