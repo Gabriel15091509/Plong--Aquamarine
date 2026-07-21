@@ -3,6 +3,7 @@ import { registerRoute } from "workbox-routing";
 import { NetworkFirst, NetworkOnly } from "workbox-strategies";
 import { BackgroundSyncPlugin } from "workbox-background-sync";
 import { ExpirationPlugin } from "workbox-expiration";
+import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { clientsClaim } from "workbox-core";
 
 self.skipWaiting();
@@ -19,6 +20,9 @@ registerRoute(
     cacheName: "api-cache",
     networkTimeoutSeconds: 5,
     plugins: [
+      // Sans ce plugin, Workbox mettrait aussi en cache les réponses
+      // d'erreur (403/500) — resservies telles quelles une fois hors-ligne.
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
       new ExpirationPlugin({ maxEntries: 300, maxAgeSeconds: 24 * 60 * 60 }),
     ],
   }),

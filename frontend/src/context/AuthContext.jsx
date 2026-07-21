@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "../services/api";
 import toast from "react-hot-toast";
+import { prefetchForOffline } from "../utils/offlinePrefetch";
 
 const AuthContext = createContext();
 
@@ -21,6 +22,7 @@ export const AuthProvider = ({ children }) => {
         setUser(parsedUser);
         setPermissions(getUserPermissions(parsedUser.role));
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        prefetchForOffline();
       } catch {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -70,6 +72,7 @@ export const AuthProvider = ({ children }) => {
 
         setUser(user);
         setPermissions(getUserPermissions(user.role));
+        prefetchForOffline();
 
         if (user.must_change_password) {
           toast("Veuillez changer votre mot de passe avant de continuer", {
