@@ -21,7 +21,7 @@ const CertificatsPage = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="max-w-7xl mx-auto px-4 sm:px-6 pt-2 pb-6"
+      className="px-4 sm:px-6 pt-2 pb-6"
     >
       {/* En-tête */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">

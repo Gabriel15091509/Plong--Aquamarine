@@ -165,7 +165,7 @@ const MoniteurDetails = () => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-6 max-w-6xl mx-auto px-4"
+      className="space-y-6 px-4"
     >
       {/* En-tête */}
       <motion.div

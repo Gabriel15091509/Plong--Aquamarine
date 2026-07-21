@@ -164,7 +164,7 @@ const AttributionDetails = () => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-6 max-w-4xl mx-auto px-4"
+      className="space-y-6 px-4"
     >
       <motion.div
         initial={{ opacity: 0, y: -20 }}
