@@ -22,8 +22,21 @@ metadata:
     # vie-associative-service) : sans ce réglage, l'Ingress rejette la
     # requête (413) avant même qu'elle n'atteigne le service.
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # HTTPS (exigence 4.4 / accès club) : certificat Let's Encrypt réel via
+    # DNS-01 sur un sous-domaine DuckDNS gratuit (voir cert-manager +
+    # cert-manager-duckdns-webhook, namespace cert-manager), le serveur
+    # restant joignable uniquement depuis le réseau local du club (aucune
+    # redirection de port depuis l'extérieur). ssl-redirect désactivé pour
+    # ne pas casser l'accès existant en http://localhost (pas de certificat
+    # pour cet hôte-là).
+    cert-manager.io/cluster-issuer: duckdns-letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - plongee-club.duckdns.org
+      secretName: plongee-club-tls
   rules:
     - http:
         paths:
