@@ -62,7 +62,11 @@ export const useUsers = () => {
         toast.success(response.message || 'Profil mis à jour avec succès');
       },
       onError: (error) => {
-        toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour');
+        const message =
+          error.response?.status === 413
+            ? 'Photo trop volumineuse : la taille maximale autorisée est de 8 Mo.'
+            : error.response?.data?.message || 'Erreur lors de la mise à jour';
+        toast.error(message);
       },
     });
   };

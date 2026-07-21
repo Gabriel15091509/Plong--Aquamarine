@@ -36,9 +36,12 @@ import {
   FiBookOpen,
   FiCamera,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import { formatDate, formatDateTime } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
+
+const MAX_PHOTO_SIZE = 8 * 1024 * 1024; // 8 Mo, aligné sur la limite serveur (multer + ingress)
 
 // Animations
 const fadeInUp = {
@@ -72,6 +75,11 @@ const ProfilePage = () => {
 
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0] || null;
+    if (file && file.size > MAX_PHOTO_SIZE) {
+      toast.error("Photo trop volumineuse : la taille maximale autorisée est de 8 Mo.");
+      e.target.value = "";
+      return;
+    }
     setPhotoFile(file);
     setPhotoPreview((prevUrl) => {
       if (prevUrl) URL.revokeObjectURL(prevUrl);

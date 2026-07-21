@@ -8,7 +8,7 @@ const multer = require("multer");
 
 const UPLOADS_ROOT = path.join(__dirname, "../../uploads");
 const IMAGE_MIMETYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 Mo
+const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8 Mo
 
 function makeUploader(
   subfolder,
