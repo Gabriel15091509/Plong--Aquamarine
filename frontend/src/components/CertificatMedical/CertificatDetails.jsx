@@ -20,12 +20,14 @@ import {
   FiUserCheck,
   FiPaperclip,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
+import api from "../../services/api";
 
 // Animations
 const fadeInUp = {
@@ -56,6 +58,7 @@ const CertificatDetails = () => {
   const { data: adherentsData } = useGetAll();
   const remove = useRemove();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [openingDocument, setOpeningDocument] = useState(false);
 
   const certificat = data?.data;
   const adherent = adherentsData?.data?.find(
@@ -68,6 +71,27 @@ const CertificatDetails = () => {
       navigate("/certificats");
     } catch (error) {
       // toast déjà géré par le hook
+    }
+  };
+
+  // Document chiffré au repos, jamais accessible via une URL statique : on
+  // le récupère par la route authentifiée puis on l'ouvre depuis un blob.
+  const handleViewDocument = async () => {
+    setOpeningDocument(true);
+    try {
+      const response = await api.get(
+        `/certificats-medicaux/${certificat.id_certificat}/document`,
+        { responseType: "blob" },
+      );
+      const url = URL.createObjectURL(response.data);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Impossible d'ouvrir le document",
+      );
+    } finally {
+      setOpeningDocument(false);
     }
   };
 
@@ -408,14 +432,14 @@ const CertificatDetails = () => {
           )}
           {certificat.document_path && (
             <InfoItem icon={FiPaperclip} label="Document">
-              <a
-                href={certificat.document_path}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-0.5 inline-block"
+              <button
+                type="button"
+                onClick={handleViewDocument}
+                disabled={openingDocument}
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-0.5 inline-block disabled:opacity-50"
               >
-                Voir le document
-              </a>
+                {openingDocument ? "Ouverture..." : "Voir le document"}
+              </button>
             </InfoItem>
           )}
         </SectionCard>

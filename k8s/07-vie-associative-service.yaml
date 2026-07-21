@@ -11,6 +11,21 @@ spec:
     requests:
       storage: 1Gi
 ---
+# PVC séparé (pas un sous-dossier de vie-associative-uploads-pvc) pour les
+# certificats médicaux chiffrés (exigence 4.4) : jamais monté sous
+# /app/uploads, donc jamais atteignable par la route express.static — une
+# erreur de config ne peut pas accidentellement les rendre publics.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vie-associative-secure-uploads-pvc
+  namespace: plongee-app
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -45,6 +60,8 @@ spec:
           volumeMounts:
             - name: uploads
               mountPath: /app/uploads
+            - name: secure-uploads
+              mountPath: /app/secure-uploads
           readinessProbe:
             httpGet: { path: /health, port: 5013 }
             initialDelaySeconds: 5
@@ -52,6 +69,8 @@ spec:
       volumes:
         - name: uploads
           persistentVolumeClaim: { claimName: vie-associative-uploads-pvc }
+        - name: secure-uploads
+          persistentVolumeClaim: { claimName: vie-associative-secure-uploads-pvc }
 ---
 apiVersion: v1
 kind: Service

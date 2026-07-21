@@ -14,6 +14,12 @@ router.put(
   userController.updateProfile.bind(userController),
 );
 
+router.get(
+  "/me/export",
+  AuthMiddleware.authenticate,
+  userController.exportMyData.bind(userController),
+);
+
 router.post(
   "/change-password",
   AuthMiddleware.authenticate,

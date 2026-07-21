@@ -236,8 +236,57 @@ const sendCommunicationEmail = async ({ to, adherentName, subject, message }) =>
   return sendEmail({ to, subject, html: htmlContent });
 };
 
+// Code de connexion à usage unique (2FA président, exigence 4.4). Le sujet
+// inclut l'horodatage : sendEmail() bloque tout renvoi identique to+subject
+// (cache anti-doublon jamais vidé pour ce couple), et un président qui
+// retente sa connexion doit recevoir un nouveau code à chaque fois.
+const sendOtpEmail = async ({ to, name, code }) => {
+  const now = new Date().toLocaleString("fr-FR");
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f0f4f8; margin: 0; padding: 40px 20px; line-height: 1.6; color: #1a202c; }
+    .container { max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #06b6d4, #3b82f6, #4f46e5); padding: 32px 40px; text-align: center; }
+    .header h1 { color: #ffffff; font-size: 20px; font-weight: 800; }
+    .content { padding: 32px 40px; text-align: center; }
+    .code { font-family: 'Courier New', monospace; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #1e3a8a; background: #eff6ff; border: 2px dashed #3b82f6; border-radius: 12px; padding: 16px 24px; display: inline-block; margin: 16px 0; }
+    .warning { color: #991b1b; font-size: 13px; margin-top: 16px; }
+    .footer { padding: 20px 40px; border-top: 1px solid #edf2f7; text-align: center; }
+    .footer p { color: #a0aec0; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>🔐 Code de connexion</h1></div>
+    <div class="content">
+      <p>Bonjour ${name},</p>
+      <p style="margin-top:8px;">Voici votre code à usage unique pour finaliser votre connexion :</p>
+      <div class="code">${code}</div>
+      <p style="color:#718096;font-size:13px;">Valable 5 minutes — demandé le ${now}</p>
+      <p class="warning">⚠️ Si vous n'êtes pas à l'origine de cette connexion, changez votre mot de passe immédiatement.</p>
+    </div>
+    <div class="footer"><p>© ${new Date().getFullYear()} Club de Plongée</p></div>
+  </div>
+</body>
+</html>`;
+
+  return sendEmail({
+    to,
+    subject: `Code de connexion — ${now}`,
+    html: htmlContent,
+    text: `Bonjour ${name},\n\nVotre code de connexion : ${code}\nValable 5 minutes.\n\nSi vous n'êtes pas à l'origine de cette connexion, changez votre mot de passe immédiatement.`,
+  });
+};
+
 module.exports = {
   sendEmail,
   sendWelcomeEmail,
   sendCommunicationEmail,
+  sendOtpEmail,
 };

@@ -218,12 +218,49 @@ class UserService extends BaseService {
     return user;
   }
 
+  // RGPD (droit à l'oubli) : anonymiser plutôt que supprimer (DELETE en
+  // base cassait les références détenues par d'autres services —
+  // paiements, certificats, adhésions — qui pointent sur num_adherent/
+  // user_id sans jamais les recevoir en cascade). Les données identifiantes
+  // sont remplacées, le compte est désactivé et son mot de passe rendu
+  // inutilisable ; l'historique métier (sorties, paiements...) reste
+  // intact mais dépersonnalisé.
   async deleteAccount(userId) {
+    const { Adherent } = require("../models");
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new Error("Utilisateur non trouvé");
     }
-    await user.destroy();
+
+    const crypto = require("crypto");
+    const anonymousEmail = `compte-supprime-${user.id}@anonyme.local`;
+
+    user.name = `Compte supprimé #${user.id}`;
+    user.email = anonymousEmail;
+    user.phone = null;
+    user.photo = null;
+    user.preferences = null;
+    user.password = crypto.randomUUID();
+    user.active = false;
+    user.otp_code_hash = null;
+    user.otp_expires_at = null;
+    user.otp_attempts = 0;
+    await user.save();
+
+    const adherent = await Adherent.findOne({ where: { user_id: userId } });
+    if (adherent) {
+      adherent.nom = "Anonymisé";
+      adherent.prenom = "Anonymisé";
+      adherent.date_naissance = new Date("1900-01-01");
+      adherent.adresse = "Adresse supprimée";
+      adherent.telephone = "0000000000";
+      adherent.email = anonymousEmail;
+      adherent.contact_urgence = null;
+      adherent.photo = null;
+      adherent.statut = "Ancien";
+      await adherent.save();
+    }
+
     return true;
   }
 
@@ -267,6 +304,53 @@ class UserService extends BaseService {
     const user = await this.userRepository.findById(id);
     if (!user) return null;
     return { id: user.id, name: user.name, email: user.email };
+  }
+
+  // RGPD (droit d'accès/portabilité) : export des données personnelles du
+  // compte connecté, détenues par identite-service (compte + fiche
+  // adhérent). N'inclut pas l'historique métier détenu par les autres
+  // services (paiements, sorties...) — hors périmètre de ce premier export.
+  async exportMyData(userId) {
+    const { Adherent } = require("../models");
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new Error("Utilisateur non trouvé");
+    }
+
+    const adherent = await Adherent.findOne({ where: { user_id: userId } });
+
+    return {
+      genere_le: new Date().toISOString(),
+      compte: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        phone: user.phone,
+        active: user.active,
+        last_login: user.last_login,
+        preferences: user.preferences,
+        created_at: user.created_at,
+      },
+      fiche_adherent: adherent
+        ? {
+            num_adherent: adherent.num_adherent,
+            civilite: adherent.civilite,
+            nom: adherent.nom,
+            prenom: adherent.prenom,
+            date_naissance: adherent.date_naissance,
+            adresse: adherent.adresse,
+            telephone: adherent.telephone,
+            email: adherent.email,
+            contact_urgence: adherent.contact_urgence,
+            niveau: adherent.niveau,
+            num_brevet: adherent.num_brevet,
+            num_licence_ffesm: adherent.num_licence_ffesm,
+            statut: adherent.statut,
+            date_inscription: adherent.date_inscription,
+          }
+        : null,
+    };
   }
 }
 

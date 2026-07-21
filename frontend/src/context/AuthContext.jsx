@@ -6,6 +6,10 @@ import { prefetchForOffline } from "../utils/offlinePrefetch";
 
 const AuthContext = createContext();
 
+// Déconnexion automatique après 15 minutes d'inactivité (exigence 4.4).
+const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
+const ACTIVITY_EVENTS = ["mousedown", "keydown", "scroll", "touchstart"];
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -52,46 +56,64 @@ export const AuthProvider = ({ children }) => {
     return permissionsMap[role] || [];
   };
 
+  // Finalise la session une fois le JWT obtenu (login direct, ou après
+  // vérification du code OTP pour le président).
+  const completeSession = (token, user) => {
+    // Un compte peut se reconnecter directement après un autre sans passer
+    // par logout() (session expirée, onglet resté ouvert) : vider le cache
+    // React Query ici aussi évite d'afficher les données du rôle précédent
+    // tant qu'elles n'ont pas expiré (staleTime).
+    queryClient.clear();
+
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+    setUser(user);
+    setPermissions(getUserPermissions(user.role));
+    prefetchForOffline();
+
+    if (user.must_change_password) {
+      toast("Veuillez changer votre mot de passe avant de continuer", {
+        icon: "🔑",
+      });
+      return { user, mustChangePassword: true };
+    }
+
+    toast.success(`Bienvenue ${user.name} !`);
+    return { user, mustChangePassword: false };
+  };
+
   const login = async (email, password) => {
     try {
       const response = await api.post("/auth/login", { email, password });
-      console.log("✅ Réponse reçue:", response.data);
 
-      if (response.data.success) {
-        const { token, user } = response.data.data;
+      if (!response.data.success) throw new Error("Erreur de connexion");
 
-        // Un compte peut se reconnecter directement après un autre sans
-        // passer par logout() (session expirée, onglet resté ouvert) : vider
-        // le cache React Query ici aussi évite d'afficher les données du rôle
-        // précédent tant qu'elles n'ont pas expiré (staleTime).
-        queryClient.clear();
-
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
-        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-        setUser(user);
-        setPermissions(getUserPermissions(user.role));
-        prefetchForOffline();
-
-        if (user.must_change_password) {
-          toast("Veuillez changer votre mot de passe avant de continuer", {
-            icon: "🔑",
-          });
-          return { user, mustChangePassword: true };
-        }
-
-        toast.success(`Bienvenue ${user.name} !`);
-        return { user, mustChangePassword: false };
+      // Authentification renforcée (président) : pas de token tant que le
+      // code reçu par email n'est pas vérifié.
+      if (response.data.data.otpRequired) {
+        return { otpRequired: true, email: response.data.data.email };
       }
 
-      throw new Error("Erreur de connexion");
+      const { token, user } = response.data.data;
+      return completeSession(token, user);
     } catch (error) {
-      console.log("❌ Erreur complète:", error);
-      console.log("❌ Status:", error.response?.status);
-      console.log("❌ Data:", error.response?.data);
-      console.log("❌ Message:", error.message);
       const message = error.response?.data?.message || "Erreur de connexion";
+      toast.error(message);
+      throw error;
+    }
+  };
+
+  const verifyOtp = async (email, code) => {
+    try {
+      const response = await api.post("/auth/verify-otp", { email, code });
+      if (!response.data.success) throw new Error("Code invalide");
+
+      const { token, user } = response.data.data;
+      return completeSession(token, user);
+    } catch (error) {
+      const message = error.response?.data?.message || "Code invalide";
       toast.error(message);
       throw error;
     }
@@ -110,6 +132,40 @@ export const AuthProvider = ({ children }) => {
     queryClient.clear();
     toast.success("Déconnexion réussie");
   };
+
+  // Rechargement complet (pas navigate()) : ce contexte est monté au-dessus
+  // du <Router> dans App.jsx, useNavigate() n'y est donc pas disponible —
+  // même convention que l'intercepteur 401 de services/api.js.
+  const isLoggedIn = !!user;
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+
+    let timeoutId;
+
+    const handleInactivityLogout = () => {
+      logout();
+      toast("Session expirée après 15 minutes d'inactivité", { icon: "⏱️" });
+      window.location.href = "/login";
+    };
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleInactivityLogout, INACTIVITY_LIMIT_MS);
+    };
+
+    resetTimer();
+    ACTIVITY_EVENTS.forEach((event) =>
+      window.addEventListener(event, resetTimer),
+    );
+
+    return () => {
+      clearTimeout(timeoutId);
+      ACTIVITY_EVENTS.forEach((event) =>
+        window.removeEventListener(event, resetTimer),
+      );
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
 
   // ✅ Ajout : pour mettre à jour user + token après changement de mot de passe
   const updateUser = (newData) => {
@@ -137,6 +193,7 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         login,
+        verifyOtp,
         logout,
         permissions,
         hasPermission,

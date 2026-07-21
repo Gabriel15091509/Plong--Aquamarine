@@ -1,6 +1,16 @@
+const path = require('path');
 const BaseController = require('./BaseController');
 const CertificatMedicalService = require('../services/CertificatMedicalService');
+const { readEncryptedDocument } = require('../middlewares/upload');
 const { withStatus } = require('../utils/errors');
+
+const MIMETYPES_BY_EXT = {
+  ".pdf": "application/pdf",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+};
 
 class CertificatMedicalController extends BaseController {
   constructor() {
@@ -35,6 +45,34 @@ class CertificatMedicalController extends BaseController {
         success: true,
         data: result,
       });
+    } catch (error) {
+      next(withStatus(error, 403));
+    }
+  }
+
+  // Document médical chiffré au repos (exigence 4.4) : déchiffré ici, à la
+  // volée, jamais servi en statique. Réutilise l'autorisation déjà
+  // appliquée par getById (adhérent propriétaire, ou staff sans fiche
+  // adhérent liée).
+  async downloadDocument(req, res, next) {
+    try {
+      const certificat = await this.certificatService.getById(req.params.id, req.user);
+      if (!certificat || !certificat.document_path) {
+        return res.status(404).json({
+          success: false,
+          message: "Document non trouvé",
+        });
+      }
+
+      const buffer = readEncryptedDocument("certificats", certificat.document_path);
+      const ext = path.extname(certificat.document_path).toLowerCase();
+
+      res.setHeader("Content-Type", MIMETYPES_BY_EXT[ext] || "application/octet-stream");
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="certificat-${certificat.id_certificat}${ext}"`,
+      );
+      res.send(buffer);
     } catch (error) {
       next(withStatus(error, 403));
     }

@@ -14,6 +14,7 @@ router.get('/expiring-soon', certificatController.getExpiringSoon.bind(certifica
 router.get('/adherent/:num_adherent', AuthMiddleware.authenticate, certificatController.getByAdherent.bind(certificatController));
 router.get('/adherent/:num_adherent/status', AuthMiddleware.authenticate, certificatController.checkStatus.bind(certificatController));
 router.get('/:id', AuthMiddleware.authenticate, certificatController.getById.bind(certificatController));
+router.get('/:id/document', AuthMiddleware.authenticate, certificatController.downloadDocument.bind(certificatController));
 
 router.post('/',
   AuthMiddleware.authenticate,
