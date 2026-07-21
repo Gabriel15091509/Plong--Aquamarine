@@ -14,6 +14,7 @@ resources:
 - 09-identite-service.yaml
 - 10-activites-service.yaml
 - 11-frontend.yaml
+- 12-postgres-backup.yaml
 - 08-ingress.yaml
   # secret.yaml n'est jamais listé ici : le Secret réel reste appliqué à la
   # main (kubectl apply -f k8s/secret.yaml, gitignoré) et hors de portée
