@@ -57,7 +57,7 @@ const ReparationForm = () => {
         date_constat: r.date_constat ? r.date_constat.split("T")[0] : "",
         description_panne: r.description_panne || "",
         prestataire: r.prestataire || "",
-        cout: r.cout || "",
+        cout: r.cout ?? "",
         date_retour: r.date_retour ? r.date_retour.split("T")[0] : "",
       });
     }
