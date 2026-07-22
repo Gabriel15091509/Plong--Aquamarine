@@ -87,15 +87,26 @@ for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
   );
 }
 
-// Un client (page ouverte) peut demander le nombre d'actions en attente pour
-// l'afficher (badge) — getAll() purge au passage les entrées expirées
-// (maxRetentionTime dépassé), donc le compte reflète uniquement ce qui sera
-// réellement rejoué.
+// Un client (page ouverte) peut demander le détail des actions en attente
+// (badge cliquable) — getAll() purge au passage les entrées expirées
+// (maxRetentionTime dépassé), donc la liste reflète uniquement ce qui sera
+// réellement rejoué. On renvoie method/url/timestamp : l'UI se charge de
+// traduire ça en libellé lisible (voir utils/syncQueue.js côté frontend).
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "GET_PENDING_SYNC_COUNT") return;
   const port = event.ports[0];
   if (!port) return;
   event.waitUntil(
-    writeQueue.getAll().then((entries) => port.postMessage({ type: "PENDING_SYNC_COUNT", size: entries.length })),
+    writeQueue.getAll().then((entries) =>
+      port.postMessage({
+        type: "PENDING_SYNC_COUNT",
+        size: entries.length,
+        items: entries.map((e) => ({
+          method: e.request.method,
+          url: e.request.url,
+          timestamp: e.timestamp,
+        })),
+      }),
+    ),
   );
 });
