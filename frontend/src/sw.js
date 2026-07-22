@@ -1,5 +1,5 @@
-import { precacheAndRoute } from "workbox-precaching";
-import { registerRoute } from "workbox-routing";
+import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
+import { registerRoute, NavigationRoute } from "workbox-routing";
 import { NetworkFirst, NetworkOnly } from "workbox-strategies";
 import { BackgroundSyncPlugin } from "workbox-background-sync";
 import { ExpirationPlugin } from "workbox-expiration";
@@ -11,6 +11,17 @@ clientsClaim();
 
 // App shell + assets buildés (injecté automatiquement par vite-plugin-pwa).
 precacheAndRoute(self.__WB_MANIFEST);
+
+// Navigation (ouverture/rechargement d'une route profonde comme /adherents,
+// /sorties...) : sans cette route, seule "/" était servie hors-ligne depuis
+// le precache — toute autre URL de la SPA tombait sur l'erreur réseau native
+// du navigateur au lieu de l'app (confirmé : /adherents et /dashboard
+// échouaient avec ERR_INTERNET_DISCONNECTED alors que "/" fonctionnait).
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL("index.html"), {
+    denylist: [/^\/api\//],
+  }),
+);
 
 // Lecture API : réseau en priorité, secours sur le dernier résultat mis en
 // cache si hors-ligne (consultation adhérents/sorties/carnet sans réseau).
