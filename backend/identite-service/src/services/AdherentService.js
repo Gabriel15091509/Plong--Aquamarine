@@ -235,6 +235,13 @@ class AdherentService extends BaseService {
         throw new Error("La date d'obtention du niveau est invalide");
       }
       validated.date_obtention_niveau = date.toISOString();
+    } else if (validated.date_obtention_niveau === "") {
+      // Un adhérent dont le niveau n'a pas (encore) de date d'obtention
+      // connue recharge ce champ en chaîne vide côté formulaire (valeur
+      // initiale null). Contrairement à null, "" n'est pas exemptée par
+      // allowNull et fait échouer le validateur isDate du modèle (400 à
+      // chaque mise à jour tant que ce champ n'est pas renseigné).
+      validated.date_obtention_niveau = null;
     }
 
     return validated;
