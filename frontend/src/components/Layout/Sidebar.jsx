@@ -391,7 +391,7 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
                       : "from-cyan-600 to-teal-600"
                   }`}
                 >
-                  Plongée Club
+                  Plongée Clubsss
                 </motion.span>
               )}
             </AnimatePresence>
