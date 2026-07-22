@@ -1,7 +1,7 @@
 import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
 import { registerRoute, NavigationRoute } from "workbox-routing";
 import { NetworkFirst, NetworkOnly } from "workbox-strategies";
-import { BackgroundSyncPlugin } from "workbox-background-sync";
+import { Queue } from "workbox-background-sync";
 import { ExpirationPlugin } from "workbox-expiration";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { clientsClaim } from "workbox-core";
@@ -43,14 +43,59 @@ registerRoute(
 // la requête est mise en file (IndexedDB) et rejouée automatiquement dès que
 // la connexion revient — satisfait la synchronisation différée demandée
 // sans attendre un cycle quotidien.
-const writeQueue = new BackgroundSyncPlugin("api-write-queue", {
+//
+// onSync personnalisé (plutôt que BackgroundSyncPlugin par défaut) : sans ça,
+// rien ne remonte à l'utilisateur quand la file est rejouée — pas de moyen de
+// savoir si une action a fini par partir, échoué, ou expiré silencieusement
+// après maxRetentionTime. On notifie chaque client ouvert du résultat.
+const writeQueue = new Queue("api-write-queue", {
   maxRetentionTime: 24 * 60,
+  onSync: async ({ queue }) => {
+    let success = 0;
+    let failed = 0;
+    let entry;
+    while ((entry = await queue.shiftRequest())) {
+      try {
+        await fetch(entry.request.clone());
+        success += 1;
+      } catch (error) {
+        await queue.unshiftRequest(entry);
+        failed += 1;
+        break;
+      }
+    }
+    if (success > 0 || failed > 0) {
+      const clientsList = await self.clients.matchAll({ type: "window" });
+      for (const client of clientsList) {
+        client.postMessage({ type: "SYNC_QUEUE_RESULT", success, failed });
+      }
+    }
+  },
 });
+
+const writeQueuePlugin = {
+  fetchDidFail: async ({ request }) => {
+    await writeQueue.pushRequest({ request });
+  },
+};
 
 for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
   registerRoute(
     ({ url }) => url.pathname.startsWith("/api/"),
-    new NetworkOnly({ plugins: [writeQueue] }),
+    new NetworkOnly({ plugins: [writeQueuePlugin] }),
     method,
   );
 }
+
+// Un client (page ouverte) peut demander le nombre d'actions en attente pour
+// l'afficher (badge) — getAll() purge au passage les entrées expirées
+// (maxRetentionTime dépassé), donc le compte reflète uniquement ce qui sera
+// réellement rejoué.
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "GET_PENDING_SYNC_COUNT") return;
+  const port = event.ports[0];
+  if (!port) return;
+  event.waitUntil(
+    writeQueue.getAll().then((entries) => port.postMessage({ type: "PENDING_SYNC_COUNT", size: entries.length })),
+  );
+});

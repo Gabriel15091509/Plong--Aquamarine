@@ -84,6 +84,7 @@ import ReparationForm from "./components/Reparation/ReparationForm";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/Common/ProtectedRoute";
 import OfflineBanner from "./components/Common/OfflineBanner";
+import SyncQueueBadge from "./components/Common/SyncQueueBadge";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -99,6 +100,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <OfflineBanner />
+      <SyncQueueBadge />
       <AuthProvider>
         <Router>
           <AnimatePresence mode="wait">
