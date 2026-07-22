@@ -90,7 +90,7 @@ const AdhesionForm = () => {
           ? adhesion.date_debut.split("T")[0]
           : "",
         date_fin: adhesion.date_fin ? adhesion.date_fin.split("T")[0] : "",
-        montant: adhesion.montant || "",
+        montant: adhesion.montant ?? "",
         num_licence_ffesm: adhesion.num_licence_ffesm || "",
         statut_paiement: adhesion.statut_paiement || "En attente",
         annee_adhesion: adhesion.annee_adhesion || new Date().getFullYear(),

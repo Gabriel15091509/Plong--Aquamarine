@@ -110,7 +110,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
         num_adherent: i.num_adherent || "",
         id_sortie: i.id_sortie || "",
         statut: i.statut || "En attente",
-        rang_liste_attente: i.rang_liste_attente || "",
+        rang_liste_attente: i.rang_liste_attente ?? "",
         presence: i.presence || false,
         date_confirmation: i.date_confirmation
           ? i.date_confirmation.split("T")[0]

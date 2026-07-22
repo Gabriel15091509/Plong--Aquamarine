@@ -79,7 +79,7 @@ const PaiementForm = () => {
       const p = paiementData.data;
       setFormData({
         num_adherent: p.num_adherent || "",
-        montant: p.montant || "",
+        montant: p.montant ?? "",
         mode: p.mode || "Espèces",
         type_paiement: p.type_paiement || "",
         statut: p.statut || "En attente",
