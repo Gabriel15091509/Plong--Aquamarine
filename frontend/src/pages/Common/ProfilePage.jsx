@@ -526,17 +526,21 @@ const ProfilePage = () => {
         </div>
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-3xl md:text-4xl font-bold border-2 border-white/30 shadow-xl relative overflow-hidden">
-              {photoUrl(user?.photo) ? (
-                <img
-                  src={photoUrl(user.photo)}
-                  alt={user?.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                user?.name?.charAt(0) || "A"
-              )}
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full border-2 border-white" />
+            <div className="relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0">
+              <div className="w-full h-full bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-3xl md:text-4xl font-bold border-2 border-white/30 shadow-xl overflow-hidden">
+                {photoUrl(user?.photo) ? (
+                  <img
+                    src={photoUrl(user.photo)}
+                    alt={user?.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  user?.name?.charAt(0) || "A"
+                )}
+              </div>
+              {/* Hors du conteneur overflow-hidden ci-dessus, sinon la moitie
+                  exterieure du point est rognee par les coins arrondis. */}
+              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-emerald-400 rounded-full border-2 border-white dark:border-gray-900 z-10" />
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
@@ -589,7 +593,7 @@ const ProfilePage = () => {
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center text-xl font-bold text-gray-500 flex-shrink-0">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center text-xl font-bold text-gray-500 flex-shrink-0">
                 {photoPreview || photoUrl(user?.photo) ? (
                   <img
                     src={photoPreview || photoUrl(user.photo)}
