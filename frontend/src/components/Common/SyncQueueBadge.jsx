@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { FiUploadCloud } from "react-icons/fi";
+import { FiUploadCloud, FiChevronUp, FiChevronDown } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { getPendingSyncCount, onSyncQueueResult } from "../../utils/syncQueue";
+import {
+  getPendingSyncStatus,
+  onSyncQueueResult,
+  describePendingItem,
+  formatElapsed,
+} from "../../utils/syncQueue";
 
 const REFRESH_INTERVAL_MS = 15000;
 
 const SyncQueueBadge = () => {
-  const [pending, setPending] = useState(0);
+  const [items, setItems] = useState([]);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    const refresh = () => getPendingSyncCount().then(setPending);
+    const refresh = () => getPendingSyncStatus().then((status) => setItems(status.items));
     refresh();
 
     const unsubscribe = onSyncQueueResult(({ success, failed }) => {
@@ -39,6 +45,14 @@ const SyncQueueBadge = () => {
     };
   }, []);
 
+  const pending = items.length;
+
+  // Se replie automatiquement une fois la file vidée, pour ne pas rouvrir
+  // sur un panneau vide au prochain envoi en attente.
+  useEffect(() => {
+    if (pending === 0) setExpanded(false);
+  }, [pending]);
+
   return (
     <AnimatePresence>
       {pending > 0 && (
@@ -46,10 +60,36 @@ const SyncQueueBadge = () => {
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 40, opacity: 0 }}
-          className="fixed bottom-4 right-4 z-[100] bg-sky-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+          className="fixed bottom-4 right-4 z-[100] flex flex-col items-end gap-2"
         >
-          <FiUploadCloud className="w-4 h-4" />
-          {pending} action{pending > 1 ? "s" : ""} en attente d&apos;envoi
+          {expanded && (
+            <div className="w-72 max-h-64 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl divide-y divide-gray-100 dark:divide-gray-700">
+              {items.map((item, index) => (
+                <div key={index} className="px-4 py-2.5 text-sm">
+                  <p className="font-medium text-gray-800 dark:text-gray-100">
+                    {describePendingItem(item)}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatElapsed(item.timestamp)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+          >
+            <FiUploadCloud className="w-4 h-4" />
+            {pending} action{pending > 1 ? "s" : ""} en attente d&apos;envoi
+            {expanded ? (
+              <FiChevronDown className="w-4 h-4" />
+            ) : (
+              <FiChevronUp className="w-4 h-4" />
+            )}
+          </button>
         </motion.div>
       )}
     </AnimatePresence>
