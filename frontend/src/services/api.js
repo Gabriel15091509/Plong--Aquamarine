@@ -77,8 +77,8 @@ api.interceptors.response.use(
     }
 
     // Une écriture (POST/PUT/PATCH/DELETE) sans réponse HTTP a été mise en
-    // file par le service worker (src/sw.js, BackgroundSyncPlugin) : elle
-    // sera rejouée automatiquement dès la reconnexion. On enrichit l'erreur
+    // file par le service worker (src/sw.js, Queue workbox-background-sync) :
+    // elle sera rejouée automatiquement dès la reconnexion. On enrichit l'erreur
     // pour que les toasts existants (`error.response?.data?.message`, répétés
     // dans chaque hook) affichent ce message au lieu d'un "Erreur..." générique
     // trompeur, sans devoir toucher chaque hook individuellement.
@@ -92,6 +92,10 @@ api.interceptors.response.use(
             "Connexion impossible : l'action a été mise en attente et sera envoyée automatiquement dès le retour du réseau.",
         },
       };
+      // Le badge (SyncQueueBadge.jsx) ne repolle le SW que toutes les 15s ou
+      // au retour réseau — sans cet évènement, une action qui vient d'être
+      // mise en file n'apparaîtrait pas tout de suite dans le compteur.
+      window.dispatchEvent(new Event("sync-queue-changed"));
     }
 
     return Promise.reject(error);
