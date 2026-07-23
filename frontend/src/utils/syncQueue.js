@@ -51,6 +51,16 @@ export function formatElapsed(timestamp) {
   return hours === 1 ? "il y a 1 h" : `il y a ${hours} h`;
 }
 
+// Utilisé par le service worker pour ne montrer à chaque utilisateur que ses
+// propres actions en attente (cf. sw.js, filtre sur metadata.user).
+function getCurrentUserEmail() {
+  try {
+    return JSON.parse(localStorage.getItem("user"))?.email || null;
+  } catch (error) {
+    return null;
+  }
+}
+
 export function getPendingSyncStatus() {
   return new Promise((resolve) => {
     if (!navigator.serviceWorker?.controller) {
@@ -64,7 +74,7 @@ export function getPendingSyncStatus() {
       resolve({ size: event.data?.size ?? 0, items: event.data?.items ?? [] });
     };
     navigator.serviceWorker.controller.postMessage(
-      { type: "GET_PENDING_SYNC_COUNT" },
+      { type: "GET_PENDING_SYNC_COUNT", user: getCurrentUserEmail() },
       [channel.port2],
     );
   });
@@ -77,4 +87,16 @@ export function onSyncQueueResult(callback) {
   };
   navigator.serviceWorker.addEventListener("message", handler);
   return () => navigator.serviceWorker.removeEventListener("message", handler);
+}
+
+// Force une tentative d'envoi immédiate plutôt que d'attendre le seul
+// évènement 'sync' du navigateur (Background Sync : non supporté hors
+// Chromium, et parfois retardé même quand supporté).
+export function triggerSync() {
+  navigator.serviceWorker?.controller?.postMessage({ type: "TRIGGER_SYNC" });
+}
+
+// Abandon volontaire d'une action en attente (bouton "supprimer" du badge).
+export function deletePendingItem(id) {
+  navigator.serviceWorker?.controller?.postMessage({ type: "DELETE_PENDING_ITEM", id });
 }

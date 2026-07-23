@@ -48,34 +48,62 @@ registerRoute(
 // rien ne remonte à l'utilisateur quand la file est rejouée — pas de moyen de
 // savoir si une action a fini par partir, échoué, ou expiré silencieusement
 // après maxRetentionTime. On notifie chaque client ouvert du résultat.
+// Décode le JWT (sans vérifier la signature — usage d'affichage seulement,
+// pas une décision de sécurité) pour associer chaque action mise en file à
+// l'utilisateur qui l'a déclenchée : si plusieurs comptes partagent le même
+// appareil, chacun ne doit voir que ses propres actions en attente.
+function decodeJwtEmail(authHeader) {
+  try {
+    const token = (authHeader || "").replace(/^Bearer\s+/i, "");
+    const payload = token.split(".")[1];
+    const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+    return json.email || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Distingue deux types d'échec au rejeu : un échec réseau (fetch rejette,
+// toujours hors-ligne) remet l'action en tête de file pour réessayer plus
+// tard ; une réponse HTTP d'erreur (400/401/409...) est un échec définitif
+// (réessayer indéfiniment ne changerait rien et bloquerait toute la file
+// derrière) — on l'abandonne et on le signale. Avant ce correctif, fetch()
+// qui ne rejette QUE sur une vraie panne réseau faisait traiter tout ce qui
+// répondait, même en erreur HTTP, comme un envoi réussi.
+async function replayQueue(queue) {
+  let success = 0;
+  let failed = 0;
+  let entry;
+  while ((entry = await queue.shiftRequest())) {
+    try {
+      const response = await fetch(entry.request.clone());
+      if (response.ok || response.type === "opaque") {
+        success += 1;
+      } else {
+        failed += 1;
+      }
+    } catch (error) {
+      await queue.unshiftRequest(entry);
+      break;
+    }
+  }
+  if (success > 0 || failed > 0) {
+    const clientsList = await self.clients.matchAll({ type: "window" });
+    for (const client of clientsList) {
+      client.postMessage({ type: "SYNC_QUEUE_RESULT", success, failed });
+    }
+  }
+}
+
 const writeQueue = new Queue("api-write-queue", {
   maxRetentionTime: 24 * 60,
-  onSync: async ({ queue }) => {
-    let success = 0;
-    let failed = 0;
-    let entry;
-    while ((entry = await queue.shiftRequest())) {
-      try {
-        await fetch(entry.request.clone());
-        success += 1;
-      } catch (error) {
-        await queue.unshiftRequest(entry);
-        failed += 1;
-        break;
-      }
-    }
-    if (success > 0 || failed > 0) {
-      const clientsList = await self.clients.matchAll({ type: "window" });
-      for (const client of clientsList) {
-        client.postMessage({ type: "SYNC_QUEUE_RESULT", success, failed });
-      }
-    }
-  },
+  onSync: ({ queue }) => replayQueue(queue),
 });
 
 const writeQueuePlugin = {
   fetchDidFail: async ({ request }) => {
-    await writeQueue.pushRequest({ request });
+    const user = decodeJwtEmail(request.headers.get("Authorization"));
+    await writeQueue.pushRequest({ request, metadata: { user } });
   },
 };
 
@@ -87,26 +115,110 @@ for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
   );
 }
 
-// Un client (page ouverte) peut demander le détail des actions en attente
-// (badge cliquable) — getAll() purge au passage les entrées expirées
-// (maxRetentionTime dépassé), donc la liste reflète uniquement ce qui sera
-// réellement rejoué. On renvoie method/url/timestamp : l'UI se charge de
-// traduire ça en libellé lisible (voir utils/syncQueue.js côté frontend).
+// Accès direct à l'IndexedDB de workbox-background-sync (même DB/store que
+// la classe Queue, cf. workbox-background-sync/src/lib/QueueDb.ts) : l'API
+// publique de Queue (getAll/size) omet volontairement l'id de chaque entrée,
+// or il en faut un pour permettre la suppression individuelle d'une action
+// depuis l'UI. Mêmes opérations que Queue sur le même schéma, donc pas de
+// risque de désync avec ses shiftRequest/unshiftRequest.
+const BGSYNC_DB_NAME = "workbox-background-sync";
+const BGSYNC_STORE = "requests";
+const BGSYNC_QUEUE_NAME = "api-write-queue";
+const MAX_RETENTION_MS = 24 * 60 * 60 * 1000;
+
+function openBgSyncDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(BGSYNC_DB_NAME);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function getRawQueueEntries() {
+  const db = await openBgSyncDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(BGSYNC_STORE, "readonly");
+      const req = tx.objectStore(BGSYNC_STORE).index("queueName").getAll(IDBKeyRange.only(BGSYNC_QUEUE_NAME));
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function deleteRawQueueEntry(id) {
+  const db = await openBgSyncDb();
+  try {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(BGSYNC_STORE, "readwrite");
+      tx.objectStore(BGSYNC_STORE).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function listPendingEntries() {
+  const raw = await getRawQueueEntries();
+  const now = Date.now();
+  const valid = [];
+  for (const entry of raw) {
+    if (now - entry.timestamp > MAX_RETENTION_MS) {
+      await deleteRawQueueEntry(entry.id);
+    } else {
+      valid.push(entry);
+    }
+  }
+  return valid;
+}
+
+// Un client (page ouverte) peut :
+// - demander le détail des actions en attente (badge cliquable), filtré sur
+//   l'utilisateur courant (une entrée sans utilisateur identifié reste
+//   visible par défaut plutôt que de devenir invisible pour tout le monde) ;
+// - déclencher une tentative d'envoi immédiate au lieu de dépendre uniquement
+//   du seul évènement 'sync' du navigateur (Background Sync : non supporté
+//   hors Chromium, et parfois retardé même quand supporté — c'est ce qui
+//   faisait que des actions restaient en attente alors que l'utilisateur
+//   était déjà revenu en ligne) ;
+// - supprimer une action précise de la file (abandon volontaire).
 self.addEventListener("message", (event) => {
-  if (event.data?.type !== "GET_PENDING_SYNC_COUNT") return;
-  const port = event.ports[0];
-  if (!port) return;
-  event.waitUntil(
-    writeQueue.getAll().then((entries) =>
-      port.postMessage({
-        type: "PENDING_SYNC_COUNT",
-        size: entries.length,
-        items: entries.map((e) => ({
-          method: e.request.method,
-          url: e.request.url,
-          timestamp: e.timestamp,
-        })),
+  const { data } = event;
+  if (!data?.type) return;
+
+  if (data.type === "GET_PENDING_SYNC_COUNT") {
+    const port = event.ports[0];
+    if (!port) return;
+    event.waitUntil(
+      listPendingEntries().then((entries) => {
+        const filtered = data.user
+          ? entries.filter((e) => !e.metadata?.user || e.metadata.user === data.user)
+          : entries;
+        port.postMessage({
+          type: "PENDING_SYNC_COUNT",
+          size: filtered.length,
+          items: filtered.map((e) => ({
+            id: e.id,
+            method: e.requestData.method,
+            url: e.requestData.url,
+            timestamp: e.timestamp,
+          })),
+        });
       }),
-    ),
-  );
+    );
+    return;
+  }
+
+  if (data.type === "DELETE_PENDING_ITEM") {
+    event.waitUntil(deleteRawQueueEntry(data.id));
+    return;
+  }
+
+  if (data.type === "TRIGGER_SYNC") {
+    event.waitUntil(replayQueue(writeQueue));
+  }
 });
