@@ -45,11 +45,27 @@ class FormationService extends BaseService {
     return await this.formationRepository.findAll();
   }
 
-  async getById(id) {
-    return await this.formationRepository.findById(id);
+  // Un adhérent ne doit voir que sa propre formation, jamais celle d'un
+  // autre membre — les autres rôles (president/moniteur/tresorier) ne sont
+  // pas concernés par cette restriction (getAdherentForUser renvoie null).
+  async assertCanAccessFormation(formation, user) {
+    const adherent = await identiteClient.getAdherentForUser(user);
+    if (adherent && formation.num_adherent !== adherent.num_adherent) {
+      throw new Error("Accès refusé à cette formation");
+    }
   }
 
-  async getFormationsByAdherent(num_adherent) {
+  async getById(id, user = null) {
+    const formation = await this.formationRepository.findById(id);
+    if (formation) await this.assertCanAccessFormation(formation, user);
+    return formation;
+  }
+
+  async getFormationsByAdherent(num_adherent, user = null) {
+    const adherent = await identiteClient.getAdherentForUser(user);
+    if (adherent && num_adherent !== adherent.num_adherent) {
+      throw new Error("Accès refusé à ce suivi de formation");
+    }
     return await this.formationRepository.findByAdherent(num_adherent);
   }
 
@@ -93,8 +109,10 @@ class FormationService extends BaseService {
     };
   }
 
-  async getFormationWithCompetences(id) {
-    return await this.formationRepository.findWithCompetences(id);
+  async getFormationWithCompetences(id, user = null) {
+    const formation = await this.formationRepository.findWithCompetences(id);
+    if (formation) await this.assertCanAccessFormation(formation, user);
+    return formation;
   }
 
   async validateFormationData(data, authHeader) {

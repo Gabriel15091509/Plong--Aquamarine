@@ -14,6 +14,21 @@ async function getAdherentById(numAdherent, authHeader) {
   return body.data;
 }
 
+// Résout l'Adherent correspondant à l'utilisateur connecté (retourne null
+// pour un rôle non-adhérent) — utilisé pour vérifier qu'un adhérent ne
+// consulte que sa propre formation, jamais celle d'un autre (même schéma que
+// activites-service pour le carnet de plongée).
+async function getAdherentForUser(user) {
+  if (!user || user.role !== "adherent") return null;
+  const response = await fetch(`${BASE_URL}/adherents/user/${user.id}`);
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`identite-service: échec résolution adhérent pour user ${user.id} (${response.status})`);
+  }
+  const body = await response.json();
+  return body.data;
+}
+
 // Pas d'auth requise côté identite-service pour cette route (cf.
 // `tresorierRoutes.js` : `GET /tresoriers/user/:user_id` est publique, comme
 // c'était déjà le cas dans le monolithe avant le découpage).
@@ -46,4 +61,4 @@ async function updateNiveau(numAdherent, niveau, authHeader) {
   return body.data;
 }
 
-module.exports = { getAdherentById, getTresorierIdForUser, updateNiveau };
+module.exports = { getAdherentById, getAdherentForUser, getTresorierIdForUser, updateNiveau };

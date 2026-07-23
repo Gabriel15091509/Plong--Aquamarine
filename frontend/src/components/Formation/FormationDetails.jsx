@@ -61,6 +61,7 @@ const FormationDetails = () => {
   const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
   const { user, hasRole } = useAuth();
   const canManage = hasRole(["president", "tresorier"]);
+  const canManageFormation = hasRole(["president", "moniteur"]);
   const { data, isLoading } = useGetById(id);
   const { data: adherentsData } = useGetAll();
   const { data: moniteursData } = useGetAllMoniteurs();
@@ -248,20 +249,24 @@ const FormationDetails = () => {
               Enregistrer un paiement
             </button>
           )}
-          <Link
-            to={`/formations/edit/${formation.id_formation}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
-          >
-            <FiEdit className="w-4 h-4" />
-            Modifier
-          </Link>
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
-          >
-            <FiTrash2 className="w-4 h-4" />
-            Supprimer
-          </button>
+          {canManageFormation && (
+            <>
+              <Link
+                to={`/formations/edit/${formation.id_formation}`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+              >
+                <FiEdit className="w-4 h-4" />
+                Modifier
+              </Link>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+              >
+                <FiTrash2 className="w-4 h-4" />
+                Supprimer
+              </button>
+            </>
+          )}
         </div>
       </motion.div>
 
@@ -533,10 +538,10 @@ const FormationDetails = () => {
       )}
 
       {/* Séances de la formation */}
-      <FormationSeances formation={formation} />
+      <FormationSeances formation={formation} canManage={canManageFormation} />
 
       {/* Compétences de la formation */}
-      <FormationCompetences formation={formation} user={user} />
+      <FormationCompetences formation={formation} user={user} canManage={canManageFormation} />
 
       {/* Modal paiement complémentaire */}
       <FormationPaiementModal

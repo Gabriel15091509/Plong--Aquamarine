@@ -15,7 +15,7 @@ const STATUT_STYLES = {
 // planification (date/type/contenu) et feuille de présence (statut) d'une
 // même formation, qui n'a qu'un seul adhérent — pas besoin d'une table de
 // participants séparée comme pour les sorties.
-const FormationSeances = ({ formation }) => {
+const FormationSeances = ({ formation, canManage = false }) => {
   const { useGetByFormation, useCreate, useUpdateStatut } = useSeances();
 
   const [showForm, setShowForm] = useState(false);
@@ -70,16 +70,18 @@ const FormationSeances = ({ formation }) => {
           </span>
           Séances ({seances.length})
         </h3>
-        <button
-          onClick={() => setShowForm((prev) => !prev)}
-          className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          <FiPlus className="w-4 h-4" />
-          Planifier une séance
-        </button>
+        {canManage && (
+          <button
+            onClick={() => setShowForm((prev) => !prev)}
+            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            <FiPlus className="w-4 h-4" />
+            Planifier une séance
+          </button>
+        )}
       </div>
 
-      {showForm && (
+      {canManage && showForm && (
         <form
           onSubmit={handleAddSeance}
           className="mb-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end"
@@ -168,7 +170,7 @@ const FormationSeances = ({ formation }) => {
                   </p>
                 )}
               </div>
-              {seance.statut === "Planifiée" ? (
+              {seance.statut === "Planifiée" && canManage ? (
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleMarquer(seance.id_seance, "Réalisée")}

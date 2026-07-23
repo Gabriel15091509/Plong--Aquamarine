@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { FiStar, FiPlus, FiCheckCircle } from "react-icons/fi";
+import { FiStar, FiPlus, FiCheckCircle, FiClock } from "react-icons/fi";
 import { useCompetences } from "../../hooks/Formation/useCompetences";
 import LoadingSpinner from "../Common/LoadingSpinner";
 
@@ -8,7 +8,7 @@ import LoadingSpinner from "../Common/LoadingSpinner";
 // (gestion de sa propre liste, son propre formulaire d'ajout, sa propre
 // validation) pour que FormationDetails reste centré sur l'affichage de la
 // fiche formation.
-const FormationCompetences = ({ formation, user }) => {
+const FormationCompetences = ({ formation, user, canManage = false }) => {
   const {
     useGetByFormation,
     useCreate: useCreateCompetence,
@@ -67,16 +67,18 @@ const FormationCompetences = ({ formation, user }) => {
           </span>
           Compétences ({competences.length})
         </h3>
-        <button
-          onClick={() => setShowCompetenceForm((prev) => !prev)}
-          className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          <FiPlus className="w-4 h-4" />
-          Ajouter une compétence
-        </button>
+        {canManage && (
+          <button
+            onClick={() => setShowCompetenceForm((prev) => !prev)}
+            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            <FiPlus className="w-4 h-4" />
+            Ajouter une compétence
+          </button>
+        )}
       </div>
 
-      {showCompetenceForm && (
+      {canManage && showCompetenceForm && (
         <form
           onSubmit={handleAddCompetence}
           className="mb-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end"
@@ -160,7 +162,7 @@ const FormationCompetences = ({ formation, user }) => {
                   <FiCheckCircle className="w-3.5 h-3.5" />
                   Validée
                 </span>
-              ) : (
+              ) : canManage ? (
                 <button
                   onClick={() => handleValiderCompetence(competence.id_competence)}
                   disabled={validerCompetence.isPending}
@@ -169,6 +171,11 @@ const FormationCompetences = ({ formation, user }) => {
                   <FiCheckCircle className="w-3.5 h-3.5" />
                   Valider
                 </button>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                  <FiClock className="w-3.5 h-3.5" />
+                  En attente
+                </span>
               )}
             </div>
           ))}
