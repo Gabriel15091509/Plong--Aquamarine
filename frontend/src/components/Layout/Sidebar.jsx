@@ -172,6 +172,11 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const canSeeAdherentsList = hasRole(["president", "moniteur", "tresorier"]);
   const canSeeMateriel = hasRole(["president"]);
   const canSeeFormations = hasRole(["president", "moniteur"]);
+  // Un adhérent doit voir "Formations" (sa propre progression, en lecture
+  // seule) mais pas "Spécialités" (catalogue géré par le staff) — d'où un
+  // flag séparé plutôt que d'ajouter "adherent" à canSeeFormations, qui
+  // couvre encore Spécialités.
+  const canSeeMyFormations = hasRole(["president", "moniteur", "adherent"]);
   const canSeeIncidents = hasRole(["president", "moniteur"]);
   const canSeeRoles = hasRole(["president"]);
 
@@ -201,6 +206,10 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
     { path: "/plongees", icon: FiActivity, label: "Plongées" },
   ];
 
+  const formationMenu = [
+    { path: "/formations", icon: FiAward, label: "Formations" },
+  ];
+
   const adminMenu = [
     canSeeMateriel && { path: "/materiels", icon: FiPackage, label: "Matériel" },
     canSeeMateriel && {
@@ -212,11 +221,6 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       path: "/reparations",
       icon: FiTool,
       label: "Réparations",
-    },
-    canSeeFormations && {
-      path: "/formations",
-      icon: FiAward,
-      label: "Formations",
     },
     canSeeFormations && {
       path: "/specialites-formation",
@@ -501,6 +505,12 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
             title="Sorties"
             items={sortieMenu}
             isVisible={canSeeSorties}
+            {...menuSectionProps}
+          />
+          <MenuSection
+            title="Formation"
+            items={formationMenu}
+            isVisible={canSeeMyFormations}
             {...menuSectionProps}
           />
           <MenuSection title="Calendrier" items={calendrierMenu} {...menuSectionProps} />
