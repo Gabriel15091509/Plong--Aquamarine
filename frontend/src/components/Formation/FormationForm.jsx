@@ -381,8 +381,9 @@ const FormationForm = () => {
                   placeholder={formData.montant_total || "0.00"}
                 />
                 <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  Laisser vide pour ne rien encaisser maintenant. Un solde restant pourra être
-                  enregistré ultérieurement.
+                  Si le statut reste « En cours », un premier versement (même partiel) est
+                  requis pour créer la formation. Choisissez « Suspendue » si aucun paiement
+                  n'est encore reçu.
                 </p>
               </motion.div>
 

@@ -57,8 +57,15 @@ export const useFormations = () => {
         toast.success(response.message || "Formation créée avec succès");
       },
       onError: (error) => {
+        // La validation avant création (prérequis, dossier d'adhésion,
+        // paiement initial requis...) renvoie un tableau `errors`, pas un
+        // `message` unique — sans ce repli, l'utilisateur ne voyait qu'un
+        // "Erreur lors de la création" générique sans savoir pourquoi
+        // (ex: paiement non initié) ni quoi corriger.
         toast.error(
-          error.response?.data?.message || "Erreur lors de la création",
+          error.response?.data?.message ||
+            (error.response?.data?.errors || []).join(", ") ||
+            "Erreur lors de la création",
         );
       },
     });
