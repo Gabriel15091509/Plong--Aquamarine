@@ -13,13 +13,25 @@ router.get(
 );
 router.get("/stats", formationController.getStats.bind(formationController));
 router.get("/trend", formationController.getTrend.bind(formationController));
+// authenticate (et non authorize) : ces 3 routes retournent la fiche
+// individuelle d'une formation, potentiellement consultée par l'adhérent
+// concerné (contrôle de propriété fait dans FormationService, pas ici) —
+// contrairement à "/", "/active", "/stats", "/trend" qui restent sans
+// authenticate car appelées en interne sans en-tête (ex: gateway-service
+// pour le dashboard, cf. serviceClients/formationClient.js).
 router.get(
   "/adherent/:num_adherent",
+  AuthMiddleware.authenticate,
   formationController.getByAdherent.bind(formationController),
 );
-router.get("/:id", formationController.getById.bind(formationController));
+router.get(
+  "/:id",
+  AuthMiddleware.authenticate,
+  formationController.getById.bind(formationController),
+);
 router.get(
   "/:id/competences",
+  AuthMiddleware.authenticate,
   formationController.getWithCompetences.bind(formationController),
 );
 

@@ -8,18 +8,12 @@ import {
   FiBookOpen,
   FiChevronRight,
 } from "react-icons/fi";
-import { useFormations } from "../../hooks/Formation/useFormations";
+import { useAuth } from "../../context/AuthContext";
 import FormationList from "../../components/Formation/FormationList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 const FormationsPage = () => {
-  const { useGetAll } = useFormations();
-  const { data, isLoading, error } = useGetAll();
-
-  const formations = data?.data || [];
-
-  if (isLoading) return <LoadingSpinner />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  const { hasRole } = useAuth();
+  const canManage = hasRole(["president", "moniteur"]);
 
   return (
     <motion.div
@@ -32,15 +26,15 @@ const FormationsPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-3">
-            <span>Gestion des formations</span>
+            <span>{canManage ? "Gestion des formations" : "Mes formations"}</span>
             <FiAward className="w-5 h-5 text-indigo-500" />
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {formations.length} formations enregistrées
+            {canManage
+              ? "Suivi de toutes les formations du club"
+              : "Suivez votre progression et vos compétences validées"}
           </p>
         </div>
-
-        
       </div>
 
       {/* Liste des formations */}
@@ -50,7 +44,7 @@ const FormationsPage = () => {
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-        {formations.length} formations • Dernière mise à jour :{" "}
+        Dernière mise à jour :{" "}
         {new Date().toLocaleString("fr-FR", {
           day: "numeric",
           month: "long",

@@ -16,18 +16,35 @@ import {
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { useFormations } from "../../hooks/Formation/useFormations";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 
 // TODO: Ajouter un filtre par niveau de formation
 const FormationList = () => {
-  const { useGetAll, useRemove, useComplete } = useFormations();
+  const { user, hasRole } = useAuth();
+  const canManage = hasRole(["president", "moniteur"]);
+
+  const { useGetAll, useGetByAdherent, useRemove, useComplete } = useFormations();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
-  const { data, isLoading, error, refetch } = useGetAll();
   const { data: adherentsData, isLoading: loadingAdherents } =
     useGetAllAdherents();
+
+  // Un adhérent ne doit voir que ses propres formations ("où il en est"),
+  // pas la liste de gestion complète réservée à président/moniteur — on
+  // n'active donc qu'une des deux requêtes selon le rôle (les deux hooks
+  // restent appelés à chaque rendu pour respecter les règles des hooks,
+  // seul `enabled` change lequel part réellement en réseau).
+  const currentAdherent = useMemo(() => {
+    if (!adherentsData?.data || !user) return null;
+    return adherentsData.data.find((a) => a.email === user.email);
+  }, [adherentsData, user]);
+
+  const allQuery = useGetAll({}, { enabled: canManage });
+  const mineQuery = useGetByAdherent(canManage ? null : currentAdherent?.num_adherent);
+  const { data, isLoading, error, refetch } = canManage ? allQuery : mineQuery;
 
   const remove = useRemove();
   const complete = useComplete();
@@ -130,14 +147,18 @@ const FormationList = () => {
         <p className="text-gray-500 dark:text-gray-400 mt-1">
           {searchTerm || filter !== "all"
             ? "Aucun résultat pour vos critères"
-            : "Commencez par créer une nouvelle formation"}
+            : canManage
+              ? "Commencez par créer une nouvelle formation"
+              : "Vous n'êtes inscrit à aucune formation pour le moment"}
         </p>
-        <Link
-          to="/formations/create"
-          className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-        >
-          <FiPlus className="w-4 h-4" /> Nouvelle formation
-        </Link>
+        {canManage && (
+          <Link
+            to="/formations/create"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+          >
+            <FiPlus className="w-4 h-4" /> Nouvelle formation
+          </Link>
+        )}
       </motion.div>
     );
   }
@@ -173,13 +194,15 @@ const FormationList = () => {
             <option value="Abandonnée">Abandonnées</option>
             <option value="Suspendue">Suspendues</option>
           </select>
-          <Link
-            to="/formations/create"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <FiPlus className="w-4 h-4" />
-            Nouvelle
-          </Link>
+          {canManage && (
+            <Link
+              to="/formations/create"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <FiPlus className="w-4 h-4" />
+              Nouvelle
+            </Link>
+          )}
         </div>
       </div>
 
@@ -285,7 +308,7 @@ const FormationList = () => {
                         {/* Actions */}
                         <div className="flex items-center gap-1 flex-shrink-0">
                           {/* Terminer */}
-                          {formation.statut === "En cours" && (
+                          {canManage && formation.statut === "En cours" && (
                             <button
                               onClick={() => setCompleteModal(formationId)}
                               disabled={isLoading}
@@ -307,25 +330,29 @@ const FormationList = () => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          <Link
-                            to={`/formations/edit/${formationId}`}
-                            className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                            title="Modifier"
-                          >
-                            <FiEdit className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={() => setDeleteModal(formationId)}
-                            disabled={isLoading}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                            title="Supprimer"
-                          >
-                            {actionLoading === `delete-${formationId}` ? (
-                              <FiRefreshCw className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <FiTrash2 className="w-4 h-4" />
-                            )}
-                          </button>
+                          {canManage && (
+                            <>
+                              <Link
+                                to={`/formations/edit/${formationId}`}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                title="Modifier"
+                              >
+                                <FiEdit className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() => setDeleteModal(formationId)}
+                                disabled={isLoading}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="Supprimer"
+                              >
+                                {actionLoading === `delete-${formationId}` ? (
+                                  <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <FiTrash2 className="w-4 h-4" />
+                                )}
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -518,7 +518,7 @@ function App() {
               <Route
                 path="/formations"
                 element={
-                  <ProtectedRoute requiredRoles={["president", "moniteur"]}>
+                  <ProtectedRoute requiredRoles={["president", "moniteur", "adherent"]}>
                     <Layout>
                       <FormationsPage />
                     </Layout>
@@ -548,7 +548,7 @@ function App() {
               <Route
                 path="/formations/:id"
                 element={
-                  <ProtectedRoute requiredRoles={["president", "moniteur"]}>
+                  <ProtectedRoute requiredRoles={["president", "moniteur", "adherent"]}>
                     <Layout>
                       <FormationDetails />
                     </Layout>

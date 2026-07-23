@@ -9,11 +9,30 @@ class FormationController extends BaseController {
     this.formationService = service;
   }
 
+  async getById(req, res, next) {
+    try {
+      const result = await this.formationService.getById(req.params.id, req.user);
+      if (!result) {
+        return res.status(404).json({
+          success: false,
+          message: "Formation non trouvée",
+        });
+      }
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(withStatus(error, 403));
+    }
+  }
+
   async getByAdherent(req, res, next) {
     try {
       const { num_adherent } = req.params;
       const results = await this.formationService.getFormationsByAdherent(
         num_adherent,
+        req.user,
       );
       res.json({
         success: true,
@@ -21,7 +40,7 @@ class FormationController extends BaseController {
         count: results.length,
       });
     } catch (error) {
-      next(withStatus(error, 500));
+      next(withStatus(error, 403));
     }
   }
 
@@ -66,6 +85,7 @@ class FormationController extends BaseController {
     try {
       const result = await this.formationService.getFormationWithCompetences(
         req.params.id,
+        req.user,
       );
       if (!result) {
         return res.status(404).json({
@@ -78,7 +98,7 @@ class FormationController extends BaseController {
         data: result,
       });
     } catch (error) {
-      next(withStatus(error, 500));
+      next(withStatus(error, 403));
     }
   }
 
