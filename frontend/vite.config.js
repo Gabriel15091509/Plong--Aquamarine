@@ -13,6 +13,15 @@ export default defineConfig({
       injectRegister: false,
       registerType: "autoUpdate",
       devOptions: { enabled: false },
+      injectManifest: {
+        // opencv.js (~13 Mo) est chargé à la demande via une balise <script>
+        // (voir documentScanner.js) et ne doit jamais entrer dans le
+        // précache du service worker ; le bundle principal dépasse
+        // légèrement la limite par défaut (2 Mo) et a juste besoin d'un peu
+        // de marge pour rester précaché.
+        globIgnores: ["**/vendor/opencv.js"],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
       manifest: {
         name: "Plongée Club",
         short_name: "Plongée Club",

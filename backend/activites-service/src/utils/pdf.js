@@ -7,7 +7,6 @@ const INK = "#1a202c";
 const MUTED = "#718096";
 const FAINT = "#a0aec0";
 const RULE = "#e2e8f0";
-const ROW_ALT = "#f8fafc";
 const STAT_BG = "#f0f9ff";
 const VALID_COLOR = "#059669";
 
