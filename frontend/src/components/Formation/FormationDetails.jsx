@@ -121,10 +121,13 @@ const FormationDetails = () => {
     );
   }
 
-  const progression = Math.min(
-    Math.round((formation.nb_seances_realisees / 10) * 100),
-    100,
-  );
+  const progression = formation.nb_seances_prevues
+    ? Math.min(
+        Math.round((formation.nb_seances_realisees / formation.nb_seances_prevues) * 100),
+        100,
+      )
+    : 0;
+  const isTerminee = formation.statut === "Terminée";
 
   const getProgressionColor = (progress) => {
     if (progress >= 80) return "from-emerald-500 to-green-500";
@@ -251,16 +254,28 @@ const FormationDetails = () => {
           )}
           {canManageFormation && (
             <>
-              <Link
-                to={`/formations/edit/${formation.id_formation}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
-              >
-                <FiEdit className="w-4 h-4" />
-                Modifier
-              </Link>
+              {isTerminee ? (
+                <span
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed"
+                  title="Formation terminée : modification impossible"
+                >
+                  <FiEdit className="w-4 h-4" />
+                  Modifier
+                </span>
+              ) : (
+                <Link
+                  to={`/formations/edit/${formation.id_formation}`}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+                >
+                  <FiEdit className="w-4 h-4" />
+                  Modifier
+                </Link>
+              )}
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+                disabled={isTerminee}
+                title={isTerminee ? "Formation terminée : suppression impossible" : undefined}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:translate-y-0"
               >
                 <FiTrash2 className="w-4 h-4" />
                 Supprimer
@@ -284,7 +299,8 @@ const FormationDetails = () => {
             <div className="flex items-center gap-4 mt-2">
               <span className="text-4xl font-bold">{progression}%</span>
               <span className="text-sm text-blue-100/70">
-                {formation.nb_seances_realisees} / 10 séances
+                {formation.nb_seances_realisees} /{" "}
+                {formation.nb_seances_prevues ?? "?"} séances
               </span>
             </div>
           </div>
@@ -439,7 +455,8 @@ const FormationDetails = () => {
             label="Séances réalisées"
             value={
               <span className="font-semibold">
-                {formation.nb_seances_realisees} / 10 séances
+                {formation.nb_seances_realisees} /{" "}
+                {formation.nb_seances_prevues ?? "?"} séances
               </span>
             }
           />

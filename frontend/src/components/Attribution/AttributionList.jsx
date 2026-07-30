@@ -10,8 +10,10 @@ import {
   FiCalendar,
   FiCheckCircle,
   FiClock,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
@@ -54,8 +56,11 @@ const AttributionList = () => {
   const filteredAttributions = useMemo(() => {
     return allAttributions.filter((a) => {
       const isEnCours = !a.date_retour_reel;
+      const isEnRetard = isEnCours && new Date(a.date_retour_prevue) < new Date();
       if (filter === "en-cours" && !isEnCours) return false;
       if (filter === "retournes" && isEnCours) return false;
+      if (filter === "retard" && !isEnRetard) return false;
+      if (filter === "prets" && a.id_sortie) return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -131,6 +136,8 @@ const AttributionList = () => {
             <option value="all">Toutes</option>
             <option value="en-cours">En cours</option>
             <option value="retournes">Retournées</option>
+            <option value="retard">En retard</option>
+            <option value="prets">Prêts (sans sortie)</option>
           </select>
           <Link
             to="/attributions/create"
@@ -146,6 +153,7 @@ const AttributionList = () => {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-3">
           {filteredAttributions.map((attribution) => {
             const isEnCours = !attribution.date_retour_reel;
+            const isEnRetard = isEnCours && new Date(attribution.date_retour_prevue) < new Date();
             return (
               <motion.div
                 key={attribution.id_attribution}
@@ -158,12 +166,16 @@ const AttributionList = () => {
                   <div className="flex-shrink-0">
                     <div
                       className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                        isEnCours
-                          ? "bg-blue-100 dark:bg-blue-900/30"
-                          : "bg-green-100 dark:bg-green-900/30"
+                        isEnRetard
+                          ? "bg-red-100 dark:bg-red-900/30"
+                          : isEnCours
+                            ? "bg-blue-100 dark:bg-blue-900/30"
+                            : "bg-green-100 dark:bg-green-900/30"
                       }`}
                     >
-                      {isEnCours ? (
+                      {isEnRetard ? (
+                        <FiAlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                      ) : isEnCours ? (
                         <FiClock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                       ) : (
                         <FiCheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -196,9 +208,22 @@ const AttributionList = () => {
                             {formatDate(attribution.date_retour_prevue)}
                           </span>
                           <span>•</span>
-                          <span>
-                            {isEnCours ? "En cours" : "Retourné"}
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              isEnRetard
+                                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                : isEnCours
+                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                  : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            }`}
+                          >
+                            {isEnRetard ? "En retard" : isEnCours ? "En cours" : "Retourné"}
                           </span>
+                          {!attribution.id_sortie && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                              Prêt (sans sortie)
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -235,7 +260,7 @@ const AttributionList = () => {
       </AnimatePresence>
 
       {deleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -269,7 +294,7 @@ const AttributionList = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

@@ -22,9 +22,13 @@ const Palanquee = sequelize.define(
       allowNull: false,
     },
     // Plus de FK Postgres vers `moniteurs` (identite-service, autre schéma).
+    // Nullable : une palanquée constituée automatiquement au pointage (voir
+    // PalanqueeService.autoConstituerPourPresence) peut ne pas avoir de
+    // moniteur identifiable tout de suite (pointage fait par le président) —
+    // assignable ensuite via PATCH /palanquees/:id/encadrement.
     id_moniteur_encadrant: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     profondeur_max_realisee: {
       type: DataTypes.INTEGER,

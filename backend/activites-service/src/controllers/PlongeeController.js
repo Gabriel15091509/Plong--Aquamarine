@@ -2,7 +2,7 @@ const BaseController = require('./BaseController');
 const PlongeeService = require('../services/PlongeeService');
 const identiteClient = require('../utils/serviceClients/identiteClient');
 const { withStatus } = require('../utils/errors');
-const { streamCarnetPlongee } = require('../utils/pdf');
+const { streamCarnetPlongee, streamAttestationSuiviPlongee } = require('../utils/pdf');
 
 class PlongeeController extends BaseController {
   constructor() {
@@ -77,6 +77,36 @@ class PlongeeController extends BaseController {
       const profondeurMax = plongees.reduce((max, p) => Math.max(max, p.profondeur_max || 0), 0);
       const dureeTotale = plongees.reduce((total, p) => total + (p.duree || 0), 0);
       await streamCarnetPlongee(res, { adherent, plongees, profondeurMax, dureeTotale });
+    } catch (error) {
+      next(withStatus(error, 403));
+    }
+  }
+
+  // Export PDF de l'attestation de suivi de plongée : récapitulatif formel
+  // (plongées validées, profondeur max, période couverte) — seules les
+  // plongées validées par un moniteur comptent comme expérience attestée,
+  // contrairement au carnet qui liste aussi les plongées non encore
+  // validées.
+  async getAttestationSuiviPdf(req, res, next) {
+    try {
+      const { num_adherent } = req.params;
+      const plongees = await this.plongeeService.getPlongeesByAdherent(num_adherent, req.user);
+      const adherent = await identiteClient.getAdherentById(num_adherent, req.headers.authorization);
+      if (!adherent) {
+        return res.status(404).json({ success: false, message: 'Adhérent non trouvé' });
+      }
+      const validees = plongees.filter((p) => p.id_moniteur_validateur);
+      const profondeurMax = validees.length
+        ? validees.reduce((max, p) => Math.max(max, p.profondeur_max || 0), 0)
+        : null;
+      const dates = validees.map((p) => new Date(p.date)).sort((a, b) => a - b);
+      await streamAttestationSuiviPlongee(res, {
+        adherent,
+        nbPlongees: validees.length,
+        profondeurMax,
+        dateDebut: dates[0] || null,
+        dateFin: dates[dates.length - 1] || null,
+      });
     } catch (error) {
       next(withStatus(error, 403));
     }

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const AdhesionController = require('../controllers/AdhesionController');
 const AuthMiddleware = require('../middlewares/authMiddleware');
-const { uploadAdhesionDocument } = require('../middlewares/upload');
+const { uploadAdhesionDocument, handleAnalysePhotoUpload } = require('../middlewares/upload');
 const { ROLES } = require('../utils/roleScope');
 
 const adhesionController = new AdhesionController();
@@ -16,6 +16,13 @@ router.get('/adherent/:num_adherent', AuthMiddleware.authenticate, adhesionContr
 router.get('/adherent/:num_adherent/dossier-status', AuthMiddleware.authenticate, adhesionController.getDossierStatus.bind(adhesionController));
 router.get('/adherent/:num_adherent/attestation', AuthMiddleware.authenticate, adhesionController.getAttestation.bind(adhesionController));
 router.get('/:id', AuthMiddleware.authenticate, adhesionController.getById.bind(adhesionController));
+
+router.post('/analyser-photo',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_TRESORIER),
+  handleAnalysePhotoUpload,
+  adhesionController.analysePhoto.bind(adhesionController)
+);
 
 router.post('/',
   AuthMiddleware.authenticate,

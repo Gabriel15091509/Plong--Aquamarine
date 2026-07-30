@@ -31,6 +31,11 @@ class AttributionService {
     return response.data;
   }
 
+  async getBySortie(idSortie) {
+    const response = await api.get(`/attributions/sortie/${idSortie}`);
+    return response.data;
+  }
+
   async create(data) {
     const response = await api.post('/attributions', data);
     return response.data;

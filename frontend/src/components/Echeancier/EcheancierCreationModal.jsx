@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
+import ModalOverlay from "../Common/ModalOverlay";
 import { useEcheanciers } from "../../hooks/Echeancier/useEcheanciers";
 import { formatCurrency } from "../../utils/helpers";
 
@@ -50,7 +51,7 @@ const EcheancierCreationModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <motion.form
         onSubmit={handleSubmit}
         initial={{ opacity: 0, scale: 0.95 }}
@@ -131,7 +132,7 @@ const EcheancierCreationModal = ({
           </button>
         </div>
       </motion.form>
-    </div>
+    </ModalOverlay>
   );
 };
 

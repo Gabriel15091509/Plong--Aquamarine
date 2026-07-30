@@ -1,5 +1,5 @@
 const BaseRepository = require('./BaseRepository');
-const { Plongee, Palanquee, Composer } = require('../models');
+const { Plongee, Palanquee, Composer, Sortie } = require('../models');
 const { Op } = require('sequelize');
 
 // Adherent (identite-service) a quitté ce schéma : plus d'include imbriqué
@@ -30,6 +30,9 @@ class PlongeeRepository extends BaseRepository {
   async findPlongeesByAdherent(num_adherent) {
     return await this.model.findAll({
       where: { num_adherent },
+      // Lieu/site affichés dans le carnet de plongée (PDF) et sa liste écran —
+      // portés par Sortie, pas par Plongee elle-même.
+      include: [{ model: Sortie, as: 'sortie', attributes: ['lieu', 'site'] }],
       order: [['date', 'DESC']]
     });
   }

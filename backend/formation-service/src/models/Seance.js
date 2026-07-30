@@ -13,6 +13,13 @@ const Seance = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    // Sortie (activites-service, autre schéma) sur laquelle se déroule une
+    // séance "Pratique" — référence applicative, non validée en base.
+    // Renseignée seulement pour les séances pratiques.
+    id_sortie: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     date_seance: {
       type: DataTypes.DATEONLY,
       allowNull: false,

@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const MoniteurController = require('../controllers/MoniteurController');
 const AuthMiddleware = require('../middlewares/authMiddleware');
-const authorize = require('../middlewares/authorize');
 const { ROLES } = require('../utils/roleScope');
 
 const moniteurController = new MoniteurController();
@@ -15,20 +14,20 @@ router.get('/:id', moniteurController.getById.bind(moniteurController));
 
 router.post('/',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   moniteurController.validateBeforeCreate.bind(moniteurController),
   moniteurController.create.bind(moniteurController)
 );
 
 router.put('/:id',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   moniteurController.update.bind(moniteurController)
 );
 
 router.delete('/:id',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   moniteurController.delete.bind(moniteurController)
 );
 

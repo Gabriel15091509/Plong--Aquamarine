@@ -38,6 +38,10 @@ class PalanqueeRepository extends BaseRepository {
     return await this.model.findAll({
       where: { id_sortie },
       include: WITH_COMPOSERS,
+      // Ordre stable : la constitution automatique (voir
+      // PalanqueeService.autoConstituerPourPresence) remplit les palanquées
+      // existantes dans leur ordre de création avant d'en ouvrir une nouvelle.
+      order: [['created_at', 'ASC']],
     });
   }
 

@@ -11,6 +11,7 @@ router.get('/', AuthMiddleware.authenticate, attributionController.getAll.bind(a
 router.get('/en-cours', AuthMiddleware.authenticate, attributionController.getEnCours.bind(attributionController));
 router.get('/adherent/:num_adherent', AuthMiddleware.authenticate, attributionController.getByAdherent.bind(attributionController));
 router.get('/materiel/:num_inventaire', AuthMiddleware.authenticate, attributionController.getByMateriel.bind(attributionController));
+router.get('/sortie/:id_sortie', AuthMiddleware.authenticate, attributionController.getBySortie.bind(attributionController));
 router.get('/palanquee/:id_palanquee', AuthMiddleware.authenticate, attributionController.getByPalanquee.bind(attributionController));
 router.get('/:id', AuthMiddleware.authenticate, attributionController.getById.bind(attributionController));
 

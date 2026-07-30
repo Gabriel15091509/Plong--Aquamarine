@@ -18,6 +18,7 @@ import {
 import { useReparations } from "../../hooks/Reparation/useReparations";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import { formatDate, formatCurrency, formatDateForInput } from "../../utils/helpers";
 
 const ReparationDetails = () => {
@@ -264,7 +265,7 @@ const ReparationDetails = () => {
       </motion.div>
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -299,7 +300,7 @@ const ReparationDetails = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
     </motion.div>
   );

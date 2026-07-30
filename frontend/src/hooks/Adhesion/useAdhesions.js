@@ -85,6 +85,15 @@ export const useAdhesions = () => {
     });
   };
 
+  const useAnalysePhoto = () => {
+    return useMutation({
+      mutationFn: (params) => adhesionService.analysePhoto(params),
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Analyse de la photo impossible");
+      },
+    });
+  };
+
   const useDossierStatus = (numAdherent) => {
     return useQuery({
       queryKey: ['adhesions', 'dossier-status', numAdherent],
@@ -103,5 +112,6 @@ export const useAdhesions = () => {
     useRemove,
     useDossierStatus,
     useEnregistrerPaiement,
+    useAnalysePhoto,
   };
 };

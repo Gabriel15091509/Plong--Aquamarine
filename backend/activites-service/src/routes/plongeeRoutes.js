@@ -33,6 +33,11 @@ router.get(
   plongeeController.getCarnetPdf.bind(plongeeController),
 );
 router.get(
+  "/adherent/:num_adherent/attestation-pdf",
+  AuthMiddleware.authenticate,
+  plongeeController.getAttestationSuiviPdf.bind(plongeeController),
+);
+router.get(
   "/:id",
   AuthMiddleware.authenticate,
   plongeeController.getById.bind(plongeeController),

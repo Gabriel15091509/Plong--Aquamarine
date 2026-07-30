@@ -103,7 +103,7 @@ export const useFormations = () => {
 
   const useComplete = () => {
     return useMutation({
-      mutationFn: (id) => formationService.complete(id),
+      mutationFn: ({ id, data }) => formationService.complete(id, data),
       onSuccess: (response) => {
         queryClient.invalidateQueries(["formations"]);
         toast.success(response.message || "Formation terminée avec succès");
@@ -111,6 +111,21 @@ export const useFormations = () => {
       onError: (error) => {
         toast.error(
           error.response?.data?.message || "Erreur lors de la finalisation",
+        );
+      },
+    });
+  };
+
+  const useAjourner = () => {
+    return useMutation({
+      mutationFn: ({ id, motif }) => formationService.ajourner(id, motif),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["formations"]);
+        toast.success(response.message || "Formation ajournée");
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message || "Erreur lors de l'ajournement",
         );
       },
     });
@@ -143,6 +158,7 @@ export const useFormations = () => {
     useUpdate,
     useRemove,
     useComplete,
+    useAjourner,
     useEnregistrerPaiement,
   };
 };

@@ -15,7 +15,7 @@ import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { ETAT_MATERIEL_OPTIONS } from "../../utils/constants";
-import { formatDateForInput } from "../../utils/helpers";
+import { formatDateForInput, isSortieSelectionnable } from "../../utils/helpers";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -49,11 +49,20 @@ const AttributionForm = () => {
   const [formData, setFormData] = useState({
     num_inventaire: searchParams.get("num_inventaire") || "",
     num_adherent: "",
-    id_sortie: "",
+    id_sortie: searchParams.get("id_sortie") || "",
     date_attribution: formatDateForInput(new Date()),
     etat_depart: "Bon",
     date_retour_prevue: "",
+    piece_identite_retenue: "",
   });
+
+  // Une sortie déjà en cours ou terminée ne doit plus être proposée, sauf si
+  // c'est déjà la sortie liée à l'attribution en cours de modification.
+  const sortiesSelectionnables = (sortiesData?.data || []).filter(
+    (s) =>
+      isSortieSelectionnable(s) ||
+      String(s.id_sortie) === String(formData.id_sortie),
+  );
 
   useEffect(() => {
     if (editMode && id && attributionData?.data) {
@@ -69,6 +78,7 @@ const AttributionForm = () => {
         date_retour_prevue: a.date_retour_prevue
           ? a.date_retour_prevue.split("T")[0]
           : "",
+        piece_identite_retenue: a.piece_identite_retenue || "",
       });
     }
   }, [editMode, id, attributionData]);
@@ -85,7 +95,6 @@ const AttributionForm = () => {
       newErrors.num_inventaire = "Le matériel est requis";
     if (!formData.num_adherent)
       newErrors.num_adherent = "L'adhérent est requis";
-    if (!formData.id_sortie) newErrors.id_sortie = "La sortie est requise";
     if (!formData.date_attribution)
       newErrors.date_attribution = "La date d'attribution est requise";
     if (!formData.date_retour_prevue)
@@ -145,7 +154,7 @@ const AttributionForm = () => {
               {editMode ? "Modifier l'attribution" : "Nouvelle attribution"}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Attribuez du matériel à un adhérent pour une sortie
+              Attribuez du matériel à un adhérent pour une sortie, ou en prêt libre
             </p>
           </div>
           <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
@@ -196,20 +205,21 @@ const AttributionForm = () => {
 
           <motion.div {...fadeInUp}>
             <SearchableSelect
-              label="Sortie *"
+              label="Sortie"
               value={formData.id_sortie}
               onChange={(value) => {
                 setFormData((prev) => ({ ...prev, id_sortie: value }));
-                if (errors.id_sortie)
-                  setErrors((prev) => ({ ...prev, id_sortie: "" }));
               }}
-              options={sortiesData?.data || []}
+              options={sortiesSelectionnables}
               getOptionLabel={(s) => `${s.type} - ${s.lieu}`}
               getOptionValue={(s) => s.id_sortie}
               placeholder="Rechercher une sortie..."
-              error={errors.id_sortie}
-              required={true}
             />
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+              Laisser vide pour un prêt libre entre deux sorties (durée
+              limitée par la date de retour prévue, sans lien à une sortie
+              précise).
+            </p>
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -273,6 +283,23 @@ const AttributionForm = () => {
                 {errors.date_retour_prevue}
               </p>
             )}
+          </motion.div>
+
+          <motion.div {...fadeInUp} className="md:col-span-2">
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiTag className="w-4 h-4 text-gray-400" />
+                Pièce d'identité retenue
+              </span>
+            </label>
+            <input
+              type="text"
+              name="piece_identite_retenue"
+              value={formData.piece_identite_retenue}
+              onChange={handleChange}
+              className={inputClasses("piece_identite_retenue")}
+              placeholder="Ex : CNI n° 123456789 (alternative à la caution)"
+            />
           </motion.div>
         </div>
       </div>

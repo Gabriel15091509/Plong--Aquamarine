@@ -83,6 +83,19 @@ export const useAlertes = () => {
     });
   };
 
+  const useRelancer = () => {
+    return useMutation({
+      mutationFn: (id) => alerteService.relancer(id),
+      onSuccess: () => {
+        queryClient.invalidateQueries(['alertes']);
+        toast.success('Relance envoyée par email');
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors de l'envoi de la relance");
+      },
+    });
+  };
+
   return {
     useGetAll,
     useGetUnread,
@@ -91,5 +104,6 @@ export const useAlertes = () => {
     useMarkAsRead,
     useMarkAllAsRead,
     useRemove,
+    useRelancer,
   };
 };

@@ -70,6 +70,15 @@ export const useCertificats = () => {
     });
   };
 
+  const useAnalysePhoto = () => {
+    return useMutation({
+      mutationFn: (params) => certificatService.analysePhoto(params),
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Analyse de la photo impossible");
+      },
+    });
+  };
+
   const useGetByAdherent = (numAdherent) => {
     return useQuery({
       queryKey: ['certificats', 'adherent', numAdherent],
@@ -87,5 +96,6 @@ export const useCertificats = () => {
     useRemove,
     useStatus,
     useGetByAdherent,
+    useAnalysePhoto,
   };
 };

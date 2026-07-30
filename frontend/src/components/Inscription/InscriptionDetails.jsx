@@ -27,6 +27,7 @@ import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import StatusBadge from "../Common/StatusBadge";
 import EcheancierCard from "../Echeancier/EcheancierCard";
 import { formatDate, formatDateTime, formatCurrency } from "../../utils/helpers";
@@ -607,7 +608,7 @@ const InscriptionDetails = () => {
                 Présence
               </p>
               <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                {inscription.presence ? "Présent ✅" : "Absent ❌"}
+                {inscription.presence ? "Présent" : "Absent"}
               </p>
             </div>
           </div>
@@ -652,7 +653,7 @@ const InscriptionDetails = () => {
 
       {/* Modal paiement complémentaire */}
       {showPaiementModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.form
             onSubmit={handleEnregistrerPaiement}
             initial={{ opacity: 0, scale: 0.95 }}
@@ -723,7 +724,7 @@ const InscriptionDetails = () => {
               </button>
             </div>
           </motion.form>
-        </div>
+        </ModalOverlay>
       )}
     </motion.div>
   );

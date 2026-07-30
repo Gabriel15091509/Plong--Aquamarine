@@ -51,6 +51,19 @@ class CertificatService {
     const response = await api.delete(`/certificats-medicaux/${id}`);
     return response.data;
   }
+
+  async analysePhoto({ photoFile, num_adherent, medecin, date_validite, date_delivrance }) {
+    const payload = new FormData();
+    payload.append('photo', photoFile);
+    payload.append('num_adherent', num_adherent);
+    payload.append('medecin', medecin);
+    if (date_validite) payload.append('date_validite', date_validite);
+    if (date_delivrance) payload.append('date_delivrance', date_delivrance);
+    const response = await api.post('/certificats-medicaux/analyser-photo', payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
 }
 
 export default new CertificatService();

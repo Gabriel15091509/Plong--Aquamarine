@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   FiPackage,
   FiTag,
@@ -17,13 +18,19 @@ import {
   FiCheckCircle,
   FiClock,
   FiHash,
+  FiCamera,
+  FiDroplet,
+  FiBatteryCharging,
 } from "react-icons/fi";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import {
   CATEGORIE_MATERIEL_OPTIONS,
   ETAT_MATERIEL_OPTIONS,
+  LOCALISATION_MATERIEL_OPTIONS,
+  BATTERIE_MATERIEL_OPTIONS,
 } from "../../utils/constants";
+import { photoUrl } from "../../utils/photoUrl";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -36,15 +43,18 @@ const MaterielForm = () => {
   const { id } = useParams();
   const editMode = !!id;
 
-  const { useGetById, useCreate, useUpdate } = useMateriels();
+  const { useGetById, useCreate, useUpdate, useUpdatePhoto } = useMateriels();
 
   const { data: materielData, isLoading: loadingData } = useGetById(id);
 
   const create = useCreate();
   const update = useUpdate();
+  const updatePhoto = useUpdatePhoto();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [focused, setFocused] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
 
   const [formData, setFormData] = useState({
     num_inventaire: "",
@@ -53,9 +63,12 @@ const MaterielForm = () => {
     modele: "",
     taille: "",
     epaisseur: "",
+    capacite: "",
+    etat_sangles: "",
+    batterie: "",
     date_achat: "",
     etat: "Bon",
-    localisation: "",
+    localisation: "Local",
     date_verif_visuelle: "",
     date_revision_technique: "",
     date_prochaine_echeance: "",
@@ -71,9 +84,12 @@ const MaterielForm = () => {
         modele: m.modele || "",
         taille: m.taille || "",
         epaisseur: m.epaisseur || "",
+        capacite: m.capacite || "",
+        etat_sangles: m.etat_sangles || "",
+        batterie: m.batterie || "",
         date_achat: m.date_achat ? m.date_achat.split("T")[0] : "",
         etat: m.etat || "Bon",
-        localisation: m.localisation || "",
+        localisation: m.localisation || "Local",
         date_verif_visuelle: m.date_verif_visuelle
           ? m.date_verif_visuelle.split("T")[0]
           : "",
@@ -93,8 +109,19 @@ const MaterielForm = () => {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
   const handleFocus = (name) => setFocused(name);
   const handleBlur = () => setFocused(null);
+
+  const isBloc = formData.categorie === "Bloc";
+  const isStabilisateur = formData.categorie === "Stabilisateur";
+  const isOrdinateur = formData.categorie === "Ordinateur";
 
   const validate = () => {
     const newErrors = {};
@@ -107,6 +134,12 @@ const MaterielForm = () => {
       newErrors.date_achat = "La date d'achat est requise";
     if (!formData.localisation)
       newErrors.localisation = "La localisation est requise";
+    if (isBloc && !formData.capacite)
+      newErrors.capacite = "La capacité est requise pour un bloc d'air";
+    if (isStabilisateur && !formData.etat_sangles)
+      newErrors.etat_sangles = "L'état des sangles est requis";
+    if (isOrdinateur && !formData.batterie)
+      newErrors.batterie = "L'état de la batterie est requis";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -121,13 +154,26 @@ const MaterielForm = () => {
       } else {
         await create.mutateAsync(formData);
       }
+      if (photoFile) {
+        const photoFormData = new FormData();
+        photoFormData.append("photo", photoFile);
+        await updatePhoto.mutateAsync({
+          id: formData.num_inventaire,
+          formData: photoFormData,
+        });
+      }
       navigate("/materiels");
     } catch (error) {
       console.error("Error:", error);
+      toast.error(
+        error.response?.data?.message || "Erreur lors de l'enregistrement",
+      );
     } finally {
       setLoading(false);
     }
   };
+
+  const currentPhoto = photoPreview || photoUrl(materielData?.data?.photo_path);
 
   if (editMode && loadingData) return <LoadingSpinner />;
 
@@ -172,6 +218,34 @@ const MaterielForm = () => {
 
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
+        <motion.div {...fadeInUp} className="flex items-center gap-4">
+          <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center border border-gray-200 dark:border-gray-600">
+            {currentPhoto ? (
+              <img
+                src={currentPhoto}
+                alt="Photo du matériel"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <FiPackage className="w-8 h-8 text-gray-400" />
+            )}
+          </div>
+          <div>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiCamera className="w-4 h-4 text-gray-400" />
+                Photo du matériel
+              </span>
+            </label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoChange}
+              className="text-sm text-gray-600 dark:text-gray-400"
+            />
+          </div>
+        </motion.div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>
@@ -306,6 +380,88 @@ const MaterielForm = () => {
             />
           </motion.div>
 
+          {isBloc && (
+            <motion.div {...fadeInUp}>
+              <label className={labelClasses}>
+                <span className="flex items-center gap-2">
+                  <FiDroplet className="w-4 h-4 text-gray-400" />
+                  Capacité *
+                </span>
+              </label>
+              <input
+                type="text"
+                name="capacite"
+                value={formData.capacite}
+                onChange={handleChange}
+                onFocus={() => handleFocus("capacite")}
+                onBlur={handleBlur}
+                className={inputClasses("capacite")}
+                placeholder="12L"
+              />
+              {errors.capacite && (
+                <p className="mt-1.5 text-sm text-red-500">{errors.capacite}</p>
+              )}
+            </motion.div>
+          )}
+
+          {isStabilisateur && (
+            <motion.div {...fadeInUp}>
+              <label className={labelClasses}>
+                <span className="flex items-center gap-2">
+                  <FiCheckCircle className="w-4 h-4 text-gray-400" />
+                  État des sangles *
+                </span>
+              </label>
+              <select
+                name="etat_sangles"
+                value={formData.etat_sangles}
+                onChange={handleChange}
+                onFocus={() => handleFocus("etat_sangles")}
+                onBlur={handleBlur}
+                className={inputClasses("etat_sangles")}
+              >
+                <option value="">Sélectionner...</option>
+                {ETAT_MATERIEL_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              {errors.etat_sangles && (
+                <p className="mt-1.5 text-sm text-red-500">{errors.etat_sangles}</p>
+              )}
+            </motion.div>
+          )}
+
+          {isOrdinateur && (
+            <motion.div {...fadeInUp}>
+              <label className={labelClasses}>
+                <span className="flex items-center gap-2">
+                  <FiBatteryCharging className="w-4 h-4 text-gray-400" />
+                  État de la batterie *
+                </span>
+              </label>
+              <select
+                name="batterie"
+                value={formData.batterie}
+                onChange={handleChange}
+                onFocus={() => handleFocus("batterie")}
+                onBlur={handleBlur}
+                className={inputClasses("batterie")}
+              >
+                <option value="">Sélectionner...</option>
+                {BATTERIE_MATERIEL_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              {errors.batterie && (
+                <p className="mt-1.5 text-sm text-red-500">{errors.batterie}</p>
+              )}
+            </motion.div>
+          )}
+
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
@@ -360,16 +516,24 @@ const MaterielForm = () => {
                 Localisation *
               </span>
             </label>
-            <input
-              type="text"
+            <select
               name="localisation"
               value={formData.localisation}
               onChange={handleChange}
               onFocus={() => handleFocus("localisation")}
               onBlur={handleBlur}
               className={inputClasses("localisation")}
-              placeholder="Local 1 - Étagère 3"
-            />
+            >
+              {LOCALISATION_MATERIEL_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+              Mise à jour automatiquement au prêt/retour et à la réparation —
+              modifiable ici en secours.
+            </p>
             {errors.localisation && (
               <p className="mt-1.5 text-sm text-red-500">
                 {errors.localisation}

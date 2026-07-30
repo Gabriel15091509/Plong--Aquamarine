@@ -21,6 +21,7 @@ import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
+import { isSortieSelectionnable } from "../../utils/helpers";
 
 const INSCRIPTION_STATUS = [
   "En attente",
@@ -93,6 +94,18 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
       (s) => (s.id_sortie || s.id) === parseInt(formData.id_sortie),
     );
   }, [formData.id_sortie, sortiesData]);
+
+  // Une sortie déjà en cours ou terminée ne doit plus être proposée, sauf si
+  // c'est déjà la sortie liée à l'inscription en cours de modification.
+  const sortiesSelectionnables = useMemo(
+    () =>
+      (sortiesData?.data || []).filter(
+        (s) =>
+          isSortieSelectionnable(s) ||
+          String(s.id_sortie) === String(formData.id_sortie),
+      ),
+    [sortiesData, formData.id_sortie],
+  );
 
   useEffect(() => {
     if (isAdherent && currentAdherent) {
@@ -286,7 +299,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
                 if (errors.id_sortie)
                   setErrors((prev) => ({ ...prev, id_sortie: "" }));
               }}
-              options={sortiesData?.data || []}
+              options={sortiesSelectionnables}
               getOptionLabel={(s) => {
                 const date = new Date(s.date_heure);
                 return `${s.type} - ${s.lieu} (${date.toLocaleDateString("fr-FR")})`;

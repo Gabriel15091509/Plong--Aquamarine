@@ -27,6 +27,7 @@ import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import StatusBadge from "../Common/StatusBadge";
 import EcheancierCard from "../Echeancier/EcheancierCard";
 import { formatDate, formatCurrency } from "../../utils/helpers";
@@ -66,7 +67,10 @@ const AdhesionDetails = () => {
   const enregistrerPaiement = useEnregistrerPaiement();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPaiementModal, setShowPaiementModal] = useState(false);
-  const [paiementForm, setPaiementForm] = useState({ montant: "", mode: "Espèces" });
+  const [paiementForm, setPaiementForm] = useState({
+    montant: "",
+    mode: "Espèces",
+  });
   const [downloading, setDownloading] = useState(false);
   // Meme garde-fou que PaiementForm.jsx : sans lui, un double-clic sur
   // "Enregistrer" envoie deux mutations avant que le re-render (asynchrone)
@@ -80,7 +84,10 @@ const AdhesionDetails = () => {
     try {
       await enregistrerPaiement.mutateAsync({
         id,
-        data: { montant: parseFloat(paiementForm.montant), mode: paiementForm.mode },
+        data: {
+          montant: parseFloat(paiementForm.montant),
+          mode: paiementForm.mode,
+        },
       });
       setShowPaiementModal(false);
       setPaiementForm({ montant: "", mode: "Espèces" });
@@ -255,7 +262,6 @@ const AdhesionDetails = () => {
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-4">
-         
           <div>
             <div className="flex items-center gap-3">
               <span className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
@@ -299,15 +305,17 @@ const AdhesionDetails = () => {
             <FiDownload className="w-4 h-4" />
             Télécharger l'attestation
           </button>
-          {isClub && canManageAdhesion && adhesion.statut_paiement === "Partiel" && (
-            <button
-              onClick={() => setShowPaiementModal(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-xl transition-all duration-300 shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5"
-            >
-              <FiPlusCircle className="w-4 h-4" />
-              Enregistrer un paiement
-            </button>
-          )}
+          {isClub &&
+            canManageAdhesion &&
+            adhesion.statut_paiement === "Partiel" && (
+              <button
+                onClick={() => setShowPaiementModal(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-xl transition-all duration-300 shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5"
+              >
+                <FiPlusCircle className="w-4 h-4" />
+                Enregistrer un paiement
+              </button>
+            )}
         </div>
         {canManageAdhesion && (
           <div className="flex gap-2">
@@ -452,7 +460,10 @@ const AdhesionDetails = () => {
                 icon={FiDollarSign}
                 label="Montant payé / Solde restant"
                 value={`${formatCurrency(adhesion.montant_paye || 0)} / ${formatCurrency(
-                  Math.max((adhesion.montant || 0) - (adhesion.montant_paye || 0), 0),
+                  Math.max(
+                    (adhesion.montant || 0) - (adhesion.montant_paye || 0),
+                    0,
+                  ),
                 )}`}
               />
               <InfoItem
@@ -505,7 +516,10 @@ const AdhesionDetails = () => {
             type_paiement="Adhesion"
             reference_id={adhesion.id_adhesion}
             num_adherent={adhesion.num_adherent}
-            soldeRestant={Math.max((adhesion.montant || 0) - (adhesion.montant_paye || 0), 0)}
+            soldeRestant={Math.max(
+              (adhesion.montant || 0) - (adhesion.montant_paye || 0),
+              0,
+            )}
             canManage={canManageAdhesion}
             ownerQueryKeys={[["adhesions"]]}
           />
@@ -514,78 +528,78 @@ const AdhesionDetails = () => {
 
       {/* Statut détaillé */}
       {isClub && (
-      <motion.div
-        variants={fadeInUp}
-        initial="initial"
-        animate="animate"
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6 md:p-8"
-      >
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
-          <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
-            <FiCheckCircle className="w-5 h-5" />
-          </span>
-          Statut du paiement
-        </h3>
-
-        <div
-          className={`flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-xl border-2 ${getStatutColor(adhesion.statut_paiement)}`}
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6 md:p-8"
         >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <FiCheckCircle className="w-5 h-5" />
+            </span>
+            Statut du paiement
+          </h3>
+
           <div
-            className={`p-3 rounded-full ${
-              adhesion.statut_paiement === "Payé"
-                ? "bg-green-100 dark:bg-green-900/30"
-                : adhesion.statut_paiement === "Annulé"
-                  ? "bg-red-100 dark:bg-red-900/30"
-                  : adhesion.statut_paiement === "Remboursé"
-                    ? "bg-blue-100 dark:bg-blue-900/30"
-                    : "bg-yellow-100 dark:bg-yellow-900/30"
-            }`}
+            className={`flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-xl border-2 ${getStatutColor(adhesion.statut_paiement)}`}
           >
-            <StatutIcon
-              className={`w-7 h-7 ${
+            <div
+              className={`p-3 rounded-full ${
                 adhesion.statut_paiement === "Payé"
-                  ? "text-green-600 dark:text-green-400"
+                  ? "bg-green-100 dark:bg-green-900/30"
                   : adhesion.statut_paiement === "Annulé"
-                    ? "text-red-600 dark:text-red-400"
+                    ? "bg-red-100 dark:bg-red-900/30"
                     : adhesion.statut_paiement === "Remboursé"
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-yellow-600 dark:text-yellow-400"
-              }`}
-            />
-          </div>
-          <div className="flex-1">
-            <p
-              className={`font-bold text-lg ${
-                adhesion.statut_paiement === "Payé"
-                  ? "text-green-800 dark:text-green-400"
-                  : adhesion.statut_paiement === "Annulé"
-                    ? "text-red-800 dark:text-red-400"
-                    : adhesion.statut_paiement === "Remboursé"
-                      ? "text-blue-800 dark:text-blue-400"
-                      : "text-yellow-800 dark:text-yellow-400"
+                      ? "bg-blue-100 dark:bg-blue-900/30"
+                      : "bg-yellow-100 dark:bg-yellow-900/30"
               }`}
             >
-              {adhesion.statut_paiement}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {getStatutText(adhesion.statut_paiement)}
-            </p>
+              <StatutIcon
+                className={`w-7 h-7 ${
+                  adhesion.statut_paiement === "Payé"
+                    ? "text-green-600 dark:text-green-400"
+                    : adhesion.statut_paiement === "Annulé"
+                      ? "text-red-600 dark:text-red-400"
+                      : adhesion.statut_paiement === "Remboursé"
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-yellow-600 dark:text-yellow-400"
+                }`}
+              />
+            </div>
+            <div className="flex-1">
+              <p
+                className={`font-bold text-lg ${
+                  adhesion.statut_paiement === "Payé"
+                    ? "text-green-800 dark:text-green-400"
+                    : adhesion.statut_paiement === "Annulé"
+                      ? "text-red-800 dark:text-red-400"
+                      : adhesion.statut_paiement === "Remboursé"
+                        ? "text-blue-800 dark:text-blue-400"
+                        : "text-yellow-800 dark:text-yellow-400"
+                }`}
+              >
+                {adhesion.statut_paiement}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {getStatutText(adhesion.statut_paiement)}
+              </p>
+            </div>
+            <div className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Montant{" "}
+                <span className="font-bold text-gray-900 dark:text-white">
+                  {formatCurrency(adhesion.montant)}
+                </span>
+              </p>
+            </div>
           </div>
-          <div className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800">
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Montant{" "}
-              <span className="font-bold text-gray-900 dark:text-white">
-                {formatCurrency(adhesion.montant)}
-              </span>
-            </p>
-          </div>
-        </div>
-      </motion.div>
+        </motion.div>
       )}
 
       {/* Modal paiement complémentaire */}
       {showPaiementModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.form
             onSubmit={handleEnregistrerPaiement}
             initial={{ opacity: 0, scale: 0.95 }}
@@ -600,7 +614,10 @@ const AdhesionDetails = () => {
               Solde restant :{" "}
               <span className="font-semibold text-gray-900 dark:text-white">
                 {formatCurrency(
-                  Math.max((adhesion.montant || 0) - (adhesion.montant_paye || 0), 0),
+                  Math.max(
+                    (adhesion.montant || 0) - (adhesion.montant_paye || 0),
+                    0,
+                  ),
                 )}
               </span>
             </p>
@@ -615,7 +632,10 @@ const AdhesionDetails = () => {
                   required
                   value={paiementForm.montant}
                   onChange={(e) =>
-                    setPaiementForm((prev) => ({ ...prev, montant: e.target.value }))
+                    setPaiementForm((prev) => ({
+                      ...prev,
+                      montant: e.target.value,
+                    }))
                   }
                   className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
@@ -627,7 +647,10 @@ const AdhesionDetails = () => {
                 <select
                   value={paiementForm.mode}
                   onChange={(e) =>
-                    setPaiementForm((prev) => ({ ...prev, mode: e.target.value }))
+                    setPaiementForm((prev) => ({
+                      ...prev,
+                      mode: e.target.value,
+                    }))
                   }
                   className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-200"
                 >
@@ -656,12 +679,12 @@ const AdhesionDetails = () => {
               </button>
             </div>
           </motion.form>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Modal suppression */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -701,7 +724,7 @@ const AdhesionDetails = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
     </motion.div>
   );

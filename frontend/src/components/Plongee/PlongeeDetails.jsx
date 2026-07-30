@@ -29,6 +29,7 @@ import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSeances } from "../../hooks/Formation/useSeances";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatDateTime } from "../../utils/helpers";
 
@@ -61,10 +62,10 @@ const PlongeeDetails = () => {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const canManagePlongee = hasRole(["president", "moniteur"]);
-  const { useGetById, useRemove } = usePlongees();
+  const { useGetWithDetails, useRemove } = usePlongees();
   const { useGetAll } = useAdherents();
   const { useGetById: useGetSeanceById } = useSeances();
-  const { data, isLoading } = useGetById(id);
+  const { data, isLoading } = useGetWithDetails(id);
   const { data: adherentsData } = useGetAll();
   const { data: seanceData } = useGetSeanceById(data?.data?.id_seance);
   const remove = useRemove();
@@ -278,14 +279,18 @@ const PlongeeDetails = () => {
           </div>
           <div className="flex items-center gap-8 flex-wrap">
             <div className="text-center">
-              <p className="text-3xl font-bold">{plongee.profondeur_max}m</p>
+              <p className="text-3xl font-bold">
+                {plongee.profondeur_max != null ? `${plongee.profondeur_max}m` : "—"}
+              </p>
               <p className="text-xs text-white/70 uppercase tracking-wider">
                 Profondeur max
               </p>
             </div>
             <div className="w-px h-12 bg-white/20 hidden sm:block" />
             <div className="text-center">
-              <p className="text-3xl font-bold">{plongee.duree} min</p>
+              <p className="text-3xl font-bold">
+                {plongee.duree != null ? `${plongee.duree} min` : "—"}
+              </p>
               <p className="text-xs text-white/70 uppercase tracking-wider">
                 Durée
               </p>
@@ -353,12 +358,20 @@ const PlongeeDetails = () => {
           <InfoItem
             icon={FiDroplet}
             label="Profondeur max"
-            value={`${plongee.profondeur_max} mètres`}
+            value={
+              plongee.profondeur_max != null
+                ? `${plongee.profondeur_max} mètres`
+                : "À renseigner par le moniteur"
+            }
           />
           <InfoItem
             icon={FiClock}
             label="Durée"
-            value={`${plongee.duree} minutes`}
+            value={
+              plongee.duree != null
+                ? `${plongee.duree} minutes`
+                : "À renseigner par le moniteur"
+            }
           />
           <InfoItem
             icon={FiThermometer}
@@ -526,7 +539,7 @@ const PlongeeDetails = () => {
 
       {/* Modal suppression */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -566,7 +579,7 @@ const PlongeeDetails = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
     </motion.div>
   );

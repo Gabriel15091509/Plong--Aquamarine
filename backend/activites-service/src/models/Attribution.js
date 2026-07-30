@@ -19,9 +19,13 @@ const Attribution = sequelize.define(
       type: DataTypes.STRING(20),
       allowNull: false,
     },
+    // Nullable : présent pour une attribution liée à une sortie (CDC 3.4.3),
+    // absent pour un prêt libre entre deux sorties (CDC 3.4.4) — la présence
+    // de cette référence est ce qui distingue les deux cas, pas un champ
+    // "type" séparé.
     id_sortie: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     id_palanquee: {
       type: DataTypes.INTEGER,
@@ -60,6 +64,13 @@ const Attribution = sequelize.define(
       type: DataTypes.STRING(30),
       allowNull: false,
       defaultValue: "Aucune",
+    },
+    // Alternative à la caution en espèces (CDC 3.4.4) : description de la
+    // pièce retenue (ex. "CNI n° 123456789"), nullable — les deux garanties
+    // ne sont pas mutuellement exclusives en base, au choix du trésorier.
+    piece_identite_retenue: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
     },
   },
   {

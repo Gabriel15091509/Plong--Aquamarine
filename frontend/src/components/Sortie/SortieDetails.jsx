@@ -22,13 +22,19 @@ import {
   FiTrendingUp,
   FiBarChart2,
   FiAlertTriangle,
+  FiPackage,
+  FiMap,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useIncidents } from "../../hooks/Incident/useIncidents";
+import { useAttributions } from "../../hooks/Attribution/useAttributions";
+import { useMateriels } from "../../hooks/Materiel/useMateriels";
+import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import PalanqueesManager from "../Palanquee/PalanqueesManager";
+import SortieRouteMap from "./SortieRouteMap";
 import { formatDateTime } from "../../utils/helpers";
 import { STATUT_SORTIE } from "../../utils/constants";
 
@@ -63,14 +69,29 @@ const SortieDetails = () => {
   const canManageSortie = hasRole(["president", "moniteur"]);
   const { useGetById, useRemove, useUpdate } = useSorties();
   const { useGetBySortie } = useIncidents();
+  const { useGetBySortie: useGetAttributionsBySortie } = useAttributions();
+  const { useGetAll: useGetAllMateriels } = useMateriels();
+  const { useGetAll: useGetAllAdherents } = useAdherents();
   const { data, isLoading } = useGetById(id);
   const { data: incidentsData } = useGetBySortie(id);
+  const { data: attributionsData } = useGetAttributionsBySortie(id);
+  const { data: materielsData } = useGetAllMateriels();
+  const { data: adherentsData } = useGetAllAdherents();
   const remove = useRemove();
   const update = useUpdate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const sortie = data?.data;
   const incidents = incidentsData?.data || [];
+  const attributionsMateriel = attributionsData?.data || [];
+  const materielMap = {};
+  materielsData?.data?.forEach((m) => {
+    materielMap[m.num_inventaire] = `${m.marque} ${m.modele}`;
+  });
+  const adherentMap = {};
+  adherentsData?.data?.forEach((a) => {
+    adherentMap[a.num_adherent] = `${a.nom} ${a.prenom}`;
+  });
 
   // ✅ La date de la sortie est passée mais son statut n'a pas été mis à
   // jour manuellement : on alerte le staff pour qu'il clôture/annule.
@@ -78,6 +99,7 @@ const SortieDetails = () => {
     sortie &&
     new Date(sortie.date_heure) < new Date() &&
     [STATUT_SORTIE.PLANIFIEE, STATUT_SORTIE.EN_COURS].includes(sortie.statut);
+  const isTerminee = sortie?.statut === STATUT_SORTIE.TERMINEE;
 
   const handleChangeStatut = async (statut) => {
     try {
@@ -271,23 +293,45 @@ const SortieDetails = () => {
         </div>
         {canManageSortie && (
           <div className="flex gap-2">
-            <Link
-              to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
-            >
-              <FiAlertTriangle className="w-4 h-4" />
-              Déclarer un incident
-            </Link>
-            <Link
-              to={`/sorties/edit/${sortie.id_sortie}`}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
-            >
-              <FiEdit className="w-4 h-4" />
-              Modifier
-            </Link>
+            {isTerminee ? (
+              <span
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed"
+                title="Sortie terminée : déclaration d'incident impossible"
+              >
+                <FiAlertTriangle className="w-4 h-4" />
+                Déclarer un incident
+              </span>
+            ) : (
+              <Link
+                to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+              >
+                <FiAlertTriangle className="w-4 h-4" />
+                Déclarer un incident
+              </Link>
+            )}
+            {isTerminee ? (
+              <span
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed"
+                title="Sortie terminée : modification impossible"
+              >
+                <FiEdit className="w-4 h-4" />
+                Modifier
+              </span>
+            ) : (
+              <Link
+                to={`/sorties/edit/${sortie.id_sortie}`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+              >
+                <FiEdit className="w-4 h-4" />
+                Modifier
+              </Link>
+            )}
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+              disabled={isTerminee}
+              title={isTerminee ? "Sortie terminée : suppression impossible" : undefined}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:translate-y-0"
             >
               <FiTrash2 className="w-4 h-4" />
               Supprimer
@@ -492,6 +536,28 @@ const SortieDetails = () => {
         </SectionCard>
       </motion.div>
 
+      {/* Localisation & itinéraire */}
+      {sortie.latitude != null && sortie.longitude != null && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <FiMap className="w-5 h-5" />
+            </span>
+            Localisation & itinéraire
+          </h3>
+          <SortieRouteMap
+            siteLat={Number(sortie.latitude)}
+            siteLng={Number(sortie.longitude)}
+            siteName={sortie.site}
+          />
+        </motion.div>
+      )}
+
       {/* Sections supplémentaires */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {sortie.description_site && (
@@ -551,12 +617,21 @@ const SortieDetails = () => {
             </span>
             Incidents ({incidents.length})
           </h3>
-          <Link
-            to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
-            className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
-          >
-            + Déclarer un incident
-          </Link>
+          {isTerminee ? (
+            <span
+              className="text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"
+              title="Sortie terminée : déclaration d'incident impossible"
+            >
+              + Déclarer un incident
+            </span>
+          ) : (
+            <Link
+              to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
+              className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
+            >
+              + Déclarer un incident
+            </Link>
+          )}
         </div>
         {incidents.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -589,6 +664,78 @@ const SortieDetails = () => {
                 </span>
               </Link>
             ))}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Matériel attribué : check-list de départ/retour (CDC 3.4.3) */}
+      <motion.div
+        variants={fadeInUp}
+        initial="initial"
+        animate="animate"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <FiPackage className="w-5 h-5" />
+            </span>
+            Matériel attribué ({attributionsMateriel.length})
+          </h3>
+          {isTerminee ? (
+            <span
+              className="text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"
+              title="Sortie terminée : attribution de matériel impossible"
+            >
+              + Attribuer du matériel
+            </span>
+          ) : (
+            <Link
+              to={`/attributions/create?id_sortie=${sortie.id_sortie}`}
+              className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              + Attribuer du matériel
+            </Link>
+          )}
+        </div>
+        {attributionsMateriel.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Aucun matériel attribué pour cette sortie.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {attributionsMateriel.map((attribution) => {
+              const rendu = !!attribution.date_retour_reel;
+              return (
+                <Link
+                  key={attribution.id_attribution}
+                  to={`/attributions/${attribution.id_attribution}`}
+                  className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {materielMap[attribution.num_inventaire] || `Matériel #${attribution.num_inventaire}`}
+                      {" → "}
+                      {adherentMap[attribution.num_adherent] || `Adhérent #${attribution.num_adherent}`}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Départ : {attribution.etat_depart}
+                      {rendu && ` • Retour : ${attribution.etat_retour}`}
+                      {attribution.constat_deterioration && " • Détérioration constatée"}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                      rendu
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                    }`}
+                  >
+                    {rendu ? "Rendu" : "En cours"}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         )}
       </motion.div>

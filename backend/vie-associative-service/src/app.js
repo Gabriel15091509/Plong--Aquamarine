@@ -11,6 +11,7 @@ const routes = require("./routes");
 const ErrorHandler = require("./middlewares/errorHandler");
 const logger = require("./utils/logger");
 const AlerteService = require("./services/AlerteService");
+const CertificatMedicalService = require("./services/CertificatMedicalService");
 const { sequelize, testConnection } = require("./config/database");
 
 const app = express();
@@ -57,7 +58,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 const limiter = rateLimit({
   windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
-  max: process.env.RATE_LIMIT_MAX || 200,
+  max: process.env.RATE_LIMIT_MAX || 1000,
   message: {
     success: false,
     message: "Trop de requêtes, veuillez réessayer plus tard",
@@ -93,6 +94,19 @@ const initializeApp = async () => {
   await alerteService.syncExpirationAlertes();
   cron.schedule("0 6 * * *", () => alerteService.syncExpirationAlertes());
   logger.info("✅ Planification des alertes d'expiration active (quotidien 06:00)");
+
+  // Auto-expiration des certificats médicaux : `statut` est saisi
+  // manuellement (par le moniteur/président) et ne se corrige jamais tout
+  // seul sinon — un certificat dont la date de validité est dépassée mais
+  // resté "Valide" en base est corrigé ici, en plus de la correction
+  // dynamique faite à la lecture (CertificatMedicalService.deriveStatut).
+  const certificatMedicalService = new CertificatMedicalService();
+  const nbExpires = await certificatMedicalService.expireOverdueCertificates();
+  if (nbExpires > 0) {
+    logger.info(`🩺 ${nbExpires} certificat(s) médical(aux) marqué(s) "Expiré" (date de validité dépassée)`);
+  }
+  cron.schedule("5 6 * * *", () => certificatMedicalService.expireOverdueCertificates());
+  logger.info("✅ Auto-expiration des certificats médicaux active (quotidien 06:05)");
 };
 
 process.on("unhandledRejection", (err) => {

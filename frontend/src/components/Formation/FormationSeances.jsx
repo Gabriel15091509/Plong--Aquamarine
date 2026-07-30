@@ -1,9 +1,16 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FiCalendar, FiPlus, FiCheck, FiX } from "react-icons/fi";
 import { useSeances } from "../../hooks/Formation/useSeances";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import { formatDate } from "../../utils/helpers";
+import SearchableSelect from "../Common/SearchableSelect";
+import {
+  formatDate,
+  formatDateTime,
+  formatDateForInput,
+  isSortieSelectionnable,
+} from "../../utils/helpers";
 
 const STATUT_STYLES = {
   "Planifiée": "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
@@ -17,32 +24,68 @@ const STATUT_STYLES = {
 // participants séparée comme pour les sorties.
 const FormationSeances = ({ formation, canManage = false }) => {
   const { useGetByFormation, useCreate, useUpdateStatut } = useSeances();
+  const { useGetAll: useGetAllSorties } = useSorties();
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     date_seance: "",
     type_seance: "Pratique",
     contenu: "",
+    id_sortie: "",
   });
+  const [sortieError, setSortieError] = useState("");
 
   const { data: seancesData, isLoading: loadingSeances } = useGetByFormation(
     formation?.id_formation,
   );
+  const { data: sortiesData } = useGetAllSorties();
   const seances = seancesData?.data || [];
+  // Une séance "Pratique" se déroule réellement lors d'une sortie : on ne
+  // propose que les sorties de type "Formation" (cf. taxonomie des types
+  // d'activités), cohérent avec la validation faite côté formation-service,
+  // et seulement celles qui tombent dans la période de la formation (pas de
+  // sens à rattacher une séance à une sortie hors de son déroulement).
+  const sortiesFormation = useMemo(() => {
+    const debut = formation?.date_debut ? new Date(formation.date_debut) : null;
+    const fin = formation?.date_fin_prevue ? new Date(formation.date_fin_prevue) : null;
+    if (fin) fin.setHours(23, 59, 59, 999);
+    return (sortiesData?.data || []).filter((s) => {
+      if (s.type !== "Formation") return false;
+      if (!isSortieSelectionnable(s)) return false;
+      const dateSortie = new Date(s.date_heure);
+      if (debut && dateSortie < debut) return false;
+      if (fin && dateSortie > fin) return false;
+      return true;
+    });
+  }, [sortiesData, formation?.date_debut, formation?.date_fin_prevue]);
+  const sortieById = useMemo(
+    () =>
+      (sortiesData?.data || []).reduce((map, s) => {
+        map[s.id_sortie] = s;
+        return map;
+      }, {}),
+    [sortiesData],
+  );
   const createSeance = useCreate();
   const updateStatut = useUpdateStatut();
 
   const handleAddSeance = async (e) => {
     e.preventDefault();
     if (!form.date_seance || !form.type_seance) return;
+    if (form.type_seance === "Pratique" && !form.id_sortie) {
+      setSortieError('Une séance pratique doit être liée à une sortie de type "Formation"');
+      return;
+    }
     try {
       await createSeance.mutateAsync({
         id_formation: formation.id_formation,
         date_seance: form.date_seance,
         type_seance: form.type_seance,
         contenu: form.contenu,
+        id_sortie: form.type_seance === "Pratique" ? form.id_sortie : null,
       });
-      setForm({ date_seance: "", type_seance: "Pratique", contenu: "" });
+      setForm({ date_seance: "", type_seance: "Pratique", contenu: "", id_sortie: "" });
+      setSortieError("");
       setShowForm(false);
     } catch (error) {
       // géré par le hook (toast)
@@ -105,15 +148,48 @@ const FormationSeances = ({ formation, canManage = false }) => {
             </label>
             <select
               value={form.type_seance}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, type_seance: e.target.value }))
-              }
+              onChange={(e) => {
+                const type_seance = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  type_seance,
+                  id_sortie: type_seance === "Pratique" ? prev.id_sortie : "",
+                }));
+                if (type_seance !== "Pratique") setSortieError("");
+              }}
               className="w-full px-3 py-2 text-sm border rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
             >
               <option value="Pratique">Pratique</option>
               <option value="Théorique">Théorique</option>
             </select>
           </div>
+          {form.type_seance === "Pratique" && (
+            <div className="sm:col-span-3">
+              <SearchableSelect
+                label="Sortie liée (type Formation)"
+                required
+                value={form.id_sortie}
+                onChange={(value) => {
+                  const sortie = sortiesFormation.find(
+                    (s) => String(s.id_sortie) === String(value),
+                  );
+                  setForm((prev) => ({
+                    ...prev,
+                    id_sortie: value,
+                    date_seance: sortie
+                      ? formatDateForInput(sortie.date_heure)
+                      : prev.date_seance,
+                  }));
+                  if (value) setSortieError("");
+                }}
+                options={sortiesFormation}
+                getOptionLabel={(s) => `${s.site} — ${formatDateTime(s.date_heure)}`}
+                getOptionValue={(s) => s.id_sortie}
+                placeholder="Rechercher une sortie de type Formation..."
+                error={sortieError}
+              />
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
               Contenu
@@ -167,6 +243,12 @@ const FormationSeances = ({ formation, canManage = false }) => {
                 {seance.contenu && (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     {seance.contenu}
+                  </p>
+                )}
+                {seance.id_sortie && sortieById[seance.id_sortie] && (
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                    Sortie : {sortieById[seance.id_sortie].site} —{" "}
+                    {formatDateTime(sortieById[seance.id_sortie].date_heure)}
                   </p>
                 )}
               </div>

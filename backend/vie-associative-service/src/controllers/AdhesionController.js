@@ -179,6 +179,25 @@ class AdhesionController extends BaseController {
     }
   }
 
+  // Vérification "un peu" de cohérence entre une photo (webcam ou import) et
+  // les informations déjà saisies (nom/prénom de l'adhérent, n° de licence
+  // FFESM, dates) — jamais bloquante côté frontend.
+  async analysePhoto(req, res, next) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: "Photo requise" });
+      }
+      const resultat = await this.adhesionService.analyserPhoto(
+        req.file.buffer,
+        req.body,
+        req.headers.authorization,
+      );
+      res.json({ success: true, data: resultat });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async validateBeforeCreate(req, res, next) {
     const errors = await this.adhesionService.validateAdhesionData(req.body);
     if (errors.length > 0) {

@@ -146,6 +146,16 @@ const statusConfig = {
     border: "border-orange-200 dark:border-orange-800/30",
     label: STATUT_FORMATION.SUSPENDUE,
   },
+  // Ajournée : le moniteur a explicitement retenu l'adhérent (recalé) plutôt
+  // que de laisser la fin de formation automatique lui attribuer le niveau —
+  // couleur distincte d'Abandonnée (rouge, départ adhérent) et de Suspendue
+  // (orange, pause administrative/paiement).
+  [STATUT_FORMATION.AJOURNEE]: {
+    color:
+      "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
+    border: "border-pink-200 dark:border-pink-800/30",
+    label: STATUT_FORMATION.AJOURNEE,
+  },
 
   // 📌 Appréciation du moniteur (formations)
   Insuffisant: {

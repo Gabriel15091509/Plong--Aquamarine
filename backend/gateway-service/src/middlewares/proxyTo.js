@@ -15,12 +15,22 @@ function proxyTo(baseUrl) {
       delete headers.connection;
 
       const hasBody = !["GET", "HEAD"].includes(req.method);
-      if (hasBody) headers["content-type"] = "application/json";
+      // Un upload (photo, document...) arrive en multipart/form-data : le
+      // body-parser JSON global ne le touche pas, donc req.body est encore
+      // {} à ce stade et le flux brut de la requête est toujours lisible.
+      // Il faut le relayer tel quel (avec son Content-Type/boundary
+      // d'origine) plutôt que de le réécrire en JSON, sous peine de
+      // transmettre "{}" à la place du fichier au service cible.
+      const isMultipart = (req.headers["content-type"] || "").startsWith(
+        "multipart/form-data",
+      );
+      if (hasBody && !isMultipart) headers["content-type"] = "application/json";
 
       const response = await fetch(target, {
         method: req.method,
         headers,
-        body: hasBody ? JSON.stringify(req.body) : undefined,
+        body: !hasBody ? undefined : isMultipart ? req : JSON.stringify(req.body),
+        duplex: isMultipart ? "half" : undefined,
       });
 
       const contentType = response.headers.get("content-type") || "application/json";

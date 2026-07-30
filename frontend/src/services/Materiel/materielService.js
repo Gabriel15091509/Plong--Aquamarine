@@ -51,6 +51,13 @@ class MaterielService {
     return response.data;
   }
 
+  async updatePhoto(numInventaire, formData) {
+    const response = await api.put(`/materiels/${numInventaire}/photo`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  }
+
   async delete(numInventaire) {
     const response = await api.delete(`/materiels/${numInventaire}`);
     return response.data;

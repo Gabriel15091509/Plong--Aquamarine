@@ -305,7 +305,7 @@ class AdherentController extends BaseController {
 
   async updateNiveau(req, res, next) {
     try {
-      const { niveau } = req.body;
+      const { niveau, num_brevet, num_licence_ffesm } = req.body;
       if (!niveau) {
         return res.status(400).json({
           success: false,
@@ -315,6 +315,7 @@ class AdherentController extends BaseController {
       const result = await this.adherentService.updateNiveau(
         req.params.id,
         niveau,
+        { num_brevet, num_licence_ffesm },
       );
       res.json({
         success: true,

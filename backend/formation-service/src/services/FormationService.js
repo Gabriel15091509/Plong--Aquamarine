@@ -4,17 +4,22 @@ const CompetenceRepository = require("../repositories/CompetenceRepository");
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const paiementClient = require("../utils/serviceClients/paiementClient");
 const vieAssociativeClient = require("../utils/serviceClients/vieAssociativeClient");
+const activitesClient = require("../utils/serviceClients/activitesClient");
 const { NIVEAU_ORDER, computeStatutPaiement } = require("../utils/roleScope");
 const { sendFormationPaymentEmail } = require("../utils/email");
+const { ForbiddenError } = require("../utils/errors");
 
 // Prérequis indicatifs par niveau visé (niveau antérieur minimum, nombre de
-// plongées minimum, âge minimum) — valeurs raisonnables par défaut, ajustables.
+// plongées minimum, profondeur minimum déjà atteinte en mètres, âge minimum)
+// — valeurs raisonnables par défaut (repères FFESSM), ajustables.
+// profondeurMin: null pour N1 (baptême/entrée en formation, pas de plongée
+// autonome préalable exigée).
 const PREREQUIS_FORMATION = {
-  N1: { niveauMin: null, nbPlongeesMin: 6, ageMin: 14 },
-  N2: { niveauMin: "Niveau 1", nbPlongeesMin: 8, ageMin: 15 },
-  N3: { niveauMin: "Niveau 2", nbPlongeesMin: 10, ageMin: 18 },
-  N4: { niveauMin: "Niveau 3", nbPlongeesMin: 20, ageMin: 18 },
-  MF1: { niveauMin: "Niveau 4", nbPlongeesMin: 150, ageMin: 18 },
+  N1: { niveauMin: null, nbPlongeesMin: 6, profondeurMin: null, ageMin: 14 },
+  N2: { niveauMin: "Niveau 1", nbPlongeesMin: 8, profondeurMin: 20, ageMin: 15 },
+  N3: { niveauMin: "Niveau 2", nbPlongeesMin: 10, profondeurMin: 40, ageMin: 18 },
+  N4: { niveauMin: "Niveau 3", nbPlongeesMin: 20, profondeurMin: 60, ageMin: 18 },
+  MF1: { niveauMin: "Niveau 4", nbPlongeesMin: 150, profondeurMin: 60, ageMin: 18 },
 };
 
 // Niveau adhérent obtenu une fois la formation visée terminée (voir
@@ -25,6 +30,16 @@ const NIVEAU_OBTENU = {
   N3: "Niveau 3",
   N4: "Niveau 4",
   MF1: "Moniteur",
+};
+
+// Spécialité d'encadrement requise pour superviser une formation visant ce
+// niveau (voir Moniteur.specialites côté identite-service). MF1 n'a pas de
+// spécialité "Encadrant" dédiée : seul le niveau du moniteur (case ci-dessous
+// dans assertMoniteurQualifie) le distingue.
+const SPECIALITE_ENCADREMENT_PAR_NIVEAU = {
+  N1: "Encadrant N1",
+  N2: "Encadrant N2",
+  N3: "Encadrant N3",
 };
 
 function getAge(dateNaissance) {
@@ -59,6 +74,19 @@ class FormationService extends BaseService {
     const formation = await this.formationRepository.findById(id);
     if (formation) await this.assertCanAccessFormation(formation, user);
     return formation;
+  }
+
+  // Un moniteur ne peut modifier, ajourner, terminer ou supprimer que les
+  // formations qui lui sont assignées ; le président garde un accès total
+  // (et le trésorier, restreint séparément pour l'enregistrement de
+  // paiement) — résolu via getMoniteurByUserId, qui renvoie null si
+  // l'utilisateur n'est pas moniteur.
+  async assertCanModifyFormation(formation, user) {
+    if (!user || user.role !== "moniteur") return;
+    const moniteur = await identiteClient.getMoniteurByUserId(user.id);
+    if (!moniteur || formation.id_moniteur !== moniteur.id_moniteur) {
+      throw new ForbiddenError("Seul le moniteur assigné à cette formation peut la modifier");
+    }
   }
 
   async getFormationsByAdherent(num_adherent, user = null) {
@@ -122,6 +150,9 @@ class FormationService extends BaseService {
     if (!data.niveau_vise)  errors.push("Le niveau visé est requis");
     if (!data.date_debut)   errors.push("La date de début est requise");
     if (!data.date_fin_prevue) errors.push("La date de fin prévue est requise");
+    if (!data.nb_seances_prevues || Number(data.nb_seances_prevues) <= 0) {
+      errors.push("Le nombre de séances prévues est requis et doit être supérieur à 0");
+    }
     if (data.date_debut && data.date_fin_prevue) {
       if (new Date(data.date_fin_prevue) <= new Date(data.date_debut)) {
         errors.push("La date de fin doit être postérieure à la date de début");
@@ -131,6 +162,11 @@ class FormationService extends BaseService {
     if (data.num_adherent && data.niveau_vise) {
       const prerequisErrors = await this.checkPrerequis(data.num_adherent, data.niveau_vise, authHeader);
       errors.push(...prerequisErrors);
+    }
+
+    if (data.id_moniteur && data.niveau_vise) {
+      const moniteurErrors = await this.assertMoniteurQualifie(data.id_moniteur, data.niveau_vise, authHeader);
+      errors.push(...moniteurErrors);
     }
 
     // Une formation payante ne peut pas démarrer "En cours" sans qu'un
@@ -169,6 +205,12 @@ class FormationService extends BaseService {
     if ((adherent.nb_plongees_total || 0) < prerequis.nbPlongeesMin) {
       errors.push(`Nombre de plongées insuffisant (minimum requis : ${prerequis.nbPlongeesMin})`);
     }
+    if (prerequis.profondeurMin) {
+      const profondeurMax = await activitesClient.getProfondeurMaxAdherent(num_adherent, authHeader);
+      if (profondeurMax < prerequis.profondeurMin) {
+        errors.push(`Profondeur insuffisante (minimum déjà atteint requis : ${prerequis.profondeurMin} m)`);
+      }
+    }
     if (getAge(adherent.date_naissance) < prerequis.ageMin) {
       errors.push(`Âge minimum requis : ${prerequis.ageMin} ans`);
     }
@@ -180,6 +222,28 @@ class FormationService extends BaseService {
     const dossier = await vieAssociativeClient.checkDossierValidity(num_adherent, authHeader);
     if (!dossier.valid) {
       errors.push(`Dossier d'adhésion incomplet (manquant : ${dossier.missing.join(", ")})`);
+    }
+
+    return errors;
+  }
+
+  // Vérifie que le moniteur affecté existe réellement (identite-service) et
+  // qu'il est qualifié pour encadrer le niveau visé : une formation MF1
+  // (former de futurs moniteurs) exige un moniteur déjà de niveau "Moniteur",
+  // pas seulement "Niveau 4" ; N1/N2/N3 exigent la spécialité d'encadrement
+  // correspondante déclarée sur sa fiche.
+  async assertMoniteurQualifie(id_moniteur, niveau_vise, authHeader) {
+    const moniteur = await identiteClient.getMoniteurById(id_moniteur, authHeader);
+    if (!moniteur) return ["Moniteur introuvable"];
+
+    const errors = [];
+    if (niveau_vise === "MF1" && moniteur.niveau !== "Moniteur") {
+      errors.push('Seul un moniteur de niveau "Moniteur" peut encadrer une formation MF1');
+    }
+
+    const specialiteRequise = SPECIALITE_ENCADREMENT_PAR_NIVEAU[niveau_vise];
+    if (specialiteRequise && !(moniteur.specialites || []).includes(specialiteRequise)) {
+      errors.push(`Ce moniteur n'a pas la spécialité d'encadrement requise (${specialiteRequise})`);
     }
 
     return errors;
@@ -292,9 +356,10 @@ class FormationService extends BaseService {
   // payante à "En cours" (ex. après une édition) tant qu'aucun paiement n'a
   // été enregistré — vérifié contre le montant_paye réel de la formation,
   // que l'édition ne modifie jamais elle-même (géré via enregistrerPaiement).
-  async update(id, data) {
+  async update(id, data, user = null) {
     const formation = await this.formationRepository.findById(id);
     if (!formation) throw new Error("Formation non trouvée");
+    await this.assertCanModifyFormation(formation, user);
 
     const nextStatut = data.statut !== undefined ? data.statut : formation.statut;
     const nextMontantTotal =
@@ -318,9 +383,23 @@ class FormationService extends BaseService {
   // marquer la formation "Terminée" en local — l'appel externe est fait en
   // premier pour éviter une formation marquée terminée sans mise à jour du
   // niveau si identite-service est injoignable.
-  async completeFormation(id, authHeader) {
+  // `brevetInfo` (num_brevet/num_licence_ffesm) est optionnel : renseigné par
+  // le moniteur/président au moment de la validation manuelle (le formulaire
+  // "Terminer" les propose), absent lors d'un passage automatique
+  // (tryAutoComplete) où personne ne connaît encore les numéros délivrés.
+  async completeFormation(id, authHeader, brevetInfo = {}, user = null) {
     const formation = await this.getById(id);
     if (!formation) throw new Error("Formation non trouvée");
+    await this.assertCanModifyFormation(formation, user);
+
+    if (
+      formation.nb_seances_prevues &&
+      formation.nb_seances_realisees < formation.nb_seances_prevues
+    ) {
+      throw new Error(
+        `Impossible de terminer la formation : ${formation.nb_seances_realisees}/${formation.nb_seances_prevues} séances réalisées`,
+      );
+    }
 
     const competences = await this.competenceRepository.findByFormation(id);
     const nonAcquises = competences.filter((c) => !c.acquise);
@@ -334,12 +413,58 @@ class FormationService extends BaseService {
 
     const niveauObtenu = NIVEAU_OBTENU[formation.niveau_vise];
     if (niveauObtenu) {
-      await identiteClient.updateNiveau(formation.num_adherent, niveauObtenu, authHeader);
+      await identiteClient.updateNiveau(formation.num_adherent, niveauObtenu, brevetInfo, authHeader);
     }
 
     formation.statut = "Terminée";
     await formation.save();
     return formation;
+  }
+
+  // Le moniteur garde la main pour retenir un adhérent qui n'a pas le niveau
+  // malgré les séances/compétences cochées, plutôt que de laisser la
+  // complétion automatique (tryAutoComplete) attribuer le niveau à sa place.
+  async ajourner(id, motif, user = null) {
+    const formation = await this.formationRepository.findById(id);
+    if (!formation) throw new Error("Formation non trouvée");
+    await this.assertCanModifyFormation(formation, user);
+    if (formation.statut !== "En cours") {
+      throw new Error("Seule une formation en cours peut être ajournée");
+    }
+    if (!motif) throw new Error("Le motif de l'ajournement est requis");
+
+    formation.statut = "Ajournée";
+    formation.commentaire_moniteur = motif;
+    await formation.save();
+    return formation;
+  }
+
+  async delete(id, user = null) {
+    const formation = await this.formationRepository.findById(id);
+    if (!formation) throw new Error("Formation non trouvée");
+    await this.assertCanModifyFormation(formation, user);
+    return await this.formationRepository.delete(id);
+  }
+
+  // Appelé après qu'une séance passe à "Réalisée" (SeanceService.updateStatut)
+  // ou qu'une compétence soit validée (CompetenceService.valider) : dès que
+  // les deux conditions sont réunies (séances prévues atteintes + toutes les
+  // compétences acquises), la formation se termine seule et le niveau est
+  // attribué, sans clic du moniteur. Ne s'applique pas aux formations sans
+  // nb_seances_prevues connu (créées avant ce champ) ni sans aucune
+  // compétence saisie (sinon "aucune non-acquise" serait vrai trivialement).
+  // Best-effort côté appelants : ne doit jamais faire échouer l'action qui
+  // vient de se produire (marquage de séance ou de compétence).
+  async tryAutoComplete(id_formation, authHeader) {
+    const formation = await this.formationRepository.findById(id_formation);
+    if (!formation || formation.statut !== "En cours") return null;
+    if (!formation.nb_seances_prevues) return null;
+    if (formation.nb_seances_realisees < formation.nb_seances_prevues) return null;
+
+    const competences = await this.competenceRepository.findByFormation(id_formation);
+    if (competences.length === 0 || competences.some((c) => !c.acquise)) return null;
+
+    return await this.completeFormation(id_formation, authHeader);
   }
 }
 

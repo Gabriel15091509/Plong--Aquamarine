@@ -17,13 +17,20 @@ import {
   FiMapPin,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
+import { TYPE_PLONGEE_OPTIONS } from "../../utils/constants";
 
-// TODO: Ajouter un filtre par type de plongée
+// Brouillon : plongée créée automatiquement au pointage de présence (voir
+// PalanqueeService.creerPlongeeBrouillon), profondeur/durée pas encore
+// saisies par le moniteur — distinct de "Non validée" (des mesures peuvent
+// être renseignées sans que la plongée soit encore validée).
+const isBrouillon = (p) => p.profondeur_max == null || p.duree == null;
+
 const PlongeeList = () => {
   // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { hasRole } = useAuth();
@@ -40,6 +47,7 @@ const PlongeeList = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -75,7 +83,10 @@ const PlongeeList = () => {
         const isValide = !!p.id_moniteur_validateur;
         if (filter === "valide" && !isValide) return false;
         if (filter === "non_valide" && isValide) return false;
+        if (filter === "brouillon" && !isBrouillon(p)) return false;
       }
+
+      if (typeFilter !== "all" && p.type_plongee !== typeFilter) return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -86,7 +97,12 @@ const PlongeeList = () => {
       }
       return true;
     });
-  }, [allPlongees, adherentMap, filter, searchTerm]);
+  }, [allPlongees, adherentMap, filter, typeFilter, searchTerm]);
+
+  const brouillonsCount = useMemo(
+    () => allPlongees.filter(isBrouillon).length,
+    [allPlongees],
+  );
 
   // ✅ Pagination
   const totalPages = Math.ceil(filteredPlongees.length / itemsPerPage);
@@ -185,8 +201,26 @@ const PlongeeList = () => {
             className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
           >
             <option value="all">Toutes</option>
+            <option value="brouillon">
+              À compléter{brouillonsCount > 0 ? ` (${brouillonsCount})` : ""}
+            </option>
             <option value="valide">Validées</option>
             <option value="non_valide">Non validées</option>
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => {
+              setTypeFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">Tous les types</option>
+            {TYPE_PLONGEE_OPTIONS.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
           </select>
           {canManagePlongee && (
             <Link
@@ -273,6 +307,14 @@ const PlongeeList = () => {
                             <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
                               {plongee.type_plongee}
                             </span>
+                            {isBrouillon(plongee) && (
+                              <span
+                                className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full text-amber-700 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400"
+                                title="Créée automatiquement au pointage de présence, en attente de saisie par le moniteur"
+                              >
+                                <FiEdit className="w-3 h-3" /> À compléter
+                              </span>
+                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
                             <span className="flex items-center gap-1">
@@ -283,14 +325,14 @@ const PlongeeList = () => {
                             <span className="flex items-center gap-1">
                               Profondeur:{" "}
                               <span className="font-medium text-gray-700 dark:text-gray-300">
-                                {plongee.profondeur_max}m
+                                {plongee.profondeur_max != null ? `${plongee.profondeur_max}m` : "—"}
                               </span>
                             </span>
                             <span>•</span>
                             <span className="flex items-center gap-1">
                               Durée:{" "}
                               <span className="font-medium text-gray-700 dark:text-gray-300">
-                                {plongee.duree}min
+                                {plongee.duree != null ? `${plongee.duree}min` : "—"}
                               </span>
                             </span>
                             <span>•</span>
@@ -388,7 +430,7 @@ const PlongeeList = () => {
 
       {/* Modal de confirmation de suppression */}
       {deleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -422,7 +464,7 @@ const PlongeeList = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

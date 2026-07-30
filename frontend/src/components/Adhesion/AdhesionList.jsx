@@ -12,12 +12,14 @@ import {
   FiCalendar,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
+import { TYPE_ADHESION_OPTIONS } from "../../utils/constants";
 
 const AdhesionList = () => {
   // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
@@ -33,6 +35,7 @@ const AdhesionList = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -63,6 +66,7 @@ const AdhesionList = () => {
       const adherentName = adherentInfo.nom;
 
       if (filter !== "all" && a.statut_paiement !== filter) return false;
+      if (typeFilter !== "all" && a.type !== typeFilter) return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -74,7 +78,7 @@ const AdhesionList = () => {
       }
       return true;
     });
-  }, [allAdhesions, adherentMap, filter, searchTerm]);
+  }, [allAdhesions, adherentMap, filter, typeFilter, searchTerm]);
 
   const totalPages = Math.ceil(filteredAdhesions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -111,7 +115,7 @@ const AdhesionList = () => {
           Aucune adhésion trouvée
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {searchTerm || filter !== "all"
+          {searchTerm || filter !== "all" || typeFilter !== "all"
             ? "Aucun résultat pour vos critères"
             : "Commencez par créer une nouvelle adhésion"}
         </p>
@@ -144,6 +148,21 @@ const AdhesionList = () => {
           />
         </div>
         <div className="flex gap-2">
+          <select
+            value={typeFilter}
+            onChange={(e) => {
+              setTypeFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">Tous les types</option>
+            {TYPE_ADHESION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
           <select
             value={filter}
             onChange={(e) => {
@@ -182,7 +201,7 @@ const AdhesionList = () => {
               Aucune adhésion trouvée
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-              {searchTerm || filter !== "all"
+              {searchTerm || filter !== "all" || typeFilter !== "all"
                 ? "Essayez de modifier vos filtres"
                 : "Aucune adhésion pour le moment"}
             </p>
@@ -345,7 +364,7 @@ const AdhesionList = () => {
 
       {/* Modal de confirmation de suppression */}
       {deleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -379,7 +398,7 @@ const AdhesionList = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

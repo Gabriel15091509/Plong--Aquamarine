@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { FiTrash2 } from "react-icons/fi";
+import ModalOverlay from "./ModalOverlay";
 
 // Modal de confirmation générique (suppression/action destructive), factorisé
 // à partir du même bloc JSX répété à l'identique dans une trentaine
@@ -19,7 +20,7 @@ const ConfirmModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -57,7 +58,7 @@ const ConfirmModal = ({
           </button>
         </div>
       </motion.div>
-    </div>
+    </ModalOverlay>
   );
 };
 

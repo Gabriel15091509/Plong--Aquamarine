@@ -1,0 +1,176 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import userService from "../../services/User/userService";
+import toast from "react-hot-toast";
+export const useUsers = () => {
+  const queryClient = useQueryClient();
+  const useGetAll = (params = {}, options = {}) => {
+    return useQuery({
+      queryKey: ["users", params],
+      queryFn: () => userService.getAll(params),
+      staleTime: 5 * 60 * 1e3,
+      ...options
+    });
+  };
+  const useGetById = (id) => {
+    return useQuery({
+      queryKey: ["users", id],
+      queryFn: () => userService.getById(id),
+      enabled: !!id,
+      staleTime: 5 * 60 * 1e3
+    });
+  };
+  const useGetCreatedByMe = () => {
+    return useQuery({
+      queryKey: ["users", "created-by-me"],
+      queryFn: () => userService.getCreatedByMe(),
+      staleTime: 5 * 60 * 1e3
+    });
+  };
+  const useCreate = () => {
+    return useMutation({
+      mutationFn: (data) => userService.create(data),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["users"]);
+        toast.success(response.message || "Utilisateur cr\xE9\xE9 avec succ\xE8s");
+        if (response.tempPassword) {
+          toast.success(`Mot de passe temporaire: ${response.tempPassword}`, {
+            duration: 1e4
+          });
+        }
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors de la cr\xE9ation");
+      }
+    });
+  };
+  const useUpdateProfile = () => {
+    return useMutation({
+      mutationFn: (data) => userService.updateProfile(data),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["users"]);
+        queryClient.invalidateQueries(["profile"]);
+        toast.success(response.message || "Profil mis \xE0 jour avec succ\xE8s");
+      },
+      onError: (error) => {
+        const message = error.response?.status === 413 ? "Photo trop volumineuse : la taille maximale autoris\xE9e est de 8 Mo." : error.response?.data?.message || "Erreur lors de la mise \xE0 jour";
+        toast.error(message);
+      }
+    });
+  };
+  const useChangePassword = () => {
+    return useMutation({
+      mutationFn: ({ oldPassword, newPassword }) => userService.changePassword(oldPassword, newPassword),
+      onSuccess: (response) => {
+        toast.success(response.message || "Mot de passe chang\xE9 avec succ\xE8s");
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors du changement");
+      }
+    });
+  };
+  const useResetPassword = () => {
+    return useMutation({
+      mutationFn: (id) => userService.resetPassword(id),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["users"]);
+        toast.success(response.message || "Mot de passe r\xE9initialis\xE9");
+        if (response.tempPassword) {
+          toast.success(`Nouveau mot de passe: ${response.tempPassword}`, {
+            duration: 1e4
+          });
+        }
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors de la r\xE9initialisation");
+      }
+    });
+  };
+  const useChangeNiveau = () => {
+    return useMutation({
+      mutationFn: ({ id, niveau }) => userService.changeNiveau(id, niveau),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["users"]);
+        toast.success(response.message || "Niveau mis \xE0 jour avec succ\xE8s");
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors du changement de niveau");
+      }
+    });
+  };
+  const useUpdatePhoto = () => {
+    return useMutation({
+      mutationFn: ({ id, formData }) => userService.updatePhoto(id, formData),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["users"]);
+        queryClient.invalidateQueries(["adherents"]);
+        toast.success(response.message || "Photo mise \xE0 jour avec succ\xE8s");
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors de la mise \xE0 jour de la photo");
+      }
+    });
+  };
+  const useChangeRole = () => {
+    return useMutation({
+      mutationFn: ({ id, role }) => userService.changeRole(id, role),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["users"]);
+        toast.success(response.message || "R\xF4le mis \xE0 jour avec succ\xE8s");
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors du changement de r\xF4le");
+      }
+    });
+  };
+  const useDisableAccount = () => {
+    return useMutation({
+      mutationFn: (id) => userService.disableAccount(id),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["users"]);
+        toast.success(response.message || "Compte d\xE9sactiv\xE9 avec succ\xE8s");
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors de la d\xE9sactivation");
+      }
+    });
+  };
+  const useEnableAccount = () => {
+    return useMutation({
+      mutationFn: (id) => userService.enableAccount(id),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["users"]);
+        toast.success(response.message || "Compte r\xE9activ\xE9 avec succ\xE8s");
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors de la r\xE9activation");
+      }
+    });
+  };
+  const useDeleteAccount = () => {
+    return useMutation({
+      mutationFn: (id) => userService.deleteAccount(id),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(["users"]);
+        toast.success(response.message || "Compte supprim\xE9 avec succ\xE8s");
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors de la suppression");
+      }
+    });
+  };
+  return {
+    useGetAll,
+    useGetById,
+    useGetCreatedByMe,
+    useCreate,
+    useUpdateProfile,
+    useChangePassword,
+    useResetPassword,
+    useChangeNiveau,
+    useUpdatePhoto,
+    useChangeRole,
+    useDisableAccount,
+    useEnableAccount,
+    useDeleteAccount
+  };
+};

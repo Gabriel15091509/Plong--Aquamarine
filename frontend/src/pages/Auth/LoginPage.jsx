@@ -30,6 +30,18 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({});
   const [otpEmail, setOtpEmail] = useState(null);
   const [otpCode, setOtpCode] = useState("");
+  // Après connexion, toute la carte s'efface en un seul mouvement (fondu +
+  // léger zoom arrière) avant de naviguer vers le tableau de bord, qui
+  // s'ouvre ensuite avec sa propre animation d'entrée habituelle.
+  const [transitioning, setTransitioning] = useState(false);
+  const LOGIN_TRANSITION_MS = 350;
+
+  const goToDashboardWithTransition = () => {
+    setTransitioning(true);
+    setTimeout(() => {
+      navigate("/dashboard");
+    }, LOGIN_TRANSITION_MS);
+  };
 
   // Animations variants
   const containerVariants = {
@@ -100,6 +112,7 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    let navigating = false;
 
     try {
       const result = await login(formData.email, formData.password);
@@ -110,33 +123,41 @@ const LoginPage = () => {
       }
 
       if (result?.mustChangePassword) {
+        navigating = true;
         navigate("/change-password", { state: { fromLogin: true } });
       } else {
-        navigate("/dashboard");
+        navigating = true;
+        goToDashboardWithTransition();
       }
     } catch (error) {
       // toast.error déjà géré dans AuthContext.login()
     } finally {
-      setLoading(false);
+      // On laisse le bouton en état "chargement" pendant la transition vers
+      // le tableau de bord plutôt que de le faire clignoter avant la
+      // navigation (le composant sera de toute façon démonté juste après).
+      if (!navigating) setLoading(false);
     }
   };
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
+    let navigating = false;
 
     try {
       const result = await verifyOtp(otpEmail, otpCode);
 
       if (result?.mustChangePassword) {
+        navigating = true;
         navigate("/change-password", { state: { fromLogin: true } });
       } else {
-        navigate("/dashboard");
+        navigating = true;
+        goToDashboardWithTransition();
       }
     } catch (error) {
       // toast.error déjà géré dans AuthContext.verifyOtp()
     } finally {
-      setLoading(false);
+      if (!navigating) setLoading(false);
     }
   };
 
@@ -163,8 +184,16 @@ const LoginPage = () => {
 
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
+        animate={
+          transitioning
+            ? { opacity: 0, y: -16, scale: 0.97 }
+            : { opacity: 1, y: 0, scale: 1 }
+        }
+        transition={
+          transitioning
+            ? { duration: 0.35, ease: "easeIn" }
+            : { duration: 0.8, ease: "easeOut" }
+        }
         className="w-full max-w-6xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
       >
         {/* Partie gauche - Formulaire */}
@@ -484,7 +513,7 @@ const LoginPage = () => {
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-          className="hidden md:block w-1/2 relative bg-gradient-to-br from-primary-600 via-primary-700 to-ocean-800 p-8 overflow-hidden flex items-center justify-center"
+          className="hidden md:flex w-1/2 relative bg-gradient-to-br from-primary-600 via-primary-700 to-ocean-800 p-8 overflow-hidden items-center justify-center"
         >
           {/* Effets de fond */}
           <div className="absolute inset-0">

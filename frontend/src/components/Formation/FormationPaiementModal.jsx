@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
+import ModalOverlay from "../Common/ModalOverlay";
 import { useFormations } from "../../hooks/Formation/useFormations";
 import { formatCurrency } from "../../utils/helpers";
 import { MODE_PAIEMENT_OPTIONS } from "../../utils/constants";
@@ -41,7 +42,7 @@ const FormationPaiementModal = ({ isOpen, formation, id, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <motion.form
         onSubmit={handleEnregistrerPaiement}
         initial={{ opacity: 0, scale: 0.95 }}
@@ -115,7 +116,7 @@ const FormationPaiementModal = ({ isOpen, formation, id, onClose }) => {
           </button>
         </div>
       </motion.form>
-    </div>
+    </ModalOverlay>
   );
 };
 

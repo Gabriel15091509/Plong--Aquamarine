@@ -23,7 +23,11 @@ import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { TYPE_PLONGEE_OPTIONS } from "../../utils/constants";
-import { formatDate, formatDateTime } from "../../utils/helpers";
+import {
+  formatDate,
+  formatDateTime,
+  isSortieSelectionnable,
+} from "../../utils/helpers";
 
 const VISIBILITE_OPTIONS = [
   "Très bonne",
@@ -70,7 +74,7 @@ const PlongeeForm = () => {
     temperature_eau: "",
     visibilite: "Bonne",
     courant: "Nul",
-    type_plongee: "Loisir",
+    type_plongee: "Plongée d'exploration",
     observations_faune: "",
     lien_photos: "",
     id_seance: "",
@@ -78,6 +82,14 @@ const PlongeeForm = () => {
 
   const { data: seancesPlanifieesData } = useGetPlanifieesByAdherent(
     formData.type_plongee === "Formation" ? formData.num_adherent : null,
+  );
+
+  // Une sortie déjà en cours ou terminée ne doit plus être proposée, sauf si
+  // c'est déjà la sortie liée à la plongée en cours de modification.
+  const sortiesSelectionnables = (sortiesData?.data || []).filter(
+    (s) =>
+      isSortieSelectionnable(s) ||
+      String(s.id_sortie) === String(formData.id_sortie),
   );
 
   useEffect(() => {
@@ -92,7 +104,7 @@ const PlongeeForm = () => {
         temperature_eau: p.temperature_eau ?? "",
         visibilite: p.visibilite || "Bonne",
         courant: p.courant || "Nul",
-        type_plongee: p.type_plongee || "Loisir",
+        type_plongee: p.type_plongee || "Plongée d'exploration",
         observations_faune: p.observations_faune || "",
         lien_photos: p.lien_photos || "",
         id_seance: p.id_seance || "",
@@ -215,11 +227,20 @@ const PlongeeForm = () => {
               label="Sortie *"
               value={formData.id_sortie}
               onChange={(value) => {
-                setFormData((prev) => ({ ...prev, id_sortie: value }));
+                const sortie = (sortiesData?.data || []).find(
+                  (s) => String(s.id_sortie) === String(value),
+                );
+                setFormData((prev) => ({
+                  ...prev,
+                  id_sortie: value,
+                  type_plongee: sortie?.type || prev.type_plongee,
+                  id_seance:
+                    sortie?.type === "Formation" ? prev.id_seance : "",
+                }));
                 if (errors.id_sortie)
                   setErrors((prev) => ({ ...prev, id_sortie: "" }));
               }}
-              options={sortiesData?.data || []}
+              options={sortiesSelectionnables}
               getOptionLabel={(s) =>
                 `${s.type} — ${s.site} — ${formatDateTime(s.date_heure)}`
               }

@@ -1,6 +1,7 @@
 const BaseService = require('./BaseService');
 const CertificatMedicalRepository = require('../repositories/CertificatMedicalRepository');
 const identiteClient = require('../utils/serviceClients/identiteClient');
+const { analyserPhotoCertificat } = require('../utils/certificatPhotoAnalysis');
 
 class CertificatMedicalService extends BaseService {
   constructor() {
@@ -9,12 +10,25 @@ class CertificatMedicalService extends BaseService {
     this.certificatRepository = repository;
   }
 
+  // `statut` est saisi manuellement (par le moniteur/président) et ne se met
+  // à jour tout seul qu'au passage du cron quotidien (voir expireOverdue) :
+  // entre les deux, un certificat dont la date de validité est dépassée doit
+  // quand même s'afficher/compter comme expiré partout où il est lu, plutôt
+  // que de faire confiance à la colonne potentiellement périmée.
+  deriveStatut(certificat) {
+    const data = certificat.toJSON ? certificat.toJSON() : certificat;
+    if (data.statut === 'Valide' && data.date_validite && new Date(data.date_validite) < new Date()) {
+      return { ...data, statut: 'Expiré' };
+    }
+    return data;
+  }
+
   async getAll(user = null) {
     const adherent = await identiteClient.getAdherentForUser(user);
-    if (adherent) {
-      return await this.certificatRepository.findByAdherent(adherent.num_adherent);
-    }
-    return await this.certificatRepository.findAll();
+    const certificats = adherent
+      ? await this.certificatRepository.findByAdherent(adherent.num_adherent)
+      : await this.certificatRepository.findAll();
+    return certificats.map((c) => this.deriveStatut(c));
   }
 
   async getById(id, user = null) {
@@ -24,8 +38,16 @@ class CertificatMedicalService extends BaseService {
       if (adherent && certificat.num_adherent !== adherent.num_adherent) {
         throw new Error("Accès refusé à ce certificat");
       }
+      return this.deriveStatut(certificat);
     }
     return certificat;
+  }
+
+  // Corrige en base les certificats en retard (cf.
+  // CertificatMedicalRepository.expireOverdue) — appelé au démarrage puis
+  // quotidiennement par un cron (voir app.js).
+  async expireOverdueCertificates() {
+    return await this.certificatRepository.expireOverdue();
   }
 
   async getValidCertificates() {
@@ -33,7 +55,8 @@ class CertificatMedicalService extends BaseService {
   }
 
   async getExpiredCertificates() {
-    return await this.certificatRepository.findExpiredCertificates();
+    const certificats = await this.certificatRepository.findExpiredCertificates();
+    return certificats.map((c) => this.deriveStatut(c));
   }
 
   async getExpiringSoon(days = 30) {
@@ -45,7 +68,8 @@ class CertificatMedicalService extends BaseService {
     if (adherent && num_adherent !== adherent.num_adherent) {
       throw new Error("Accès refusé à ces certificats");
     }
-    return await this.certificatRepository.findByAdherent(num_adherent);
+    const certificats = await this.certificatRepository.findByAdherent(num_adherent);
+    return certificats.map((c) => this.deriveStatut(c));
   }
 
   async validateCertificatData(data) {
@@ -65,6 +89,20 @@ class CertificatMedicalService extends BaseService {
     }
 
     return errors;
+  }
+
+  async analyserPhoto(buffer, { num_adherent, medecin, date_validite, date_delivrance }, authHeader) {
+    const adherent = await identiteClient.getAdherentById(num_adherent, authHeader);
+    if (!adherent) {
+      throw new Error("Adhérent non trouvé");
+    }
+    return await analyserPhotoCertificat(buffer, {
+      nom: adherent.nom,
+      prenom: adherent.prenom,
+      medecin,
+      dateValidite: date_validite,
+      dateDelivrance: date_delivrance,
+    });
   }
 
   async checkCertificateStatus(num_adherent) {

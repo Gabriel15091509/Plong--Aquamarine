@@ -115,8 +115,15 @@ const SortiePointage = () => {
     return sortieDay > today;
   }, [sortie]);
 
+  // Le pointage n'a de sens que tant que la sortie est encore "Planifiée" :
+  // une fois "En cours"/"Terminée"/"Annulée" (changement manuel de statut),
+  // il ne doit plus être possible de pointer/dépointer — même règle côté
+  // backend (SortieService.assertSortiePlanifiee).
+  const sortieNonPlanifiee =
+    !!sortie?.data?.statut && sortie.data.statut !== "Planifiée";
+
   const handleCheck = async (id, data) => {
-    if (isFutureSortie) return;
+    if (isFutureSortie || sortieNonPlanifiee) return;
 
     setLoading(true);
     try {
@@ -140,6 +147,8 @@ const SortiePointage = () => {
   };
 
   const handleCancel = async (id) => {
+    if (sortieNonPlanifiee) return;
+
     setLoading(true);
     try {
       await annulerPointage.mutateAsync(id);
@@ -162,42 +171,6 @@ const SortiePointage = () => {
       year: "numeric",
     });
   };
-
-  // Cartes de statistiques avec icônes
-  const statCards = [
-    {
-      label: "Total inscrits",
-      value: stats.total,
-      icon: FiUsers,
-      iconClass: "text-blue-500",
-      bg: "bg-blue-50 dark:bg-blue-900/20",
-      border: "border-blue-200 dark:border-blue-800",
-    },
-    {
-      label: "Présents",
-      value: stats.present,
-      icon: FiCheckCircle,
-      iconClass: "text-emerald-500",
-      bg: "bg-emerald-50 dark:bg-emerald-900/20",
-      border: "border-emerald-200 dark:border-emerald-800",
-    },
-    {
-      label: "Absents",
-      value: stats.absent,
-      icon: FiXCircle,
-      iconClass: "text-red-500",
-      bg: "bg-red-50 dark:bg-red-900/20",
-      border: "border-red-200 dark:border-red-800",
-    },
-    {
-      label: "Non pointés",
-      value: stats.notChecked,
-      icon: FiClock,
-      iconClass: "text-amber-500",
-      bg: "bg-amber-50 dark:bg-amber-900/20",
-      border: "border-amber-200 dark:border-amber-800",
-    },
-  ];
 
   const filterOptions = [
     { key: "all", label: "Tous", icon: FiList, count: stats.total },
@@ -291,43 +264,23 @@ const SortiePointage = () => {
         </motion.div>
       )}
 
-      {/* Statistiques */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4"
-      >
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 * index }}
-              whileHover={{ scale: 1.02, y: -2 }}
-              className={`${stat.bg} ${stat.border} border rounded-xl p-4 transition-all duration-300 hover:shadow-lg`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {stat.label}
-                  </p>
-                  <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mt-1">
-                    {stat.value}
-                  </p>
-                </div>
-                <div
-                  className={`w-10 h-10 rounded-xl bg-white/50 dark:bg-white/10 flex items-center justify-center ${stat.iconClass}`}
-                >
-                  <Icon className="w-5 h-5" />
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
+      {/* Message pour sortie qui n'est plus planifiée */}
+      {!isFutureSortie && sortieNonPlanifiee && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300"
+        >
+          <FiAlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Pointage indisponible</p>
+            <p className="text-sm opacity-90">
+              Cette sortie n&apos;est plus planifiée (statut : «{" "}
+              {sortie.data.statut} »). Le pointage n&apos;est plus possible.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Filtres */}
       <motion.div
@@ -374,7 +327,11 @@ const SortiePointage = () => {
         variants={staggerContainer}
         initial="initial"
         animate="animate"
-        className="space-y-2"
+        className={
+          filteredInscriptions.length === 0
+            ? ""
+            : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+        }
       >
         <AnimatePresence>
           {filteredInscriptions.length === 0 ? (
@@ -394,25 +351,19 @@ const SortiePointage = () => {
             </motion.div>
           ) : (
             filteredInscriptions.map((inscription) => (
-              <motion.div
+              <PresenceCheck
                 key={inscription.id_inscription}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                <PresenceCheck
-                  inscription={inscription}
-                  onCheck={handleCheck}
-                  loading={
-                    loading ||
-                    isFutureSortie ||
-                    enregistrerPointage.isLoading ||
-                    annulerPointage.isLoading
-                  }
-                  onCancel={() => handleCancel(inscription.id_inscription)}
-                />
-              </motion.div>
+                inscription={inscription}
+                onCheck={handleCheck}
+                loading={
+                  loading ||
+                  isFutureSortie ||
+                  sortieNonPlanifiee ||
+                  enregistrerPointage.isLoading ||
+                  annulerPointage.isLoading
+                }
+                onCancel={() => handleCancel(inscription.id_inscription)}
+              />
             ))
           )}
         </AnimatePresence>

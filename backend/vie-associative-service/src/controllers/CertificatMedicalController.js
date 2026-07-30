@@ -148,6 +148,26 @@ class CertificatMedicalController extends BaseController {
     }
   }
 
+  // Vérification "un peu" de cohérence entre une photo (webcam ou import) et
+  // les informations déjà saisies dans le formulaire (nom/prénom de
+  // l'adhérent, médecin, dates) — jamais bloquante côté frontend, l'OCR d'un
+  // certificat manuscrit/tamponné n'étant pas fiable à 100%.
+  async analysePhoto(req, res, next) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: "Photo requise" });
+      }
+      const resultat = await this.certificatService.analyserPhoto(
+        req.file.buffer,
+        req.body,
+        req.headers.authorization,
+      );
+      res.json({ success: true, data: resultat });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async validateBeforeCreate(req, res, next) {
     const errors = await this.certificatService.validateCertificatData(req.body);
     if (errors.length > 0) {

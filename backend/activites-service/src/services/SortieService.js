@@ -179,9 +179,24 @@ class SortieService extends BaseService {
     return true;
   }
 
+  // Le pointage n'a de sens que tant que la sortie est encore au stade
+  // "Planifiée" : une fois "En cours", "Terminée" ou "Annulée" (changement
+  // manuel de statut par le président/moniteur), il ne doit plus être
+  // possible de pointer, modifier ou annuler un pointage — même principe que
+  // PalanqueeService.assertPalanqueeModifiable et le garde-fou déjà en place
+  // sur les inscriptions (InscriptionService.createInscription).
+  assertSortiePlanifiee(sortie) {
+    if (sortie.statut !== "Planifiée") {
+      throw new Error(
+        "Le pointage n'est possible que pour une sortie encore planifiée",
+      );
+    }
+  }
+
   async enregistrerPointage(id_sortie, inscriptions, userId, authHeader) {
     const sortie = await this.sortieRepository.findById(id_sortie);
     if (!sortie) throw new Error("Sortie non trouvée");
+    this.assertSortiePlanifiee(sortie);
 
     const dateSortie = new Date(sortie.date_heure);
     const today = new Date();
@@ -223,6 +238,27 @@ class SortieService extends BaseService {
         absence_justified: insc.absence_justified || false,
       });
       results.push(updated);
+
+      // Constitution automatique des palanquées : dès qu'un membre est
+      // pointé présent, on le rattache à une palanquée ouverte de cette
+      // sortie (ou on en crée une) — best-effort, ne doit jamais faire
+      // échouer le pointage lui-même.
+      if (insc.presence) {
+        try {
+          const PalanqueeService = require("./PalanqueeService");
+          await new PalanqueeService().autoConstituerPourPresence(
+            id_sortie,
+            inscription.num_adherent,
+            userId,
+            authHeader,
+          );
+        } catch (error) {
+          console.error(
+            `Erreur constitution auto palanquée (inscription ${insc.id}):`,
+            error.message,
+          );
+        }
+      }
     }
     return results;
   }
@@ -231,6 +267,8 @@ class SortieService extends BaseService {
     const inscription =
       await this.inscriptionRepository.findById(id_inscription);
     if (!inscription) throw new Error("Inscription non trouvée");
+    const sortie = await this.sortieRepository.findById(inscription.id_sortie);
+    if (sortie) this.assertSortiePlanifiee(sortie);
     if (!inscription.presence_checked)
       throw new Error("Cette inscription n'a pas encore été pointée");
     if (
@@ -255,6 +293,8 @@ class SortieService extends BaseService {
     const inscription =
       await this.inscriptionRepository.findById(id_inscription);
     if (!inscription) throw new Error("Inscription non trouvée");
+    const sortie = await this.sortieRepository.findById(inscription.id_sortie);
+    if (sortie) this.assertSortiePlanifiee(sortie);
     if (!inscription.presence_checked)
       throw new Error("Cette inscription n'a pas encore été pointée");
     return await this.inscriptionRepository.update(id_inscription, {
@@ -282,6 +322,31 @@ class SortieService extends BaseService {
         field: "nb_places",
         message: "Le nombre de places doit être supérieur à 0",
       });
+
+    const hasLat =
+      data.latitude !== undefined && data.latitude !== null && data.latitude !== "";
+    const hasLng =
+      data.longitude !== undefined && data.longitude !== null && data.longitude !== "";
+    if (hasLat !== hasLng) {
+      errors.push({
+        field: "latitude",
+        message: "La latitude et la longitude doivent être renseignées ensemble",
+      });
+    } else if (hasLat && hasLng) {
+      const lat = Number(data.latitude);
+      const lng = Number(data.longitude);
+      if (Number.isNaN(lat) || lat < -90 || lat > 90)
+        errors.push({
+          field: "latitude",
+          message: "Latitude invalide (doit être comprise entre -90 et 90)",
+        });
+      if (Number.isNaN(lng) || lng < -180 || lng > 180)
+        errors.push({
+          field: "longitude",
+          message: "Longitude invalide (doit être comprise entre -180 et 180)",
+        });
+    }
+
     return errors;
   }
 

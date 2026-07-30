@@ -46,6 +46,11 @@ class FormationSpecialiteService extends BaseService {
       errors.push(...prerequisErrors);
     }
 
+    if (data.id_moniteur) {
+      const moniteur = await identiteClient.getMoniteurById(data.id_moniteur, authHeader);
+      if (!moniteur) errors.push("Moniteur introuvable");
+    }
+
     return errors;
   }
 

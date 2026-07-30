@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const ReparationController = require('../controllers/ReparationController');
 const AuthMiddleware = require('../middlewares/authMiddleware');
-const authorize = require('../middlewares/authorize');
 const { ROLES } = require('../utils/roleScope');
 
 const reparationController = new ReparationController();
@@ -14,26 +13,26 @@ router.get('/:id', reparationController.getById.bind(reparationController));
 
 router.post('/',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   reparationController.validateBeforeCreate.bind(reparationController),
   reparationController.create.bind(reparationController)
 );
 
 router.patch('/:id/terminer',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   reparationController.terminer.bind(reparationController)
 );
 
 router.put('/:id',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   reparationController.update.bind(reparationController)
 );
 
 router.delete('/:id',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   reparationController.delete.bind(reparationController)
 );
 

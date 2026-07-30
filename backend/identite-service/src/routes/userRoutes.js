@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const UserController = require("../controllers/UserController");
 const AuthMiddleware = require("../middlewares/authMiddleware");
-const authorize = require("../middlewares/authorize");
 const { uploadUserPhoto } = require("../middlewares/upload");
+const { ROLES } = require("../utils/roleScope");
 
 const userController = new UserController();
 
@@ -42,7 +42,7 @@ router.get(
 router.get(
   "/",
   AuthMiddleware.authenticate,
-  authorize(["manage_users"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   async (req, res) => {
     try {
       const users = await userController.userService.getAllUsers(req.query);
@@ -56,35 +56,35 @@ router.get(
 router.post(
   "/",
   AuthMiddleware.authenticate,
-  authorize(["manage_users"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   userController.createUser.bind(userController),
 );
 
 router.post(
   "/:id/reset-password",
   AuthMiddleware.authenticate,
-  authorize(["manage_users"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   userController.resetPassword.bind(userController),
 );
 
 router.put(
   "/:id/niveau",
   AuthMiddleware.authenticate,
-  authorize(["change_niveau"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   userController.changeNiveau.bind(userController),
 );
 
 router.put(
   "/:id/role",
   AuthMiddleware.authenticate,
-  authorize(["change_role"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   userController.changeRole.bind(userController),
 );
 
 router.put(
   "/:id/photo",
   AuthMiddleware.authenticate,
-  authorize(["manage_users"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   ...uploadUserPhoto,
   userController.updatePhoto.bind(userController),
 );
@@ -92,28 +92,28 @@ router.put(
 router.patch(
   "/:id/disable",
   AuthMiddleware.authenticate,
-  authorize(["disable_account"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   userController.disableAccount.bind(userController),
 );
 
 router.patch(
   "/:id/enable",
   AuthMiddleware.authenticate,
-  authorize(["disable_account"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   userController.enableAccount.bind(userController),
 );
 
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
-  authorize(["delete_account"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   userController.deleteAccount.bind(userController),
 );
 
 router.get(
   "/created-by-me",
   AuthMiddleware.authenticate,
-  authorize(["manage_users"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   async (req, res) => {
     try {
       const users = await userController.userService.getUsersCreatedBy(
@@ -129,7 +129,7 @@ router.get(
 router.get(
   "/by-role/:role",
   AuthMiddleware.authenticate,
-  authorize(["manage_users"]),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   async (req, res) => {
     try {
       const { role } = req.params;

@@ -4,6 +4,7 @@ const { computeStatutPaiement } = require('../utils/roleScope');
 const identiteClient = require('../utils/serviceClients/identiteClient');
 const paiementClient = require('../utils/serviceClients/paiementClient');
 const { sendAdhesionPaymentEmail } = require('../utils/email');
+const { analyserPhotoAdhesion } = require('../utils/adhesionPhotoAnalysis');
 
 // ✅ Les 3 éléments obligatoires de l'adhésion (l'Assurance RC est incluse
 // dans la Licence FFESM mais tracée comme une ligne distincte, comme dans
@@ -184,6 +185,21 @@ class AdhesionService extends BaseService {
       });
     });
     return { valid: missing.length === 0, missing };
+  }
+
+  async analyserPhoto(buffer, { num_adherent, type, num_licence_ffesm, date_debut, date_fin }, authHeader) {
+    const adherent = await identiteClient.getAdherentById(num_adherent, authHeader);
+    if (!adherent) {
+      throw new Error("Adhérent non trouvé");
+    }
+    return await analyserPhotoAdhesion(buffer, {
+      nom: adherent.nom,
+      prenom: adherent.prenom,
+      type,
+      num_licence_ffesm,
+      date_debut,
+      date_fin,
+    });
   }
 
   async validateAdhesionData(data) {

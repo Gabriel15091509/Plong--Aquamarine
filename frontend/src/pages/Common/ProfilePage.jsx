@@ -7,6 +7,7 @@ import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useFormations } from "../../hooks/Formation/useFormations";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import { useUsers } from "../../hooks/User/useUsers";
 import {
   FiUser,
@@ -37,6 +38,7 @@ import {
   FiBookOpen,
   FiCamera,
   FiDownload,
+  FiPackage,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { formatDate, formatDateTime } from "../../utils/helpers";
@@ -130,6 +132,7 @@ const ProfilePage = () => {
   const { useGetAll: useGetAllUsers } = useUsers();
   const { useUpdateProfile } = useUsers();
   const updateProfile = useUpdateProfile();
+  const { useGetByAdherent: useGetAttributionsByAdherent } = useAttributions();
 
   // ✅ Appels API
   const { data: adherentsData, isLoading: loadingAdherents } =
@@ -141,7 +144,13 @@ const ProfilePage = () => {
     useGetAllFormations();
   const { data: inscriptionsData, isLoading: loadingInscriptions } =
     useGetAllInscriptions();
-  const { data: usersData, isLoading: loadingUsers } = useGetAllUsers();
+  // useQuery({enabled:false}) reste en status "loading" indéfiniment en
+  // react-query v4 (pas d'état "idle" pour un rôle non-président) —
+  // isInitialLoading (qui tient compte de fetchStatus) devient bien false.
+  const { data: usersData, isInitialLoading: loadingUsers } = useGetAllUsers(
+    {},
+    { enabled: user?.role === "president" },
+  );
 
   const isLoading =
     loadingAdherents ||
@@ -156,6 +165,12 @@ const ProfilePage = () => {
     if (!adherentsData?.data || !user) return null;
     return adherentsData.data.find((adherent) => adherent.email === user.email);
   }, [adherentsData, user]);
+
+  // ✅ Matériel actuellement attribué à l'adhérent connecté
+  const { data: attributionsData } = useGetAttributionsByAdherent(
+    currentAdherent?.num_adherent,
+  );
+  const monMateriel = attributionsData?.data || [];
 
   // ✅ Statistiques en fonction du rôle
   const stats = useMemo(() => {
@@ -828,6 +843,63 @@ const ProfilePage = () => {
           )}
         </motion.div>
       </motion.div>
+
+      {/* Matériel attribué */}
+      {currentAdherent && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-100/80 dark:border-gray-800/80"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-gradient-to-br from-indigo-500/10 to-blue-500/10 text-indigo-600 dark:text-indigo-400">
+              <FiPackage className="w-5 h-5" />
+            </span>
+            Mon matériel attribué
+          </h3>
+          {monMateriel.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <FiPackage className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+              <p>Aucun matériel attribué actuellement</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {monMateriel.map((attribution) => {
+                const enCours = !attribution.date_retour_reel;
+                return (
+                  <div
+                    key={attribution.id_attribution}
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-white truncate">
+                        {attribution.materiel
+                          ? `${attribution.materiel.marque || ""} ${attribution.materiel.modele || ""}`.trim() ||
+                            attribution.materiel.categorie
+                          : `#${attribution.num_inventaire}`}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        N°{attribution.num_inventaire} • Depuis le{" "}
+                        {formatDate(attribution.date_attribution)}
+                      </p>
+                    </div>
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${
+                        enCours
+                          ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                          : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                      }`}
+                    >
+                      {enCours ? "En cours" : "Rendu"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Confidentialité & données personnelles (RGPD) */}
       <motion.div

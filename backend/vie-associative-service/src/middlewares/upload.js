@@ -111,8 +111,33 @@ function readEncryptedDocument(subfolder, filename) {
   return decryptBuffer(fs.readFileSync(filePath));
 }
 
+// Photo envoyée uniquement pour l'analyse OCR de cohérence (pré-soumission
+// du formulaire) : jamais écrite sur disque, ni chiffrée, ni conservée —
+// le buffer sert une fois à l'analyse puis est jeté. Images uniquement (pas
+// de PDF : l'OCR porte sur une photo prise à l'instant, pas un scan importé).
+const analysePhotoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new Error("Seule une image peut être analysée"));
+    }
+    cb(null, true);
+  },
+}).single("photo");
+
+function handleAnalysePhotoUpload(req, res, next) {
+  analysePhotoUpload(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+}
+
 module.exports = {
   uploadAdhesionDocument: makeUploader("adhesions"),
   uploadCertificatDocument: makeUploader("certificats", { encrypt: true }),
   readEncryptedDocument,
+  handleAnalysePhotoUpload,
 };

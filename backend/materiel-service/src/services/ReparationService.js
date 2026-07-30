@@ -1,5 +1,6 @@
 const BaseService = require('./BaseService');
 const ReparationRepository = require('../repositories/ReparationRepository');
+const { Materiel } = require('../models');
 
 class ReparationService extends BaseService {
   constructor() {
@@ -16,11 +17,41 @@ class ReparationService extends BaseService {
     return await this.reparationRepository.findEnCours();
   }
 
+  // Même service que Materiel (pas de HTTP nécessaire, contrairement à
+  // AttributionService côté activites-service) : l'entrée en atelier
+  // déplace la pièce hors du local — best-effort, un matériel introuvable
+  // ne doit pas bloquer la création de la fiche réparation.
+  async create(data) {
+    const reparation = await this.reparationRepository.create(data);
+
+    try {
+      await Materiel.update(
+        { localisation: 'En réparation' },
+        { where: { num_inventaire: data.num_inventaire } },
+      );
+    } catch (error) {
+      console.error(`Erreur mise à jour localisation matériel ${data.num_inventaire}:`, error.message);
+    }
+
+    return reparation;
+  }
+
   async terminer(id, date_retour) {
-    return await this.reparationRepository.update(id, {
+    const reparation = await this.reparationRepository.update(id, {
       statut: 'Terminée',
-      date_retour
+      date_retour,
     });
+
+    try {
+      await Materiel.update(
+        { localisation: 'Local' },
+        { where: { num_inventaire: reparation.num_inventaire } },
+      );
+    } catch (error) {
+      console.error(`Erreur mise à jour localisation matériel ${reparation.num_inventaire}:`, error.message);
+    }
+
+    return reparation;
   }
 
   async validateReparationData(data) {

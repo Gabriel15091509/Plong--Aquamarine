@@ -36,6 +36,7 @@ import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
+import { photoUrl } from "../../utils/photoUrl";
 
 // Animations
 const fadeInUp = {
@@ -189,9 +190,11 @@ const MaterielDetails = () => {
     const colors = {
       Neuf: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
       Bon: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
-      "À réviser":
+      "Usagé":
         "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800",
-      Hors_service:
+      "À réparer":
+        "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800",
+      "Hors service":
         "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
     };
     return colors[etat] || colors["Bon"];
@@ -201,8 +204,9 @@ const MaterielDetails = () => {
     const icons = {
       Neuf: FiCheckCircle,
       Bon: FiCheckCircle,
-      "À réviser": FiClock,
-      Hors_service: FiAlertCircle,
+      "Usagé": FiClock,
+      "À réparer": FiTool,
+      "Hors service": FiAlertCircle,
     };
     return icons[etat] || FiCheckCircle;
   };
@@ -211,10 +215,20 @@ const MaterielDetails = () => {
     const texts = {
       Neuf: "Matériel neuf, jamais utilisé",
       Bon: "Matériel en bon état de fonctionnement",
-      "À réviser": "Matériel nécessitant une révision",
-      Hors_service: "Matériel hors service",
+      "Usagé": "Matériel usagé, encore fonctionnel",
+      "À réparer": "Matériel nécessitant une réparation",
+      "Hors service": "Matériel hors service",
     };
     return texts[etat] || "État inconnu";
+  };
+
+  const getLocalisationColor = (localisation) => {
+    const colors = {
+      Local: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+      "Prêté": "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      "En réparation": "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+    };
+    return colors[localisation] || "bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400";
   };
 
   const EtatIcon = getEtatIcon(materiel.etat);
@@ -232,12 +246,19 @@ const MaterielDetails = () => {
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
         <div className="flex items-center gap-4">
-          
+          <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500/10 to-cyan-500/10 flex items-center justify-center flex-shrink-0">
+            {materiel.photo_path ? (
+              <img
+                src={photoUrl(materiel.photo_path)}
+                alt={`${materiel.marque} ${materiel.modele}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <FiPackage className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+            )}
+          </div>
           <div>
             <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
-                <FiPackage className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              </span>
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                   {materiel.marque}{" "}
@@ -256,7 +277,7 @@ const MaterielDetails = () => {
                     {materiel.categorie}
                   </span>
                   <span className="text-gray-300 dark:text-gray-600">•</span>
-                  <span className="flex items-center gap-1 text-sm">
+                  <span className={`flex items-center gap-1 text-sm px-2 py-0.5 rounded-full font-medium ${getLocalisationColor(materiel.localisation)}`}>
                     <FiMapPin className="w-3.5 h-3.5" />
                     {materiel.localisation}
                   </span>
@@ -299,18 +320,22 @@ const MaterielDetails = () => {
                 className={`p-3 rounded-full ${
                   materiel.etat === "Neuf" || materiel.etat === "Bon"
                     ? "bg-green-100 dark:bg-green-900/30"
-                    : materiel.etat === "À réviser"
+                    : materiel.etat === "Usagé"
                       ? "bg-yellow-100 dark:bg-yellow-900/30"
-                      : "bg-red-100 dark:bg-red-900/30"
+                      : materiel.etat === "À réparer"
+                        ? "bg-orange-100 dark:bg-orange-900/30"
+                        : "bg-red-100 dark:bg-red-900/30"
                 }`}
               >
                 <EtatIcon
                   className={`w-7 h-7 ${
                     materiel.etat === "Neuf" || materiel.etat === "Bon"
                       ? "text-green-600 dark:text-green-400"
-                      : materiel.etat === "À réviser"
+                      : materiel.etat === "Usagé"
                         ? "text-yellow-600 dark:text-yellow-400"
-                        : "text-red-600 dark:text-red-400"
+                        : materiel.etat === "À réparer"
+                          ? "text-orange-600 dark:text-orange-400"
+                          : "text-red-600 dark:text-red-400"
                   }`}
                 />
               </div>
@@ -383,11 +408,34 @@ const MaterielDetails = () => {
             label="Épaisseur"
             value={materiel.epaisseur || "Non renseignée"}
           />
-          <InfoItem
-            icon={FiMapPin}
-            label="Localisation"
-            value={materiel.localisation}
-          />
+          {materiel.categorie === "Bloc" && (
+            <InfoItem
+              icon={FiDroplet}
+              label="Capacité"
+              value={materiel.capacite || "Non renseignée"}
+            />
+          )}
+          {materiel.categorie === "Stabilisateur" && (
+            <InfoItem
+              icon={FiCheckCircle}
+              label="État des sangles"
+              value={materiel.etat_sangles || "Non renseigné"}
+            />
+          )}
+          {materiel.categorie === "Ordinateur" && (
+            <InfoItem
+              icon={FiActivity}
+              label="Batterie"
+              value={materiel.batterie || "Non renseignée"}
+            />
+          )}
+          <InfoItem icon={FiMapPin} label="Localisation">
+            <span
+              className={`inline-block mt-1 px-2.5 py-1 rounded-full text-sm font-semibold ${getLocalisationColor(materiel.localisation)}`}
+            >
+              {materiel.localisation}
+            </span>
+          </InfoItem>
         </SectionCard>
 
         {/* Maintenance et entretien */}

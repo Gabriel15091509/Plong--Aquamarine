@@ -121,14 +121,58 @@ class FormationController extends BaseController {
 
   async completeFormation(req, res, next) {
     try {
+      const { num_brevet, num_licence_ffesm } = req.body;
       const result = await this.formationService.completeFormation(
         req.params.id,
         req.headers.authorization,
+        { num_brevet, num_licence_ffesm },
+        req.user,
       );
       res.json({
         success: true,
         data: result,
         message: "Formation terminée avec succès",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  async ajourner(req, res, next) {
+    try {
+      const result = await this.formationService.ajourner(req.params.id, req.body.motif, req.user);
+      res.json({
+        success: true,
+        data: result,
+        message: "Formation ajournée",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  // Surcharge de BaseController.update/delete : ceux-ci n'ont pas connaissance
+  // de req.user, nécessaire ici pour le contrôle "seul le moniteur assigné
+  // peut modifier/supprimer sa formation" (FormationService.assertCanModifyFormation).
+  async update(req, res, next) {
+    try {
+      const result = await this.formationService.update(req.params.id, req.body, req.user);
+      res.json({
+        success: true,
+        data: result,
+        message: "Mis à jour avec succès",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  async delete(req, res, next) {
+    try {
+      await this.formationService.delete(req.params.id, req.user);
+      res.json({
+        success: true,
+        message: "Supprimé avec succès",
       });
     } catch (error) {
       next(withStatus(error, 400));

@@ -21,6 +21,24 @@ async function getByNumInventaire(num_inventaire) {
   return body.data;
 }
 
+// Reflète où se trouve réellement le matériel (Local/Prêté/En réparation) —
+// appelé par AttributionService au prêt et au retour.
+async function updateLocalisation(num_inventaire, localisation, authHeader) {
+  const response = await fetch(`${BASE_URL}/materiels/${num_inventaire}/localisation`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(authHeader ? { Authorization: authHeader } : {}),
+    },
+    body: JSON.stringify({ localisation }),
+  });
+  if (!response.ok) {
+    throw new Error(`materiel-service: échec mise à jour localisation ${num_inventaire} (${response.status})`);
+  }
+  const body = await response.json();
+  return body.data;
+}
+
 async function createReparation(payload, authHeader) {
   const response = await fetch(`${BASE_URL}/reparations`, {
     method: "POST",
@@ -37,4 +55,4 @@ async function createReparation(payload, authHeader) {
   return body.data;
 }
 
-module.exports = { checkAvailability, getByNumInventaire, createReparation };
+module.exports = { checkAvailability, getByNumInventaire, createReparation, updateLocalisation };

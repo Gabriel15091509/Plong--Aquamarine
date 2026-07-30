@@ -3,6 +3,9 @@ const BaseService = require("./BaseService");
 const AlerteRepository = require("../repositories/AlerteRepository");
 const { Adhesion, CertificatMedical } = require("../models");
 const identiteClient = require("../utils/serviceClients/identiteClient");
+const { withAdherentNames } = require("../utils/enrichAdherents");
+const { sendAlerteRelanceEmail } = require("../utils/email");
+const { NotFoundError, ForbiddenError } = require("../utils/errors");
 
 const ALERT_TYPES = {
   adhesionExpiring: {
@@ -13,6 +16,17 @@ const ALERT_TYPES = {
     preferred: "Certificat expire bientot",
     fallback: "Certificat expiré",
   },
+};
+
+const ALERT_DESCRIPTIONS = {
+  "Certificat expiré": "Le certificat médical a expiré",
+  "Certificat expire bientot": "Le certificat médical expire dans moins de 30 jours",
+  "Adhésion expirée": "L'adhésion est arrivée à expiration",
+  "Adhesion expire bientot": "L'adhésion expire dans moins de 30 jours",
+  "Paiement en retard": "Un paiement est en attente",
+  Formation: "Une formation est disponible",
+  "Materiel en retard": "Du matériel emprunté n'a pas été retourné à temps",
+  "Inactivite plongee": "Aucune plongée enregistrée depuis longtemps",
 };
 
 class AlerteService extends BaseService {
@@ -52,25 +66,68 @@ class AlerteService extends BaseService {
     return adherent ? { num_adherent: adherent.num_adherent } : {};
   }
 
-  async getAll(options = {}, user = null) {
+  async getAll(options = {}, user = null, authHeader = null) {
     await this.syncExpirationAlertes();
     const scope = await this.getScopeForUser(user);
-    return await super.getAll({ ...options, where: { ...options.where, ...scope } });
+    const results = await super.getAll({ ...options, where: { ...options.where, ...scope } });
+    return await withAdherentNames(results, authHeader);
   }
 
-  async getUnread(user = null) {
+  async getUnread(user = null, authHeader = null) {
     await this.syncExpirationAlertes();
     const scope = await this.getScopeForUser(user);
-    return await this.alerteRepository.findUnread(scope);
+    const results = await this.alerteRepository.findUnread(scope);
+    return await withAdherentNames(results, authHeader);
   }
 
-  async getByAdherent(num_adherent, user = null) {
+  async getByAdherent(num_adherent, user = null, authHeader = null) {
     await this.syncExpirationAlertes();
     const scope = await this.getScopeForUser(user);
     if (scope.num_adherent && scope.num_adherent !== num_adherent) {
       throw new Error("Accès refusé à ces alertes");
     }
-    return await this.alerteRepository.findByAdherent(num_adherent);
+    const results = await this.alerteRepository.findByAdherent(num_adherent);
+    return await withAdherentNames(results, authHeader);
+  }
+
+  async getByIdForUser(id, user = null, authHeader = null) {
+    const alerte = await this.alerteRepository.findById(id);
+    if (!alerte) throw new NotFoundError("Alerte non trouvée");
+    const scope = await this.getScopeForUser(user);
+    if (scope.num_adherent && scope.num_adherent !== alerte.num_adherent) {
+      throw new ForbiddenError("Accès refusé à cette alerte");
+    }
+    return await withAdherentNames(alerte, authHeader);
+  }
+
+  async relancerParEmail(id, user = null, authHeader = null) {
+    if (!this.canManageAlertes(user?.role)) {
+      throw new ForbiddenError("Seuls le président, un moniteur ou le trésorier peuvent relancer une alerte");
+    }
+
+    const alerte = await this.alerteRepository.findById(id);
+    if (!alerte) throw new NotFoundError("Alerte non trouvée");
+
+    const adherent = await identiteClient.getAdherentById(alerte.num_adherent, authHeader);
+    if (!adherent?.email) {
+      throw new Error("Adresse email de l'adhérent introuvable");
+    }
+
+    await sendAlerteRelanceEmail({
+      to: adherent.email,
+      adherentName: `${adherent.prenom} ${adherent.nom}`,
+      type: alerte.type,
+      description: ALERT_DESCRIPTIONS[alerte.type] || alerte.type,
+      idAlerte: alerte.id_alerte,
+    });
+
+    alerte.canal = "Email";
+    alerte.date_envoi = new Date();
+    alerte.statut = "Envoyé";
+    alerte.read = false;
+    await alerte.save();
+
+    return await withAdherentNames(alerte, authHeader);
   }
 
   async markAsRead(id, user = null) {
@@ -95,8 +152,8 @@ class AlerteService extends BaseService {
     return await this.alerteRepository.getUnreadCount(scope);
   }
 
-  async createAlerte(data) {
-    const adherent = await identiteClient.getAdherentById(data.num_adherent);
+  async createAlerte(data, authHeader = null) {
+    const adherent = await identiteClient.getAdherentById(data.num_adherent, authHeader);
     if (!adherent) {
       throw new Error("Adhérent non trouvé");
     }

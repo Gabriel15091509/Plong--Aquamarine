@@ -33,6 +33,8 @@ router.use("/inscriptions", proxyTo(ACTIVITES_SERVICE_URL));
 router.use("/plongees", proxyTo(ACTIVITES_SERVICE_URL));
 router.use("/materiels", proxyTo(MATERIEL_SERVICE_URL));
 router.use("/formations", proxyTo(FORMATION_SERVICE_URL));
+router.use("/seances", proxyTo(FORMATION_SERVICE_URL));
+router.use("/specialites-formation", proxyTo(FORMATION_SERVICE_URL));
 router.use("/alertes", proxyTo(VIE_ASSOCIATIVE_SERVICE_URL));
 router.use("/users", proxyTo(IDENTITE_SERVICE_URL));
 router.use("/email", proxyTo(IDENTITE_SERVICE_URL));
@@ -64,6 +66,8 @@ router.get("/", (req, res) => {
       plongees: "/api/plongees",
       materiels: "/api/materiels",
       formations: "/api/formations",
+      seances: "/api/seances",
+      specialites_formation: "/api/specialites-formation",
       alertes: "/api/alertes",
       emails: "/api/emails",
       moniteurs: "/api/moniteurs",

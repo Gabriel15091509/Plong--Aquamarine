@@ -26,13 +26,16 @@ const Plongee = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
+    // Nullable : un brouillon est créé dès le pointage de présence (voir
+    // PalanqueeService.creerPlongeeBrouillon), avant que le moniteur n'ait
+    // saisi la profondeur/durée réelles.
     profondeur_max: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     duree: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     temperature_eau: {
       type: DataTypes.FLOAT,

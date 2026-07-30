@@ -94,6 +94,21 @@ const PalanqueeCard = ({ palanquee, presents, moniteurOptions, materielsDisponib
     }
   };
 
+  const handleSetMoniteurEncadrant = async (value) => {
+    try {
+      await updateEncadrement.mutateAsync({
+        id: palanquee.id_palanquee,
+        data: { id_moniteur_encadrant: value || null },
+      });
+    } catch (e) {
+      // géré par le hook
+    }
+  };
+
+  const moniteurEncadrant = (moniteurOptions || []).find(
+    (m) => m.id_moniteur === palanquee.id_moniteur_encadrant,
+  );
+
   const handleAttribuerMateriel = async () => {
     if (!selectedMateriel || !selectedMembreMateriel) return;
     try {
@@ -169,6 +184,26 @@ const PalanqueeCard = ({ palanquee, presents, moniteurOptions, materielsDisponib
           {membres.length} / {maxRatio} plongeurs
         </span>
       </div>
+
+      {/* Moniteur encadrant : peut être vide pour une palanquée constituée
+          automatiquement au pointage (voir autoConstituerPourPresence) */}
+      {isCloturee ? (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Encadrant : {moniteurEncadrant?.label || "—"}
+        </p>
+      ) : (
+        <div className="max-w-xs">
+          <SearchableSelect
+            label="Moniteur encadrant"
+            value={palanquee.id_moniteur_encadrant || ""}
+            onChange={handleSetMoniteurEncadrant}
+            options={moniteurOptions || []}
+            getOptionLabel={(m) => m.label}
+            getOptionValue={(m) => m.id_moniteur}
+            placeholder="Aucun moniteur assigné..."
+          />
+        </div>
+      )}
 
       {/* Membres */}
       <div className="flex flex-wrap gap-2">
