@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { FiCheck, FiX, FiClock } from "react-icons/fi";
+import ModalOverlay from "../Common/ModalOverlay";
 
 // Regroupe les 3 modales de confirmation d'action (confirmer/annuler/mettre
 // en liste d'attente une inscription) — extraites de InscriptionList pour
@@ -19,7 +20,7 @@ const InscriptionActionModals = ({
 }) => (
   <>
     {confirmModal && (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -53,11 +54,11 @@ const InscriptionActionModals = ({
             </button>
           </div>
         </motion.div>
-      </div>
+      </ModalOverlay>
     )}
 
     {cancelModal && (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -91,11 +92,11 @@ const InscriptionActionModals = ({
             </button>
           </div>
         </motion.div>
-      </div>
+      </ModalOverlay>
     )}
 
     {waitlistModal && (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -129,7 +130,7 @@ const InscriptionActionModals = ({
             </button>
           </div>
         </motion.div>
-      </div>
+      </ModalOverlay>
     )}
   </>
 );

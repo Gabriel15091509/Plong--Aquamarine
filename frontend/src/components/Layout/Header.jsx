@@ -29,6 +29,7 @@ import { useAlertes } from "../../hooks/Alerte/useAlertes";
 import { formatRelativeTime } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import Logo from "../Common/Logo";
+import AlerteDetailsModal from "../Alerte/AlerteDetailsModal";
 
 const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
   const { user, logout, hasPermission } = useAuth();
@@ -36,6 +37,7 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedAlerte, setSelectedAlerte] = useState(null);
 
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
@@ -108,6 +110,16 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
         color: "text-blue-500",
         bg: "bg-blue-50 dark:bg-blue-900/30",
       },
+      "Materiel en retard": {
+        icon: FiAlertCircle,
+        color: "text-purple-500",
+        bg: "bg-purple-50 dark:bg-purple-900/30",
+      },
+      "Inactivite plongee": {
+        icon: FiCalendar,
+        color: "text-gray-500",
+        bg: "bg-gray-50 dark:bg-gray-700",
+      },
     };
     return (
       icons[type] || {
@@ -127,12 +139,22 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
       "Adhesion expire bientot": "L'adhésion expire dans moins de 30 jours",
       "Paiement en retard": "Un paiement est en attente",
       Formation: "Une formation est disponible",
+      "Materiel en retard": "Du matériel emprunté n'a pas été retourné à temps",
+      "Inactivite plongee": "Aucune plongée enregistrée depuis longtemps",
     };
     return descriptions[alerte.type] || alerte.type;
   };
 
   const handleMarkAsRead = async (id) => {
     await markAsRead.mutateAsync(id);
+  };
+
+  const handleOpenAlerte = (notification) => {
+    setSelectedAlerte(notification);
+    setIsNotificationOpen(false);
+    if (!notification.read) {
+      handleMarkAsRead(notification.id_alerte);
+    }
   };
 
   const handleMarkAllAsRead = async () => {
@@ -273,9 +295,7 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                                 ? "bg-blue-50/50 dark:bg-blue-900/20"
                                 : ""
                             } ${index !== notifications.length - 1 ? "border-b border-gray-100 dark:border-gray-700" : ""}`}
-                            onClick={() =>
-                              handleMarkAsRead(notification.id_alerte)
-                            }
+                            onClick={() => handleOpenAlerte(notification)}
                           >
                             <div
                               className={`p-2 rounded-xl ${AlertIcon.bg} flex-shrink-0`}
@@ -287,6 +307,9 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-800 dark:text-white">
                                 {notification.type}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-300 truncate font-medium">
+                                {notification.adherent_nom || notification.num_adherent}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                 {getAlertDescription(notification)}
@@ -468,6 +491,13 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
           </div>
         </div>
       </div>
+
+      {selectedAlerte && (
+        <AlerteDetailsModal
+          alerte={selectedAlerte}
+          onClose={() => setSelectedAlerte(null)}
+        />
+      )}
     </header>
   );
 };

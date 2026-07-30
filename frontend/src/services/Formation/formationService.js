@@ -41,8 +41,13 @@ class FormationService {
     return response.data;
   }
 
-  async complete(id) {
-    const response = await api.patch(`/formations/${id}/complete`);
+  async complete(id, data = {}) {
+    const response = await api.patch(`/formations/${id}/complete`, data);
+    return response.data;
+  }
+
+  async ajourner(id, motif) {
+    const response = await api.patch(`/formations/${id}/ajourner`, { motif });
     return response.data;
   }
 

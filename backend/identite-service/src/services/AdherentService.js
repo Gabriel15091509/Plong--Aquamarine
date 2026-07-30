@@ -170,13 +170,21 @@ class AdherentService extends BaseService {
   }
 
   // Appelé par formation-service (résolu par HTTP) à la fin d'une formation
-  // dont toutes les compétences de la check-list sont validées.
-  async updateNiveau(num_adherent, niveau) {
+  // dont toutes les compétences de la check-list sont validées. `extra`
+  // (num_brevet/num_licence_ffesm) est optionnel et laissé intact si non
+  // fourni (ex: passage automatique via tryAutoComplete, sans saisie
+  // humaine) — seul un moniteur/président qui valide la formation à la main
+  // connaît les numéros réellement délivrés à ce moment-là.
+  async updateNiveau(num_adherent, niveau, extra = {}) {
     const adherent = await this.repository.findById(num_adherent);
     if (!adherent) throw new Error("Adhérent non trouvé");
 
     adherent.niveau = niveau;
     adherent.date_obtention_niveau = new Date();
+    if (extra.num_brevet !== undefined) adherent.num_brevet = extra.num_brevet || null;
+    if (extra.num_licence_ffesm !== undefined) {
+      adherent.num_licence_ffesm = extra.num_licence_ffesm || null;
+    }
     await adherent.save();
 
     return adherent;

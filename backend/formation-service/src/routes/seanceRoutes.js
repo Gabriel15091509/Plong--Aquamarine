@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const SeanceController = require("../controllers/SeanceController");
 const AuthMiddleware = require("../middlewares/authMiddleware");
-const authorize = require("../middlewares/authorize");
 const { ROLES } = require("../utils/roleScope");
 
 const seanceController = new SeanceController();
@@ -22,7 +21,7 @@ router.get("/:id", seanceController.getById.bind(seanceController));
 router.post(
   "/",
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_MONITEUR),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
   seanceController.validateBeforeCreate.bind(seanceController),
   seanceController.create.bind(seanceController),
 );
@@ -30,7 +29,7 @@ router.post(
 router.patch(
   "/:id/statut",
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_MONITEUR),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
   seanceController.updateStatut.bind(seanceController),
 );
 

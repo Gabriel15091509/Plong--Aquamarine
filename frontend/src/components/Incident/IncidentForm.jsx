@@ -13,6 +13,7 @@ import { useIncidents } from "../../hooks/Incident/useIncidents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
+import { isSortieSelectionnable } from "../../utils/helpers";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -45,6 +46,14 @@ const IncidentForm = () => {
     description: "",
     mesures_prises: "",
   });
+
+  // Une sortie déjà en cours ou terminée ne doit plus être proposée, sauf si
+  // c'est déjà la sortie liée à l'incident en cours de modification.
+  const sortiesSelectionnables = (sortiesData?.data || []).filter(
+    (s) =>
+      isSortieSelectionnable(s) ||
+      String(s.id_sortie) === String(formData.id_sortie),
+  );
 
   useEffect(() => {
     if (editMode && id && incidentData?.data) {
@@ -142,7 +151,7 @@ const IncidentForm = () => {
                 if (errors.id_sortie)
                   setErrors((prev) => ({ ...prev, id_sortie: "" }));
               }}
-              options={sortiesData?.data || []}
+              options={sortiesSelectionnables}
               getOptionLabel={(s) =>
                 `${s.type} - ${s.lieu} (${s.site || ""})`
               }

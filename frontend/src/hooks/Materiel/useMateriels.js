@@ -64,6 +64,19 @@ export const useMateriels = () => {
     });
   };
 
+  const useUpdatePhoto = () => {
+    return useMutation({
+      mutationFn: ({ id, formData }) => materielService.updatePhoto(id, formData),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['materiels']);
+        toast.success(response.message || 'Photo mise à jour avec succès');
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour de la photo');
+      },
+    });
+  };
+
   const useRemove = () => {
     return useMutation({
       mutationFn: (id) => materielService.delete(id),
@@ -84,6 +97,7 @@ export const useMateriels = () => {
     useGetStats,
     useCreate,
     useUpdate,
+    useUpdatePhoto,
     useRemove,
   };
 };

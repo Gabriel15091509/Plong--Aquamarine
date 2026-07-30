@@ -56,9 +56,12 @@ const VIE_ASSOCIATIVE_SERVICE_URL =
   process.env.VIE_ASSOCIATIVE_SERVICE_URL || "http://localhost:5013";
 const IDENTITE_SERVICE_URL =
   process.env.IDENTITE_SERVICE_URL || "http://localhost:5014";
+const MATERIEL_SERVICE_URL =
+  process.env.MATERIEL_SERVICE_URL || "http://localhost:5011";
 app.use("/uploads/adhesions", proxyTo(VIE_ASSOCIATIVE_SERVICE_URL));
 app.use("/uploads/certificats", proxyTo(VIE_ASSOCIATIVE_SERVICE_URL));
 app.use("/uploads/avatars", proxyTo(IDENTITE_SERVICE_URL));
+app.use("/uploads/materiels", proxyTo(MATERIEL_SERVICE_URL));
 
 // Logging
 app.use(
@@ -68,9 +71,15 @@ app.use(
 );
 
 // Rate limiting - Moins restrictif pour le mobile
+// 1000/15min : une SPA avec React Query peut facilement déclencher plusieurs
+// dizaines de requêtes parallèles par page (dashboard agrégé, listes avec
+// résolution de noms croisée...), et plusieurs adhérents du club partagent
+// souvent la même IP (routeur du club/maison) - l'ancienne valeur (200,
+// parfois 100 en local) provoquait des 429 en usage normal, pas seulement
+// en cas d'abus.
 const limiter = rateLimit({
   windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
-  max: process.env.RATE_LIMIT_MAX || 200,
+  max: process.env.RATE_LIMIT_MAX || 1000,
   message: {
     success: false,
     message: "Trop de requêtes, veuillez réessayer plus tard",

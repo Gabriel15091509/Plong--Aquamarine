@@ -18,6 +18,7 @@ import {
 import { useIncidents } from "../../hooks/Incident/useIncidents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import { formatDateTime } from "../../utils/helpers";
 
 const fadeInUp = {
@@ -314,7 +315,7 @@ const IncidentDetails = () => {
       </motion.div>
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -350,7 +351,7 @@ const IncidentDetails = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
     </motion.div>
   );

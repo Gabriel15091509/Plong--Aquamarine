@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const FormationSpecialiteController = require("../controllers/FormationSpecialiteController");
 const AuthMiddleware = require("../middlewares/authMiddleware");
-const authorize = require("../middlewares/authorize");
 const { ROLES } = require("../utils/roleScope");
 
 const formationSpecialiteController = new FormationSpecialiteController();
@@ -21,7 +20,7 @@ router.get("/:id", formationSpecialiteController.getById.bind(formationSpecialit
 router.post(
   "/",
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_MONITEUR),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
   formationSpecialiteController.validateBeforeCreate.bind(formationSpecialiteController),
   formationSpecialiteController.create.bind(formationSpecialiteController),
 );
@@ -29,14 +28,14 @@ router.post(
 router.put(
   "/:id",
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_MONITEUR),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
   formationSpecialiteController.update.bind(formationSpecialiteController),
 );
 
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_MONITEUR),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
   formationSpecialiteController.delete.bind(formationSpecialiteController),
 );
 

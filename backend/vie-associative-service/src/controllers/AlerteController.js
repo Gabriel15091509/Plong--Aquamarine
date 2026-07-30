@@ -11,7 +11,7 @@ class AlerteController extends BaseController {
 
   async getAll(req, res, next) {
     try {
-      const results = await this.alerteService.getAll(req.query, req.user);
+      const results = await this.alerteService.getAll(req.query, req.user, req.headers.authorization);
       res.json({
         success: true,
         data: results,
@@ -24,7 +24,7 @@ class AlerteController extends BaseController {
 
   async getUnread(req, res, next) {
     try {
-      const results = await this.alerteService.getUnread(req.user);
+      const results = await this.alerteService.getUnread(req.user, req.headers.authorization);
       res.json({
         success: true,
         data: results,
@@ -40,7 +40,8 @@ class AlerteController extends BaseController {
       const { num_adherent } = req.params;
       const results = await this.alerteService.getByAdherent(
         num_adherent,
-        req.user
+        req.user,
+        req.headers.authorization
       );
       res.json({
         success: true,
@@ -98,24 +99,27 @@ class AlerteController extends BaseController {
   async getById(req, res, next) {
     try {
       const { id } = req.params;
-      const alertes = await this.alerteService.getAll({}, req.user);
-      const result = alertes.find(
-        (alerte) => alerte.id_alerte === parseInt(id)
-      );
-
-      if (!result) {
-        return res.status(404).json({
-          success: false,
-          message: 'Alerte non trouvée'
-        });
-      }
-
+      const result = await this.alerteService.getByIdForUser(id, req.user, req.headers.authorization);
       res.json({
         success: true,
         data: result
       });
     } catch (error) {
-      next(withStatus(error, 500));
+      next(withStatus(error, 404));
+    }
+  }
+
+  async relancer(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await this.alerteService.relancerParEmail(id, req.user, req.headers.authorization);
+      res.json({
+        success: true,
+        data: result,
+        message: 'Relance envoyée par email'
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
     }
   }
 
@@ -135,7 +139,7 @@ class AlerteController extends BaseController {
         });
       }
 
-      const result = await this.alerteService.createAlerte(data);
+      const result = await this.alerteService.createAlerte(data, req.headers.authorization);
       res.status(201).json({
         success: true,
         data: result,

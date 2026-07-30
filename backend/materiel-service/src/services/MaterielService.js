@@ -65,6 +65,19 @@ class MaterielService extends BaseService {
     if (!data.date_achat) errors.push('La date d\'achat est requise');
     if (!data.localisation) errors.push('La localisation est requise');
 
+    // Attributs propres à certaines catégories (voir CATEGORIE_MATERIEL_OPTIONS
+    // côté frontend) — les autres catégories n'ont pas de champ obligatoire
+    // supplémentaire au-delà des champs génériques ci-dessus.
+    if (data.categorie === 'Bloc' && !data.capacite) {
+      errors.push("La capacité est requise pour un bloc d'air");
+    }
+    if (data.categorie === 'Stabilisateur' && !data.etat_sangles) {
+      errors.push("L'état des sangles est requis pour un stabilisateur");
+    }
+    if (data.categorie === 'Ordinateur' && !data.batterie) {
+      errors.push("L'état de la batterie est requis pour un ordinateur de plongée");
+    }
+
     return errors;
   }
 
@@ -73,6 +86,30 @@ class MaterielService extends BaseService {
     if (!materiel) throw new Error('Matériel non trouvé');
 
     materiel.etat = etat;
+    await materiel.save();
+
+    return materiel;
+  }
+
+  // Appelé par AttributionService (activites-service, via HTTP) au prêt/
+  // retour d'un matériel, et en interne par ReparationService à l'entrée/
+  // sortie d'atelier — reflète où se trouve réellement la pièce (voir
+  // LOCALISATION_MATERIEL_OPTIONS côté frontend : Local/Prêté/En réparation).
+  async updateLocalisation(num_inventaire, localisation) {
+    const materiel = await this.getById(num_inventaire);
+    if (!materiel) throw new Error('Matériel non trouvé');
+
+    materiel.localisation = localisation;
+    await materiel.save();
+
+    return materiel;
+  }
+
+  async updatePhoto(num_inventaire, photo_path) {
+    const materiel = await this.getById(num_inventaire);
+    if (!materiel) throw new Error('Matériel non trouvé');
+
+    materiel.photo_path = photo_path;
     await materiel.save();
 
     return materiel;

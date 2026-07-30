@@ -50,6 +50,22 @@ async function getMoniteurByUserId(user_id) {
   return body.data;
 }
 
+// Utilisé pour vérifier, avant d'affecter un moniteur à l'encadrement d'une
+// palanquée, qu'il existe réellement et récupérer ses spécialités/niveau/
+// disponibilités déclarées (voir PalanqueeService.assertMoniteurAffectable).
+async function getMoniteurById(id_moniteur, authHeader) {
+  if (!id_moniteur) return null;
+  const response = await fetch(`${BASE_URL}/moniteurs/${id_moniteur}`, {
+    headers: authHeader ? { Authorization: authHeader } : {},
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`identite-service: échec récupération moniteur ${id_moniteur} (${response.status})`);
+  }
+  const body = await response.json();
+  return body.data;
+}
+
 async function getPresidentIdForMoniteur(id_moniteur) {
   if (!id_moniteur) return null;
   const response = await fetch(`${BASE_URL}/president/moniteur/${id_moniteur}`);
@@ -91,6 +107,7 @@ module.exports = {
   getAdherentForUser,
   getTresorierIdForUser,
   getMoniteurByUserId,
+  getMoniteurById,
   getPresidentIdForMoniteur,
   getUserBasicById,
   incrementPlongeesCount,

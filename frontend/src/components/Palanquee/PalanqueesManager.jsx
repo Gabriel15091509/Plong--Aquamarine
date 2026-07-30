@@ -27,6 +27,7 @@ const PalanqueesManager = ({ sortie }) => {
   const palanquees = palanqueesData?.data || [];
   const presents = presentsData?.data || [];
   const stats = statsData?.data;
+  const isTerminee = sortie.statut === "Terminée";
 
   const moniteurOptions = (moniteursData?.data || []).map((m) => ({
     ...m,
@@ -67,7 +68,9 @@ const PalanqueesManager = ({ sortie }) => {
           )}
           <button
             onClick={() => setShowForm((prev) => !prev)}
-            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            disabled={isTerminee}
+            title={isTerminee ? "Sortie terminée : constitution de palanquée impossible" : undefined}
+            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:text-gray-400 dark:disabled:text-gray-600 disabled:no-underline disabled:cursor-not-allowed"
           >
             <FiPlus className="w-4 h-4" /> Constituer une palanquée
           </button>

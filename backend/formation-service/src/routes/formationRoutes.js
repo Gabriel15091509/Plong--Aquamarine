@@ -38,6 +38,7 @@ router.get(
 router.post(
   "/",
   AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
   formationController.validateBeforeCreate.bind(formationController),
   formationController.create.bind(formationController),
 );
@@ -52,6 +53,12 @@ router.patch(
   "/:id/complete",
   AuthMiddleware.authenticate,
   formationController.completeFormation.bind(formationController),
+);
+
+router.patch(
+  "/:id/ajourner",
+  AuthMiddleware.authenticate,
+  formationController.ajourner.bind(formationController),
 );
 
 router.post(

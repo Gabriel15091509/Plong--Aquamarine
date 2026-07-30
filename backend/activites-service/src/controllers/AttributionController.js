@@ -12,7 +12,21 @@ class AttributionController extends BaseController {
   async getByAdherent(req, res, next) {
     try {
       const { num_adherent } = req.params;
-      const results = await this.attributionService.getByAdherent(num_adherent);
+      const results = await this.attributionService.getByAdherent(num_adherent, req.user);
+      res.json({
+        success: true,
+        data: results,
+        count: results.length
+      });
+    } catch (error) {
+      next(withStatus(error, 403));
+    }
+  }
+
+  async getByMateriel(req, res, next) {
+    try {
+      const { num_inventaire } = req.params;
+      const results = await this.attributionService.getByMateriel(num_inventaire);
       res.json({
         success: true,
         data: results,
@@ -23,10 +37,10 @@ class AttributionController extends BaseController {
     }
   }
 
-  async getByMateriel(req, res, next) {
+  async getBySortie(req, res, next) {
     try {
-      const { num_inventaire } = req.params;
-      const results = await this.attributionService.getByMateriel(num_inventaire);
+      const { id_sortie } = req.params;
+      const results = await this.attributionService.getBySortie(parseInt(id_sortie, 10));
       res.json({
         success: true,
         data: results,
@@ -64,11 +78,28 @@ class AttributionController extends BaseController {
     }
   }
 
+  async create(req, res, next) {
+    try {
+      const result = await this.attributionService.create(req.body, req.headers.authorization);
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: "Créé avec succès",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async retourner(req, res, next) {
     try {
       const { id } = req.params;
       const { etat_retour, date_retour_reel } = req.body;
-      const result = await this.attributionService.retourner(id, { etat_retour, date_retour_reel });
+      const result = await this.attributionService.retourner(
+        id,
+        { etat_retour, date_retour_reel },
+        req.headers.authorization,
+      );
       res.json({
         success: true,
         data: result,

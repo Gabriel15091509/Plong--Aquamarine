@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const CertificatMedicalController = require('../controllers/CertificatMedicalController');
 const AuthMiddleware = require('../middlewares/authMiddleware');
-const { uploadCertificatDocument } = require('../middlewares/upload');
+const { uploadCertificatDocument, handleAnalysePhotoUpload } = require('../middlewares/upload');
 const { ROLES } = require('../utils/roleScope');
 
 const certificatController = new CertificatMedicalController();
@@ -15,6 +15,13 @@ router.get('/adherent/:num_adherent', AuthMiddleware.authenticate, certificatCon
 router.get('/adherent/:num_adherent/status', AuthMiddleware.authenticate, certificatController.checkStatus.bind(certificatController));
 router.get('/:id', AuthMiddleware.authenticate, certificatController.getById.bind(certificatController));
 router.get('/:id/document', AuthMiddleware.authenticate, certificatController.downloadDocument.bind(certificatController));
+
+router.post('/analyser-photo',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  handleAnalysePhotoUpload,
+  certificatController.analysePhoto.bind(certificatController)
+);
 
 router.post('/',
   AuthMiddleware.authenticate,

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const MaterielController = require("../controllers/MaterielController");
 const AuthMiddleware = require("../middlewares/authMiddleware");
+const { uploadMaterielPhoto } = require("../middlewares/upload");
 
 const materielController = new MaterielController();
 
@@ -46,6 +47,19 @@ router.patch(
   "/:num_inventaire/etat",
   AuthMiddleware.authenticate,
   materielController.updateEtat.bind(materielController),
+);
+
+router.patch(
+  "/:num_inventaire/localisation",
+  AuthMiddleware.authenticate,
+  materielController.updateLocalisation.bind(materielController),
+);
+
+router.put(
+  "/:num_inventaire/photo",
+  AuthMiddleware.authenticate,
+  ...uploadMaterielPhoto,
+  materielController.updatePhoto.bind(materielController),
 );
 
 router.delete(

@@ -51,6 +51,15 @@ const Formation = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
+    // Cible connue à la création (nullable pour les formations existantes,
+    // créées avant l'ajout de ce champ) — sert au garde-fou du bouton
+    // "Terminer" et au déclenchement automatique de fin de formation dès que
+    // cette cible est atteinte ET que toutes les compétences sont acquises
+    // (voir FormationService.tryAutoComplete).
+    nb_seances_prevues: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     commentaire_moniteur: {
       type: DataTypes.TEXT,
       allowNull: true,

@@ -22,12 +22,17 @@ import {
   FiAnchor,
   FiUserPlus,
   FiUserCheck,
+  FiList,
+  FiGrid,
+  FiTrendingDown,
+  FiCheckSquare,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
+import ModalOverlay from "../../components/Common/ModalOverlay";
 import { formatDateTime } from "../../utils/helpers";
 
 // Configuration des statuts de sortie
@@ -54,6 +59,7 @@ const SortiesPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteModal, setDeleteModal] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState("list");
   const itemsPerPage = 10;
 
   const {
@@ -109,6 +115,11 @@ const SortiesPage = () => {
       const matchFilter = filter === "all" || sortie.statut === filter;
 
       return matchSearch && matchFilter;
+    }).sort((a, b) => {
+      const now = Date.now();
+      const diffA = Math.abs(new Date(a.date_heure) - now);
+      const diffB = Math.abs(new Date(b.date_heure) - now);
+      return diffA - diffB;
     });
   }, [sortiesList, searchTerm, filter]);
 
@@ -182,6 +193,22 @@ const SortiesPage = () => {
     setSearchTerm("");
     setFilter("all");
     setCurrentPage(1);
+  };
+
+  const getStatutColor = (statut) => {
+    const colors = {
+      Planifiée:
+        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      "En cours":
+        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      Terminée:
+        "bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400",
+      Annulée: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    };
+    return (
+      colors[statut] ||
+      "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+    );
   };
 
   if (loadingSorties || loadingAdherents) return <LoadingSpinner />;
@@ -310,6 +337,32 @@ const SortiesPage = () => {
               Effacer
             </button>
           )}
+          <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              title="Vue liste"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "list"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiList className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              title="Vue grille"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "grid"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiGrid className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -334,7 +387,11 @@ const SortiesPage = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid gap-3"
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                : "grid gap-3"
+            }
           >
             {paginatedSorties.map((sortie) => {
               const sortieId = sortie.id_sortie || sortie.id;
@@ -343,6 +400,171 @@ const SortiesPage = () => {
                 (sortie.nb_places || 0) <= (sortie.nb_inscrits || 0);
               const canInscribe =
                 !isPastSortie && !isFull && sortie.statut === "Planifiée";
+              const isTerminee = sortie.statut === "Terminée";
+
+              if (viewMode === "grid") {
+                return (
+                  <motion.div
+                    key={sortieId}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
+                  >
+                    {/* Photo / bandeau de la sortie */}
+                    <div className="relative h-40 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
+                      {sortie.image ? (
+                        <img
+                          src={sortie.image}
+                          alt={sortie.lieu}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <FiAnchor className="w-12 h-12 text-indigo-400 dark:text-indigo-500" />
+                      )}
+                      <div className="absolute inset-x-0 top-0 p-3 flex items-center justify-between gap-1.5">
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${getStatutColor(sortie.statut)}`}
+                        >
+                          {sortie.statut || "Planifiée"}
+                        </span>
+                        {isFull && (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm">
+                            Complet
+                          </span>
+                        )}
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                        <span className="text-lg font-bold text-white drop-shadow">
+                          {Number(sortie.tarif_adherent) > 0
+                            ? `${Number(sortie.tarif_adherent).toFixed(2)} €`
+                            : "Gratuit"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Contenu */}
+                    <div className="p-4 flex flex-col flex-1">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+                        {sortie.type || "Sortie"}
+                      </span>
+                      <h3 className="font-semibold text-gray-900 dark:text-white mt-1 truncate">
+                        {sortie.lieu || "Lieu non défini"}
+                      </h3>
+                      <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                        <FiMapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate">{sortie.site || "—"}</span>
+                      </p>
+
+                      <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-center">
+                        <div>
+                          <FiUsers className="w-4 h-4 mx-auto text-gray-400" />
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">
+                            {sortie.nb_inscrits || 0}/{sortie.nb_places || 0}
+                          </div>
+                          <div className="text-[11px] text-gray-400">
+                            Places
+                          </div>
+                        </div>
+                        <div>
+                          <FiTrendingDown className="w-4 h-4 mx-auto text-gray-400" />
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">
+                            {sortie.profondeur_max ?? "—"}m
+                          </div>
+                          <div className="text-[11px] text-gray-400">
+                            Profondeur
+                          </div>
+                        </div>
+                        <div>
+                          <FiClock className="w-4 h-4 mx-auto text-gray-400" />
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">
+                            {sortie.duree_estimee
+                              ? sortie.duree_estimee.slice(0, 5)
+                              : "—"}
+                          </div>
+                          <div className="text-[11px] text-gray-400">
+                            Durée
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <span className="text-xs text-gray-400">
+                          Niveau {sortie.niveau_requis || "—"}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {canInscribe &&
+                            (isAdherent ? (
+                              <button
+                                onClick={() => handleInscription(sortieId)}
+                                disabled={loading}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="S'inscrire à cette sortie"
+                              >
+                                <FiUserPlus className="w-4 h-4" />
+                              </button>
+                            ) : isAdmin ? (
+                              <button
+                                onClick={() => handleAddInscription(sortieId)}
+                                disabled={loading}
+                                className="p-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="Ajouter une inscription à cette sortie"
+                              >
+                                <FiUserCheck className="w-4 h-4" />
+                              </button>
+                            ) : null)}
+                          <Link
+                            to={`/sorties/${sortieId}`}
+                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            title="Voir"
+                          >
+                            <FiEye className="w-4 h-4" />
+                          </Link>
+                          {canManageSortie && (
+                            <>
+                              <Link
+                                to={`/sorties/${sortieId}/pointage`}
+                                className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                                title="Pointage"
+                              >
+                                <FiCheckSquare className="w-4 h-4" />
+                              </Link>
+                              {isTerminee ? (
+                                <span
+                                  className="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                  title="Sortie terminée : modification impossible"
+                                >
+                                  <FiEdit className="w-4 h-4" />
+                                </span>
+                              ) : (
+                                <Link
+                                  to={`/sorties/edit/${sortieId}`}
+                                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                  title="Modifier"
+                                >
+                                  <FiEdit className="w-4 h-4" />
+                                </Link>
+                              )}
+                              <button
+                                onClick={() => setDeleteModal(sortieId)}
+                                disabled={loading || isTerminee}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={
+                                  isTerminee
+                                    ? "Sortie terminée : suppression impossible"
+                                    : "Supprimer"
+                                }
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              }
 
               return (
                 <motion.div
@@ -414,15 +636,7 @@ const SortiesPage = () => {
                             </span>
                             <span>•</span>
                             <span
-                              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                sortie.statut === "Planifiée"
-                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                  : sortie.statut === "En cours"
-                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                    : sortie.statut === "Terminée"
-                                      ? "bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400"
-                                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                              }`}
+                              className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatutColor(sortie.statut)}`}
                             >
                               {sortie.statut || "Planifiée"}
                             </span>
@@ -465,17 +679,37 @@ const SortiesPage = () => {
                           {canManageSortie && (
                             <>
                               <Link
-                                to={`/sorties/edit/${sortieId}`}
-                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                                title="Modifier"
+                                to={`/sorties/${sortieId}/pointage`}
+                                className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                                title="Pointage"
                               >
-                                <FiEdit className="w-4 h-4" />
+                                <FiCheckSquare className="w-4 h-4" />
                               </Link>
+                              {isTerminee ? (
+                                <span
+                                  className="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                  title="Sortie terminée : modification impossible"
+                                >
+                                  <FiEdit className="w-4 h-4" />
+                                </span>
+                              ) : (
+                                <Link
+                                  to={`/sorties/edit/${sortieId}`}
+                                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                  title="Modifier"
+                                >
+                                  <FiEdit className="w-4 h-4" />
+                                </Link>
+                              )}
                               <button
                                 onClick={() => setDeleteModal(sortieId)}
-                                disabled={loading}
-                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                title="Supprimer"
+                                disabled={loading || isTerminee}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={
+                                  isTerminee
+                                    ? "Sortie terminée : suppression impossible"
+                                    : "Supprimer"
+                                }
                               >
                                 <FiTrash2 className="w-4 h-4" />
                               </button>
@@ -523,7 +757,7 @@ const SortiesPage = () => {
 
       {/* Modal de confirmation de suppression */}
       {deleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -557,7 +791,7 @@ const SortiesPage = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Pied de page */}

@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const CompetenceController = require('../controllers/CompetenceController');
 const AuthMiddleware = require('../middlewares/authMiddleware');
-const authorize = require('../middlewares/authorize');
 const { ROLES } = require('../utils/roleScope');
 
 const competenceController = new CompetenceController();
@@ -13,14 +12,14 @@ router.get('/:id', competenceController.getById.bind(competenceController));
 
 router.post('/',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_MONITEUR),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
   competenceController.validateBeforeCreate.bind(competenceController),
   competenceController.create.bind(competenceController)
 );
 
 router.patch('/:id/valider',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_MONITEUR),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
   competenceController.valider.bind(competenceController)
 );
 

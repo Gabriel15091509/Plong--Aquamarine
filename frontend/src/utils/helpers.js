@@ -1,5 +1,18 @@
 import { format, formatDistance, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
+import { STATUT_SORTIE } from "./constants";
+
+// Une sortie déjà en cours, terminée ou annulée ne doit plus pouvoir être
+// choisie dans un select (inscription, séance, attribution, incident,
+// plongée...) : seules les sorties encore à venir restent sélectionnables.
+const STATUTS_SORTIE_NON_SELECTIONNABLES = [
+  STATUT_SORTIE.EN_COURS,
+  STATUT_SORTIE.TERMINEE,
+  STATUT_SORTIE.ANNULEE,
+];
+
+export const isSortieSelectionnable = (sortie) =>
+  !STATUTS_SORTIE_NON_SELECTIONNABLES.includes(sortie?.statut);
 
 export const formatRelativeTime = (date) => {
   if (!date) return "-";

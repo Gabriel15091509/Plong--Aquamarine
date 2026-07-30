@@ -13,12 +13,30 @@ class AttributionService extends BaseService {
     this.attributionRepository = repository;
   }
 
-  async getByAdherent(num_adherent) {
-    return await this.attributionRepository.findByAdherent(num_adherent);
+  // Un adhérent ne peut consulter que ses propres attributions ; le staff
+  // (president/moniteur/tresorier, pas de rôle "adherent" résolu) voit
+  // n'importe quel adhérent — même garde que PlongeeService.getPlongeesByAdherent.
+  async getByAdherent(num_adherent, user = null) {
+    const adherent = await identiteClient.getAdherentForUser(user);
+    if (adherent && num_adherent !== adherent.num_adherent) {
+      throw new Error("Accès refusé à ces attributions de matériel");
+    }
+    const attributions = await this.attributionRepository.findByAdherent(num_adherent);
+    return await Promise.all(
+      attributions.map(async (attribution) => {
+        const plain = attribution.toJSON();
+        plain.materiel = await materielClient.getByNumInventaire(plain.num_inventaire);
+        return plain;
+      }),
+    );
   }
 
   async getByMateriel(num_inventaire) {
     return await this.attributionRepository.findByMateriel(num_inventaire);
+  }
+
+  async getBySortie(id_sortie) {
+    return await this.attributionRepository.findBySortie(id_sortie);
   }
 
   // Materiel (materiel-service) et Adherent (identite-service) ont quitté ce
@@ -41,7 +59,7 @@ class AttributionService extends BaseService {
     return await this.attributionRepository.findEnCours();
   }
 
-  async create(data) {
+  async create(data, authHeader = null) {
     const disponible = await materielClient.checkAvailability(data.num_inventaire);
     if (!disponible) {
       throw new Error("Ce matériel n'est pas disponible (état ou échéance de révision)");
@@ -50,11 +68,32 @@ class AttributionService extends BaseService {
     if (dejaAttribue) {
       throw new Error("Ce matériel est déjà attribué à un plongeur et n'a pas encore été rendu");
     }
-    return await this.attributionRepository.create(data);
+    const attribution = await this.attributionRepository.create(data);
+
+    // Best-effort : reflète le prêt sur la fiche matériel (localisation) —
+    // une panne de materiel-service ne doit pas bloquer l'attribution.
+    try {
+      await materielClient.updateLocalisation(data.num_inventaire, "Prêté", authHeader);
+    } catch (error) {
+      console.error(`Erreur mise à jour localisation matériel ${data.num_inventaire}:`, error.message);
+    }
+
+    return attribution;
   }
 
-  async retourner(id, { etat_retour, date_retour_reel }) {
-    return await this.attributionRepository.update(id, { etat_retour, date_retour_reel });
+  async retourner(id, { etat_retour, date_retour_reel }, authHeader = null) {
+    const updated = await this.attributionRepository.update(id, { etat_retour, date_retour_reel });
+
+    // Best-effort : le matériel rendu redevient disponible au club — sauf
+    // s'il part directement en réparation (traiterDeterioration s'en charge
+    // séparément, appelé après ce retour dans ce cas).
+    try {
+      await materielClient.updateLocalisation(updated.num_inventaire, "Local", authHeader);
+    } catch (error) {
+      console.error(`Erreur mise à jour localisation matériel ${updated.num_inventaire}:`, error.message);
+    }
+
+    return updated;
   }
 
   // Encaisse la caution demandée au prêt du matériel.
@@ -137,12 +176,14 @@ class AttributionService extends BaseService {
     return { attribution: updatedAttribution, reparation };
   }
 
+  // id_sortie n'est PAS requis : une attribution liée à une sortie (CDC
+  // 3.4.3) le renseigne, un prêt libre entre deux sorties (CDC 3.4.4) le
+  // laisse vide — les deux cas partagent la même structure.
   async validateAttributionData(data) {
     const errors = [];
 
     if (!data.num_inventaire) errors.push("Le matériel est requis");
     if (!data.num_adherent) errors.push("L'adhérent est requis");
-    if (!data.id_sortie) errors.push("La sortie est requise");
     if (!data.date_attribution) errors.push("La date d'attribution est requise");
     if (!data.etat_depart) errors.push("L'état de départ est requis");
     if (!data.date_retour_prevue) errors.push("La date de retour prévue est requise");

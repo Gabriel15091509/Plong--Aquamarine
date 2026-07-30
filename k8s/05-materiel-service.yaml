@@ -1,3 +1,16 @@
+# Photos de matériel uploadées — PVC dédié, comme `identite-uploads-pvc`
+# (voir 09-identite-service.yaml).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: materiel-uploads-pvc
+  namespace: plongee-app
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -11,6 +24,8 @@ spec:
     metadata:
       labels: { app: materiel-service }
     spec:
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: materiel-service
           # Référence littérale de secours (kubectl apply -f direct, sans
@@ -27,10 +42,16 @@ spec:
           envFrom:
             - configMapRef: { name: plongee-config }
             - secretRef: { name: plongee-secrets }
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
           readinessProbe:
             httpGet: { path: /health, port: 5011 }
             initialDelaySeconds: 5
             periodSeconds: 5
+      volumes:
+        - name: uploads
+          persistentVolumeClaim: { claimName: materiel-uploads-pvc }
 ---
 apiVersion: v1
 kind: Service

@@ -20,7 +20,7 @@ const Layout = ({ children }) => {
       />
 
       <div
-        className={`transition-all duration-300 ml-0 ${sidebarOpen ? "md:ml-[260px]" : "md:ml-[72px]"}`}
+        className={`min-h-screen flex flex-col transition-all duration-300 ml-0 ${sidebarOpen ? "md:ml-[260px]" : "md:ml-[72px]"}`}
       >
         <Header
           sidebarOpen={sidebarOpen}
@@ -28,7 +28,7 @@ const Layout = ({ children }) => {
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
 
-        <main className="p-4 sm:p-6 min-h-[calc(100vh-140px)]">
+        <main className="flex-1 p-4 sm:p-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

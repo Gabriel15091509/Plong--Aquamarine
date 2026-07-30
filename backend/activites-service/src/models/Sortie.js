@@ -22,7 +22,9 @@ const Sortie = sequelize.define(
       allowNull: false,
     },
     type: {
-      type: DataTypes.STRING(20),
+      // 30 : assez large pour "Plongée d'exploration" (21 caractères), le
+      // plus long des types d'activités actuels.
+      type: DataTypes.STRING(30),
       allowNull: false,
     },
     niveau_requis: {
@@ -65,6 +67,16 @@ const Sortie = sequelize.define(
     },
     tarif_non_adherent: {
       type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    // Position exacte du site (choisie au clic sur une carte) : les noms de
+    // site sont des surnoms locaux non géocodables de façon fiable.
+    latitude: {
+      type: DataTypes.DECIMAL(9, 6),
+      allowNull: true,
+    },
+    longitude: {
+      type: DataTypes.DECIMAL(9, 6),
       allowNull: true,
     },
     encadrants: {

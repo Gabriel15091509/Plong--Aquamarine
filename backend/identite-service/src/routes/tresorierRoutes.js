@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const TresorierController = require('../controllers/TresorierController');
 const AuthMiddleware = require('../middlewares/authMiddleware');
-const authorize = require('../middlewares/authorize');
 const { ROLES } = require('../utils/roleScope');
 
 const tresorierController = new TresorierController();
@@ -14,20 +13,20 @@ router.get('/:id', tresorierController.getById.bind(tresorierController));
 
 router.post('/',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   tresorierController.validateBeforeCreate.bind(tresorierController),
   tresorierController.create.bind(tresorierController)
 );
 
 router.put('/:id',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   tresorierController.update.bind(tresorierController)
 );
 
 router.delete('/:id',
   AuthMiddleware.authenticate,
-  authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
   tresorierController.delete.bind(tresorierController)
 );
 

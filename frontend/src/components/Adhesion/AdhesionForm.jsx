@@ -14,11 +14,15 @@ import {
   FiHash,
   FiUpload,
   FiFile,
+  FiCamera,
+  FiCheckCircle,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
+import WebcamCaptureModal from "../Common/WebcamCaptureModal";
 import {
   TYPE_ADHESION_OPTIONS,
   STATUT_PAIEMENT_OPTIONS,
@@ -36,7 +40,7 @@ const AdhesionForm = () => {
   const { id } = useParams();
   const editMode = !!id;
 
-  const { useGetById, useCreate, useUpdate } = useAdhesions();
+  const { useGetById, useCreate, useUpdate, useAnalysePhoto } = useAdhesions();
   const { useGetAll } = useAdherents();
 
   const { data: adhesionData, isLoading: loadingData } = useGetById(id);
@@ -44,10 +48,20 @@ const AdhesionForm = () => {
 
   const create = useCreate();
   const update = useUpdate();
+  const analysePhoto = useAnalysePhoto();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [focused, setFocused] = useState(null);
+  const [photoAnalysis, setPhotoAnalysis] = useState(null);
   const submittingRef = useRef(false);
+  const fileInputRef = useRef(null);
+  // Distingue "champ vide" de "champ modifié par l'utilisateur", pour ne
+  // jamais écraser sa saisie avec l'auto-remplissage OCR, et pour savoir
+  // quels champs vider si la photo est retirée.
+  const touchedFieldsRef = useRef({});
+  // Mémorise quels champs ont été remplis automatiquement par l'OCR (et pas
+  // par l'utilisateur), pour pouvoir les vider si la photo est retirée.
+  const autoFilledFieldsRef = useRef({});
 
   const [formData, setFormData] = useState({
     num_adherent: "",
@@ -64,6 +78,7 @@ const AdhesionForm = () => {
   const [documentFile, setDocumentFile] = useState(null);
   const [existingDocumentPath, setExistingDocumentPath] = useState(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
+  const [showWebcam, setShowWebcam] = useState(false);
 
   // ✅ En création, dès qu'on sélectionne l'adhérent, on reprend son n° de
   // licence FFESM depuis sa fiche Adherent (source de vérité, plutôt que la
@@ -101,13 +116,14 @@ const AdhesionForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    touchedFieldsRef.current[name] = true;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0] || null;
+  const applyDocumentFile = (file) => {
     setDocumentFile(file);
+    setPhotoAnalysis(null);
     setFilePreviewUrl((prevUrl) => {
       if (prevUrl) URL.revokeObjectURL(prevUrl);
       return file && file.type.startsWith("image/")
@@ -116,11 +132,105 @@ const AdhesionForm = () => {
     });
   };
 
+  const handleFileChange = (e) => {
+    applyDocumentFile(e.target.files?.[0] || null);
+  };
+
+  const handleWebcamCapture = (file) => {
+    applyDocumentFile(file);
+  };
+
+  const handleRemoveDocument = () => {
+    applyDocumentFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    // Les champs remplis automatiquement depuis cette photo redeviennent
+    // vides quand on la retire — sauf ceux que l'utilisateur a modifiés
+    // lui-même entre-temps (on ne touche jamais à sa saisie).
+    const autoFilled = autoFilledFieldsRef.current;
+    const touched = touchedFieldsRef.current;
+    const fieldsToReset = Object.keys(autoFilled).filter(
+      (field) => autoFilled[field] && !touched[field],
+    );
+    if (fieldsToReset.length > 0) {
+      setFormData((prev) => {
+        const next = { ...prev };
+        fieldsToReset.forEach((field) => {
+          next[field] = "";
+        });
+        return next;
+      });
+    }
+    autoFilledFieldsRef.current = {};
+  };
+
   useEffect(() => {
     return () => {
       if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
     };
   }, [filePreviewUrl]);
+
+  // Vérification "un peu" de cohérence, non bloquante : dès qu'une photo
+  // (webcam ou import) et l'adhérent sont renseignés, on lance l'OCR en
+  // arrière-plan pour repérer les cas manifestement incohérents (mauvaise
+  // photo, mauvais adhérent, mauvaise licence) sans empêcher la saisie.
+  useEffect(() => {
+    if (
+      !documentFile ||
+      !documentFile.type.startsWith("image/") ||
+      !formData.num_adherent
+    ) {
+      return;
+    }
+    let cancelled = false;
+    analysePhoto.mutate(
+      {
+        photoFile: documentFile,
+        num_adherent: formData.num_adherent,
+        type: formData.type,
+        num_licence_ffesm: formData.num_licence_ffesm,
+        date_debut: formData.date_debut,
+        date_fin: formData.date_fin,
+      },
+      {
+        onSuccess: (response) => {
+          if (cancelled) return;
+          const resultat = response.data;
+          setPhotoAnalysis(resultat);
+          // L'identité de l'adhérent (nom + prénom) est confirmée par la
+          // photo : on peut alors faire confiance à l'OCR pour compléter les
+          // autres champs, mais seulement ceux encore vides — on ne
+          // remplace jamais une valeur déjà saisie par l'utilisateur.
+          const identiteConfirmee =
+            resultat.correspondances.nom === true &&
+            resultat.correspondances.prenom === true;
+          if (identiteConfirmee && resultat.extraction) {
+            const touched = touchedFieldsRef.current;
+            const autoFilled = autoFilledFieldsRef.current;
+            setFormData((prev) => {
+              const next = { ...prev };
+              if (!prev.num_licence_ffesm && !touched.num_licence_ffesm && resultat.extraction.num_licence_ffesm) {
+                next.num_licence_ffesm = resultat.extraction.num_licence_ffesm;
+                autoFilled.num_licence_ffesm = true;
+              }
+              if (!prev.date_debut && !touched.date_debut && resultat.extraction.date_debut) {
+                next.date_debut = resultat.extraction.date_debut;
+                autoFilled.date_debut = true;
+              }
+              if (!prev.date_fin && !touched.date_fin && resultat.extraction.date_fin) {
+                next.date_fin = resultat.extraction.date_fin;
+                autoFilled.date_fin = true;
+              }
+              return next;
+            });
+          }
+        },
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentFile]);
 
   const handleFocus = (name) => setFocused(name);
   const handleBlur = () => setFocused(null);
@@ -466,24 +576,92 @@ const AdhesionForm = () => {
                 Photo / scan du document (facultatif)
               </span>
             </label>
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={handleFileChange}
-              className={inputClasses("document")}
-            />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={handleFileChange}
+                className={`${inputClasses("document")} flex-1`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowWebcam(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors whitespace-nowrap"
+              >
+                <FiCamera className="w-4 h-4" />
+                Prendre une photo
+              </button>
+            </div>
             {documentFile ? (
               <div className="mt-1.5">
-                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                  <FiFile className="w-3.5 h-3.5" />
-                  {documentFile.name}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 truncate">
+                    <FiFile className="w-3.5 h-3.5 flex-shrink-0" />
+                    {documentFile.name}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRemoveDocument}
+                    title="Retirer le document"
+                    className="p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0 transition-colors"
+                  >
+                    <FiX className="w-3.5 h-3.5" />
+                  </button>
+                </div>
                 {filePreviewUrl && (
-                  <img
-                    src={filePreviewUrl}
-                    alt="Aperçu du document"
-                    className="mt-2 max-h-48 rounded-lg border border-gray-200 dark:border-gray-600 object-contain"
-                  />
+                  <div className="relative mt-2 inline-block">
+                    <img
+                      src={filePreviewUrl}
+                      alt="Aperçu du document"
+                      className="max-h-48 rounded-lg border border-gray-200 dark:border-gray-600 object-contain"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveDocument}
+                      title="Retirer la photo"
+                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                    >
+                      <FiX className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                {analysePhoto.isPending && (
+                  <div className="mt-2 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-gray-400 border-t-transparent" />
+                    Vérification de la cohérence de la photo...
+                  </div>
+                )}
+                {photoAnalysis && !analysePhoto.isPending && (
+                  <div
+                    className={`mt-2 p-3 rounded-lg border text-sm ${
+                      photoAnalysis.coherent
+                        ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
+                        : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400"
+                    }`}
+                  >
+                    {photoAnalysis.coherent ? (
+                      <p className="flex items-center gap-1.5 font-medium">
+                        <FiCheckCircle className="w-4 h-4 flex-shrink-0" />
+                        La photo semble cohérente avec les informations saisies.
+                      </p>
+                    ) : (
+                      <div>
+                        <p className="flex items-center gap-1.5 font-medium">
+                          <FiAlertTriangle className="w-4 h-4 flex-shrink-0" />
+                          À vérifier avant d&apos;enregistrer :
+                        </p>
+                        <ul className="mt-1 ml-5 list-disc space-y-0.5">
+                          {photoAnalysis.avertissements.map((message) => (
+                            <li key={message}>{message}</li>
+                          ))}
+                        </ul>
+                        <p className="mt-1.5 text-xs opacity-80">
+                          Vérification automatique indicative (lecture par OCR) — vous pouvez enregistrer quand même si le document est correct.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
@@ -502,6 +680,14 @@ const AdhesionForm = () => {
           </motion.div>
         </div>
       </div>
+
+      {showWebcam && (
+        <WebcamCaptureModal
+          title={`Photo — ${TYPE_ADHESION_OPTIONS.find((opt) => opt.value === formData.type)?.label || "document"}`}
+          onCapture={handleWebcamCapture}
+          onClose={() => setShowWebcam(false)}
+        />
+      )}
 
       {/* Pied de page */}
       <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">

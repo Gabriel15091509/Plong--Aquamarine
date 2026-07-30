@@ -19,7 +19,9 @@ import {
 import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import { formatDate, formatDateForInput, formatCurrency } from "../../utils/helpers";
 import { ETAT_MATERIEL_OPTIONS, MODE_PAIEMENT_OPTIONS } from "../../utils/constants";
 
@@ -36,6 +38,7 @@ const AttributionDetails = () => {
   } = useAttributions();
   const { useGetById: useGetMateriel } = useMateriels();
   const { useGetAll: useGetAllAdherents } = useAdherents();
+  const { useGetById: useGetSortie } = useSorties();
   const { data, isLoading } = useGetById(id);
   const remove = useRemove();
   const retour = useRetour();
@@ -64,6 +67,8 @@ const AttributionDetails = () => {
   const adherent = adherentsData?.data?.find(
     (a) => a.num_adherent === attribution?.num_adherent,
   );
+  const { data: sortieData } = useGetSortie(attribution?.id_sortie);
+  const sortie = sortieData?.data;
 
   const handleDelete = async () => {
     try {
@@ -159,6 +164,7 @@ const AttributionDetails = () => {
   }
 
   const isEnCours = !attribution.date_retour_reel;
+  const isEnRetard = isEnCours && new Date(attribution.date_retour_prevue) < new Date();
 
   return (
     <motion.div
@@ -210,15 +216,19 @@ const AttributionDetails = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className={`rounded-2xl shadow-xl p-6 md:p-8 text-white ${
-          isEnCours
-            ? "bg-gradient-to-r from-blue-500 to-indigo-600"
-            : "bg-gradient-to-r from-emerald-500 to-green-600"
+          isEnRetard
+            ? "bg-gradient-to-r from-red-500 to-rose-600"
+            : isEnCours
+              ? "bg-gradient-to-r from-blue-500 to-indigo-600"
+              : "bg-gradient-to-r from-emerald-500 to-green-600"
         }`}
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-full bg-white/20">
-              {isEnCours ? (
+              {isEnRetard ? (
+                <FiAlertCircle className="w-7 h-7" />
+              ) : isEnCours ? (
                 <FiClock className="w-7 h-7" />
               ) : (
                 <FiCheckCircle className="w-7 h-7" />
@@ -226,7 +236,7 @@ const AttributionDetails = () => {
             </div>
             <div>
               <p className="text-2xl font-bold">
-                {isEnCours ? "En cours" : "Retourné"}
+                {isEnRetard ? "En retard" : isEnCours ? "En cours" : "Retourné"}
               </p>
               <p className="text-sm text-white/80">
                 {isEnCours
@@ -333,6 +343,22 @@ const AttributionDetails = () => {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <FiPackage className="text-gray-400" />
+            <span className="text-gray-500 dark:text-gray-400">Sortie :</span>
+            {attribution.id_sortie ? (
+              <Link
+                to={`/sorties/${attribution.id_sortie}`}
+                className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                {sortie ? `${sortie.type} - ${sortie.lieu}` : `#${attribution.id_sortie}`}
+              </Link>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                Prêt (sans sortie)
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
             <FiTag className="text-gray-400" />
             <span className="text-gray-500 dark:text-gray-400">État au départ :</span>
             <span className="font-medium text-gray-900 dark:text-white">
@@ -431,11 +457,18 @@ const AttributionDetails = () => {
               {attribution.statut_caution}
             </span>
           </div>
+          <div className="flex items-center gap-2 sm:col-span-2">
+            <FiShield className="text-gray-400" />
+            <span className="text-gray-500 dark:text-gray-400">Pièce d'identité retenue :</span>
+            <span className="font-medium text-gray-900 dark:text-white">
+              {attribution.piece_identite_retenue || "Aucune"}
+            </span>
+          </div>
         </div>
       </motion.div>
 
       {showCautionModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.form
             onSubmit={handleEnregistrerCaution}
             initial={{ opacity: 0, scale: 0.95 }}
@@ -496,11 +529,11 @@ const AttributionDetails = () => {
               </button>
             </div>
           </motion.form>
-        </div>
+        </ModalOverlay>
       )}
 
       {showDeteriorationModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.form
             onSubmit={handleTraiterDeterioration}
             initial={{ opacity: 0, scale: 0.95 }}
@@ -579,11 +612,11 @@ const AttributionDetails = () => {
               </button>
             </div>
           </motion.form>
-        </div>
+        </ModalOverlay>
       )}
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -618,7 +651,7 @@ const AttributionDetails = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
     </motion.div>
   );

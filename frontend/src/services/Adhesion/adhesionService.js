@@ -69,6 +69,20 @@ class AdhesionService {
     const response = await api.delete(`/adhesions/${id}`);
     return response.data;
   }
+
+  async analysePhoto({ photoFile, num_adherent, type, num_licence_ffesm, date_debut, date_fin }) {
+    const payload = new FormData();
+    payload.append('photo', photoFile);
+    payload.append('num_adherent', num_adherent);
+    payload.append('type', type);
+    if (num_licence_ffesm) payload.append('num_licence_ffesm', num_licence_ffesm);
+    if (date_debut) payload.append('date_debut', date_debut);
+    if (date_fin) payload.append('date_fin', date_fin);
+    const response = await api.post('/adhesions/analyser-photo', payload, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
 }
 
 export default new AdhesionService();

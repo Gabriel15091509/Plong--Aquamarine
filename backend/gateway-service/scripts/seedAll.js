@@ -201,7 +201,15 @@ function randomTypePaiement() {
 }
 
 function randomTypeSortie() {
-  const types = ["Exploration", "Bapteme", "Formation", "Nettoyage", "Nuit"];
+  const types = [
+    "Plongée d'exploration",
+    "Baptême",
+    "Formation",
+    "Plongée technique",
+    "Nettoyage",
+    "Sortie bateau",
+    "Plongée de nuit",
+  ];
   return types[Math.floor(Math.random() * types.length)];
 }
 
@@ -218,7 +226,15 @@ function randomStatutSortie() {
 }
 
 function randomTypePlongee() {
-  const types = ["Loisir", "Formation", "Exploration", "Nuit", "Épave"];
+  const types = [
+    "Plongée d'exploration",
+    "Baptême",
+    "Formation",
+    "Plongée technique",
+    "Nettoyage",
+    "Sortie bateau",
+    "Plongée de nuit",
+  ];
   return types[Math.floor(Math.random() * types.length)];
 }
 
@@ -234,12 +250,17 @@ function randomVisibilite() {
 }
 
 function randomCategorieMateriel() {
+  // Mêmes valeurs que CATEGORIE_MATERIEL_OPTIONS (frontend/src/utils/
+  // constants.js) — un seed avec des catégories différentes du dropdown se
+  // retrouve avec une valeur sans <option> correspondante à l'édition.
   const categories = [
     "Bloc",
-    "Detendeur",
+    "Détendeur",
     "Combinaison",
     "Stabilisateur",
     "Masque",
+    "Tuba",
+    "Palmes",
     "Ordinateur",
     "Accessoire",
   ];
@@ -762,6 +783,13 @@ async function seedAll() {
     ];
     const tailles = ["XS", "S", "M", "L", "XL", "XXL"];
     const epaisseurs = ["3mm", "5mm", "7mm", "10mm"];
+    const capacites = ["10L", "12L", "15L", "18L"];
+    const etatsSangles = ["Bon", "Usagé", "À réparer"];
+    const batteries = ["Bonne", "Faible", "À changer"];
+    // Mêmes 3 états que LOCALISATION_MATERIEL_OPTIONS (frontend), très
+    // majoritairement "Local" — un club n'a qu'une poignée de prêts/
+    // réparations en cours à un instant donné.
+    const localisations = ["Local", "Local", "Local", "Local", "Prêté", "En réparation"];
     const materiels = [];
     for (let i = 0; i < CONFIG.MATERIELS; i++) {
       const numInventaire = `INV-${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(
@@ -782,9 +810,21 @@ async function seedAll() {
         epaisseur: ["Combinaison"].includes(categorie)
           ? epaisseurs[Math.floor(Math.random() * epaisseurs.length)]
           : null,
+        capacite:
+          categorie === "Bloc"
+            ? capacites[Math.floor(Math.random() * capacites.length)]
+            : null,
+        etat_sangles:
+          categorie === "Stabilisateur"
+            ? etatsSangles[Math.floor(Math.random() * etatsSangles.length)]
+            : null,
+        batterie:
+          categorie === "Ordinateur"
+            ? batteries[Math.floor(Math.random() * batteries.length)]
+            : null,
         date_achat: faker.date.past({ years: 5 }),
         etat: randomEtatMateriel(),
-        localisation: `Local ${Math.floor(Math.random() * 5 + 1)} - Étagère ${Math.floor(Math.random() * 3 + 1)}`,
+        localisation: localisations[Math.floor(Math.random() * localisations.length)],
         date_verif_visuelle:
           Math.random() > 0.5 ? faker.date.past({ years: 1 }) : null,
         date_revision_technique:

@@ -34,6 +34,7 @@ import {
 import { fr } from "date-fns/locale";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 
@@ -458,10 +459,7 @@ const SortieCalendar = () => {
       {/* Modal Détails Sortie amélioré */}
       <AnimatePresence>
         {isModalOpen && selectedSortie && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+          <ModalOverlay
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
             onClick={() => setIsModalOpen(false)}
           >
@@ -607,7 +605,7 @@ const SortieCalendar = () => {
                 </motion.div>
               </div>
             </motion.div>
-          </motion.div>
+          </ModalOverlay>
         )}
       </AnimatePresence>
     </div>

@@ -88,6 +88,10 @@ class PlongeeService extends BaseService {
     const plongee = await this.getById(id);
     if (!plongee) throw new Error('Plongée non trouvée');
     if (!id_moniteur) throw new Error('Le moniteur validateur est requis');
+    // Déjà validée : ne pas ré-incrémenter le compteur de plongées de
+    // l'adhérent (double-clic ou nouvelle validation sur une plongée déjà
+    // validée par un autre moniteur).
+    if (plongee.id_moniteur_validateur) return plongee;
 
     plongee.id_moniteur_validateur = id_moniteur;
     await plongee.save();

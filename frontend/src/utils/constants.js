@@ -72,6 +72,7 @@ export const STATUT_FORMATION = {
   TERMINEE: 'Terminée',
   ABANDONNEE: 'Abandonnée',
   SUSPENDUE: 'Suspendue',
+  AJOURNEE: 'Ajournée',
 };
 
 export const STATUT_ECHEANCIER = {
@@ -104,31 +105,36 @@ export const TYPE_PAIEMENT_OPTIONS = [
   'Autre'
 ];
 
-export const TYPE_SORTIE_OPTIONS = [
-  'Plongée',
+// Types d'activités du club — communs aux sorties et aux plongées : une
+// sortie porte le type d'activité organisée (ex: "Sortie bateau", "Baptême"),
+// une plongée individuelle au sein de cette sortie reprend le même
+// vocabulaire (ex: "Plongée technique", "Plongée de nuit").
+export const TYPE_ACTIVITE_OPTIONS = [
+  "Plongée d'exploration",
+  'Baptême',
   'Formation',
-  'Exploration',
-  'Nettoyage'
+  'Plongée technique',
+  'Nettoyage',
+  'Sortie bateau',
+  'Plongée de nuit',
 ];
+
+export const TYPE_SORTIE_OPTIONS = TYPE_ACTIVITE_OPTIONS;
 
 export const STATUT_SORTIE_OPTIONS = Object.values(STATUT_SORTIE);
 
-export const TYPE_PLONGEE_OPTIONS = [
-  'Loisir',
-  'Formation',
-  'Exploration',
-  'Nuit',
-  'Épave'
-];
+export const TYPE_PLONGEE_OPTIONS = TYPE_ACTIVITE_OPTIONS;
 
 export const CATEGORIE_MATERIEL_OPTIONS = [
   'Bloc',
   'Détendeur',
-  'Gilet',
   'Combinaison',
-  'Palmes',
+  'Stabilisateur',
   'Masque',
-  'Ordinateur'
+  'Tuba',
+  'Palmes',
+  'Ordinateur',
+  'Accessoire',
 ];
 
 export const ETAT_MATERIEL_OPTIONS = [
@@ -138,6 +144,14 @@ export const ETAT_MATERIEL_OPTIONS = [
   'À réparer',
   'Hors service'
 ];
+
+// Trois états réels de localisation d'une pièce de matériel — mis à jour
+// automatiquement par le prêt (Attribution) et la réparation (Reparation),
+// modifiable manuellement en secours (voir MaterielForm).
+export const LOCALISATION_MATERIEL_OPTIONS = ['Local', 'Prêté', 'En réparation'];
+
+// Ordinateurs de plongée uniquement (voir Materiel.batterie).
+export const BATTERIE_MATERIEL_OPTIONS = ['Bonne', 'Faible', 'À changer'];
 
 export const NIVEAU_FORMATION_OPTIONS = [
   'N1',
@@ -180,3 +194,13 @@ export const SPECIALITE_ENCADREMENT_OPTIONS = [
   'Encadrant N3',
   'Encadrant baptême'
 ];
+
+// Point de départ de l'itinéraire affiché vers le site d'une sortie — mêmes
+// nom/localisation que sur la page "À propos" (AboutPage.jsx). Coordonnées
+// provisoires (port de Saint-Leu), à ajuster si l'emplacement réel diffère.
+export const CLUB_LOCATION = {
+  name: 'Aquanature Plongée',
+  address: 'Saint-Leu, La Réunion',
+  lat: -21.1706,
+  lng: 55.2894,
+};

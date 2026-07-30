@@ -26,6 +26,7 @@ import { useAuth } from "../../context/AuthContext";
 import ProtectedRoute from "../../components/Common/ProtectedRoute";
 import SearchBar from "../../components/Common/SearchBar";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
+import ModalOverlay from "../../components/Common/ModalOverlay";
 import { useUsers } from "../../hooks/User/useUsers";
 import { Link } from "react-router-dom";
 import { photoUrl } from "../../utils/photoUrl";
@@ -575,10 +576,7 @@ const UsersPage = () => {
         {/* Modal Détails / Modifier */}
         <AnimatePresence>
           {isDetailModalOpen && selectedUser && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <ModalOverlay
               className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
               onClick={() => setIsDetailModalOpen(false)}
             >
@@ -743,7 +741,7 @@ const UsersPage = () => {
                   </div>
                 </div>
               </motion.div>
-            </motion.div>
+            </ModalOverlay>
           )}
         </AnimatePresence>
 

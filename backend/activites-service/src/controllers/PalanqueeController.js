@@ -33,7 +33,7 @@ class PalanqueeController extends BaseController {
 
   async create(req, res, next) {
     try {
-      const result = await this.palanqueeService.create(req.body, req.user);
+      const result = await this.palanqueeService.create(req.body, req.user, req.headers.authorization);
       res.status(201).json({ success: true, data: result, message: 'Palanquée créée avec succès' });
     } catch (error) {
       next(withStatus(error, 400));
@@ -109,11 +109,12 @@ class PalanqueeController extends BaseController {
   async updateEncadrement(req, res, next) {
     try {
       const { id } = req.params;
-      const { id_guide_palanquee, id_secouriste } = req.body;
+      const { id_guide_palanquee, id_secouriste, id_moniteur_encadrant } = req.body;
       const result = await this.palanqueeService.updateEncadrement(
         parseInt(id),
-        { id_guide_palanquee, id_secouriste },
+        { id_guide_palanquee, id_secouriste, id_moniteur_encadrant },
         req.user,
+        req.headers.authorization,
       );
       res.json({ success: true, data: result, message: 'Encadrement mis à jour' });
     } catch (error) {

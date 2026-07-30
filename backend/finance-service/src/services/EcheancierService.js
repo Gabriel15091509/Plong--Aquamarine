@@ -115,6 +115,11 @@ class EcheancierService extends BaseService {
       },
       user,
       authHeader,
+      // Cette échéance précise est déjà marquée payée juste après par ce
+      // même appel : pas besoin (et surtout pas correct) de laisser
+      // PaiementService relancer une réconciliation FIFO qui pourrait
+      // marquer une autre échéance à sa place.
+      { skipEcheancierSync: true },
     );
 
     echeance.statut = "Payée";
@@ -133,6 +138,43 @@ class EcheancierService extends BaseService {
 
   async getByReference(type_paiement, reference_id) {
     return await this.echeancierRepository.findByReference(type_paiement, reference_id);
+  }
+
+  // Appelé par PaiementService.create() après tout paiement lié (Adhesion/
+  // Sortie/Formation) qui n'est PAS passé par payerEcheance — typiquement un
+  // règlement saisi directement depuis le registre général des paiements par
+  // le trésorier/président. Sans ça, un échéancier actif sur la même
+  // référence resterait figé sur des échéances "En attente" déjà réglées par
+  // ce paiement direct, et cliquer ensuite sur "Marquer payée" ferait payer
+  // une seconde fois le même montant. On impute donc le paiement sur les
+  // échéances non soldées les plus anciennes (FIFO), à hauteur du montant
+  // réglé — une échéance n'est marquée payée que si le crédit restant la
+  // couvre en entier (pas de paiement partiel d'échéance représentable ici).
+  async reconcilePaiement(type_paiement, reference_id, montant, id_paiement) {
+    const echeanciers = await this.echeancierRepository.findByReference(type_paiement, String(reference_id));
+    const echeancier = echeanciers.find((e) => e.statut === "En cours");
+    if (!echeancier) return null;
+
+    let credit = Number(montant);
+    const echeancesDues = (echeancier.echeances || [])
+      .filter((e) => e.statut === "En attente" || e.statut === "En retard")
+      .sort((a, b) => a.numero - b.numero);
+
+    for (const echeance of echeancesDues) {
+      if (credit < Number(echeance.montant)) break;
+      credit -= Number(echeance.montant);
+      echeance.statut = "Payée";
+      echeance.id_paiement = id_paiement;
+      await echeance.save();
+    }
+
+    const toutes = await Echeance.findAll({ where: { id_echeancier: echeancier.id_echeancier } });
+    if (toutes.every((e) => e.statut === "Payée" || e.statut === "Annulée")) {
+      echeancier.statut = "Soldé";
+      await echeancier.save();
+    }
+
+    return echeancier;
   }
 
   async getByAdherent(num_adherent) {

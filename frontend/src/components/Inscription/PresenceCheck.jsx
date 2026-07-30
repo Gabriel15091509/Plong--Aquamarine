@@ -1,53 +1,15 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import { FiCheck, FiX, FiClock, FiUser, FiEdit2 } from "react-icons/fi";
+import { FiCheck, FiX, FiClock, FiRotateCcw } from "react-icons/fi";
+import ModalOverlay from "../Common/ModalOverlay";
 import { formatTime } from "../../utils/helpers";
 
 const PresenceCheck = ({ inscription, onCheck, loading, onCancel }) => {
-  const [showReason, setShowReason] = useState(false);
+  const [showAbsenceModal, setShowAbsenceModal] = useState(false);
   const [reason, setReason] = useState("");
   const [justified, setJustified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  const handlePresence = async (present) => {
-    setIsLoading(true);
-    try {
-      await onCheck(inscription.id_inscription, {
-        presence: present,
-        presence_checked: true,
-        presence_check_time: new Date().toISOString(),
-      });
-    } catch (error) {
-      // Error handled in parent
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAbsence = async () => {
-    if (!reason.trim()) {
-      toast.error("Veuillez indiquer une raison");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      await onCheck(inscription.id_inscription, {
-        presence: false,
-        presence_checked: true,
-        presence_check_time: new Date().toISOString(),
-        absence_reason: reason,
-        absence_justified: justified,
-      });
-      setShowReason(false);
-      setReason("");
-      setJustified(false);
-    } catch (error) {
-      // Error handled in parent
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const isChecked = inscription.presence_checked;
   const adherent = inscription.adherent || {};
@@ -63,169 +25,219 @@ const PresenceCheck = ({ inscription, onCheck, loading, onCancel }) => {
     Number(inscription.montant_du) > 0 &&
     Number(inscription.montant_paye || 0) <= 0;
 
+  const disabled = isLoading || loading;
+
+  const handlePresence = async (present) => {
+    setIsLoading(true);
+    try {
+      await onCheck(inscription.id_inscription, {
+        presence: present,
+        presence_checked: true,
+        presence_check_time: new Date().toISOString(),
+      });
+    } catch (error) {
+      // Erreur gérée par le parent
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAbsence = async () => {
+    if (!reason.trim()) {
+      toast.error("Veuillez indiquer un motif");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await onCheck(inscription.id_inscription, {
+        presence: false,
+        presence_checked: true,
+        presence_check_time: new Date().toISOString(),
+        absence_reason: reason,
+        absence_justified: justified,
+      });
+      setShowAbsenceModal(false);
+      setReason("");
+      setJustified(false);
+    } catch (error) {
+      // Erreur gérée par le parent
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const tileTone = isChecked
+    ? inscription.presence
+      ? "bg-emerald-50 border-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-700/60"
+      : "bg-red-50 border-red-300 dark:bg-red-950/40 dark:border-red-700/60"
+    : "bg-white border-gray-200 dark:bg-gray-900 dark:border-gray-800";
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`bg-white dark:bg-gray-900 rounded-xl border p-4 transition-all ${
-        isChecked
-          ? inscription.presence
-            ? "border-green-200 dark:border-green-800/30 bg-green-50/30 dark:bg-green-900/10"
-            : "border-red-200 dark:border-red-800/30 bg-red-50/30 dark:bg-red-900/10"
-          : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
-      }`}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
+    <>
+      <motion.div
+        layout
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className={`relative rounded-2xl border-2 p-4 flex flex-col items-center text-center transition-colors ${tileTone}`}
+      >
+        {isChecked && (
+          <button
+            onClick={onCancel}
+            disabled={disabled}
+            title="Annuler le pointage"
+            className="absolute top-2.5 right-2.5 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-white/70 dark:text-gray-500 dark:hover:text-gray-200 dark:hover:bg-black/20 transition-colors disabled:opacity-40"
+          >
+            <FiRotateCcw className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold shadow-sm">
+          {fullName.charAt(0).toUpperCase()}
+        </div>
+
+        <p className="mt-3 text-sm font-bold text-gray-900 dark:text-white truncate w-full">
+          {fullName}
+        </p>
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate w-full">
+          #{inscription.num_adherent}
+        </p>
+
+        {isChecked ? (
           <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
-              isChecked
-                ? inscription.presence
-                  ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                  : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+            className={`mt-3 w-full py-2 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 text-white ${
+              inscription.presence
+                ? "bg-emerald-600 dark:bg-emerald-600"
+                : "bg-red-600 dark:bg-red-600"
             }`}
           >
-            {fullName.charAt(0).toUpperCase()}
+            {inscription.presence ? (
+              <FiCheck className="w-4 h-4" />
+            ) : (
+              <FiX className="w-4 h-4" />
+            )}
+            {inscription.presence ? "Présent" : "Absent"}
+            {inscription.presence_check_time && (
+              <span className="opacity-75 font-normal">
+                {formatTime(inscription.presence_check_time)}
+              </span>
+            )}
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-              {fullName}
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              #{inscription.num_adherent} • {adherent.email || "—"}
-            </p>
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-2 w-full">
+            <button
+              onClick={() => handlePresence(true)}
+              disabled={disabled || paiementNonCommence}
+              title={
+                paiementNonCommence
+                  ? "Aucun paiement enregistré pour cette sortie : impossible de pointer présent"
+                  : undefined
+              }
+              className="py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-600"
+            >
+              Présent
+            </button>
+            <button
+              onClick={() => setShowAbsenceModal(true)}
+              disabled={disabled}
+              className="py-2 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-40"
+            >
+              Absent
+            </button>
           </div>
-        </div>
+        )}
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {isChecked ? (
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full ${
-                  inscription.presence
-                    ? "text-green-700 bg-green-100 dark:bg-green-900/30 dark:text-green-400"
-                    : "text-red-700 bg-red-100 dark:bg-red-900/30 dark:text-red-400"
+        {!isChecked && paiementNonCommence && (
+          <p className="mt-2 flex items-center justify-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+            <FiClock className="w-3 h-3 flex-shrink-0" />
+            Paiement non débuté
+          </p>
+        )}
+
+        {isChecked && !inscription.presence && inscription.absence_reason && (
+          <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400 truncate w-full">
+            {inscription.absence_reason}
+            {inscription.absence_justified && (
+              <span className="ml-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                • Justifiée
+              </span>
+            )}
+          </p>
+        )}
+      </motion.div>
+
+      {/* Fenêtre de saisie du motif d'absence */}
+      <AnimatePresence>
+        {showAbsenceModal && (
+          <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+                <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
+                  <FiX className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                    Déclarer une absence
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {fullName}
+                  </p>
+                </div>
+              </div>
+
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                Motif
+              </label>
+              <input
+                type="text"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Ex : maladie, empêchement..."
+                autoFocus
+                className="w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-white mb-3"
+              />
+
+              <button
+                type="button"
+                onClick={() => setJustified((j) => !j)}
+                className={`w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-medium border transition-colors mb-5 ${
+                  justified
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-800/40 dark:text-emerald-400"
+                    : "bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
                 }`}
               >
-                {inscription.presence ? (
-                  <FiCheck className="w-3.5 h-3.5" />
-                ) : (
-                  <FiX className="w-3.5 h-3.5" />
-                )}
-                {inscription.presence ? "Présent" : "Absent"}
-              </span>
-              {inscription.presence_check_time && (
-                <span className="text-xs text-gray-400">
-                  {formatTime(inscription.presence_check_time)}
-                </span>
-              )}
-              <button
-                onClick={onCancel}
-                disabled={isLoading}
-                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
-                title="Annuler le pointage"
-              >
-                <FiX className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => handlePresence(true)}
-                disabled={isLoading || loading || paiementNonCommence}
-                title={
-                  paiementNonCommence
-                    ? "Aucun paiement enregistré pour cette sortie : impossible de pointer présent"
-                    : undefined
-                }
-                className="px-3.5 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ✅ Présent
+                <FiCheck className="w-4 h-4" />
+                Absence justifiée
               </button>
 
-              {showReason ? (
-                <div className="flex items-center gap-1.5 animate-in fade-in duration-200">
-                  <input
-                    type="text"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder="Raison..."
-                    className="px-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white w-36"
-                    autoFocus
-                  />
-                  <label className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={justified}
-                      onChange={(e) => setJustified(e.target.checked)}
-                      className="w-3.5 h-3.5 text-red-600 rounded focus:ring-red-500"
-                    />
-                    Justifié
-                  </label>
-                  <button
-                    onClick={handleAbsence}
-                    disabled={isLoading || loading || !reason.trim()}
-                    className="px-2.5 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-all disabled:opacity-50"
-                  >
-                    OK
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowReason(false);
-                      setReason("");
-                    }}
-                    className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
+              <div className="flex justify-end gap-3">
                 <button
-                  onClick={() => setShowReason(true)}
-                  disabled={isLoading || loading}
-                  className="px-3.5 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-lg transition-all disabled:opacity-50"
+                  onClick={() => {
+                    setShowAbsenceModal(false);
+                    setReason("");
+                    setJustified(false);
+                  }}
+                  className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
                 >
-                  ❌ Absent
+                  Annuler
                 </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Alerte paiement non commencé */}
-      {!isChecked && paiementNonCommence && (
-        <motion.div
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-1.5 flex items-center gap-2"
-        >
-          <FiClock className="w-3.5 h-3.5 flex-shrink-0" />
-          Aucun paiement enregistré : pointage "Présent" bloqué tant que le
-          règlement n'a pas débuté.
-        </motion.div>
-      )}
-
-      {/* Raison d'absence */}
-      {isChecked && !inscription.presence && inscription.absence_reason && (
-        <motion.div
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-2 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-1.5 flex items-center gap-2"
-        >
-          <span className="font-medium text-gray-600 dark:text-gray-300">
-            Raison :
-          </span>
-          {inscription.absence_reason}
-          {inscription.absence_justified && (
-            <span className="text-green-600 dark:text-green-400 font-medium">
-              ✓ Justifié
-            </span>
-          )}
-        </motion.div>
-      )}
-    </motion.div>
+                <button
+                  onClick={handleAbsence}
+                  disabled={disabled || !reason.trim()}
+                  className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Confirmer
+                </button>
+              </div>
+            </motion.div>
+          </ModalOverlay>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 

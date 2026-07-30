@@ -40,6 +40,11 @@ class AlerteService {
     const response = await api.delete(`/alertes/${id}`);
     return response.data;
   }
+
+  async relancer(id) {
+    const response = await api.post(`/alertes/${id}/relancer`);
+    return response.data;
+  }
 }
 
 export default new AlerteService();

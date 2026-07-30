@@ -57,15 +57,46 @@ class PaiementService extends BaseService {
     };
   }
 
-  async create(data, user = null, authHeader = null) {
+  async create(data, user = null, authHeader = null, { skipEcheancierSync = false } = {}) {
     const handler = data.reference_id
       ? PaiementService.LINKED_PAYMENT_HANDLERS[data.type_paiement]
       : null;
     if (handler) {
-      return await handler(this, data, user, authHeader);
+      const paiement = await handler(this, data, user, authHeader);
+      if (!skipEcheancierSync) {
+        await this.reconcileEcheancier(data.type_paiement, data.reference_id, paiement);
+      }
+      return paiement;
     }
 
     return await this.paiementRepository.create(data);
+  }
+
+  // Un paiement enregistré hors du parcours "échéancier" (formulaire de
+  // paiement direct du registre général, saisi par le trésorier/président)
+  // doit quand même maintenir à jour un échéancier actif sur la même
+  // référence, sinon ses échéances resteraient "En attente" alors que le
+  // solde est déjà réglé — et un règlement ultérieur via "Marquer payée"
+  // paierait deux fois le même montant. `require` différé pour éviter un
+  // cycle avec EcheancierService (qui dépend lui-même de PaiementService).
+  // Best-effort : une erreur de réconciliation ne doit pas faire échouer le
+  // paiement, qui est déjà enregistré à ce stade.
+  async reconcileEcheancier(type_paiement, reference_id, paiement) {
+    if (!paiement) return;
+    try {
+      const EcheancierService = require('./EcheancierService');
+      await new EcheancierService().reconcilePaiement(
+        type_paiement,
+        reference_id,
+        paiement.montant,
+        paiement.id_paiement,
+      );
+    } catch (error) {
+      console.error(
+        `Erreur réconciliation échéancier (${type_paiement} #${reference_id}):`,
+        error.message,
+      );
+    }
   }
 
   // Endpoint interne appelé par les services propriétaires d'un objet payant

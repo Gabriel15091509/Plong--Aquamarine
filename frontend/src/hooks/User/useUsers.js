@@ -5,12 +5,15 @@ import toast from 'react-hot-toast';
 export const useUsers = () => {
   const queryClient = useQueryClient();
 
-  // ✅ Récupérer tous les utilisateurs
-  const useGetAll = (params = {}) => {
+  // ✅ Récupérer tous les utilisateurs (réservé au président côté backend —
+  // `options.enabled` permet à l'appelant de désactiver la requête pour les
+  // autres rôles plutôt que de subir un 403 systématique)
+  const useGetAll = (params = {}, options = {}) => {
     return useQuery({
       queryKey: ['users', params],
       queryFn: () => userService.getAll(params),
       staleTime: 5 * 60 * 1000,
+      ...options,
     });
   };
 

@@ -23,15 +23,31 @@ import {
   FiHash,
   FiClock,
   FiDownload,
+  FiBookOpen,
+  FiCompass,
+  FiPackage,
+  FiCreditCard,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
+import { useFormations } from "../../hooks/Formation/useFormations";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useAttributions } from "../../hooks/Attribution/useAttributions";
+import { usePaiements } from "../../hooks/Paiement/usePaiements";
+import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
-import { formatDate, formatDuration } from "../../utils/helpers";
+import PdfPreviewModal from "../Common/PdfPreviewModal";
+import ModalOverlay from "../Common/ModalOverlay";
+import {
+  formatDate,
+  formatDateTime,
+  formatDuration,
+  formatCurrency,
+} from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import plongeeService from "../../services/Plongee/plongeeService";
 
@@ -67,17 +83,39 @@ const AdherentDetails = () => {
   const remove = useRemove();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [downloadingCarnet, setDownloadingCarnet] = useState(false);
+  const [downloadingAttestation, setDownloadingAttestation] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState(null);
 
   const adherent = data?.data;
 
-  const handleDownloadCarnet = async () => {
+  const closePdfPreview = () => {
+    if (pdfPreview?.blobUrl) window.URL.revokeObjectURL(pdfPreview.blobUrl);
+    setPdfPreview(null);
+  };
+
+  const handlePreviewCarnet = async () => {
     setDownloadingCarnet(true);
     try {
-      await plongeeService.downloadCarnet(adherent.num_adherent);
+      const { blobUrl, filename } = await plongeeService.previewCarnet(adherent.num_adherent);
+      setPdfPreview({ blobUrl, filename });
     } catch (error) {
-      toast.error("Erreur lors du téléchargement du carnet");
+      toast.error("Erreur lors du chargement du carnet");
     } finally {
       setDownloadingCarnet(false);
+    }
+  };
+
+  const handlePreviewAttestationSuivi = async () => {
+    setDownloadingAttestation(true);
+    try {
+      const { blobUrl, filename } = await plongeeService.previewAttestationSuivi(
+        adherent.num_adherent,
+      );
+      setPdfPreview({ blobUrl, filename });
+    } catch (error) {
+      toast.error("Erreur lors du chargement de l'attestation");
+    } finally {
+      setDownloadingAttestation(false);
     }
   };
 
@@ -97,6 +135,40 @@ const AdherentDetails = () => {
   );
   const dossier = dossierData?.data;
   const certStatus = certStatusData?.data;
+
+  // Dossier complet de l'adhérent (formations, sorties, matériel, paiements) —
+  // réservé au même public que le dossier adhésion ci-dessus : cette page
+  // n'est de toute façon accessible depuis le menu qu'à ces trois rôles.
+  const { useGetByAdherent: useFormationsByAdherent } = useFormations();
+  const { useGetByAdherent: useInscriptionsByAdherent } = useInscriptions();
+  const { useGetByAdherent: useAttributionsByAdherent } = useAttributions();
+  const { useGetByAdherent: usePaiementsByAdherent } = usePaiements();
+  const { useGetAll: useGetAllMateriels } = useMateriels();
+
+  const { data: formationsData } = useFormationsByAdherent(
+    canViewDossier ? adherent?.num_adherent : undefined,
+  );
+  const { data: inscriptionsData } = useInscriptionsByAdherent(
+    canViewDossier ? adherent?.num_adherent : undefined,
+  );
+  const { data: attributionsData } = useAttributionsByAdherent(
+    canViewDossier ? adherent?.num_adherent : undefined,
+  );
+  const { data: paiementsData } = usePaiementsByAdherent(
+    canViewDossier ? adherent?.num_adherent : undefined,
+  );
+  const { data: materielsData } = useGetAllMateriels();
+
+  const formations = formationsData?.data || [];
+  const inscriptions = inscriptionsData?.data || [];
+  const attributionsEnCours = (attributionsData?.data || []).filter(
+    (a) => !a.date_retour_reel,
+  );
+  const paiements = paiementsData?.data || [];
+  const materielMap = (materielsData?.data || []).reduce((map, m) => {
+    map[m.num_inventaire] = `${m.marque} ${m.modele}`;
+    return map;
+  }, {});
 
   const handleDelete = async () => {
     try {
@@ -251,12 +323,20 @@ const AdherentDetails = () => {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={handleDownloadCarnet}
+            onClick={handlePreviewCarnet}
             disabled={downloadingCarnet}
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl transition-all duration-300 disabled:opacity-60"
           >
             <FiDownload className="w-4 h-4" />
-            Télécharger le carnet
+            Carnet de plongée
+          </button>
+          <button
+            onClick={handlePreviewAttestationSuivi}
+            disabled={downloadingAttestation}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-xl transition-all duration-300 disabled:opacity-60"
+          >
+            <FiAward className="w-4 h-4" />
+            Attestation de suivi
           </button>
         </div>
         {canManageAdherent && (
@@ -508,9 +588,135 @@ const AdherentDetails = () => {
         </motion.div>
       )}
 
+      {/* Dossier complet : formations, sorties, matériel, paiements */}
+      {canViewDossier && (
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        >
+          {/* Formations en cours */}
+          <SectionCard title="Formations en cours" icon={FiBookOpen}>
+            {formations.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2">
+                Aucune formation en cours.
+              </p>
+            ) : (
+              formations.map((formation) => (
+                <Link
+                  key={formation.id_formation}
+                  to={`/formations/${formation.id_formation}`}
+                  className="flex items-center justify-between gap-3 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {formation.niveau_vise}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {formatCurrency(formation.montant_paye)} /{" "}
+                      {formatCurrency(formation.montant_total)}
+                    </p>
+                  </div>
+                  <StatusBadge status={formation.statut} />
+                </Link>
+              ))
+            )}
+          </SectionCard>
+
+          {/* Inscriptions à des sorties */}
+          <SectionCard title="Inscriptions à des sorties" icon={FiCompass}>
+            {inscriptions.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2">
+                Aucune inscription à une sortie.
+              </p>
+            ) : (
+              inscriptions.map((inscription) => (
+                <Link
+                  key={inscription.id_inscription}
+                  to={`/sorties/${inscription.id_sortie}`}
+                  className="flex items-center justify-between gap-3 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {inscription.sortie
+                        ? `${inscription.sortie.type} — ${inscription.sortie.lieu}`
+                        : `Sortie #${inscription.id_sortie}`}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {inscription.sortie?.date_heure
+                        ? formatDateTime(inscription.sortie.date_heure)
+                        : "Date inconnue"}
+                    </p>
+                  </div>
+                  <StatusBadge status={inscription.statut} />
+                </Link>
+              ))
+            )}
+          </SectionCard>
+
+          {/* Matériel attribué */}
+          <SectionCard title="Matériel attribué" icon={FiPackage}>
+            {attributionsEnCours.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2">
+                Aucun matériel actuellement attribué.
+              </p>
+            ) : (
+              attributionsEnCours.map((attribution) => (
+                <Link
+                  key={attribution.id_attribution}
+                  to={`/attributions/${attribution.id_attribution}`}
+                  className="flex items-center justify-between gap-3 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {materielMap[attribution.num_inventaire] ||
+                        `Matériel #${attribution.num_inventaire}`}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Depuis le {formatDate(attribution.date_attribution)}
+                    </p>
+                  </div>
+                  <span className="text-xs font-medium uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                    En cours
+                  </span>
+                </Link>
+              ))
+            )}
+          </SectionCard>
+
+          {/* Paiements */}
+          <SectionCard title="Paiements" icon={FiCreditCard}>
+            {paiements.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2">
+                Aucun paiement enregistré.
+              </p>
+            ) : (
+              paiements.map((paiement) => (
+                <Link
+                  key={paiement.id_paiement}
+                  to={`/paiements/${paiement.id_paiement}`}
+                  className="flex items-center justify-between gap-3 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {paiement.type_paiement} — {formatCurrency(paiement.montant)}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {formatDate(paiement.date_paiement)}
+                    </p>
+                  </div>
+                  <StatusBadge status={paiement.statut} />
+                </Link>
+              ))
+            )}
+          </SectionCard>
+        </motion.div>
+      )}
+
       {/* Modal suppression */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -550,8 +756,15 @@ const AdherentDetails = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
+
+      <PdfPreviewModal
+        isOpen={!!pdfPreview}
+        onClose={closePdfPreview}
+        blobUrl={pdfPreview?.blobUrl}
+        filename={pdfPreview?.filename}
+      />
     </motion.div>
   );
 };

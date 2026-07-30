@@ -11,7 +11,10 @@ import api from "../services/api";
 // IDM récupère quand même le fichier de son côté. Le backend encode donc le
 // PDF en base64 dans une réponse JSON, invisible pour ce type
 // d'interception ; on reconstruit le blob PDF ici, côté JS uniquement.
-export async function downloadFile(url, filename) {
+// Partagé par downloadFile (téléchargement direct) et fetchPdfBlobUrl
+// (aperçu) : les deux repartent du même flux base64 -> Blob, seule la suite
+// (déclencher un enregistrement vs afficher dans un <iframe>) diffère.
+async function fetchPdfBlob(url) {
   const response = await api.get(url);
   const { data: base64, filename: serverFilename } = response.data;
   const byteChars = window.atob(base64);
@@ -20,6 +23,11 @@ export async function downloadFile(url, filename) {
     byteNumbers[i] = byteChars.charCodeAt(i);
   }
   const blob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+  return { blob, filename: serverFilename };
+}
+
+export async function downloadFile(url, filename) {
+  const { blob, filename: serverFilename } = await fetchPdfBlob(url);
   const blobUrl = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = blobUrl;
@@ -28,4 +36,13 @@ export async function downloadFile(url, filename) {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(blobUrl);
+}
+
+// Pour un aperçu (modal avec <iframe>) : on garde le blob URL vivant tant que
+// l'aperçu est affiché, à charge de l'appelant de le révoquer à la fermeture
+// (window.URL.revokeObjectURL) pour ne pas fuiter de mémoire.
+export async function fetchPdfBlobUrl(url, filename) {
+  const { blob, filename: serverFilename } = await fetchPdfBlob(url);
+  const blobUrl = window.URL.createObjectURL(blob);
+  return { blobUrl, filename: serverFilename || filename };
 }

@@ -10,8 +10,12 @@ import {
   FiUser,
   FiCalendar,
   FiDollarSign,
+  FiList,
+  FiGrid,
+  FiMail,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import { useTresoriers } from "../../hooks/Tresorier/useTresoriers";
 import { useUsers } from "../../hooks/User/useUsers";
 import { photoUrl } from "../../utils/photoUrl";
@@ -28,6 +32,7 @@ const TresorierList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteModal, setDeleteModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState("list");
   const itemsPerPage = 10;
 
   const userMap = useMemo(() => {
@@ -129,6 +134,32 @@ const TresorierList = () => {
           <FiPlus className="w-4 h-4" />
           Nouveau
         </Link>
+        <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <button
+            type="button"
+            onClick={() => setViewMode("list")}
+            title="Vue liste"
+            className={`p-1.5 rounded-md transition-colors ${
+              viewMode === "list"
+                ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            }`}
+          >
+            <FiList className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("grid")}
+            title="Vue grille"
+            className={`p-1.5 rounded-md transition-colors ${
+              viewMode === "grid"
+                ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            }`}
+          >
+            <FiGrid className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Liste des trésoriers */}
@@ -147,10 +178,75 @@ const TresorierList = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid gap-3"
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                : "grid gap-3"
+            }
           >
             {paginatedTresoriers.map((tresorier) => {
               const user = userMap[tresorier.user_id];
+
+              if (viewMode === "grid") {
+                return (
+                  <motion.div
+                    key={tresorier.id_tresorier}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
+                  >
+                    {user?.photo ? (
+                      <img
+                        src={photoUrl(user.photo)}
+                        alt={user.name}
+                        className="w-20 h-20 rounded-full object-cover border-2 border-emerald-200 dark:border-emerald-700 shadow-sm"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center border-2 border-emerald-200 dark:border-emerald-700 shadow-sm">
+                        <FiDollarSign className="w-9 h-9 text-emerald-500 dark:text-emerald-400" />
+                      </div>
+                    )}
+                    <h3 className="font-semibold text-gray-900 dark:text-white mt-3 truncate w-full">
+                      {user?.name || `Utilisateur #${tresorier.user_id}`}
+                    </h3>
+                    {tresorier.annee_en_poste && (
+                      <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 mt-0.5">
+                        Trésorier {tresorier.annee_en_poste}
+                      </p>
+                    )}
+                    {user?.email && (
+                      <p className="flex items-center justify-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1 truncate w-full">
+                        <FiMail className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{user.email}</span>
+                      </p>
+                    )}
+                    <div className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 w-full">
+                      <Link
+                        to={`/tresoriers/${tresorier.id_tresorier}`}
+                        className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                        title="Voir"
+                      >
+                        <FiEye className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        to={`/tresoriers/edit/${tresorier.id_tresorier}`}
+                        className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                        title="Modifier"
+                      >
+                        <FiEdit className="w-4 h-4" />
+                      </Link>
+                      <button
+                        onClick={() => setDeleteModal(tresorier.id_tresorier)}
+                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        title="Supprimer"
+                      >
+                        <FiTrash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              }
 
               return (
                 <motion.div
@@ -273,7 +369,7 @@ const TresorierList = () => {
 
       {/* Modal de confirmation de suppression */}
       {deleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -307,7 +403,7 @@ const TresorierList = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

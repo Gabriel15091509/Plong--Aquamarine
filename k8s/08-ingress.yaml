@@ -166,6 +166,12 @@ spec:
               service:
                 name: identite-service
                 port: { number: 5014 }
+          - path: /uploads/materiels
+            pathType: Prefix
+            backend:
+              service:
+                name: materiel-service
+                port: { number: 5011 }
           - path: /api/sorties
             pathType: Prefix
             backend:

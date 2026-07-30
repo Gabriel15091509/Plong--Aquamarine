@@ -1,5 +1,5 @@
 import api from '../api';
-import { downloadFile } from '../../utils/downloadFile';
+import { downloadFile, fetchPdfBlobUrl } from '../../utils/downloadFile';
 
 class PlongeeService {
   async getAll(params = {}) {
@@ -21,6 +21,27 @@ class PlongeeService {
     return downloadFile(
       `/plongees/adherent/${numAdherent}/carnet-pdf`,
       `carnet-plongee-${numAdherent}.pdf`,
+    );
+  }
+
+  async downloadAttestationSuivi(numAdherent) {
+    return downloadFile(
+      `/plongees/adherent/${numAdherent}/attestation-pdf`,
+      `attestation-suivi-plongee-${numAdherent}.pdf`,
+    );
+  }
+
+  async previewCarnet(numAdherent) {
+    return fetchPdfBlobUrl(
+      `/plongees/adherent/${numAdherent}/carnet-pdf`,
+      `carnet-plongee-${numAdherent}.pdf`,
+    );
+  }
+
+  async previewAttestationSuivi(numAdherent) {
+    return fetchPdfBlobUrl(
+      `/plongees/adherent/${numAdherent}/attestation-pdf`,
+      `attestation-suivi-plongee-${numAdherent}.pdf`,
     );
   }
 

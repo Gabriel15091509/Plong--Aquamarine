@@ -55,34 +55,40 @@ const sendEmail = async (params = {}) => {
     };
   }
 
-  try {
-    const transporter = createTransporter();
-    if (!transporter) throw new Error("Transporteur non configuré");
-    await transporter.verify();
+  // L'envoi réel (verify() + sendMail()) fait un aller-retour réseau vers le
+  // serveur SMTP, potentiellement long (plusieurs secondes) : on ne le fait
+  // plus attendre par l'appelant (qui doit répondre vite à l'interface) —
+  // exécuté en arrière-plan, erreurs journalisées ici plutôt que remontées.
+  (async () => {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) throw new Error("Transporteur non configuré");
+      await transporter.verify();
 
-    const mailOptions = {
-      from:
-        from ||
-        process.env.EMAIL_FROM ||
-        "Club de Plongée <no-reply@club-plongee.fr>",
-      to,
-      subject,
-      html,
-      text:
-        text ||
-        html
-          .replace(/<[^>]*>/g, " ")
-          .replace(/\s+/g, " ")
-          .trim(),
-    };
+      const mailOptions = {
+        from:
+          from ||
+          process.env.EMAIL_FROM ||
+          "Club de Plongée <no-reply@club-plongee.fr>",
+        to,
+        subject,
+        html,
+        text:
+          text ||
+          html
+            .replace(/<[^>]*>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim(),
+      };
 
-    const info = await transporter.sendMail(mailOptions);
-    return { success: true, messageId: info.messageId, to, subject };
-  } catch (error) {
-    console.error("❌ Erreur envoi:", error.message);
-    emailCache.delete(cacheKey);
-    throw error;
-  }
+      await transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error("❌ Erreur envoi:", error.message);
+      emailCache.delete(cacheKey);
+    }
+  })();
+
+  return { success: true, messageId: `queued-${Date.now()}`, to, subject, queued: true };
 };
 
 const buildSimpleEmailHtml = (title, introHtml, rows = []) => `

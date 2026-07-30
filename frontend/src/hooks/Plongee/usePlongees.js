@@ -39,6 +39,15 @@ export const usePlongees = () => {
     });
   };
 
+  const useGetWithDetails = (id) => {
+    return useQuery({
+      queryKey: ['plongees', id, 'details'],
+      queryFn: () => plongeeService.getWithDetails(id),
+      enabled: !!id,
+      staleTime: 5 * 60 * 1000,
+    });
+  };
+
   const useCreate = () => {
     return useMutation({
       mutationFn: (data) => plongeeService.create(data),
@@ -96,6 +105,7 @@ export const usePlongees = () => {
     useGetById,
     useGetStats,
     useGetByAdherent,
+    useGetWithDetails,
     useCreate,
     useUpdate,
     useRemove,

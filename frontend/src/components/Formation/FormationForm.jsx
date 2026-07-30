@@ -61,6 +61,7 @@ const FormationForm = () => {
     date_examen_brevet: "",
     statut: "En cours",
     nb_seances_realisees: 0,
+    nb_seances_prevues: "",
     commentaire_moniteur: "",
     appreciation_moniteur: "",
     montant_total: "",
@@ -84,6 +85,7 @@ const FormationForm = () => {
           : "",
         statut: f.statut || "En cours",
         nb_seances_realisees: f.nb_seances_realisees || 0,
+        nb_seances_prevues: f.nb_seances_prevues ?? "",
         commentaire_moniteur: f.commentaire_moniteur || "",
         appreciation_moniteur: f.appreciation_moniteur || "",
         montant_total: f.montant_total ?? "",
@@ -113,6 +115,8 @@ const FormationForm = () => {
       newErrors.date_debut = "La date de début est requise";
     if (!formData.date_fin_prevue)
       newErrors.date_fin_prevue = "La date de fin prévue est requise";
+    if (!formData.nb_seances_prevues || Number(formData.nb_seances_prevues) <= 0)
+      newErrors.nb_seances_prevues = "Le nombre de séances prévues est requis";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -411,6 +415,35 @@ const FormationForm = () => {
               </motion.div>
             </>
           )}
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiList className="w-4 h-4 text-gray-400" />
+                Nombre de séances prévues *
+              </span>
+            </label>
+            <input
+              type="number"
+              name="nb_seances_prevues"
+              value={formData.nb_seances_prevues}
+              onChange={handleChange}
+              onFocus={() => handleFocus("nb_seances_prevues")}
+              onBlur={handleBlur}
+              className={inputClasses("nb_seances_prevues")}
+              min="1"
+              placeholder="Ex : 10"
+            />
+            {errors.nb_seances_prevues && (
+              <p className="mt-1.5 text-sm text-red-500">
+                {errors.nb_seances_prevues}
+              </p>
+            )}
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+              Une fois ce nombre atteint et toutes les compétences validées, la
+              formation se termine automatiquement et le niveau est attribué.
+            </p>
+          </motion.div>
 
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>

@@ -12,6 +12,20 @@ const { withAdherent } = require('../utils/enrichAdherents');
 
 const NIVEAUX_LIMITANTS = ['Baptême', 'Niveau 1'];
 
+const JOURS_SEMAINE = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+
+// Fait le lien entre le niveau requis d'une sortie et la spécialité
+// d'encadrement que doit posséder le moniteur (voir Moniteur.specialites,
+// alimenté depuis SPECIALITE_ENCADREMENT_OPTIONS côté frontend). Niveau 4 et
+// Moniteur n'ont pas de spécialité d'encadrement dédiée : tout moniteur
+// enregistré (niveau minimum Niveau 4) est réputé apte à les encadrer.
+const SPECIALITE_ENCADREMENT_PAR_NIVEAU = {
+  'Baptême': 'Encadrant baptême',
+  'Niveau 1': 'Encadrant N1',
+  'Niveau 2': 'Encadrant N2',
+  'Niveau 3': 'Encadrant N3',
+};
+
 class PalanqueeService extends BaseService {
   constructor() {
     const repository = new PalanqueeRepository();
@@ -90,16 +104,134 @@ class PalanqueeService extends BaseService {
     }
   }
 
-  async create(data, user = null) {
+  // Avant d'affecter un moniteur à l'encadrement d'une palanquée : vérifie
+  // qu'il existe réellement (identite-service), que sa spécialité
+  // d'encadrement couvre le niveau requis de la sortie, qu'il a déclaré être
+  // disponible ce jour-là, et qu'il n'encadre pas déjà une autre sortie au
+  // même horaire — évite d'affecter un moniteur à deux endroits à la fois.
+  async assertMoniteurAffectable(id_moniteur, sortie, authHeader, excludePalanqueeId = null) {
+    const moniteur = await identiteClient.getMoniteurById(id_moniteur, authHeader);
+    if (!moniteur) throw new Error('Moniteur introuvable');
+
+    const specialiteRequise = SPECIALITE_ENCADREMENT_PAR_NIVEAU[sortie.niveau_requis];
+    if (specialiteRequise && !(moniteur.specialites || []).includes(specialiteRequise)) {
+      throw new Error(
+        `Ce moniteur n'a pas la spécialité d'encadrement requise pour ce niveau (requis : ${specialiteRequise})`,
+      );
+    }
+
+    const jour = JOURS_SEMAINE[new Date(sortie.date_heure).getDay()];
+    const disponibilites = moniteur.disponibilites || [];
+    if (disponibilites.length > 0 && !disponibilites.some((d) => d.toLowerCase().includes(jour))) {
+      throw new Error(`Ce moniteur n'a pas déclaré être disponible le ${jour}`);
+    }
+
+    // Toutes les palanquées d'une même sortie plongent au même horaire (une
+    // seule date_heure par Sortie) : un moniteur ne peut donc physiquement
+    // encadrer qu'une seule palanquée à la fois, que ce soit au sein de cette
+    // sortie (deux groupes simultanés) ou d'une autre sortie au même horaire.
+    const autresPalanquees = await this.palanqueeRepository.findByMoniteur(id_moniteur);
+    for (const autre of autresPalanquees) {
+      if (excludePalanqueeId && autre.id_palanquee === excludePalanqueeId) continue;
+      const autreSortie =
+        autre.id_sortie === sortie.id_sortie ? sortie : await Sortie.findByPk(autre.id_sortie);
+      if (autreSortie && new Date(autreSortie.date_heure).getTime() === new Date(sortie.date_heure).getTime()) {
+        throw new Error("Ce moniteur encadre déjà une autre palanquée à cette date et heure");
+      }
+    }
+  }
+
+  async create(data, user = null, authHeader = null) {
     this.assertStaff(user);
     if (!data.id_sortie) throw new Error('La sortie est requise');
     if (!data.nom_palanquee) throw new Error('Le nom de la palanquée est requis');
+
+    if (data.id_moniteur_encadrant) {
+      const sortie = await Sortie.findByPk(data.id_sortie);
+      if (!sortie) throw new Error('Sortie introuvable');
+      await this.assertMoniteurAffectable(data.id_moniteur_encadrant, sortie, authHeader);
+    }
 
     return await this.palanqueeRepository.create({
       id_sortie: data.id_sortie,
       id_plongee: data.id_plongee || null,
       nom_palanquee: data.nom_palanquee,
       id_moniteur_encadrant: data.id_moniteur_encadrant || null,
+    });
+  }
+
+  // Constitution automatique (CDC) : dès qu'un membre est pointé présent
+  // pour une sortie (voir SortieService.enregistrerPointage), on le rattache
+  // à une palanquée déjà ouverte de cette sortie qui a de la place pour son
+  // niveau (remplies dans leur ordre de création), ou on en crée une
+  // nouvelle si aucune n'a de place — remplace la constitution manuelle
+  // préalable, sans l'empêcher (le staff peut toujours pré-créer des
+  // palanquées via PalanqueesManager, elles seront remplies en priorité).
+  // Best-effort : appelée depuis enregistrerPointage sans faire échouer le
+  // pointage lui-même en cas d'erreur.
+  async autoConstituerPourPresence(id_sortie, num_adherent, userId, authHeader) {
+    const palanquees = await this.palanqueeRepository.findBySortie(id_sortie);
+
+    const dejaAffecte = palanquees.some((p) =>
+      (p.composers || []).some((c) => c.num_adherent === num_adherent),
+    );
+    if (dejaAffecte) return null;
+
+    const nouvelAdherent = await identiteClient.getAdherentById(num_adherent, authHeader);
+    if (!nouvelAdherent) return null;
+
+    let idPalanqueeAssignee = null;
+
+    for (const palanquee of palanquees) {
+      if (palanquee.statut === 'Terminée') continue;
+
+      const composersAvecAdherent = await withAdherent(palanquee.composers || [], { authHeader });
+      const niveaux = composersAvecAdherent.map((c) => c.adherent?.niveau);
+      const maxRatio = this.computeMaxRatio([...niveaux, nouvelAdherent.niveau]);
+
+      if ((palanquee.composers || []).length < maxRatio) {
+        await Composer.create({ id_palanquee: palanquee.id_palanquee, num_adherent });
+        idPalanqueeAssignee = palanquee.id_palanquee;
+        break;
+      }
+    }
+
+    if (!idPalanqueeAssignee) {
+      const moniteur = await identiteClient.getMoniteurByUserId(userId);
+      const nouvellePalanquee = await this.palanqueeRepository.create({
+        id_sortie,
+        nom_palanquee: `Palanquée ${palanquees.length + 1}`,
+        id_moniteur_encadrant: moniteur?.id_moniteur || null,
+      });
+      await Composer.create({ id_palanquee: nouvellePalanquee.id_palanquee, num_adherent });
+      idPalanqueeAssignee = nouvellePalanquee.id_palanquee;
+    }
+
+    await this.creerPlongeeBrouillon(id_sortie, idPalanqueeAssignee, num_adherent);
+
+    return idPalanqueeAssignee;
+  }
+
+  // Amorce le carnet de plongée du membre dès le pointage de présence : seuls
+  // profondeur/durée (saisies via PalanqueeCard "Saisir les données" ->
+  // enregistrerDonneesPlongee, qui met à jour CE brouillon plutôt que d'en
+  // créer un second grâce au même critère id_palanquee+num_adherent) et la
+  // validation (PlongeeService.validatePlongee) restent à la charge du
+  // moniteur. Idempotent par (id_sortie, num_adherent) — un re-pointage ne
+  // duplique pas le brouillon.
+  async creerPlongeeBrouillon(id_sortie, id_palanquee, num_adherent) {
+    const existante = await Plongee.findOne({ where: { id_sortie, num_adherent } });
+    if (existante) return existante;
+
+    const sortie = await Sortie.findByPk(id_sortie);
+    if (!sortie) return null;
+
+    return await Plongee.create({
+      num_adherent,
+      id_sortie,
+      id_palanquee,
+      date: sortie.date_heure,
+      type_plongee: sortie.type,
     });
   }
 
@@ -168,7 +300,7 @@ class PalanqueeService extends BaseService {
     return true;
   }
 
-  async updateEncadrement(id_palanquee, { id_guide_palanquee, id_secouriste }, user = null) {
+  async updateEncadrement(id_palanquee, { id_guide_palanquee, id_secouriste, id_moniteur_encadrant }, user = null, authHeader = null) {
     this.assertStaff(user);
 
     const palanquee = await this.palanqueeRepository.findByIdDetailed(id_palanquee);
@@ -183,8 +315,24 @@ class PalanqueeService extends BaseService {
       throw new Error('Le secouriste doit être un membre de la palanquée');
     }
 
-    palanquee.id_guide_palanquee = id_guide_palanquee || null;
-    palanquee.id_secouriste = id_secouriste || null;
+    if (id_moniteur_encadrant && id_moniteur_encadrant !== palanquee.id_moniteur_encadrant) {
+      const sortie = await Sortie.findByPk(palanquee.id_sortie);
+      if (!sortie) throw new Error('Sortie associée introuvable');
+      await this.assertMoniteurAffectable(id_moniteur_encadrant, sortie, authHeader, id_palanquee);
+    }
+
+    // Les 3 champs sont indépendants et modifiables séparément (le frontend
+    // n'envoie que celui qu'il modifie) : un champ absent du body (undefined)
+    // laisse la valeur actuelle inchangée, plutôt que d'être écrasé à null.
+    if (id_guide_palanquee !== undefined) {
+      palanquee.id_guide_palanquee = id_guide_palanquee || null;
+    }
+    if (id_secouriste !== undefined) {
+      palanquee.id_secouriste = id_secouriste || null;
+    }
+    if (id_moniteur_encadrant !== undefined) {
+      palanquee.id_moniteur_encadrant = id_moniteur_encadrant || null;
+    }
     await palanquee.save();
 
     return palanquee;
@@ -207,16 +355,29 @@ class PalanqueeService extends BaseService {
     const sortie = await Sortie.findByPk(palanquee.id_sortie);
     if (!sortie) throw new Error('Sortie associée introuvable');
 
-    palanquee.profondeur_max_realisee = data.profondeur_max_realisee ?? palanquee.profondeur_max_realisee;
-    palanquee.duree_reelle = data.duree_reelle ?? palanquee.duree_reelle;
+    // Un champ numérique optionnel laissé vide arrive comme "" (pas
+    // null/undefined) depuis le formulaire : à distinguer explicitement,
+    // sinon Postgres rejette "" pour une colonne INTEGER/FLOAT ("invalid
+    // input syntax").
+    const toNullableNumber = (value) => {
+      if (value === "" || value === null || value === undefined) return null;
+      const num = Number(value);
+      return Number.isNaN(num) ? null : num;
+    };
+
+    const profondeurMax = toNullableNumber(data.profondeur_max_realisee);
+    const dureeReelle = toNullableNumber(data.duree_reelle);
+
+    palanquee.profondeur_max_realisee = profondeurMax ?? palanquee.profondeur_max_realisee;
+    palanquee.duree_reelle = dureeReelle ?? palanquee.duree_reelle;
     await palanquee.save();
 
     const observationsParMembre = data.observationsParMembre || {};
     const communData = {
       date: data.date || sortie.date_heure,
-      profondeur_max: data.profondeur_max_realisee,
-      duree: data.duree_reelle,
-      temperature_eau: data.temperature_eau ?? null,
+      profondeur_max: profondeurMax,
+      duree: dureeReelle,
+      temperature_eau: toNullableNumber(data.temperature_eau),
       visibilite: data.visibilite || null,
       type_plongee: data.type_plongee || sortie.type,
       observations_faune: data.observations_faune || null,

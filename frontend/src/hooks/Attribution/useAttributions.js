@@ -57,6 +57,15 @@ export const useAttributions = () => {
     });
   };
 
+  const useGetBySortie = (idSortie) => {
+    return useQuery({
+      queryKey: ["attributions", "sortie", idSortie],
+      queryFn: () => attributionService.getBySortie(idSortie),
+      enabled: !!idSortie,
+      staleTime: 2 * 60 * 1000,
+    });
+  };
+
   const useCreate = () => {
     return useMutation({
       mutationFn: (data) => attributionService.create(data),
@@ -180,6 +189,7 @@ export const useAttributions = () => {
     useGetByAdherent,
     useGetByMateriel,
     useGetByPalanquee,
+    useGetBySortie,
     useCreate,
     useRetour,
     useUpdate,

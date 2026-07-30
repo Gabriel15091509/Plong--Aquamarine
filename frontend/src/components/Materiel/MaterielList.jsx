@@ -14,12 +14,17 @@ import {
   FiUser,
   FiMapPin,
   FiTag,
+  FiList,
+  FiGrid,
+  FiCalendar,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { formatDate } from "../../utils/helpers";
+import { photoUrl } from "../../utils/photoUrl";
+import { CATEGORIE_MATERIEL_OPTIONS } from "../../utils/constants";
 
-// TODO: Ajouter un filtre par catégorie
 const MaterielList = () => {
   const { useGetAll, useRemove } = useMateriels();
   const { data, isLoading, error, refetch } = useGetAll();
@@ -27,9 +32,11 @@ const MaterielList = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+  const [categorieFilter, setCategorieFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState("list");
   const itemsPerPage = 10;
 
   const allMateriels = data?.data || [];
@@ -37,6 +44,7 @@ const MaterielList = () => {
   const filteredMateriels = useMemo(() => {
     return allMateriels.filter((m) => {
       if (filter !== "all" && m.etat !== filter) return false;
+      if (categorieFilter !== "all" && m.categorie !== categorieFilter) return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -50,7 +58,7 @@ const MaterielList = () => {
       }
       return true;
     });
-  }, [allMateriels, filter, searchTerm]);
+  }, [allMateriels, filter, categorieFilter, searchTerm]);
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
@@ -84,6 +92,15 @@ const MaterielList = () => {
       "Hors service": "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     };
     return colors[etat] || "bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400";
+  };
+
+  const getLocalisationColor = (localisation) => {
+    const colors = {
+      Local: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+      "Prêté": "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      "En réparation": "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+    };
+    return colors[localisation] || "bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400";
   };
 
   if (filteredMateriels.length === 0) {
@@ -148,6 +165,21 @@ const MaterielList = () => {
             <option value="À réparer">À réparer</option>
             <option value="Hors service">Hors service</option>
           </select>
+          <select
+            value={categorieFilter}
+            onChange={(e) => {
+              setCategorieFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">Toutes catégories</option>
+            {CATEGORIE_MATERIEL_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
           <Link
             to="/materiels/create"
             className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
@@ -155,6 +187,32 @@ const MaterielList = () => {
             <FiPlus className="w-4 h-4" />
             Nouveau
           </Link>
+          <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              title="Vue liste"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "list"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiList className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              title="Vue grille"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "grid"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiGrid className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -179,9 +237,124 @@ const MaterielList = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid gap-3"
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                : "grid gap-3"
+            }
           >
-            {paginatedMateriels.map((materiel) => (
+            {viewMode === "grid"
+              ? paginatedMateriels.map((materiel) => (
+                  <motion.div
+                    key={materiel.num_inventaire}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
+                  >
+                    {/* Photo du matériel */}
+                    <div className="relative h-40 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
+                      {materiel.photo_path ? (
+                        <img
+                          src={photoUrl(materiel.photo_path)}
+                          alt={`${materiel.marque} ${materiel.modele}`}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <FiBox className="w-12 h-12 text-indigo-400 dark:text-indigo-500" />
+                      )}
+                      <div className="absolute inset-x-0 top-0 p-3 flex items-center justify-between gap-1.5">
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${getEtatColor(materiel.etat)}`}
+                        >
+                          {materiel.etat}
+                        </span>
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${getLocalisationColor(materiel.localisation)}`}
+                        >
+                          {materiel.localisation || "Non localisé"}
+                        </span>
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                        <span className="text-lg font-bold text-white drop-shadow">
+                          #{materiel.num_inventaire}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Contenu */}
+                    <div className="p-4 flex flex-col flex-1">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+                        {materiel.categorie}
+                      </span>
+                      <h3 className="font-semibold text-gray-900 dark:text-white mt-1 truncate">
+                        {materiel.marque}
+                      </h3>
+                      <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                        <FiTag className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="truncate">{materiel.modele}</span>
+                      </p>
+
+                      <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 text-center">
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {materiel.taille || "—"}
+                          </div>
+                          <div className="text-[11px] text-gray-400">
+                            Taille
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                            {materiel.capacite || materiel.epaisseur || "—"}
+                          </div>
+                          <div className="text-[11px] text-gray-400">
+                            Capacité
+                          </div>
+                        </div>
+                        <div>
+                          <FiCalendar className="w-4 h-4 mx-auto text-gray-400" />
+                          <div className="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">
+                            {materiel.date_achat
+                              ? formatDate(materiel.date_achat)
+                              : "—"}
+                          </div>
+                          <div className="text-[11px] text-gray-400">
+                            Achat
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <Link
+                          to={`/materiels/${materiel.num_inventaire}`}
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title="Voir"
+                        >
+                          <FiEye className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          to={`/materiels/edit/${materiel.num_inventaire}`}
+                          className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                          title="Modifier"
+                        >
+                          <FiEdit className="w-4 h-4" />
+                        </Link>
+                        <button
+                          onClick={() =>
+                            setDeleteModal(materiel.num_inventaire)
+                          }
+                          disabled={loading}
+                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                          title="Supprimer"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              : paginatedMateriels.map((materiel) => (
               <motion.div
                 key={materiel.num_inventaire}
                 initial={{ opacity: 0, y: 10 }}
@@ -190,10 +363,18 @@ const MaterielList = () => {
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-4">
-                  {/* Icône du matériel */}
+                  {/* Photo ou icône du matériel */}
                   <div className="flex-shrink-0">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
-                      <FiBox className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm overflow-hidden">
+                      {materiel.photo_path ? (
+                        <img
+                          src={photoUrl(materiel.photo_path)}
+                          alt={`${materiel.marque} ${materiel.modele}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <FiBox className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
+                      )}
                     </div>
                     <div className="text-center mt-1">
                       <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
@@ -221,7 +402,7 @@ const MaterielList = () => {
                             {materiel.categorie}
                           </span>
                           <span>•</span>
-                          <span className="flex items-center gap-1">
+                          <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getLocalisationColor(materiel.localisation)}`}>
                             <FiMapPin className="w-3.5 h-3.5" />
                             {materiel.localisation || "Non localisé"}
                           </span>
@@ -305,7 +486,7 @@ const MaterielList = () => {
 
       {/* Modal de confirmation de suppression */}
       {deleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -339,7 +520,7 @@ const MaterielList = () => {
               </button>
             </div>
           </motion.div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

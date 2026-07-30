@@ -19,6 +19,7 @@ import {
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import SortieLocationPicker from "./SortieLocationPicker";
 import {
   TYPE_SORTIE_OPTIONS,
   STATUT_SORTIE_OPTIONS,
@@ -52,7 +53,7 @@ const SortieForm = () => {
     date_heure: "",
     lieu: "",
     site: "",
-    type: "Plongée",
+    type: "Plongée d'exploration",
     niveau_requis: "Débutant",
     nb_places: 10,
     profondeur_max: 20,
@@ -63,6 +64,8 @@ const SortieForm = () => {
     condition_affectation: "",
     tarif_adherent: 0,
     tarif_non_adherent: "",
+    latitude: "",
+    longitude: "",
   });
 
   useEffect(() => {
@@ -72,7 +75,7 @@ const SortieForm = () => {
         date_heure: formatDateTimeForInput(s.date_heure),
         lieu: s.lieu || "",
         site: s.site || "",
-        type: s.type || "Plongée",
+        type: s.type || "Plongée d'exploration",
         niveau_requis: s.niveau_requis || "Débutant",
         nb_places: s.nb_places || 10,
         profondeur_max: s.profondeur_max || 20,
@@ -85,6 +88,8 @@ const SortieForm = () => {
         condition_affectation: s.condition_affectation || "",
         tarif_adherent: s.tarif_adherent ?? 0,
         tarif_non_adherent: s.tarif_non_adherent ?? "",
+        latitude: s.latitude ?? "",
+        longitude: s.longitude ?? "",
       });
     }
   }, [editMode, id, data]);
@@ -98,6 +103,16 @@ const SortieForm = () => {
   const handleFocus = (name) => setFocused(name);
   const handleBlur = () => setFocused(null);
 
+  const handleLocationChange = (lat, lng) =>
+    setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
+
+  const handleAddressResolved = ({ lieu, site }) =>
+    setFormData((prev) => ({
+      ...prev,
+      lieu: lieu || prev.lieu,
+      site: site || prev.site,
+    }));
+
   const validate = () => {
     const newErrors = {};
     if (!formData.date_heure) newErrors.date_heure = "La date est requise";
@@ -110,6 +125,8 @@ const SortieForm = () => {
       newErrors.profondeur_max = "La profondeur est requise";
     if (!formData.date_ouverture_inscriptions)
       newErrors.date_ouverture_inscriptions = "La date d'ouverture est requise";
+    if ((formData.latitude === "") !== (formData.longitude === ""))
+      newErrors.latitude = "Cliquez sur la carte pour repositionner le site";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -481,6 +498,24 @@ const SortieForm = () => {
               className={inputClasses("condition_affectation")}
               placeholder="Conditions spécifiques..."
             />
+          </motion.div>
+
+          <motion.div {...fadeInUp} className="md:col-span-2">
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiMap className="w-4 h-4 text-gray-400" />
+                Localisation du site (cliquer sur la carte)
+              </span>
+            </label>
+            <SortieLocationPicker
+              latitude={formData.latitude}
+              longitude={formData.longitude}
+              onChange={handleLocationChange}
+              onAddressResolved={handleAddressResolved}
+            />
+            {errors.latitude && (
+              <p className="mt-1 text-xs text-red-500">{errors.latitude}</p>
+            )}
           </motion.div>
         </div>
       </div>

@@ -31,6 +31,14 @@ class AttributionRepository extends BaseRepository {
     });
   }
 
+  // Check-list de départ/retour du matériel pour une sortie (CDC 3.4.3).
+  async findBySortie(id_sortie) {
+    return await this.model.findAll({
+      where: { id_sortie },
+      order: [['date_attribution', 'ASC']],
+    });
+  }
+
   async findEnCours() {
     return await this.model.findAll({
       where: { date_retour_reel: null }

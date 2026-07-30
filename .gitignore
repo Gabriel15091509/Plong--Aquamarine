@@ -18,3 +18,7 @@ backend/*/logs/
 backend/*/*.log
 frontend/*.log
 *.log
+
+# Données de langue OCR (tesseract.js) : téléchargées/mises en cache
+# automatiquement à la première analyse de photo de certificat, pas du code.
+backend/*/*.traineddata

@@ -48,6 +48,22 @@ class CertificatMedicalRepository extends BaseRepository {
       },
     });
   }
+
+  // Corrige en base les certificats dont `statut` est resté "Valide" alors
+  // que leur date de validité est dépassée — `statut` est saisi manuellement
+  // (par le moniteur/président) et ne se recalcule jamais tout seul sinon.
+  // Appelé quotidiennement (voir app.js, même schéma que
+  // AlerteService.syncExpirationAlertes) pour que la colonne reste fiable
+  // pour tout consommateur qui la lit directement (SQL, exports...), en
+  // complément de la correction dynamique faite côté service à la lecture.
+  async expireOverdue() {
+    const today = new Date();
+    const [count] = await this.model.update(
+      { statut: 'Expiré' },
+      { where: { date_validite: { [Op.lt]: today }, statut: 'Valide' } },
+    );
+    return count;
+  }
 }
 
 module.exports = CertificatMedicalRepository;

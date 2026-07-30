@@ -48,6 +48,12 @@ router.patch(
   alerteController.markAsRead.bind(alerteController),
 );
 
+router.post(
+  "/:id/relancer",
+  AuthMiddleware.authenticate,
+  alerteController.relancer.bind(alerteController),
+);
+
 router.patch(
   "/mark-all-read",
   AuthMiddleware.authenticate,
