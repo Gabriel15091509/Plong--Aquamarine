@@ -87,7 +87,7 @@ function valeurApresLabel(lignes, motsClefs, { minLength = 2 } = {}) {
     const motTrouve = motsClefs.find((mc) => ligneNormalisee.includes(mc));
     if (!motTrouve) continue;
     const indexFin = ligneNormalisee.indexOf(motTrouve) + motTrouve.length;
-    const resteMemeLigne = lignes[i].slice(indexFin).replace(/^[\s:.\-]+/, "").trim();
+    const resteMemeLigne = lignes[i].slice(indexFin).replace(/^[\s:.-]+/, "").trim();
     if (resteMemeLigne.length >= minLength) return resteMemeLigne;
     if (lignes[i + 1] && lignes[i + 1].length >= minLength) return lignes[i + 1];
   }
