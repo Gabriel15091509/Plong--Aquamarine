@@ -375,124 +375,28 @@ const ProfilePage = () => {
 
     const allStats = {
       president: [
-        {
-          icon: FiUsers,
-          label: "Adhérents",
-          value: stats.totalAdherents || 0,
-          color: "from-purple-500 to-pink-500",
-          bg: "bg-purple-500/10",
-        },
-        {
-          icon: FiAnchor,
-          label: "Sorties",
-          value: stats.totalSorties || 0,
-          color: "from-blue-500 to-cyan-500",
-          bg: "bg-blue-500/10",
-        },
-        {
-          icon: FiDroplet,
-          label: "Plongées totales",
-          value: stats.totalPlongeesGlobal || 0,
-          color: "from-cyan-500 to-teal-500",
-          bg: "bg-cyan-500/10",
-        },
-        {
-          icon: FiBookOpen,
-          label: "Formations en cours",
-          value: stats.formationsEnCours || 0,
-          color: "from-amber-500 to-orange-500",
-          bg: "bg-amber-500/10",
-        },
+        { icon: FiUsers, label: "Adhérents", value: stats.totalAdherents || 0 },
+        { icon: FiAnchor, label: "Sorties", value: stats.totalSorties || 0 },
+        { icon: FiDroplet, label: "Plongées totales", value: stats.totalPlongeesGlobal || 0 },
+        { icon: FiBookOpen, label: "Formations en cours", value: stats.formationsEnCours || 0 },
       ],
       moniteur: [
-        {
-          icon: FiCheckCircle,
-          label: "Plongées validées",
-          value: stats.plongeesValidees || 0,
-          color: "from-green-500 to-emerald-500",
-          bg: "bg-green-500/10",
-        },
-        {
-          icon: FiClock,
-          label: "En attente",
-          value: stats.plongeesEnAttente || 0,
-          color: "from-yellow-500 to-amber-500",
-          bg: "bg-yellow-500/10",
-        },
-        {
-          icon: FiBookOpen,
-          label: "Formations encadrées",
-          value: stats.formationsEncadrees || 0,
-          color: "from-purple-500 to-indigo-500",
-          bg: "bg-purple-500/10",
-        },
-        {
-          icon: FiAnchor,
-          label: "Sorties encadrées",
-          value: stats.sortiesEncadrees || 0,
-          color: "from-blue-500 to-cyan-500",
-          bg: "bg-blue-500/10",
-        },
+        { icon: FiCheckCircle, label: "Plongées validées", value: stats.plongeesValidees || 0 },
+        { icon: FiClock, label: "En attente", value: stats.plongeesEnAttente || 0 },
+        { icon: FiBookOpen, label: "Formations encadrées", value: stats.formationsEncadrees || 0 },
+        { icon: FiAnchor, label: "Sorties encadrées", value: stats.sortiesEncadrees || 0 },
       ],
       tresorier: [
-        {
-          icon: FiDollarSign,
-          label: "Paiements",
-          value: stats.totalPaiements || 0,
-          color: "from-green-500 to-emerald-500",
-          bg: "bg-green-500/10",
-        },
-        {
-          icon: FiClock,
-          label: "En attente",
-          value: stats.paiementsEnAttente || 0,
-          color: "from-yellow-500 to-amber-500",
-          bg: "bg-yellow-500/10",
-        },
-        {
-          icon: FiUsers,
-          label: "Adhésions actives",
-          value: stats.totalAdhesions || 0,
-          color: "from-blue-500 to-cyan-500",
-          bg: "bg-blue-500/10",
-        },
-        {
-          icon: FiTrendingUp,
-          label: "Renouvellements",
-          value: stats.renouvellements || 0,
-          color: "from-purple-500 to-pink-500",
-          bg: "bg-purple-500/10",
-        },
+        { icon: FiDollarSign, label: "Paiements", value: stats.totalPaiements || 0 },
+        { icon: FiClock, label: "En attente", value: stats.paiementsEnAttente || 0 },
+        { icon: FiUsers, label: "Adhésions actives", value: stats.totalAdhesions || 0 },
+        { icon: FiTrendingUp, label: "Renouvellements", value: stats.renouvellements || 0 },
       ],
       adherent: [
-        {
-          icon: FiAnchor,
-          label: "Plongées",
-          value: stats.totalPlongees || 0,
-          color: "from-cyan-500 to-blue-500",
-          bg: "bg-cyan-500/10",
-        },
-        {
-          icon: FiCalendar,
-          label: "Sorties à venir",
-          value: stats.prochainesSorties || 0,
-          color: "from-emerald-500 to-teal-500",
-          bg: "bg-emerald-500/10",
-        },
-        {
-          icon: FiAward,
-          label: "Formations suivies",
-          value: stats.formationsSuivies || 0,
-          color: "from-purple-500 to-pink-500",
-          bg: "bg-purple-500/10",
-        },
-        {
-          icon: FiCheckCircle,
-          label: "Certifications",
-          value: stats.certifications || 0,
-          color: "from-amber-500 to-orange-500",
-          bg: "bg-amber-500/10",
-        },
+        { icon: FiAnchor, label: "Plongées", value: stats.totalPlongees || 0 },
+        { icon: FiCalendar, label: "Sorties à venir", value: stats.prochainesSorties || 0 },
+        { icon: FiAward, label: "Formations suivies", value: stats.formationsSuivies || 0 },
+        { icon: FiCheckCircle, label: "Certifications", value: stats.certifications || 0 },
       ],
     };
 
@@ -517,32 +421,15 @@ const ProfilePage = () => {
     >
       {/* En-tête */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 dark:from-cyan-800 dark:via-blue-800 dark:to-indigo-800 p-6 md:p-8 text-white shadow-2xl"
+        transition={{ duration: 0.2 }}
+        className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100/80 dark:border-gray-800/80 shadow-sm p-6 md:p-8"
       >
-        <div className="absolute inset-0 opacity-10">
-          <svg
-            className="w-full h-full"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M0,0 L100,0 L100,100 L0,100 Z"
-              fill="none"
-              stroke="white"
-              strokeWidth="0.5"
-            />
-            <circle cx="20" cy="20" r="15" fill="white" opacity="0.3" />
-            <circle cx="80" cy="80" r="20" fill="white" opacity="0.2" />
-            <circle cx="50" cy="50" r="25" fill="white" opacity="0.1" />
-            <circle cx="70" cy="30" r="10" fill="white" opacity="0.15" />
-          </svg>
-        </div>
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0">
-              <div className="w-full h-full bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-3xl md:text-4xl font-bold border-2 border-white/30 shadow-xl overflow-hidden">
+              <div className="w-full h-full bg-cyan-600 rounded-full flex items-center justify-center text-2xl md:text-3xl font-semibold text-white overflow-hidden">
                 {photoUrl(user?.photo) ? (
                   <img
                     src={photoUrl(user.photo)}
@@ -558,22 +445,22 @@ const ProfilePage = () => {
               <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-emerald-400 rounded-full border-2 border-white dark:border-gray-900 z-10" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                 {user?.name || "Utilisateur"}
               </h1>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
                 <span
-                  className={`px-3 py-1 ${roleInfo.bg} backdrop-blur-sm rounded-full text-xs md:text-sm font-medium flex items-center gap-1 ${roleInfo.color}`}
+                  className={`px-3 py-1 ${roleInfo.bg} rounded-full text-xs md:text-sm font-medium flex items-center gap-1 ${roleInfo.color}`}
                 >
                   <roleInfo.icon className="w-3 h-3 md:w-4 md:h-4" />
                   {roleInfo.label}
                 </span>
-                <span className="text-white/70 text-xs flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400 text-xs flex items-center gap-1">
                   <FiCalendar className="w-3 h-3 md:w-4 md:h-4" />
                   Membre depuis {stats.anneesMembre} an
                   {stats.anneesMembre > 1 ? "s" : ""}
                 </span>
-                <span className="text-white/70 text-xs flex items-center gap-1">
+                <span className="text-gray-500 dark:text-gray-400 text-xs flex items-center gap-1">
                   <FiDroplet className="w-3 h-3 md:w-4 md:h-4" />
                   {stats.totalPlongees} plongées
                 </span>
@@ -582,7 +469,7 @@ const ProfilePage = () => {
           </div>
           <button
             onClick={() => setIsEditing(!isEditing)}
-            className="px-4 py-2.5 bg-white/20 backdrop-blur-sm rounded-xl hover:bg-white/30 transition-all duration-300 flex items-center gap-2 text-sm font-medium border border-white/20 hover:border-white/40"
+            className="px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-150 flex items-center gap-2 text-sm font-medium"
           >
             {isEditing ? (
               <>
@@ -604,7 +491,7 @@ const ProfilePage = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-100/80 dark:border-gray-800/80"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100/80 dark:border-gray-800/80"
         >
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex items-center gap-4">
@@ -674,7 +561,7 @@ const ProfilePage = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 text-white rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 flex items-center gap-2 disabled:opacity-60"
+                className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl transition-colors duration-150 flex items-center gap-2 disabled:opacity-60"
               >
                 {loading ? (
                   <FiRefreshCw className="w-4 h-4 animate-spin" />
@@ -695,17 +582,15 @@ const ProfilePage = () => {
         animate="animate"
         className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
-        {diveStats.map((stat, index) => (
+        {diveStats.map((stat) => (
           <motion.div
             key={stat.label}
             variants={fadeInUp}
-            whileHover={{ scale: 1.03, y: -3 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-4 text-center border border-gray-100/80 dark:border-gray-800/80 hover:shadow-2xl transition-all duration-300"
+            whileHover={{ y: -2 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-4 text-center border border-gray-100/80 dark:border-gray-800/80 hover:shadow-md transition-shadow duration-150"
           >
-            <div
-              className={`w-12 h-12 mx-auto rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg mb-3`}
-            >
-              <stat.icon className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 mx-auto rounded-xl bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center mb-3">
+              <stat.icon className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
             </div>
             <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
               {stat.value}
@@ -727,10 +612,10 @@ const ProfilePage = () => {
         {/* Informations personnelles */}
         <motion.div
           variants={fadeInUp}
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-100/80 dark:border-gray-800/80"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100/80 dark:border-gray-800/80"
         >
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
               <FiUser className="w-5 h-5" />
             </span>
             Informations personnelles
@@ -797,10 +682,10 @@ const ProfilePage = () => {
         {/* Dernières plongées */}
         <motion.div
           variants={fadeInUp}
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-100/80 dark:border-gray-800/80"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100/80 dark:border-gray-800/80"
         >
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
               <FiDroplet className="w-5 h-5" />
             </span>
             Dernières plongées
@@ -850,10 +735,10 @@ const ProfilePage = () => {
           variants={fadeInUp}
           initial="initial"
           animate="animate"
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-100/80 dark:border-gray-800/80"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100/80 dark:border-gray-800/80"
         >
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-indigo-500/10 to-blue-500/10 text-indigo-600 dark:text-indigo-400">
+            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
               <FiPackage className="w-5 h-5" />
             </span>
             Mon matériel attribué
@@ -907,7 +792,7 @@ const ProfilePage = () => {
         className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-100/80 dark:border-gray-800/80"
       >
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-          <span className="p-2 rounded-xl bg-gradient-to-br from-slate-500/10 to-gray-500/10 text-slate-600 dark:text-slate-400">
+          <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
             <FiShield className="w-5 h-5" />
           </span>
           Confidentialité & données personnelles
@@ -931,23 +816,6 @@ const ProfilePage = () => {
         </div>
       </motion.div>
 
-      {/* Badge de membre */}
-      <motion.div
-        variants={fadeInUp}
-        initial="initial"
-        animate="animate"
-        className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 dark:from-cyan-800 dark:via-blue-800 dark:to-indigo-800 rounded-2xl p-6 text-white text-center shadow-xl"
-      >
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <FiHeart className="w-5 h-5 text-white/80 flex-shrink-0 animate-pulse" />
-          <p className="text-sm font-medium">
-            Membre actif depuis {stats.anneesMembre} an
-            {stats.anneesMembre > 1 ? "s" : ""} • {stats.totalPlongees} plongées
-            réalisées
-          </p>
-          <FiHeart className="w-5 h-5 text-white/80 flex-shrink-0 animate-pulse" />
-        </div>
-      </motion.div>
     </motion.div>
   );
 };

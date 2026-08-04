@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import L from "leaflet";
 import {
   MapContainer,
   TileLayer,
@@ -10,6 +11,21 @@ import {
 import { FiAlertCircle } from "react-icons/fi";
 import { CLUB_LOCATION } from "../../utils/constants";
 import routingService from "../../services/Sortie/routingService";
+
+const createPinIcon = (color) =>
+  L.divIcon({
+    className: "",
+    html: `<svg width="26" height="38" viewBox="0 0 26 38" xmlns="http://www.w3.org/2000/svg">
+      <path d="M13 0C5.8 0 0 5.8 0 13c0 9.7 13 25 13 25s13-15.3 13-25C26 5.8 20.2 0 13 0z" fill="${color}"/>
+      <circle cx="13" cy="13" r="5" fill="white"/>
+    </svg>`,
+    iconSize: [26, 38],
+    iconAnchor: [13, 38],
+    popupAnchor: [0, -34],
+  });
+
+const departureIcon = createPinIcon("#16a34a");
+const arrivalIcon = createPinIcon("#dc2626");
 
 function FitBounds({ points }) {
   const map = useMap();
@@ -66,15 +82,17 @@ const SortieRouteMap = ({ siteLat, siteLng, siteName }) => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <FitBounds points={[clubPoint, sitePoint]} />
-          <Marker position={clubPoint}>
+          <Marker position={clubPoint} icon={departureIcon}>
             <Popup>
-              {CLUB_LOCATION.name}
+              <strong>Départ</strong> — {CLUB_LOCATION.name}
               <br />
               {CLUB_LOCATION.address}
             </Popup>
           </Marker>
-          <Marker position={sitePoint}>
-            <Popup>{siteName || "Site de plongée"}</Popup>
+          <Marker position={sitePoint} icon={arrivalIcon}>
+            <Popup>
+              <strong>Arrivée</strong> — {siteName || "Site de plongée"}
+            </Popup>
           </Marker>
           {polylinePositions.length > 0 && (
             <Polyline
@@ -83,6 +101,16 @@ const SortieRouteMap = ({ siteLat, siteLng, siteName }) => {
             />
           )}
         </MapContainer>
+      </div>
+      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-green-600" />
+          Départ ({CLUB_LOCATION.name})
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
+          Arrivée ({siteName || "Site de plongée"})
+        </span>
       </div>
       <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
         {loading && "Calcul de l'itinéraire..."}

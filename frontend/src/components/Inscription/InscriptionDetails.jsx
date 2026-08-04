@@ -29,6 +29,8 @@ import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
 import StatusBadge from "../Common/StatusBadge";
+import SectionCard from "../Common/SectionCard";
+import InfoItem from "../Common/InfoItem";
 import EcheancierCard from "../Echeancier/EcheancierCard";
 import { formatDate, formatDateTime, formatCurrency } from "../../utils/helpers";
 import { MODE_PAIEMENT_OPTIONS, STATUT_INSCRIPTION } from "../../utils/constants";
@@ -174,7 +176,7 @@ const InscriptionDetails = () => {
         </p>
         <button
           onClick={() => navigate("/inscriptions")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35"
+          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
         >
           <FiArrowLeft className="w-4 h-4" />
           Retour à la liste
@@ -202,7 +204,7 @@ const InscriptionDetails = () => {
         </p>
         <button
           onClick={() => navigate("/inscriptions")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35"
+          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
         >
           <FiArrowLeft className="w-4 h-4" />
           Retour à la liste
@@ -210,58 +212,6 @@ const InscriptionDetails = () => {
       </motion.div>
     );
   }
-
-  const InfoItem = ({
-    icon: Icon,
-    label,
-    value,
-    highlight = false,
-    children,
-  }) => (
-    <motion.div
-      variants={fadeInUp}
-      className={`flex items-start gap-4 p-4 rounded-xl transition-all duration-300 ${
-        highlight
-          ? "bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 border-l-4 border-blue-500"
-          : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
-      }`}
-    >
-      <div
-        className={`mt-0.5 p-2 rounded-lg ${
-          highlight
-            ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
-            : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-        }`}
-      >
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
-          {label}
-        </p>
-        {children || (
-          <p className="font-semibold text-gray-900 dark:text-white mt-0.5">
-            {value || "Non défini"}
-          </p>
-        )}
-      </div>
-    </motion.div>
-  );
-
-  const SectionCard = ({ title, icon: Icon, children, className = "" }) => (
-    <motion.div
-      variants={fadeInUp}
-      className={`bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6 hover:shadow-2xl transition-shadow duration-300 ${className}`}
-    >
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
-        <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
-          <Icon className="w-5 h-5" />
-        </span>
-        {title}
-      </h3>
-      <div className="space-y-2">{children}</div>
-    </motion.div>
-  );
 
   const getStatutColor = (statut) => {
     const colors = {
@@ -322,7 +272,7 @@ const InscriptionDetails = () => {
           {canManage && Number(inscription.montant_du) > 0 && !inscription.paye && (
             <button
               onClick={() => setShowPaiementModal(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-xl transition-all duration-300 shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors duration-150"
             >
               <FiPlusCircle className="w-4 h-4" />
               Enregistrer un paiement
@@ -330,7 +280,7 @@ const InscriptionDetails = () => {
           )}
           <Link
             to={`/inscriptions/edit/${inscription.id_inscription}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
           >
             <FiEdit className="w-4 h-4" />
             Modifier l'inscription
@@ -342,14 +292,13 @@ const InscriptionDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6 md:p-8 overflow-hidden relative"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6 md:p-8"
       >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
-                <FiFileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <span className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
+                <FiFileText className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
               </span>
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
@@ -497,10 +446,10 @@ const InscriptionDetails = () => {
           variants={fadeInUp}
           initial="initial"
           animate="animate"
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
         >
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
               <FiDollarSign className="w-5 h-5" />
             </span>
             Échéancier
@@ -524,7 +473,7 @@ const InscriptionDetails = () => {
         variants={fadeInUp}
         initial="initial"
         animate="animate"
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6 md:p-8"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6 md:p-8"
       >
         <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
           <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
@@ -718,7 +667,7 @@ const InscriptionDetails = () => {
               <button
                 type="submit"
                 disabled={enregistrerPaiement.isPending}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-xl transition-all duration-300 shadow-lg shadow-green-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Enregistrer
               </button>

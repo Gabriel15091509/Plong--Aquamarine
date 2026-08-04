@@ -28,6 +28,8 @@ import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import ConfirmModal from "../Common/ConfirmModal";
+import SectionCard from "../Common/SectionCard";
+import InfoItem from "../Common/InfoItem";
 import FormationCompetences from "./FormationCompetences";
 import FormationSeances from "./FormationSeances";
 import FormationPaiementModal from "./FormationPaiementModal";
@@ -112,7 +114,7 @@ const FormationDetails = () => {
         </p>
         <button
           onClick={() => navigate("/formations")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35"
+          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
         >
           <FiArrowLeft className="w-4 h-4" />
           Retour à la liste
@@ -130,10 +132,10 @@ const FormationDetails = () => {
   const isTerminee = formation.statut === "Terminée";
 
   const getProgressionColor = (progress) => {
-    if (progress >= 80) return "from-emerald-500 to-green-500";
-    if (progress >= 50) return "from-blue-500 to-cyan-500";
-    if (progress >= 25) return "from-yellow-500 to-amber-500";
-    return "from-red-500 to-rose-500";
+    if (progress >= 80) return "bg-green-500";
+    if (progress >= 50) return "bg-cyan-600";
+    if (progress >= 25) return "bg-amber-500";
+    return "bg-red-500";
   };
 
   const getProgressionTextColor = (progress) => {
@@ -142,58 +144,6 @@ const FormationDetails = () => {
     if (progress >= 25) return "text-yellow-600 dark:text-yellow-400";
     return "text-red-600 dark:text-red-400";
   };
-
-  const InfoItem = ({
-    icon: Icon,
-    label,
-    value,
-    highlight = false,
-    children,
-  }) => (
-    <motion.div
-      variants={fadeInUp}
-      className={`flex items-start gap-4 p-4 rounded-xl transition-all duration-300 ${
-        highlight
-          ? "bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 border-l-4 border-blue-500"
-          : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
-      }`}
-    >
-      <div
-        className={`mt-0.5 p-2 rounded-lg ${
-          highlight
-            ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
-            : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-        }`}
-      >
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
-          {label}
-        </p>
-        {children || (
-          <p className="font-semibold text-gray-900 dark:text-white mt-0.5">
-            {value || "Non défini"}
-          </p>
-        )}
-      </div>
-    </motion.div>
-  );
-
-  const SectionCard = ({ title, icon: Icon, children, className = "" }) => (
-    <motion.div
-      variants={fadeInUp}
-      className={`bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6 hover:shadow-2xl transition-shadow duration-300 ${className}`}
-    >
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
-        <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
-          <Icon className="w-5 h-5" />
-        </span>
-        {title}
-      </h3>
-      <div className="space-y-2">{children}</div>
-    </motion.div>
-  );
 
   return (
     <motion.div
@@ -210,8 +160,8 @@ const FormationDetails = () => {
         <div className="flex items-center gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
-                <FiBookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <span className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
+                <FiBookOpen className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
               </span>
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
@@ -246,7 +196,7 @@ const FormationDetails = () => {
           {canManage && formation.statut_paiement === STATUT_PAIEMENT.PARTIEL && (
             <button
               onClick={() => setShowPaiementModal(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-xl transition-all duration-300 shadow-lg shadow-green-500/25 hover:shadow-xl hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors duration-150"
             >
               <FiPlusCircle className="w-4 h-4" />
               Enregistrer un paiement
@@ -265,7 +215,7 @@ const FormationDetails = () => {
               ) : (
                 <Link
                   to={`/formations/edit/${formation.id_formation}`}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
                 >
                   <FiEdit className="w-4 h-4" />
                   Modifier
@@ -275,7 +225,7 @@ const FormationDetails = () => {
                 onClick={() => setShowDeleteModal(true)}
                 disabled={isTerminee}
                 title={isTerminee ? "Formation terminée : suppression impossible" : undefined}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:translate-y-0"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FiTrash2 className="w-4 h-4" />
                 Supprimer
@@ -289,7 +239,7 @@ const FormationDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 dark:from-cyan-800 dark:via-blue-800 dark:to-indigo-800 rounded-2xl shadow-xl p-6 md:p-8 text-white"
+        className="bg-cyan-700 dark:bg-cyan-900 rounded-2xl shadow-sm p-6 md:p-8 text-white"
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
@@ -332,11 +282,11 @@ const FormationDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-            <FiBarChart2 className="w-4 h-4 text-blue-500" />
+            <FiBarChart2 className="w-4 h-4 text-cyan-600" />
             Progression de la formation
           </h3>
           <span
@@ -349,18 +299,9 @@ const FormationDetails = () => {
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${progression}%` }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-            className={`h-full bg-gradient-to-r ${getProgressionColor(progression)} rounded-full shadow-lg shadow-blue-500/25`}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className={`h-full ${getProgressionColor(progression)} rounded-full`}
           />
-          <div className="absolute inset-0 flex items-center justify-end pr-2">
-            <span className="text-xs font-bold text-white drop-shadow-md">
-              {progression >= 95 && "✅"}
-              {progression >= 80 && progression < 95 && "🚀"}
-              {progression >= 50 && progression < 80 && "📈"}
-              {progression >= 25 && progression < 50 && "📊"}
-              {progression < 25 && "🎯"}
-            </span>
-          </div>
         </div>
         <div className="flex justify-between mt-2 text-xs text-gray-400 dark:text-gray-500">
           <span>Début</span>
@@ -503,10 +444,10 @@ const FormationDetails = () => {
           variants={fadeInUp}
           initial="initial"
           animate="animate"
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
         >
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
               <FiDollarSign className="w-5 h-5" />
             </span>
             Échéancier
@@ -531,10 +472,10 @@ const FormationDetails = () => {
           variants={fadeInUp}
           initial="initial"
           animate="animate"
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
         >
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
               <FiFileText className="w-5 h-5" />
             </span>
             Évaluation du moniteur

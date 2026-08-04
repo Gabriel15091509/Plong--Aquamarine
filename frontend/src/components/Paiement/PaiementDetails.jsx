@@ -11,7 +11,6 @@ import {
   FiEdit,
   FiArrowLeft,
   FiClock,
-  FiAlertCircle,
   FiTrash2,
   FiCalendar,
   FiCheckCircle,
@@ -25,19 +24,15 @@ import { usePaiements } from "../../hooks/Paiement/usePaiements";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import SectionCard from "../Common/SectionCard";
+import InfoItem from "../Common/InfoItem";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 import paiementService from "../../services/Paiement/paiementService";
 import { STATUT_PAIEMENT } from "../../utils/constants";
 
 // Animations
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4, ease: "easeOut" },
-};
-
 const staggerContainer = {
   initial: { opacity: 0 },
   animate: {
@@ -120,7 +115,7 @@ const PaiementDetails = () => {
         </p>
         <button
           onClick={() => navigate("/paiements")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35"
+          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
         >
           <FiArrowLeft className="w-4 h-4" />
           Retour à la liste
@@ -128,58 +123,6 @@ const PaiementDetails = () => {
       </motion.div>
     );
   }
-
-  const InfoItem = ({
-    icon: Icon,
-    label,
-    value,
-    highlight = false,
-    children,
-  }) => (
-    <motion.div
-      variants={fadeInUp}
-      className={`flex items-start gap-4 p-4 rounded-xl transition-all duration-300 ${
-        highlight
-          ? "bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 border-l-4 border-blue-500"
-          : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
-      }`}
-    >
-      <div
-        className={`mt-0.5 p-2 rounded-lg ${
-          highlight
-            ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
-            : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-        }`}
-      >
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
-          {label}
-        </p>
-        {children || (
-          <p className="font-semibold text-gray-900 dark:text-white mt-0.5">
-            {value || "Non défini"}
-          </p>
-        )}
-      </div>
-    </motion.div>
-  );
-
-  const SectionCard = ({ title, icon: Icon, children, className = "" }) => (
-    <motion.div
-      variants={fadeInUp}
-      className={`bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6 hover:shadow-2xl transition-shadow duration-300 ${className}`}
-    >
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
-        <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
-          <Icon className="w-5 h-5" />
-        </span>
-        {title}
-      </h3>
-      <div className="space-y-2">{children}</div>
-    </motion.div>
-  );
 
   const getStatutColor = (statut) => {
     const colors = {
@@ -232,8 +175,8 @@ const PaiementDetails = () => {
           
           <div>
             <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
-                <FiCreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <span className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
+                <FiCreditCard className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
               </span>
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
@@ -278,14 +221,14 @@ const PaiementDetails = () => {
         <div className="flex gap-2">
           <Link
             to={`/paiements/edit/${paiement.id_paiement}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
           >
             <FiEdit className="w-4 h-4" />
             Modifier
           </Link>
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
           >
             <FiTrash2 className="w-4 h-4" />
             Supprimer
@@ -298,7 +241,7 @@ const PaiementDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-xl p-6 md:p-8 border-2 ${getStatutColor(paiement.statut)}`}
+        className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${getStatutColor(paiement.statut)}`}
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
@@ -452,50 +395,20 @@ const PaiementDetails = () => {
         </SectionCard>
       </motion.div>
 
-      {/* Modal suppression */}
-      {showDeleteModal && (
-        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", damping: 25 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800"
-          >
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
-              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
-                <FiAlertCircle className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold">Confirmer la suppression</h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-              Êtes-vous sûr de vouloir supprimer ce paiement{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
-                {paiement.type_paiement}
-              </span>
-              ?
-              <br />
-              <span className="text-sm text-red-500 font-medium">
-                ⚠️ Cette action est irréversible.
-              </span>
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35"
-              >
-                <FiTrash2 className="w-4 h-4 inline mr-2" />
-                Confirmer la suppression
-              </button>
-            </div>
-          </motion.div>
-        </ModalOverlay>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        message={
+          <>
+            Êtes-vous sûr de vouloir supprimer ce paiement{" "}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {paiement.type_paiement}
+            </span>
+            ?
+          </>
+        }
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </motion.div>
   );
 };

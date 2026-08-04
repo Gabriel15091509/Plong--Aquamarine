@@ -6,9 +6,11 @@
   "scripts": {
     "install:backend": "npm --prefix backend/gateway-service install && npm --prefix backend/identite-service install && npm --prefix backend/activites-service install && npm --prefix backend/formation-service install && npm --prefix backend/materiel-service install && npm --prefix backend/finance-service install && npm --prefix backend/vie-associative-service install",
     "dev": "concurrently -k -n gateway,identite,activites,formation,materiel,finance,vie-assoc -c blue,green,yellow,magenta,cyan,red,white \"npm --prefix backend/gateway-service run dev\" \"npm --prefix backend/identite-service run dev\" \"npm --prefix backend/activites-service run dev\" \"npm --prefix backend/formation-service run dev\" \"npm --prefix backend/materiel-service run dev\" \"npm --prefix backend/finance-service run dev\" \"npm --prefix backend/vie-associative-service run dev\"",
-    "dev:full": "concurrently -k -n gateway,identite,activites,formation,materiel,finance,vie-assoc,frontend -c blue,green,yellow,magenta,cyan,red,white,gray \"npm --prefix backend/gateway-service run dev\" \"npm --prefix backend/identite-service run dev\" \"npm --prefix backend/activites-service run dev\" \"npm --prefix backend/formation-service run dev\" \"npm --prefix backend/materiel-service run dev\" \"npm --prefix backend/finance-service run dev\" \"npm --prefix backend/vie-associative-service run dev\" \"npm --prefix frontend run dev\""
+    "dev:full": "concurrently -k -n gateway,identite,activites,formation,materiel,finance,vie-assoc,frontend -c blue,green,yellow,magenta,cyan,red,white,gray \"npm --prefix backend/gateway-service run dev\" \"npm --prefix backend/identite-service run dev\" \"npm --prefix backend/activites-service run dev\" \"npm --prefix backend/formation-service run dev\" \"npm --prefix backend/materiel-service run dev\" \"npm --prefix backend/finance-service run dev\" \"npm --prefix backend/vie-associative-service run dev\" \"npm --prefix frontend run dev\"",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "concurrently": "^8.2.2"
   }
 }

@@ -24,24 +24,28 @@ const {
 const { faker } = require("@faker-js/faker/locale/fr");
 
 // Configuration
+// Cible réaliste pour Aquanature Plongée : 120 adhérents actifs (N1 à N4) et
+// environ 500 sorties par an. Les volumes des entités dépendantes des
+// sorties/adhérents sont mis à l'échelle en conservant les mêmes ratios
+// qu'avant (ex. ~6 inscriptions/sortie, ~1,6 adhésion/adhérent).
 const CONFIG = {
-  ADHERENTS: 50,
-  ADHESIONS: 80,
-  CERTIFICATS: 60,
-  PAIEMENTS: 100,
-  SORTIES: 20,
-  INSCRIPTIONS: 120,
-  PLONGEES: 150,
-  PALANQUEES: 80,
-  COMPOSER: 200,
-  MATERIELS: 30,
-  REPARATIONS: 15,
-  ATTRIBUTIONS: 40,
-  FORMATIONS: 25,
-  COMPETENCES: 60,
-  ALERTES: 30,
-  INCIDENTS: 12,
-  MONITEURS: 4,
+  ADHERENTS: 120,
+  ADHESIONS: 190,
+  CERTIFICATS: 145,
+  PAIEMENTS: 240,
+  SORTIES: 500,
+  INSCRIPTIONS: 3000,
+  PLONGEES: 2000,
+  PALANQUEES: 1200,
+  COMPOSER: 3000,
+  MATERIELS: 60,
+  REPARATIONS: 30,
+  ATTRIBUTIONS: 600,
+  FORMATIONS: 60,
+  COMPETENCES: 150,
+  ALERTES: 80,
+  INCIDENTS: 40,
+  MONITEURS: 10,
 };
 
 // ============ FONCTIONS UTILITAIRES ============
@@ -610,7 +614,20 @@ async function seedAll() {
     ];
     const sorties = [];
     for (let i = 0; i < CONFIG.SORTIES; i++) {
-      const dateSortie = faker.date.future({ years: 1 });
+      // Le statut détermine la date (et non l'inverse) : une sortie
+      // Terminée/Annulée ne peut pas être dans le futur, une sortie
+      // Planifiée ne peut pas être dans le passé — sur 500 sorties/an
+      // générées, l'incohérence serait immédiatement visible dans le
+      // calendrier.
+      const statut = randomStatutSortie();
+      let dateSortie;
+      if (statut === "Terminée" || statut === "Annulée") {
+        dateSortie = faker.date.past({ years: 1 });
+      } else if (statut === "En cours") {
+        dateSortie = faker.date.recent({ days: 1 });
+      } else {
+        dateSortie = faker.date.soon({ days: 120 });
+      }
       const dateOuverture = new Date(dateSortie);
       dateOuverture.setDate(
         dateOuverture.getDate() - Math.floor(Math.random() * 30 + 7),
@@ -632,7 +649,7 @@ async function seedAll() {
         )
           .toString()
           .padStart(2, "0")}`,
-        statut: randomStatutSortie(),
+        statut,
         description_site: faker.lorem.sentence({ min: 10, max: 30 }),
         date_ouverture_inscriptions: dateOuverture,
         condition_affectation: faker.lorem.sentence({ min: 5, max: 15 }),
@@ -643,8 +660,18 @@ async function seedAll() {
     await Sortie.bulkCreate(sorties);
     console.log(`✅ ${sorties.length} sorties créées`);
 
-    const sortieIds = await Sortie.findAll({ attributes: ["id_sortie"] });
-    const sortieIdList = sortieIds.map((s) => s.id_sortie);
+    const sortieRows = await Sortie.findAll({
+      attributes: ["id_sortie", "statut", "date_heure"],
+    });
+    const sortieIdList = sortieRows.map((s) => s.id_sortie);
+    const sortieDateMap = Object.fromEntries(
+      sortieRows.map((s) => [s.id_sortie, s.date_heure]),
+    );
+    // Une plongée, une attribution de matériel ou un incident ne peuvent
+    // être rattachés qu'à une sortie qui a effectivement eu lieu.
+    const sortieDoneIdList = sortieRows
+      .filter((s) => ["Terminée", "En cours"].includes(s.statut))
+      .map((s) => s.id_sortie);
 
     // ==================== INSCRIPTIONS ====================
     console.log("🔄 Création des inscriptions...");
@@ -688,12 +715,12 @@ async function seedAll() {
       const numAdherent =
         adherentIdList[Math.floor(Math.random() * adherentIdList.length)];
       const idSortie =
-        sortieIdList[Math.floor(Math.random() * sortieIdList.length)];
+        sortieDoneIdList[Math.floor(Math.random() * sortieDoneIdList.length)];
       const estValidee = Math.random() > 0.3;
       plongees.push({
         num_adherent: numAdherent,
         id_sortie: idSortie,
-        date: faker.date.past({ years: 3 }),
+        date: sortieDateMap[idSortie],
         profondeur_max: Math.floor(Math.random() * 40 + 5),
         duree: Math.floor(Math.random() * 60 + 15),
         temperature_eau: parseFloat((Math.random() * 20 + 10).toFixed(1)),
@@ -879,8 +906,8 @@ async function seedAll() {
       const numAdherent =
         adherentIdList[Math.floor(Math.random() * adherentIdList.length)];
       const idSortie =
-        sortieIdList[Math.floor(Math.random() * sortieIdList.length)];
-      const dateAttribution = faker.date.past({ years: 1 });
+        sortieDoneIdList[Math.floor(Math.random() * sortieDoneIdList.length)];
+      const dateAttribution = sortieDateMap[idSortie] || faker.date.past({ years: 1 });
       const dateRetourPrevue = new Date(dateAttribution);
       dateRetourPrevue.setDate(
         dateRetourPrevue.getDate() + Math.floor(Math.random() * 7 + 1),
@@ -1024,9 +1051,9 @@ async function seedAll() {
     const incidents = [];
     for (let i = 0; i < CONFIG.INCIDENTS; i++) {
       const idSortie =
-        sortieIdList[Math.floor(Math.random() * sortieIdList.length)];
+        sortieDoneIdList[Math.floor(Math.random() * sortieDoneIdList.length)];
       const cloture = Math.random() > 0.4;
-      const dateHeure = faker.date.past({ years: 1 });
+      const dateHeure = sortieDateMap[idSortie] || faker.date.past({ years: 1 });
       incidents.push({
         id_sortie: idSortie,
         date_heure: dateHeure,

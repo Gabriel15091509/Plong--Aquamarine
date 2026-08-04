@@ -38,9 +38,7 @@ const MenuSection = ({
   items,
   isVisible = true,
   isOpen,
-  theme,
   themeTransition,
-  getHoverAnimation,
   onNavigate,
 }) => {
   if (!isVisible || items.length === 0) return null;
@@ -49,9 +47,9 @@ const MenuSection = ({
     <>
       {isOpen && (
         <motion.p
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -5 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           transition={themeTransition}
           className="px-3 pt-4 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider dark:text-gray-500"
         >
@@ -65,11 +63,11 @@ const MenuSection = ({
           onClick={onNavigate}
           className={({ isActive }) => `
             relative flex items-center gap-3 px-3 py-2.5 rounded-xl
-            transition-all duration-300 ease-out
+            transition-colors duration-150
             ${
               isActive
-                ? "bg-gradient-to-r from-cyan-50 to-teal-50 text-cyan-700 shadow-sm dark:from-cyan-900/30 dark:to-teal-900/30 dark:text-cyan-400"
-                : "text-gray-600 hover:text-cyan-700 dark:text-gray-400 dark:hover:text-cyan-400"
+                ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400"
+                : "text-gray-600 hover:bg-gray-50 hover:text-cyan-700 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400"
             }
             ${!isOpen ? "justify-center" : ""}
             group
@@ -77,76 +75,25 @@ const MenuSection = ({
         >
           {({ isActive }) => (
             <>
-              <motion.div
-                className={`absolute inset-0 rounded-xl transition-all duration-300 ${
-                  isActive
-                    ? "bg-gradient-to-r from-cyan-500/10 to-teal-500/10"
-                    : "group-hover:bg-gradient-to-r group-hover:from-cyan-500/5 group-hover:to-teal-500/5"
+              <span
+                className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-full bg-cyan-500 transition-all duration-150 ${
+                  isActive ? "h-5 opacity-100" : "h-5 opacity-0"
                 }`}
-                layoutId={`bg-${item.path}`}
-                transition={themeTransition}
               />
 
-              <motion.div
-                className={`absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 rounded-full transition-all duration-300 ${
+              <item.icon
+                className={`relative z-10 w-5 h-5 flex-shrink-0 transition-colors duration-150 ${
                   isActive
-                    ? "bg-gradient-to-b from-cyan-500 to-teal-500"
-                    : "group-hover:bg-gradient-to-b group-hover:from-cyan-400/50 group-hover:to-teal-400/50 opacity-0 group-hover:opacity-100"
+                    ? "text-cyan-600 dark:text-cyan-400"
+                    : "text-gray-500 group-hover:text-cyan-600 dark:text-gray-500 dark:group-hover:text-cyan-400"
                 }`}
-                animate={{
-                  height: isActive ? 32 : 8,
-                  opacity: isActive ? 1 : 0.3,
-                }}
-                transition={themeTransition}
               />
-
-              <motion.div
-                whileHover={getHoverAnimation("icon")}
-                animate={{
-                  scale: isActive ? 1.1 : 1,
-                }}
-                transition={themeTransition}
-              >
-                <item.icon
-                  className={`relative z-10 w-5 h-5 flex-shrink-0 transition-all duration-300 ${
-                    isActive
-                      ? "text-cyan-600 dark:text-cyan-400"
-                      : "text-gray-500 group-hover:text-cyan-600 dark:text-gray-500 dark:group-hover:text-cyan-400"
-                  }`}
-                />
-              </motion.div>
 
               {isOpen && (
-                <motion.span
-                  className="relative z-10 text-sm font-medium"
-                  whileHover={getHoverAnimation("menu")}
-                  animate={{
-                    color: isActive
-                      ? theme === "dark"
-                        ? "#22d3ee"
-                        : "#0891b2"
-                      : theme === "dark"
-                        ? "#9ca3af"
-                        : "#4b5563",
-                  }}
-                  transition={themeTransition}
-                >
+                <span className="relative z-10 text-sm font-medium truncate">
                   {item.label}
-                </motion.span>
+                </span>
               )}
-
-              <motion.div
-                className={`absolute right-3 w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                  isActive
-                    ? "bg-cyan-500 shadow-lg shadow-cyan-500/50"
-                    : "group-hover:bg-cyan-400 group-hover:shadow-lg group-hover:shadow-cyan-400/30 opacity-0 group-hover:opacity-100"
-                }`}
-                animate={{
-                  scale: isActive ? 1 : 0.5,
-                  opacity: isActive ? 1 : 0,
-                }}
-                transition={themeTransition}
-              />
             </>
           )}
         </NavLink>
@@ -248,81 +195,13 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
     ? [{ path: "/profile", icon: FiUser, label: "Mon profil" }]
     : [];
 
-  const themeTransition = {
-    duration: 0.3,
-    ease: "easeInOut",
-  };
-
-  const getHoverAnimation = (type = "default") => {
-    if (theme === "dark") {
-      switch (type) {
-        case "menu":
-          return {
-            scale: 1.05,
-            x: 5,
-            rotate: -2,
-            transition: { duration: 0.2 },
-          };
-        case "icon":
-          return { scale: 1.2, rotate: 10, transition: { duration: 0.3 } };
-        case "button":
-          return {
-            scale: 1.1,
-            rotate: -5,
-            boxShadow: "0 0 30px rgba(6, 182, 212, 0.3)",
-            transition: { duration: 0.2 },
-          };
-        case "theme":
-          return { scale: 1.15, rotate: -15, transition: { duration: 0.3 } };
-        case "logout":
-          return {
-            scale: 1.1,
-            x: 3,
-            backgroundColor: "rgba(239, 68, 68, 0.2)",
-            transition: { duration: 0.2 },
-          };
-        default:
-          return { scale: 1.05, transition: { duration: 0.2 } };
-      }
-    } else {
-      switch (type) {
-        case "menu":
-          return {
-            scale: 1.03,
-            x: 8,
-            rotate: 2,
-            transition: { duration: 0.2 },
-          };
-        case "icon":
-          return { scale: 1.15, rotate: -8, transition: { duration: 0.3 } };
-        case "button":
-          return {
-            scale: 1.08,
-            rotate: 5,
-            boxShadow: "0 0 30px rgba(6, 182, 212, 0.2)",
-            transition: { duration: 0.2 },
-          };
-        case "theme":
-          return { scale: 1.12, rotate: 15, transition: { duration: 0.3 } };
-        case "logout":
-          return {
-            scale: 1.08,
-            x: 3,
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
-            transition: { duration: 0.2 },
-          };
-        default:
-          return { scale: 1.03, transition: { duration: 0.2 } };
-      }
-    }
-  };
+  const themeTransition = { duration: 0.15, ease: "easeOut" };
+  const tapScale = { scale: 0.96 };
 
   const closeMobileMenu = () => setMobileOpen(false);
   const menuSectionProps = {
     isOpen,
-    theme,
     themeTransition,
-    getHoverAnimation,
     onNavigate: closeMobileMenu,
   };
 
@@ -339,7 +218,7 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       <motion.aside
         initial={false}
         animate={{ width: isOpen ? 260 : 72 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
         className={`fixed left-0 top-0 h-full shadow-xl z-50 overflow-hidden transition-colors duration-300 transform md:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         } ${
@@ -358,41 +237,22 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
         >
           {/* ✅ Logo toujours visible avec taille fixe */}
           <div className="flex items-center gap-2 overflow-hidden flex-shrink-0">
-            <motion.div
-              whileHover={getHoverAnimation("button")}
-              transition={{ type: "spring", stiffness: 300 }}
-              className="relative flex-shrink-0"
+            <div
+              className={`flex-shrink-0 ${isOpen ? "w-10 h-10" : "w-8 h-8"}`}
             >
-              <div
-                className={`flex-shrink-0 ${isOpen ? "w-10 h-10" : "w-8 h-8"}`}
-              >
-                <Logo size={isOpen ? "md" : "sm"} className="flex-shrink-0" />
-              </div>
-              <motion.div
-                className={`absolute inset-0 rounded-xl blur-xl -z-10 transition-colors duration-300 ${
-                  theme === "dark"
-                    ? "bg-gradient-to-r from-cyan-500/30 to-teal-500/30"
-                    : "bg-gradient-to-r from-cyan-500/20 to-teal-500/20"
-                }`}
-                animate={{
-                  opacity: theme === "dark" ? 0.6 : 0.3,
-                }}
-                transition={themeTransition}
-              />
-            </motion.div>
+              <Logo size={isOpen ? "md" : "sm"} className="flex-shrink-0" />
+            </div>
 
-            {/* ✅ Texte du logo avec animation */}
-            <AnimatePresence mode="wait">
+            {/* Texte du logo */}
+            <AnimatePresence>
               {isOpen && (
                 <motion.span
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className={`text-lg font-bold bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent transition-colors duration-300 whitespace-nowrap ${
-                    theme === "dark"
-                      ? "from-cyan-400 to-teal-400"
-                      : "from-cyan-600 to-teal-600"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={themeTransition}
+                  className={`text-lg font-bold whitespace-nowrap ${
+                    theme === "dark" ? "text-cyan-400" : "text-cyan-700"
                   }`}
                 >
                   Plongée Club
@@ -401,13 +261,12 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
             </AnimatePresence>
           </div>
 
-          {/* ✅ Bouton toggle collapse - desktop uniquement (le tiroir mobile se ferme via le bouton X ou le fond sombre) */}
+          {/* Bouton toggle collapse - desktop uniquement (le tiroir mobile se ferme via le bouton X ou le fond sombre) */}
           <div className="ml-auto flex-shrink-0 hidden md:block">
             <motion.button
-              whileHover={getHoverAnimation("button")}
-              whileTap={{ scale: 0.9 }}
+              whileTap={tapScale}
               onClick={() => setIsOpen(!isOpen)}
-              className={`rounded-lg transition-colors duration-300 flex-shrink-0 ${
+              className={`rounded-lg transition-colors duration-150 flex-shrink-0 ${
                 isOpen ? "p-1.5" : "p-1"
               } ${
                 theme === "dark"
@@ -423,12 +282,12 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
             </motion.button>
           </div>
 
-          {/* ✅ Bouton fermeture - mobile uniquement */}
+          {/* Bouton fermeture - mobile uniquement */}
           <div className="ml-auto flex-shrink-0 md:hidden">
             <motion.button
-              whileTap={{ scale: 0.9 }}
+              whileTap={tapScale}
               onClick={closeMobileMenu}
-              className={`p-1.5 rounded-lg transition-colors duration-300 flex-shrink-0 ${
+              className={`p-1.5 rounded-lg transition-colors duration-150 flex-shrink-0 ${
                 theme === "dark"
                   ? "hover:bg-cyan-900/30 text-cyan-400"
                   : "hover:bg-cyan-100/50 text-cyan-600"
@@ -606,27 +465,14 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
           }`}
         >
           {/* Profil utilisateur */}
-          <motion.div
-            whileHover={getHoverAnimation("menu")}
-            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-300 cursor-pointer group ${
-              theme === "dark"
-                ? "hover:bg-gradient-to-r hover:from-cyan-900/20 hover:to-teal-900/20"
-                : "hover:bg-gradient-to-r hover:from-cyan-50/50 hover:to-teal-50/50"
+          <div
+            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 cursor-pointer ${
+              theme === "dark" ? "hover:bg-gray-800/60" : "hover:bg-gray-50"
             }`}
             onClick={() => navigate("/profile")}
           >
             <div className="relative flex-shrink-0">
-              <motion.div
-                className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-lg overflow-hidden"
-                whileHover={getHoverAnimation("icon")}
-                animate={{
-                  boxShadow:
-                    theme === "dark"
-                      ? "0 0 20px rgba(6, 182, 212, 0.3)"
-                      : "0 0 15px rgba(6, 182, 212, 0.2)",
-                }}
-                transition={themeTransition}
-              >
+              <div className="w-8 h-8 bg-cyan-600 rounded-full flex items-center justify-center text-white text-sm font-semibold overflow-hidden">
                 {user?.photo ? (
                   <img
                     src={photoUrl(user.photo)}
@@ -636,46 +482,38 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
                 ) : (
                   user?.name?.charAt(0) || "A"
                 )}
-              </motion.div>
+              </div>
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full dark:border-gray-900" />
-              <motion.div
-                className={`absolute inset-0 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                  theme === "dark"
-                    ? "bg-gradient-to-r from-cyan-500/30 to-teal-500/30"
-                    : "bg-gradient-to-r from-cyan-500/20 to-teal-500/20"
-                }`}
-              />
             </div>
             {isOpen && (
               <div className="flex-1 min-w-0">
                 <p
-                  className={`text-sm font-medium truncate transition-colors duration-300 ${
+                  className={`text-sm font-medium truncate ${
                     theme === "dark" ? "text-white" : "text-gray-800"
                   }`}
                 >
                   {user?.name || "Administrateur"}
                 </p>
                 <p
-                  className={`text-xs truncate transition-colors duration-300 ${
+                  className={`text-xs truncate ${
                     theme === "dark" ? "text-cyan-400/70" : "text-cyan-600/70"
                   }`}
                 >
-                  {user?.role === "president" && "👑 Président"}
-                  {user?.role === "moniteur" && "🏊 Moniteur"}
-                  {user?.role === "tresorier" && "💰 Trésorier"}
-                  {user?.role === "adherent" && "🤿 Adhérent"}
+                  {user?.role === "president" && "Président"}
+                  {user?.role === "moniteur" && "Moniteur"}
+                  {user?.role === "tresorier" && "Trésorier"}
+                  {user?.role === "adherent" && "Adhérent"}
                 </p>
               </div>
             )}
-          </motion.div>
+          </div>
 
           {/* Actions du footer */}
           <div className="flex items-center gap-1 mt-2">
             <motion.button
-              whileHover={getHoverAnimation("theme")}
-              whileTap={{ scale: 0.95 }}
+              whileTap={tapScale}
               onClick={toggleTheme}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-300 ${
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 ${
                 !isOpen ? "justify-center flex-1" : ""
               } ${
                 theme === "dark"
@@ -684,39 +522,24 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
               }`}
               title={theme === "dark" ? "Mode clair" : "Mode sombre"}
             >
-              <motion.div
-                animate={{
-                  rotate: theme === "dark" ? 360 : 0,
-                  scale: theme === "dark" ? 1.2 : 1,
-                }}
-                transition={{ duration: 0.5 }}
-              >
-                {theme === "dark" ? (
-                  <FiSun className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <FiMoon className="w-4 h-4" />
-                )}
-              </motion.div>
+              {theme === "dark" ? (
+                <FiSun className="w-4 h-4" />
+              ) : (
+                <FiMoon className="w-4 h-4" />
+              )}
               {isOpen && (
-                <motion.span
-                  className="text-xs font-medium"
-                  animate={{
-                    color: theme === "dark" ? "#e5e7eb" : "#4b5563",
-                  }}
-                  transition={themeTransition}
-                >
+                <span className="text-xs font-medium">
                   {theme === "dark" ? "Mode clair" : "Mode sombre"}
-                </motion.span>
+                </span>
               )}
             </motion.button>
 
             <motion.button
-              whileHover={getHoverAnimation("logout")}
-              whileTap={{ scale: 0.95 }}
+              whileTap={tapScale}
               onClick={handleLogout}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all duration-300 ${
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 ${
                 !isOpen ? "justify-center flex-1" : ""
-              } text-red-500 hover:text-red-600 dark:hover:bg-red-900/20`}
+              } text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20`}
               title="Déconnexion"
             >
               <FiLogOut className="w-4 h-4" />
@@ -727,16 +550,13 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
           </div>
 
           {isOpen && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              whileHover={getHoverAnimation("default")}
-              className={`text-center text-[10px] mt-2 transition-colors duration-300 cursor-default ${
+            <p
+              className={`text-center text-[10px] mt-2 ${
                 theme === "dark" ? "text-cyan-500/40" : "text-cyan-400/60"
               }`}
             >
               v1.0.0 • {new Date().getFullYear()} Plongée Club
-            </motion.p>
+            </p>
           )}
         </div>
       </div>

@@ -96,13 +96,12 @@ export const formatDateTimeForInput = (date) => {
   }
 };
 
-export const formatCurrency = (amount) => {
-  if (!amount) return "0,00 €";
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-  }).format(amount);
-};
+const currencyFormatter = new Intl.NumberFormat("fr-FR", {
+  style: "currency",
+  currency: "EUR",
+});
+
+export const formatCurrency = (amount) => currencyFormatter.format(amount || 0);
 
 export const getInitials = (nom, prenom) => {
   if (!nom && !prenom) return "?";
