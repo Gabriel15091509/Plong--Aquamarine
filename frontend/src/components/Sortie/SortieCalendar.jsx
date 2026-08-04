@@ -191,51 +191,37 @@ const SortieCalendar = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800/30"
+        className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-100/80 dark:border-gray-800/80"
       >
         <div className="flex items-center gap-4">
-          <motion.button
-            whileHover={{ scale: 1.1, backgroundColor: "#e5e7eb" }}
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={handlePrevMonth}
-            className="p-2 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
+            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-150"
           >
             <FiChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-          </motion.button>
+          </button>
 
-          <motion.div
-            key={format(currentDate, "MM-yyyy")}
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="min-w-[200px] text-center"
-          >
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+          <div className="min-w-[200px] text-center">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               {format(currentDate, "MMMM yyyy", { locale: fr })}
             </h2>
-          </motion.div>
+          </div>
 
-          <motion.button
-            whileHover={{ scale: 1.1, backgroundColor: "#e5e7eb" }}
-            whileTap={{ scale: 0.9 }}
+          <button
             onClick={handleNextMonth}
-            className="p-2 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200"
+            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-150"
           >
             <FiChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-          </motion.button>
+          </button>
         </div>
 
-        <motion.button
-          whileHover={{
-            scale: 1.05,
-            boxShadow: "0 10px 30px rgba(37, 99, 235, 0.3)",
-          }}
-          whileTap={{ scale: 0.95 }}
+        <button
           onClick={handleToday}
-          className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 text-sm font-medium flex items-center gap-2"
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
         >
           <FiCalendar className="w-4 h-4" />
           Aujourd'hui
-        </motion.button>
+        </button>
       </motion.div>
 
       {/* Statistiques rapides */}
@@ -249,7 +235,7 @@ const SortieCalendar = () => {
           {
             label: "Total",
             value: stats.total,
-            color: "indigo",
+            color: "cyan",
             icon: FiBarChart2,
           },
           {
@@ -321,7 +307,7 @@ const SortieCalendar = () => {
           <span className="text-gray-600 dark:text-gray-400">Annulée</span>
         </div>
         <div className="flex items-center gap-2 ml-4">
-          <div className="w-3 h-3 bg-indigo-200 border-2 border-indigo-500 rounded-full shadow-sm" />
+          <div className="w-3 h-3 bg-cyan-200 border-2 border-cyan-500 rounded-full shadow-sm" />
           <span className="text-gray-600 dark:text-gray-400">Aujourd'hui</span>
         </div>
         <div className="flex items-center gap-2 ml-4">
@@ -377,7 +363,7 @@ const SortieCalendar = () => {
                 onHoverEnd={() => setHoveredDay(null)}
                 className={`relative min-h-[110px] p-2 bg-white dark:bg-gray-800 transition-all duration-200 ${
                   !isCurrentMonth ? "opacity-40" : ""
-                } ${isTodayDate ? "bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30" : ""} ${
+                } ${isTodayDate ? "bg-cyan-50 dark:bg-cyan-900/10" : ""} ${
                   isHovered ? "shadow-inner" : ""
                 }`}
               >
@@ -388,7 +374,7 @@ const SortieCalendar = () => {
                       whileHover={{ scale: 1.1 }}
                       className={`text-sm font-medium ${
                         isTodayDate
-                          ? "w-8 h-8 rounded-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-center shadow-md"
+                          ? "w-8 h-8 rounded-full bg-cyan-600 text-white flex items-center justify-center"
                           : "text-gray-700 dark:text-gray-300"
                       }`}
                     >
@@ -431,7 +417,7 @@ const SortieCalendar = () => {
                     {daySorties.length > 3 && (
                       <motion.button
                         whileHover={{ scale: 1.05 }}
-                        className="w-full text-left text-[10px] px-1.5 py-0.5 text-indigo-500 hover:text-indigo-600 font-medium"
+                        className="w-full text-left text-[10px] px-1.5 py-0.5 text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-medium"
                       >
                         +{daySorties.length - 3} autres
                       </motion.button>
@@ -471,20 +457,20 @@ const SortieCalendar = () => {
               className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* En-tête avec gradient */}
+              {/* En-tête */}
               <div
-                className={`sticky top-0 bg-gradient-to-r ${
+                className={`sticky top-0 ${
                   selectedSortie.statut === "Planifiée"
-                    ? "from-blue-600 to-blue-700"
+                    ? "bg-blue-600"
                     : selectedSortie.statut === "En cours"
-                      ? "from-green-600 to-green-700"
+                      ? "bg-green-600"
                       : selectedSortie.statut === "Terminée"
-                        ? "from-gray-600 to-gray-700"
-                        : "from-red-600 to-red-700"
+                        ? "bg-gray-600"
+                        : "bg-red-600"
                 } p-4 flex items-center justify-between`}
               >
                 <div className="flex items-center gap-3 text-white">
-                  <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
+                  <div className="p-2 bg-white/20 rounded-xl">
                     {React.createElement(getStatusIcon(selectedSortie.statut), {
                       className: "w-5 h-5",
                     })}
@@ -513,7 +499,7 @@ const SortieCalendar = () => {
                     icon: FiMapPin,
                     label: "Lieu",
                     value: `${selectedSortie.lieu} - ${selectedSortie.site}`,
-                    color: "indigo",
+                    color: "cyan",
                   },
                   {
                     icon: FiCalendar,
@@ -589,19 +575,17 @@ const SortieCalendar = () => {
                   >
                     Fermer
                   </button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                  <button
                     onClick={() => {
                       setIsModalOpen(false);
                       window.location.href = `/sorties/${selectedSortie.id_sortie}`;
                     }}
-                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 font-medium"
+                    className="flex-1 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl transition-colors duration-150 flex items-center justify-center gap-2 font-medium"
                   >
                     <FiEye className="w-4 h-4" />
                     Voir les détails
                     <FiArrowRight className="w-4 h-4" />
-                  </motion.button>
+                  </button>
                 </motion.div>
               </div>
             </motion.div>

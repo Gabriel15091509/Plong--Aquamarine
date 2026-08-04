@@ -52,7 +52,35 @@ spec:
                   set -eu
                   mkdir -p /backups
                   fichier="/backups/plongee_db_$(date +%Y-%m-%d_%H%M%S).sql.gz"
-                  pg_dump | gzip > "$fichier"
+                  tmp="${fichier}.tmp"
+
+                  # Le pipeline `pg_dump | gzip > fichier` masquait un pg_dump en
+                  # échec : gzip réussit quand même sur une entrée vide, donc le
+                  # Job se déclarait "réussi" avec un fichier de ~20 octets — 5
+                  # échecs sur 7 exécutions sont passés inaperçus ainsi (DNS
+                  # transitoire vers le Service "postgres", CoreDNS a redémarré
+                  # 13 fois en 15 jours sur ce cluster local). On sépare donc les
+                  # deux étapes pour vérifier explicitement le code retour de
+                  # pg_dump, avec quelques tentatives pour absorber une
+                  # résolution DNS momentanément indisponible.
+                  reussi=0
+                  for tentative in 1 2 3 4 5; do
+                    if pg_dump > "$tmp"; then
+                      reussi=1
+                      break
+                    fi
+                    echo "pg_dump a échoué (tentative $tentative/5), nouvel essai dans 10s..." >&2
+                    rm -f "$tmp"
+                    sleep 10
+                  done
+
+                  if [ "$reussi" -ne 1 ]; then
+                    echo "Échec de la sauvegarde après 5 tentatives" >&2
+                    exit 1
+                  fi
+
+                  gzip -c "$tmp" > "$fichier"
+                  rm -f "$tmp"
                   echo "Sauvegarde créée : $fichier"
                   find /backups -name '*.sql.gz' -mtime +30 -delete
               volumeMounts:

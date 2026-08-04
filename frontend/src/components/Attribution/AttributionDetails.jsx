@@ -217,26 +217,38 @@ const AttributionDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-sm p-6 md:p-8 text-white ${
-          isEnRetard ? "bg-red-600" : isEnCours ? "bg-cyan-700" : "bg-green-600"
+        className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${
+          isEnRetard
+            ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+            : isEnCours
+              ? "bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800"
+              : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
         }`}
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-full bg-white/20">
+            <div
+              className={`p-3 rounded-full ${
+                isEnRetard
+                  ? "bg-red-100 dark:bg-red-900/30"
+                  : isEnCours
+                    ? "bg-cyan-100 dark:bg-cyan-900/30"
+                    : "bg-green-100 dark:bg-green-900/30"
+              }`}
+            >
               {isEnRetard ? (
-                <FiAlertCircle className="w-7 h-7" />
+                <FiAlertCircle className="w-7 h-7 text-red-600 dark:text-red-400" />
               ) : isEnCours ? (
-                <FiClock className="w-7 h-7" />
+                <FiClock className="w-7 h-7 text-cyan-600 dark:text-cyan-400" />
               ) : (
-                <FiCheckCircle className="w-7 h-7" />
+                <FiCheckCircle className="w-7 h-7 text-green-600 dark:text-green-400" />
               )}
             </div>
             <div>
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {isEnRetard ? "En retard" : isEnCours ? "En cours" : "Retourné"}
               </p>
-              <p className="text-sm text-white/80">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {isEnCours
                   ? `Retour prévu le ${formatDate(attribution.date_retour_prevue)}`
                   : `Retourné le ${formatDate(attribution.date_retour_reel)}`}
@@ -246,7 +258,7 @@ const AttributionDetails = () => {
           {isEnCours && (
             <button
               onClick={() => setShowRetourForm(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-cyan-700 bg-white hover:bg-gray-100 rounded-xl transition-colors duration-150"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
             >
               <FiCheckCircle className="w-4 h-4" />
               Enregistrer le retour

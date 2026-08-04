@@ -194,28 +194,36 @@ const PlongeeDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-sm p-6 md:p-8 ${
-          isValide ? "bg-green-600 dark:bg-green-800" : "bg-amber-600 dark:bg-amber-800"
-        } text-white`}
+        className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${
+          isValide
+            ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+            : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+        }`}
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
-            <p className="text-sm font-medium text-white/80 uppercase tracking-wider">
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
               Statut de la plongée
             </p>
             <div className="flex items-center gap-4 mt-2">
-              <div className="p-3 rounded-full bg-white/20">
+              <div
+                className={`p-3 rounded-full ${
+                  isValide
+                    ? "bg-green-100 dark:bg-green-900/30"
+                    : "bg-amber-100 dark:bg-amber-900/30"
+                }`}
+              >
                 {isValide ? (
-                  <FiCheckCircle className="w-7 h-7" />
+                  <FiCheckCircle className="w-7 h-7 text-green-600 dark:text-green-400" />
                 ) : (
-                  <FiClock className="w-7 h-7" />
+                  <FiClock className="w-7 h-7 text-amber-600 dark:text-amber-400" />
                 )}
               </div>
               <div>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {isValide ? "Validée" : "En attente"}
                 </p>
-                <p className="text-sm text-white/80">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {isValide
                     ? "Plongée validée par le moniteur"
                     : "En attente de validation par le moniteur"}
@@ -225,26 +233,26 @@ const PlongeeDetails = () => {
           </div>
           <div className="flex items-center gap-8 flex-wrap">
             <div className="text-center">
-              <p className="text-3xl font-bold">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {plongee.profondeur_max != null ? `${plongee.profondeur_max}m` : "—"}
               </p>
-              <p className="text-xs text-white/70 uppercase tracking-wider">
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Profondeur max
               </p>
             </div>
-            <div className="w-px h-12 bg-white/20 hidden sm:block" />
+            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
             <div className="text-center">
-              <p className="text-3xl font-bold">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {plongee.duree != null ? `${plongee.duree} min` : "—"}
               </p>
-              <p className="text-xs text-white/70 uppercase tracking-wider">
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Durée
               </p>
             </div>
-            <div className="w-px h-12 bg-white/20 hidden sm:block" />
+            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
             <div className="text-center">
-              <p className="text-3xl font-bold">{plongee.type_plongee}</p>
-              <p className="text-xs text-white/70 uppercase tracking-wider">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{plongee.type_plongee}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Type
               </p>
             </div>
