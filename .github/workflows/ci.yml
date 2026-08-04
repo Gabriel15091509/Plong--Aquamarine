@@ -120,7 +120,24 @@ jobs:
         working-directory: backend/activites-service
         run: node scripts/ci-bootstrap-schema.js
 
-      - name: Test
+      # activites-service a une vraie séparation unit/intégration (scripts
+      # dédiés, cf. package.json) — étapes visibles séparément pour que
+      # l'UI Actions montre clairement quel niveau échoue. Les 6 autres
+      # services n'ont pour l'instant que de la validation pure + /health
+      # dans un seul dossier tests/, d'où un unique step "Unit & health
+      # tests" pour eux.
+      - name: Unit tests
+        if: matrix.service == 'activites-service'
+        working-directory: backend/activites-service
+        run: npm run test:unit
+
+      - name: Integration tests
+        if: matrix.service == 'activites-service'
+        working-directory: backend/activites-service
+        run: npm run test:integration
+
+      - name: Unit & health tests
+        if: matrix.service != 'activites-service'
         working-directory: backend/${{ matrix.service }}
         run: npm test
 
