@@ -209,52 +209,52 @@ const CertificatDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-sm p-6 md:p-8 ${
+        className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${
           isExpired
-            ? "bg-red-600 dark:bg-red-800"
+            ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
             : daysLeft && daysLeft <= 30
-              ? "bg-orange-600 dark:bg-orange-800"
-              : "bg-green-600 dark:bg-green-800"
-        } text-white`}
+              ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
+              : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+        }`}
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
-            <p className="text-sm font-medium text-white/80 uppercase tracking-wider">
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
               Statut du certificat
             </p>
             <div className="flex items-center gap-3 mt-2">
               {isExpired ? (
                 <>
-                  <FiXCircle className="w-6 h-6 text-white" />
-                  <span className="text-xl font-bold">Expiré</span>
+                  <FiXCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                  <span className="text-xl font-bold text-gray-900 dark:text-white">Expiré</span>
                 </>
               ) : (
                 <>
-                  <FiCheckCircle className="w-6 h-6 text-white" />
-                  <span className="text-xl font-bold">Valide</span>
+                  <FiCheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  <span className="text-xl font-bold text-gray-900 dark:text-white">Valide</span>
                 </>
               )}
             </div>
           </div>
           <div className="flex items-center gap-8 flex-wrap">
             <div className="text-center">
-              <p className="text-3xl font-bold">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {daysLeft !== null ? (isExpired ? "0" : daysLeft) : "-"}
               </p>
-              <p className="text-xs text-white/70 uppercase tracking-wider">
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 {isExpired ? "Expiré" : "Jours restants"}
               </p>
             </div>
-            <div className="w-px h-12 bg-white/20 hidden sm:block" />
+            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
             <div className="text-center">
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {formatDate(certificat.date_validite)}
               </p>
-              <p className="text-xs text-white/70 uppercase tracking-wider">
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Date d'expiration
               </p>
             </div>
-            <div className="w-px h-12 bg-white/20 hidden sm:block" />
+            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
             <div className="text-center">
               <StatusBadge status={certificat.statut} />
             </div>

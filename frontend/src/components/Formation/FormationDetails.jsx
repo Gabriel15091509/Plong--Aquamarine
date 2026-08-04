@@ -239,16 +239,16 @@ const FormationDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-cyan-700 dark:bg-cyan-900 rounded-2xl shadow-sm p-6 md:p-8 text-white"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6 md:p-8"
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
-            <p className="text-sm font-medium text-blue-100/80 uppercase tracking-wider">
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
               Avancement de la formation
             </p>
             <div className="flex items-center gap-4 mt-2">
-              <span className="text-4xl font-bold">{progression}%</span>
-              <span className="text-sm text-blue-100/70">
+              <span className="text-4xl font-bold text-gray-900 dark:text-white">{progression}%</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 {formation.nb_seances_realisees} /{" "}
                 {formation.nb_seances_prevues ?? "?"} séances
               </span>
@@ -258,19 +258,19 @@ const FormationDetails = () => {
             <div className="text-center">
               <StatusBadge status={formation.statut} />
             </div>
-            <div className="w-px h-12 bg-white/20 hidden sm:block" />
+            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
             <div className="text-center">
-              <p className="text-2xl font-bold">{formation.niveau_vise}</p>
-              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{formation.niveau_vise}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Niveau visé
               </p>
             </div>
-            <div className="w-px h-12 bg-white/20 hidden sm:block" />
+            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
             <div className="text-center">
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {formatDate(formation.date_debut)}
               </p>
-              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Date de début
               </p>
             </div>

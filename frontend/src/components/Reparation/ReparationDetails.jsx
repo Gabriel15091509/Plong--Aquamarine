@@ -138,24 +138,32 @@ const ReparationDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-sm p-6 md:p-8 text-white ${
-          isEnCours ? "bg-amber-600" : "bg-green-600"
+        className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${
+          isEnCours
+            ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+            : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
         }`}
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 rounded-full bg-white/20">
+            <div
+              className={`p-3 rounded-full ${
+                isEnCours
+                  ? "bg-amber-100 dark:bg-amber-900/30"
+                  : "bg-green-100 dark:bg-green-900/30"
+              }`}
+            >
               {isEnCours ? (
-                <FiClock className="w-7 h-7" />
+                <FiClock className="w-7 h-7 text-amber-600 dark:text-amber-400" />
               ) : (
-                <FiCheckCircle className="w-7 h-7" />
+                <FiCheckCircle className="w-7 h-7 text-green-600 dark:text-green-400" />
               )}
             </div>
             <div>
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {isEnCours ? "En cours" : "Terminée"}
               </p>
-              <p className="text-sm text-white/80">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {isEnCours
                   ? `Constatée le ${formatDate(reparation.date_constat)}`
                   : `Retournée le ${formatDate(reparation.date_retour)}`}
@@ -165,7 +173,7 @@ const ReparationDetails = () => {
           {isEnCours && (
             <button
               onClick={() => setShowTerminerForm(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-amber-700 bg-white hover:bg-gray-100 rounded-xl transition-colors duration-150"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-colors duration-150"
             >
               <FiCheckCircle className="w-4 h-4" />
               Terminer la réparation

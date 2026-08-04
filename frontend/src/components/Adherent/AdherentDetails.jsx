@@ -308,11 +308,11 @@ const AdherentDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-cyan-700 dark:bg-cyan-900 rounded-2xl shadow-sm p-6 md:p-8 text-white"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6 md:p-8"
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-blue-100/80 uppercase tracking-wider">
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
               Statut du compte
             </p>
             <div className="flex items-center gap-3 mt-1">
@@ -321,26 +321,26 @@ const AdherentDetails = () => {
           </div>
           <div className="flex items-center gap-6">
             <div className="text-center">
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {adherent.niveau || "Non défini"}
               </p>
-              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Niveau
               </p>
             </div>
-            <div className="w-px h-12 bg-white/20" />
+            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700" />
             <div className="text-center">
-              <p className="text-2xl font-bold">{anciennete}</p>
-              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{anciennete}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Ancienneté
               </p>
             </div>
-            <div className="w-px h-12 bg-white/20" />
+            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700" />
             <div className="text-center">
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {adherent.nb_plongees_total ?? 0}
               </p>
-              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Plongées club
               </p>
             </div>

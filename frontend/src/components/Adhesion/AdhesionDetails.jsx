@@ -292,18 +292,18 @@ const AdhesionDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-cyan-700 dark:bg-cyan-900 rounded-2xl shadow-sm p-6 md:p-8 text-white"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6 md:p-8"
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
-            <p className="text-sm font-medium text-blue-100/80 uppercase tracking-wider">
+            <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
               {isClub ? "Statut du paiement" : "Statut"}
             </p>
             <div className="flex items-center gap-3 mt-2">
               {isClub ? (
                 <StatusBadge status={adhesion.statut_paiement} />
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-white/15">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
                   <FiCheckCircle className="w-4 h-4" />
                   Validée
                 </span>
@@ -314,26 +314,26 @@ const AdhesionDetails = () => {
             {isClub && (
               <>
                 <div className="text-center">
-                  <p className="text-3xl font-bold">
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
                     {formatCurrency(adhesion.montant)}
                   </p>
-                  <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                     Montant
                   </p>
                 </div>
-                <div className="w-px h-12 bg-white/20 hidden sm:block" />
+                <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
               </>
             )}
             <div className="text-center">
-              <p className="text-2xl font-bold">{adhesion.type}</p>
-              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{adhesion.type}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Type d'adhésion
               </p>
             </div>
-            <div className="w-px h-12 bg-white/20 hidden sm:block" />
+            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
             <div className="text-center">
-              <p className="text-2xl font-bold">{adhesion.annee_adhesion}</p>
-              <p className="text-xs text-blue-100/70 uppercase tracking-wider">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{adhesion.annee_adhesion}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                 Année
               </p>
             </div>
