@@ -69,6 +69,23 @@ export default defineConfig({
       },
     },
   },
+  // `vite preview` (bundle buildé, ex. smoke test E2E pré-déploiement) lit
+  // sa PROPRE clé de config, pas `server.proxy` — sans celle-ci, tous les
+  // appels /api de l'app tournée via `preview` retombent sur le port 3000
+  // lui-même (404), le proxy ne s'appliquant qu'à `vite dev`.
+  preview: {
+    port: 3000,
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
+      "/uploads": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: "dist",
     sourcemap: true,

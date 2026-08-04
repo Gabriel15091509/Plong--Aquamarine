@@ -295,6 +295,13 @@ jobs:
           node-version: 20
           cache: npm
 
+      # `concurrently` (pour `npm run dev` plus bas) et `@playwright/test`
+      # sont des devDependencies de CE package.json racine, jamais installées
+      # par `install:backend` (qui ne fait que `npm --prefix backend/X
+      # install` pour chaque service, sans toucher au node_modules racine).
+      - name: Install root dependencies
+        run: npm ci
+
       - name: Install backend dependencies
         run: npm run install:backend
 
@@ -371,7 +378,18 @@ jobs:
             done
           done
 
+      # Mêmes surcharges DB que le bootstrap : sans elles, chaque script
+      # relit le DB_PASSWORD de son propre .env (le placeholder "change_me"
+      # généré plus haut, ou le vrai mot de passe de dev pour formation-
+      # service/gateway-service dont le .env est committé) — aucun des
+      # deux ne correspond au Postgres éphémère de ce job.
       - name: Seed demo data
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: plongee_db
+          DB_USER: postgres
+          DB_PASSWORD: postgres
         run: |
           (cd backend/identite-service && node scripts/seedIdentite.js)
           (cd backend/materiel-service && node scripts/seedMateriel.js)
