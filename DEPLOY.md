@@ -63,9 +63,14 @@ kubectl apply -f argocd/application.yaml
 ```
 
 À partir de cette commande, ArgoCD prend en charge tout ce qui est listé
-dans `k8s/kustomization.yaml` (namespace, configmap, postgres, les 7
-services backend, le frontend, l'ingress). Ne plus jamais lancer
-`kubectl apply -k k8s/` à la main après ça — laisser ArgoCD le faire.
+dans `k8s/overlays/production` (qui référence `k8s/base` : namespace,
+configmap, postgres, les 7 services backend, le frontend, l'ingress). Ne
+plus jamais lancer `kubectl apply -k k8s/overlays/production` à la main
+après ça — laisser ArgoCD le faire.
+
+Pour l'environnement de staging (namespace séparé, avec HPA — voir
+section 8), c'est `argocd/application-staging.yaml` qu'il faut appliquer,
+en plus et indépendamment de celui-ci.
 
 ## 4bis. Accélérer la détection des changements (optionnel mais recommandé)
 
@@ -103,7 +108,8 @@ Une fois `frontend` synchronisé (`kubectl get pods -n plongee-app`), l'appli
 complète est servie par l'Ingress sur **http://localhost** (port 80, exposé
 directement par Docker Desktop) : le frontend statique sur `/`, chaque
 `/api/...` routé vers le microservice propriétaire (voir
-`k8s/08-ingress.yaml`). C'est différent du `http://localhost:3000` du
+`k8s/overlays/production/08-ingress.yaml`). C'est différent du
+`http://localhost:3000` du
 serveur de dev Vite (`npm run dev`), qui reste utilisable en parallèle pour
 développer sans repasser par le cluster à chaque changement.
 
@@ -114,3 +120,70 @@ Un simple `git push` sur `main` suffit :
 
 Voir le plan `shiny-rolling-teapot.md` pour le script de vérification complet
 et le scénario de démonstration du `selfHeal` d'ArgoCD.
+
+## 8. Environnement de staging + autoscaling horizontal (HPA)
+
+En plus de l'environnement ci-dessus (namespace `plongee-app`, ci-après
+« production »), un second environnement isolé existe pour tester une
+release avant de la considérer stable : namespace `plongee-app-staging`,
+mêmes images (mêmes tags `sha-`, bumpés par le même job CI que la
+production — voir `k8s/base/kustomization.yaml`), mais avec un
+`HorizontalPodAutoscaler` par service (`min=1`, `max=3` réplicas, cible
+70% d'utilisation CPU) au lieu d'un nombre de réplicas fixe. Pas
+d'Ingress/TLS en staging : environnement interne au cluster uniquement,
+jamais exposé sur le nom de domaine public de production.
+
+### 8.1. metrics-server (prérequis du HPA)
+
+Le HPA a besoin de métriques CPU en temps réel, fournies par
+`metrics-server` — absent par défaut sur le Kubernetes intégré à Docker
+Desktop.
+
+```powershell
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+# Les certificats du kubelet de Docker Desktop ne passent pas la
+# vérification TLS stricte par défaut de metrics-server — contournement
+# standard en environnement local/démo (à ne PAS faire sur un vrai cluster
+# de production) :
+kubectl -n kube-system patch deployment metrics-server --type='json' `
+  -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+kubectl -n kube-system wait --for=condition=available deploy/metrics-server --timeout=120s
+```
+
+Vérification : `kubectl top pods -n plongee-app-staging` doit renvoyer des
+valeurs CPU/mémoire (pas une erreur `Metrics API not available`) une fois
+les pods de staging démarrés.
+
+### 8.2. Secret applicatif (même principe qu'en production, section 2)
+
+```powershell
+Copy-Item k8s\secret.example.yaml k8s\secret-staging.yaml
+# éditer k8s/secret-staging.yaml : remplacer namespace: plongee-app par
+# plongee-app-staging, et les valeurs change_me
+kubectl apply -f k8s\secret-staging.yaml
+Remove-Item k8s\secret-staging.yaml   # copie temporaire, ne jamais committer
+```
+
+### 8.3. Brancher ArgoCD sur l'overlay staging
+
+```powershell
+kubectl apply -f argocd/application-staging.yaml
+```
+
+### 8.4. Vérifier le HPA
+
+```powershell
+kubectl get hpa -n plongee-app-staging
+# TARGETS doit passer de "<unknown>/70%" à une vraie valeur (ex. "3%/70%")
+# une fois metrics-server opérationnel et les pods up depuis 1-2 minutes.
+```
+
+Pour déclencher une montée en charge visible (démo) :
+
+```powershell
+kubectl run -n plongee-app-staging charge-cpu --image=busybox --restart=Never -- `
+  sh -c "while true; do wget -q -O- http://gateway-service:5000/health; done"
+kubectl get hpa -n plongee-app-staging -w
+# nettoyage ensuite :
+kubectl delete pod -n plongee-app-staging charge-cpu
+```

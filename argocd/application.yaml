@@ -1,8 +1,11 @@
-# Point d'amorçage GitOps — appliqué une seule fois à la main :
+# Point d'amorçage GitOps (environnement de production) — appliqué une
+# seule fois à la main :
 #   kubectl apply -f argocd/application.yaml
 # Ce fichier lui-même n'est PAS géré par ArgoCD (il n'est pas dans k8s/,
 # qu'ArgoCD surveille). À partir de son application, ArgoCD prend le relais
-# sur tout ce qui se trouve sous k8s/ (voir k8s/kustomization.yaml).
+# sur tout ce qui se trouve sous k8s/overlays/production (qui référence
+# k8s/base, voir k8s/overlays/production/kustomization.yaml). Pour
+# l'environnement de staging, voir application-staging.yaml.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -13,7 +16,7 @@ spec:
   source:
     repoURL: https://github.com/Gabriel15091509/Plong--Aquamarine.git
     targetRevision: main
-    path: k8s
+    path: k8s/overlays/production
   destination:
     server: https://kubernetes.default.svc
     namespace: plongee-app

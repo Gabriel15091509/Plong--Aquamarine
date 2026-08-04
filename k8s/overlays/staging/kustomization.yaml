@@ -1,0 +1,54 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: plongee-app-staging
+
+resources:
+- ../../base
+- namespace.yaml
+- hpa.yaml
+  # Pas d'ingress ni de sauvegarde automatique ici : staging n'est joignable
+  # qu'en interne au cluster (kubectl port-forward), jamais exposé via le
+  # nom de domaine public/TLS de production (voir overlays/production/).
+  # secret.yaml : même principe qu'en production, appliqué à la main dans
+  # CE namespace (kubectl apply -f k8s/secret.yaml -n plongee-app-staging
+  # après avoir corrigé metadata.namespace dans la copie locale).
+
+# Réplicas de départ à 1 (= minReplicas des HPA ci-dessus) ; le HPA prend
+# ensuite la main entre 1 et 3 selon la charge CPU.
+replicas:
+- name: gateway-service
+  count: 1
+- name: formation-service
+  count: 1
+- name: materiel-service
+  count: 1
+- name: finance-service
+  count: 1
+- name: vie-associative-service
+  count: 1
+- name: identite-service
+  count: 1
+- name: activites-service
+  count: 1
+- name: frontend
+  count: 1
+
+# Le HPA a besoin de `resources.requests.cpu` sur les conteneurs pour
+# calculer un pourcentage d'utilisation — la base n'en définit pas
+# (production tourne sans limites depuis le début, on ne change pas ce
+# comportement pour ne pas modifier le profil de ressources de prod).
+# Valeurs modestes, cohérentes avec des microservices Node.js légers sur un
+# cluster Docker Desktop local.
+patches:
+- target:
+    kind: Deployment
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 300m
+          memory: 256Mi

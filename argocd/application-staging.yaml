@@ -1,0 +1,30 @@
+# Point d'amorçage GitOps (environnement de staging) — appliqué une seule
+# fois à la main :
+#   kubectl apply -f argocd/application-staging.yaml
+# Même dépôt/branche que la production (application.yaml) : c'est le même
+# artefact (mêmes tags d'image, bumpés par le même job CI) qui est promu
+# dans les deux environnements — seuls le namespace, les réplicas de départ
+# et le HPA diffèrent (voir k8s/overlays/staging/kustomization.yaml).
+# CreateNamespace=true ici (contrairement à la production) : namespace.yaml
+# fait déjà partie des ressources trackées, ce réglage n'est qu'une
+# sécurité redondante pour le tout premier sync.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: plongee-app-staging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Gabriel15091509/Plong--Aquamarine.git
+    targetRevision: main
+    path: k8s/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: plongee-app-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
