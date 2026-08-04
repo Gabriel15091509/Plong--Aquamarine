@@ -33,6 +33,8 @@ import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
+import SectionCard from "../Common/SectionCard";
+import InfoItem from "../Common/InfoItem";
 import PalanqueesManager from "../Palanquee/PalanqueesManager";
 import SortieRouteMap from "./SortieRouteMap";
 import { formatDateTime } from "../../utils/helpers";
@@ -145,7 +147,7 @@ const SortieDetails = () => {
         </p>
         <button
           onClick={() => navigate("/sorties")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35"
+          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
         >
           <FiArrowLeft className="w-4 h-4" />
           Retour à la liste
@@ -153,58 +155,6 @@ const SortieDetails = () => {
       </motion.div>
     );
   }
-
-  const InfoItem = ({
-    icon: Icon,
-    label,
-    value,
-    highlight = false,
-    children,
-  }) => (
-    <motion.div
-      variants={fadeInUp}
-      className={`flex items-start gap-4 p-4 rounded-xl transition-all duration-300 ${
-        highlight
-          ? "bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 border-l-4 border-blue-500"
-          : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
-      }`}
-    >
-      <div
-        className={`mt-0.5 p-2 rounded-lg ${
-          highlight
-            ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
-            : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-        }`}
-      >
-        <Icon className="w-5 h-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
-          {label}
-        </p>
-        {children || (
-          <p className="font-semibold text-gray-900 dark:text-white mt-0.5">
-            {value || "Non défini"}
-          </p>
-        )}
-      </div>
-    </motion.div>
-  );
-
-  const SectionCard = ({ title, icon: Icon, children, className = "" }) => (
-    <motion.div
-      variants={fadeInUp}
-      className={`bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6 hover:shadow-2xl transition-shadow duration-300 ${className}`}
-    >
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
-        <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
-          <Icon className="w-5 h-5" />
-        </span>
-        {title}
-      </h3>
-      <div className="space-y-2">{children}</div>
-    </motion.div>
-  );
 
   const getStatutColor = (statut) => {
     const colors = {
@@ -261,13 +211,13 @@ const SortieDetails = () => {
         <div className="flex items-center gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
-                <FiAnchor className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <span className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
+                <FiAnchor className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
               </span>
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
                   {sortie.type}{" "}
-                  <span className="text-blue-600 dark:text-blue-400">
+                  <span className="text-cyan-600 dark:text-cyan-400">
                     - {sortie.lieu}
                   </span>
                 </h1>
@@ -304,7 +254,7 @@ const SortieDetails = () => {
             ) : (
               <Link
                 to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
               >
                 <FiAlertTriangle className="w-4 h-4" />
                 Déclarer un incident
@@ -321,7 +271,7 @@ const SortieDetails = () => {
             ) : (
               <Link
                 to={`/sorties/edit/${sortie.id_sortie}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/35 hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
               >
                 <FiEdit className="w-4 h-4" />
                 Modifier
@@ -331,7 +281,7 @@ const SortieDetails = () => {
               onClick={() => setShowDeleteModal(true)}
               disabled={isTerminee}
               title={isTerminee ? "Sortie terminée : suppression impossible" : undefined}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:translate-y-0"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FiTrash2 className="w-4 h-4" />
               Supprimer
@@ -378,7 +328,7 @@ const SortieDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-xl p-6 md:p-8 border-2 ${getStatutColor(sortie.statut)}`}
+        className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${getStatutColor(sortie.statut)}`}
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
@@ -542,10 +492,10 @@ const SortieDetails = () => {
           variants={fadeInUp}
           initial="initial"
           animate="animate"
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
         >
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
               <FiMap className="w-5 h-5" />
             </span>
             Localisation & itinéraire
@@ -565,10 +515,10 @@ const SortieDetails = () => {
             variants={fadeInUp}
             initial="initial"
             animate="animate"
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
           >
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-              <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
                 <FiFileText className="w-5 h-5" />
               </span>
               Description du site
@@ -586,10 +536,10 @@ const SortieDetails = () => {
             variants={fadeInUp}
             initial="initial"
             animate="animate"
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
           >
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-              <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+              <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
                 <FiAlertCircle className="w-5 h-5" />
               </span>
               Conditions d'affectation
@@ -608,11 +558,11 @@ const SortieDetails = () => {
         variants={fadeInUp}
         initial="initial"
         animate="animate"
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-red-500/10 to-orange-500/10 text-red-600 dark:text-red-400">
+            <span className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
               <FiAlertTriangle className="w-5 h-5" />
             </span>
             Incidents ({incidents.length})
@@ -673,11 +623,11 @@ const SortieDetails = () => {
         variants={fadeInUp}
         initial="initial"
         animate="animate"
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
+            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
               <FiPackage className="w-5 h-5" />
             </span>
             Matériel attribué ({attributionsMateriel.length})
@@ -692,7 +642,7 @@ const SortieDetails = () => {
           ) : (
             <Link
               to={`/attributions/create?id_sortie=${sortie.id_sortie}`}
-              className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-sm font-medium text-cyan-600 dark:text-cyan-400 hover:underline"
             >
               + Attribuer du matériel
             </Link>

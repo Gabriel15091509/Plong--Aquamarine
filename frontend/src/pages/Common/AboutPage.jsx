@@ -42,7 +42,8 @@ const AboutPage = () => {
       delay: 0.2,
     },
     { icon: FiUsers, label: "Adhérents", value: "120", delay: 0.3 },
-    { icon: FiAward, label: "Affiliation", value: "FFESM", delay: 0.4 },
+    { icon: FiTrendingUp, label: "Sorties/an", value: "500", delay: 0.4 },
+    { icon: FiAward, label: "Affiliation", value: "FFESM", delay: 0.5 },
   ];
 
   const activities = [
@@ -284,6 +285,9 @@ const AboutPage = () => {
               <FiUsers className="w-3 h-3" /> 120 adhérents
             </span>
             <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-medium flex items-center gap-1">
+              <FiTrendingUp className="w-3 h-3" /> 500 sorties/an
+            </span>
+            <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-medium flex items-center gap-1">
               <FiAward className="w-3 h-3" /> FFESM
             </span>
           </motion.div>
@@ -296,7 +300,7 @@ const AboutPage = () => {
         variants={containerVariants}
         initial="hidden"
         animate={controls}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4"
       >
         {stats.map((stat, index) => (
           <motion.div
@@ -367,7 +371,8 @@ const AboutPage = () => {
             >
               Aujourd'hui, notre club compte 120 adhérents actifs, des débutants
               (N1) aux moniteurs (N4), unis par la même passion pour l'océan et
-              la transmission.
+              la transmission. Ensemble, nous organisons plus de 500 sorties
+              par an, entre exploration, formation et baptêmes.
             </motion.p>
           </div>
         </div>

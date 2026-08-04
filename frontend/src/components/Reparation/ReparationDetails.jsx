@@ -6,7 +6,6 @@ import {
   FiCalendar,
   FiEdit,
   FiArrowLeft,
-  FiAlertCircle,
   FiTrash2,
   FiCheckCircle,
   FiClock,
@@ -18,7 +17,8 @@ import {
 import { useReparations } from "../../hooks/Reparation/useReparations";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import LoadingSpinner from "../Common/LoadingSpinner";
-import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import SectionCard from "../Common/SectionCard";
 import { formatDate, formatCurrency, formatDateForInput } from "../../utils/helpers";
 
 const ReparationDetails = () => {
@@ -78,7 +78,7 @@ const ReparationDetails = () => {
         </h3>
         <button
           onClick={() => navigate("/reparations")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg"
+          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
         >
           <FiArrowLeft className="w-4 h-4" />
           Retour à la liste
@@ -102,8 +102,8 @@ const ReparationDetails = () => {
       >
         <div>
           <div className="flex items-center gap-3">
-            <span className="p-2.5 rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/10">
-              <FiTool className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+            <span className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
+              <FiTool className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
             </span>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
@@ -120,14 +120,14 @@ const ReparationDetails = () => {
         <div className="flex gap-2">
           <Link
             to={`/reparations/edit/${reparation.id_reparation}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
           >
             <FiEdit className="w-4 h-4" />
             Modifier
           </Link>
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
           >
             <FiTrash2 className="w-4 h-4" />
             Supprimer
@@ -138,10 +138,8 @@ const ReparationDetails = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-xl p-6 md:p-8 text-white ${
-          isEnCours
-            ? "bg-gradient-to-r from-orange-500 to-amber-600"
-            : "bg-gradient-to-r from-emerald-500 to-green-600"
+        className={`rounded-2xl shadow-sm p-6 md:p-8 text-white ${
+          isEnCours ? "bg-amber-600" : "bg-green-600"
         }`}
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -167,7 +165,7 @@ const ReparationDetails = () => {
           {isEnCours && (
             <button
               onClick={() => setShowTerminerForm(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-orange-700 bg-white hover:bg-gray-100 rounded-xl transition-all duration-300 shadow-lg"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-amber-700 bg-white hover:bg-gray-100 rounded-xl transition-colors duration-150"
             >
               <FiCheckCircle className="w-4 h-4" />
               Terminer la réparation
@@ -180,7 +178,7 @@ const ReparationDetails = () => {
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
         >
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
             Terminer la réparation
@@ -212,13 +210,7 @@ const ReparationDetails = () => {
         </motion.div>
       )}
 
-      <motion.div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
-          <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
-            <FiInfo className="w-5 h-5" />
-          </span>
-          Détails
-        </h3>
+      <SectionCard title="Détails" icon={FiInfo}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4">
           <div className="flex items-center gap-2">
             <FiCalendar className="text-gray-400" />
@@ -262,46 +254,14 @@ const ReparationDetails = () => {
             {reparation.description_panne}
           </p>
         </div>
-      </motion.div>
+      </SectionCard>
 
-      {showDeleteModal && (
-        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800"
-          >
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
-              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-900/30">
-                <FiAlertCircle className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold">Confirmer la suppression</h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
-              Êtes-vous sûr de vouloir supprimer cette réparation ?
-              <br />
-              <span className="text-sm text-red-500 font-medium">
-                Cette action est irréversible.
-              </span>
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl transition-all duration-300 shadow-lg"
-              >
-                <FiTrash2 className="w-4 h-4 inline mr-2" />
-                Confirmer la suppression
-              </button>
-            </div>
-          </motion.div>
-        </ModalOverlay>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        message="Êtes-vous sûr de vouloir supprimer cette réparation ?"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </motion.div>
   );
 };

@@ -200,7 +200,7 @@ export const SPECIALITE_ENCADREMENT_OPTIONS = [
 // provisoires (port de Saint-Leu), à ajuster si l'emplacement réel diffère.
 export const CLUB_LOCATION = {
   name: 'Aquanature Plongée',
-  address: 'Saint-Leu, La Réunion',
-  lat: -21.1706,
-  lng: 55.2894,
+  address: '23 Rue de la Marine, 97436 Saint-Leu, La Réunion',
+  lat: -21.166457,
+  lng: 55.28697,
 };
