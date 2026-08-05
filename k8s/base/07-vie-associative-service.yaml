@@ -38,6 +38,7 @@ spec:
   template:
     metadata:
       labels: { app: vie-associative-service }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "5013" }
     spec:
       securityContext:
         fsGroup: 1000

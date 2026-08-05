@@ -10,6 +10,7 @@ spec:
   template:
     metadata:
       labels: { app: finance-service }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "5012" }
     spec:
       containers:
         - name: finance-service

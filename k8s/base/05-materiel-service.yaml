@@ -23,6 +23,7 @@ spec:
   template:
     metadata:
       labels: { app: materiel-service }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "5011" }
     spec:
       securityContext:
         fsGroup: 1000

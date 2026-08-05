@@ -23,6 +23,7 @@ spec:
   template:
     metadata:
       labels: { app: identite-service }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "5014" }
     spec:
       securityContext:
         fsGroup: 1000
