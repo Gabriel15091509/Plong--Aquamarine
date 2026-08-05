@@ -10,6 +10,7 @@ spec:
   template:
     metadata:
       labels: { app: formation-service }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "5010" }
     spec:
       containers:
         - name: formation-service

@@ -10,6 +10,7 @@ spec:
   template:
     metadata:
       labels: { app: activites-service }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "5015" }
     spec:
       containers:
         - name: activites-service

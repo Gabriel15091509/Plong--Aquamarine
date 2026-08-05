@@ -17,6 +17,7 @@ spec:
   template:
     metadata:
       labels: { app: gateway-service }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "5000" }
     spec:
       containers:
         - name: gateway-service

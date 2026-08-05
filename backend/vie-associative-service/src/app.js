@@ -5,6 +5,7 @@ const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
 const cron = require("node-cron");
+const client = require("prom-client");
 require("dotenv").config();
 
 const routes = require("./routes");
@@ -15,6 +16,36 @@ const CertificatMedicalService = require("./services/CertificatMedicalService");
 const { sequelize, testConnection } = require("./config/database");
 
 const app = express();
+
+// Métriques Prometheus (Phase 5) : un registre par process, séparé du
+// registre global de prom-client pour éviter toute collision si ce
+// module était un jour importé plusieurs fois (tests, notamment).
+const metricsRegister = new client.Registry();
+client.collectDefaultMetrics({ register: metricsRegister });
+
+const httpRequestDuration = new client.Histogram({
+  name: "http_request_duration_seconds",
+  help: "Durée des requêtes HTTP entrantes, en secondes",
+  labelNames: ["method", "route", "status_code"],
+  buckets: [0.05, 0.1, 0.3, 0.5, 1, 2, 5],
+  registers: [metricsRegister],
+});
+
+// Posé en tout premier middleware pour mesurer la requête de bout en
+// bout (y compris parsing du body, rate-limit, etc.). `req.route?.path`
+// n'est peuplé qu'une fois la route effectivement matchée par Express —
+// on retombe sur `req.path` sinon (404, requêtes non matchées).
+app.use((req, res, next) => {
+  const endTimer = httpRequestDuration.startTimer();
+  res.on("finish", () => {
+    endTimer({
+      method: req.method,
+      route: req.route?.path || req.path,
+      status_code: res.statusCode,
+    });
+  });
+  next();
+});
 
 app.use(
   helmet({
@@ -73,6 +104,11 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
   });
+});
+
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", metricsRegister.contentType);
+  res.end(await metricsRegister.metrics());
 });
 
 app.use("/api", routes);
