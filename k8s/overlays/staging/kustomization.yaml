@@ -13,6 +13,39 @@ resources:
   # CE namespace (kubectl apply -f k8s/secret.yaml -n plongee-app-staging
   # après avoir corrigé metadata.namespace dans la copie locale).
 
+# Tags d'image PROPRES à staging (redéclare et écrase ceux de ../../base,
+# kustomize applique le transformer `images:` de l'overlay en dernier) :
+# la CI bump ce fichier-ci immédiatement après le build, AVANT le E2E,
+# tandis que ../../base/kustomization.yaml (source des tags de prod)
+# n'est bumpé qu'après un E2E vert — voir le job `update-manifests-*` de
+# .github/workflows/ci.yml. Valeurs de départ identiques à la base, elles
+# divergeront ensuite au fil des déploiements.
+images:
+- name: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
+  newTag: sha-2e42214
+- name: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
+  newTag: sha-2e42214
+- name: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
+  newTag: sha-2e42214
+- name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
+  newTag: sha-700ae14
+- name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
+  newTag: sha-2e42214
+- name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
+  newTag: sha-2e42214
+- name: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
+  newTag: sha-2e42214
+- name: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
+  newName: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
+  newTag: sha-2e42214
+
 # Réplicas de départ à 1 (= minReplicas des HPA ci-dessus) ; le HPA prend
 # ensuite la main entre 1 et 3 selon la charge CPU.
 replicas:
