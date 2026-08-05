@@ -1,0 +1,67 @@
+# PgBouncer (staging uniquement pour l'instant — voir Phase 4 du plan) :
+# pool de connexions devant Postgres. Nécessaire dès que le HPA multiplie
+# les réplicas Node (chacun avec pool.max=10 dans config/database.js) :
+# à max=3 réplicas × 7 services avec accès DB × 10 = jusqu'à 210 connexions
+# simultanées possibles, à comparer aux ~100 connexions par défaut de
+# postgres:16-alpine.
+#
+# Image bitnami/pgbouncer : `PGBOUNCER_PORT=5432` explicite pour que
+# l'app continue de pointer sur le même port qu'avant (DB_PORT inchangé
+# dans le ConfigMap) — le port par défaut de l'image est 6432.
+# `PGBOUNCER_DATABASE` doit correspondre au nom demandé par les services
+# (DB_NAME=plongee_db, inchangé) pour que PgBouncer route vers la bonne
+# base en amont.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: pgbouncer }
+  template:
+    metadata:
+      labels: { app: pgbouncer }
+    spec:
+      containers:
+        - name: pgbouncer
+          image: bitnami/pgbouncer:1.22.1
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRESQL_HOST
+              value: postgres
+            - name: POSTGRESQL_PORT
+              valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_PORT } }
+            - name: POSTGRESQL_USERNAME
+              valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_USER } }
+            - name: POSTGRESQL_PASSWORD
+              valueFrom: { secretKeyRef: { name: plongee-secrets, key: DB_PASSWORD } }
+            - name: POSTGRESQL_DATABASE
+              valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_NAME } }
+            - name: PGBOUNCER_DATABASE
+              valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_NAME } }
+            - name: PGBOUNCER_PORT
+              value: "5432"
+            - name: PGBOUNCER_POOL_MODE
+              value: transaction
+            - name: PGBOUNCER_MAX_CLIENT_CONN
+              value: "200"
+            - name: PGBOUNCER_DEFAULT_POOL_SIZE
+              value: "20"
+            - name: PGBOUNCER_AUTH_TYPE
+              value: scram-sha-256
+          readinessProbe:
+            tcpSocket: { port: 5432 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+spec:
+  selector: { app: pgbouncer }
+  ports:
+    - port: 5432
+      targetPort: 5432
