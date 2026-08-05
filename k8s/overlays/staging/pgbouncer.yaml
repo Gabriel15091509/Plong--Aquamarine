@@ -5,12 +5,12 @@
 # simultanées possibles, à comparer aux ~100 connexions par défaut de
 # postgres:16-alpine.
 #
-# Image bitnami/pgbouncer : `PGBOUNCER_PORT=5432` explicite pour que
-# l'app continue de pointer sur le même port qu'avant (DB_PORT inchangé
-# dans le ConfigMap) — le port par défaut de l'image est 6432.
-# `PGBOUNCER_DATABASE` doit correspondre au nom demandé par les services
-# (DB_NAME=plongee_db, inchangé) pour que PgBouncer route vers la bonne
-# base en amont.
+# Image edoburu/pgbouncer (bitnami/pgbouncer n'a plus de tag public
+# gratuit sur Docker Hub, vérifié au moment d'écrire ceci — passé derrière
+# leur registre payant). Tag épinglé (`v1.25.2-p0`, vérifié disponible via
+# l'API Docker Hub) plutôt que `latest`, par cohérence avec le reste du
+# projet (toutes les images applicatives utilisent des tags `sha-`
+# immuables, jamais `latest`).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,31 +25,27 @@ spec:
     spec:
       containers:
         - name: pgbouncer
-          image: bitnami/pgbouncer:1.22.1
+          image: edoburu/pgbouncer:v1.25.2-p0
           ports:
             - containerPort: 5432
           env:
-            - name: POSTGRESQL_HOST
+            - name: DB_HOST
               value: postgres
-            - name: POSTGRESQL_PORT
+            - name: DB_PORT
               valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_PORT } }
-            - name: POSTGRESQL_USERNAME
+            - name: DB_USER
               valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_USER } }
-            - name: POSTGRESQL_PASSWORD
+            - name: DB_PASSWORD
               valueFrom: { secretKeyRef: { name: plongee-secrets, key: DB_PASSWORD } }
-            - name: POSTGRESQL_DATABASE
+            - name: DB_NAME
               valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_NAME } }
-            - name: PGBOUNCER_DATABASE
-              valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_NAME } }
-            - name: PGBOUNCER_PORT
-              value: "5432"
-            - name: PGBOUNCER_POOL_MODE
+            - name: POOL_MODE
               value: transaction
-            - name: PGBOUNCER_MAX_CLIENT_CONN
+            - name: MAX_CLIENT_CONN
               value: "200"
-            - name: PGBOUNCER_DEFAULT_POOL_SIZE
+            - name: DEFAULT_POOL_SIZE
               value: "20"
-            - name: PGBOUNCER_AUTH_TYPE
+            - name: AUTH_TYPE
               value: scram-sha-256
           readinessProbe:
             tcpSocket: { port: 5432 }
