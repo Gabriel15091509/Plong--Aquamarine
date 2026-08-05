@@ -1,8 +1,12 @@
 name: CI
 
 on:
+  # `feature/**` : lint/tests/build/scan à chaque push, feedback rapide,
+  # sans jamais toucher au GitOps (e2e-smoke et update-manifests restent
+  # conditionnés à `github.ref == 'refs/heads/main'` plus bas). Le merge
+  # dans `main` déclenche en plus la promotion staging→E2E→prod.
   push:
-    branches: [main]
+    branches: [main, "feature/**"]
   pull_request:
     branches: [main]
 
@@ -437,7 +441,14 @@ jobs:
           path: /tmp/backend.log
           retention-days: 14
 
-  update-manifests:
+  # Promotion échelonnée (staging d'abord, prod seulement après un E2E
+  # vert) : deux jobs distincts plutôt qu'un seul, précisément parce
+  # qu'ils ne doivent PAS se déclencher au même moment — voir le job
+  # `update-manifests-production` plus bas pour le gate. Les runners
+  # GitHub Actions n'ayant aucune route réseau vers le cluster Docker
+  # Desktop local, ce gate est encodé dans Git (quel tag chaque overlay
+  # référence), pas via un appel à l'API ArgoCD.
+  update-manifests-staging:
     needs: [detect-changes, build, build-frontend]
     # Ne dépend PLUS de la réussite de la totalité du matrix `build` : avec
     # `fail-fast: false`, un seul service en échec (ex. lint cassé sur
@@ -476,8 +487,8 @@ jobs:
           curl -sLo /tmp/kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz
           tar -xzf /tmp/kustomize.tar.gz -C /tmp
 
-      - name: Bump image tags in k8s/base/kustomization.yaml
-        working-directory: k8s/base
+      - name: Bump image tags in k8s/overlays/staging/kustomization.yaml
+        working-directory: k8s/overlays/staging
         run: |
           # La clé passée à `kustomize edit set image` doit être le nom
           # COMPLET de l'image (celui déjà écrit dans le littéral `image:`
@@ -512,12 +523,12 @@ jobs:
         run: |
           git config user.name "gitops-bot"
           git config user.email "gitops-bot@users.noreply.github.com"
-          git add k8s/base/kustomization.yaml
+          git add k8s/overlays/staging/kustomization.yaml
           if git diff --cached --quiet; then
             echo "Aucun changement à committer"
             exit 0
           fi
-          git commit -m "chore(gitops): bump image tag(s) to sha-${{ needs.detect-changes.outputs.short_sha }} [skip ci]"
+          git commit -m "chore(gitops): bump staging image tag(s) to sha-${{ needs.detect-changes.outputs.short_sha }} [skip ci]"
 
           # Deux workflows déclenchés par des push rapprochés sur main
           # arrivent régulièrement à ce point en même temps : celui qui pousse
@@ -525,6 +536,89 @@ jobs:
           # déjà avancé main entre-temps. On rebase le commit de bump sur le
           # main le plus récent et on retente, plutôt que d'échouer tout le
           # workflow pour une collision bénigne sur un fichier généré.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push rejeté (tentative $attempt/5), rebase sur origin/main puis nouvelle tentative..."
+            git fetch origin main
+            git rebase origin/main
+            sleep $((RANDOM % 5 + 1))
+          done
+
+          echo "Échec du push après plusieurs tentatives"
+          exit 1
+
+  # Ne bumpe k8s/base/kustomization.yaml (source des tags de PROD) que si
+  # le E2E de ce même run a réussi — c'est le gate de promotion demandé.
+  # `needs.e2e-smoke.result` vaut "skipped" (donc ≠ "success") si e2e-smoke
+  # n'a pas tourné (ex. build en échec) : prod n'avance pas non plus dans
+  # ce cas, comme attendu.
+  update-manifests-production:
+    needs: [detect-changes, build, build-frontend, e2e-smoke]
+    if: |
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      needs.e2e-smoke.result == 'success' &&
+      (needs.detect-changes.outputs.services != '[]' || needs.detect-changes.outputs.frontend == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute lowercase image namespace
+        run: echo "IMAGE_NS=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install kustomize
+        run: |
+          curl -sLo /tmp/kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz
+          tar -xzf /tmp/kustomize.tar.gz -C /tmp
+
+      - name: Bump image tags in k8s/base/kustomization.yaml
+        working-directory: k8s/base
+        run: |
+          # Voir le commentaire équivalent dans update-manifests-staging :
+          # même logique, appliquée ici à la base (source des tags de prod).
+          bump_if_pushed() {
+            local svc="$1"
+            local image="${{ env.IMAGE_NS }}/${svc}:sha-${{ needs.detect-changes.outputs.short_sha }}"
+            if docker manifest inspect "$image" > /dev/null 2>&1; then
+              /tmp/kustomize edit set image "${{ env.IMAGE_NS }}/${svc}=${image}"
+            else
+              echo "::warning::Image absente sur GHCR pour ${svc} (${image}) — build probablement en échec dans cette run, tag conservé."
+            fi
+          }
+
+          for svc in $(echo '${{ needs.detect-changes.outputs.services }}' | jq -r '.[]'); do
+            bump_if_pushed "$svc"
+          done
+          if [ "${{ needs.detect-changes.outputs.frontend }}" = "true" ]; then
+            bump_if_pushed "frontend"
+          fi
+
+      - name: Commit and push
+        run: |
+          git config user.name "gitops-bot"
+          git config user.email "gitops-bot@users.noreply.github.com"
+          git add k8s/base/kustomization.yaml
+          if git diff --cached --quiet; then
+            echo "Aucun changement à committer"
+            exit 0
+          fi
+          git commit -m "chore(gitops): bump production image tag(s) to sha-${{ needs.detect-changes.outputs.short_sha }} [skip ci]"
+
+          # Voir le commentaire équivalent dans update-manifests-staging :
+          # même logique de retry/rebase en cas de push rejeté.
           for attempt in 1 2 3 4 5; do
             if git push; then
               exit 0

@@ -187,3 +187,22 @@ kubectl get hpa -n plongee-app-staging -w
 # nettoyage ensuite :
 kubectl delete pod -n plongee-app-staging charge-cpu
 ```
+
+## 9. Workflow Git et promotion staging → prod
+
+- **`feature/**`** : chaque push déclenche lint + tests unitaires/
+  intégration + build/scan d'image (job `build`/`build-frontend`), pour
+  un feedback rapide — sans jamais toucher au GitOps (`e2e-smoke` et le
+  bump des tags restent réservés à `main`).
+- **`main`** (après merge d'une PR) : le pipeline complet tourne —
+  build → bump immédiat du tag de **staging** → E2E (Playwright, stack
+  éphémère miroir de la config staging) → si vert, bump du tag de
+  **production**. Voir `k8s/base/kustomization.yaml` (source des tags de
+  prod) et `k8s/overlays/staging/kustomization.yaml` (source des tags de
+  staging, bumpée en premier et indépendamment).
+
+Ce découpage n'appelle jamais l'API ArgoCD ni le cluster depuis la CI
+(les runners GitHub Actions cloud n'ont aucune route vers le Docker
+Desktop local) : c'est le contenu de Git lui-même qui encode le gate —
+ArgoCD (qui tourne côté cluster) se contente de refléter, en pull, ce
+que Git contient pour chaque environnement.
