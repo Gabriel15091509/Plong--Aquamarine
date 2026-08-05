@@ -206,3 +206,4 @@ Ce découpage n'appelle jamais l'API ArgoCD ni le cluster depuis la CI
 Desktop local) : c'est le contenu de Git lui-même qui encode le gate —
 ArgoCD (qui tourne côté cluster) se contente de refléter, en pull, ce
 que Git contient pour chaque environnement.
+# demo 08/05/2026 14:06:05
