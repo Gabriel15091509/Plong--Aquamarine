@@ -1,8 +1,13 @@
-# PgBouncer (staging uniquement pour l'instant — voir Phase 4 du plan) :
-# pool de connexions devant Postgres. Nécessaire dès que le HPA multiplie
-# les réplicas Node (chacun avec pool.max=10 dans config/database.js) :
-# à max=3 réplicas × 7 services avec accès DB × 10 = jusqu'à 210 connexions
-# simultanées possibles, à comparer aux ~100 connexions par défaut de
+# PgBouncer : pool de connexions devant Postgres, partagé par les deux
+# environnements (voir ../overlays/{production,staging}/kustomization.yaml
+# pour les `resources.requests` injectées par patch — prérequis HPA,
+# absent ici par design). Validé d'abord en staging seul avant promotion
+# ici (transaction multi-requêtes réelle testée avec succès en
+# pool_mode=transaction : BEGIN/INSERT/INSERT/SELECT/COMMIT sur la même
+# connexion serveur). Nécessaire dès que le HPA multiplie les réplicas
+# Node (chacun avec pool.max=10 dans config/database.js) : en production,
+# max=8 réplicas × 7 services avec accès DB × 10 = jusqu'à 560 connexions
+# simultanées possibles, très au-dessus des ~100 connexions par défaut de
 # postgres:16-alpine.
 #
 # Image edoburu/pgbouncer (bitnami/pgbouncer n'a plus de tag public
@@ -41,8 +46,17 @@ spec:
               valueFrom: { configMapKeyRef: { name: plongee-config, key: DB_NAME } }
             - name: POOL_MODE
               value: transaction
+            # 500 : couvre le pic théorique en production (max=8 réplicas
+            # × 7 services × pool.max=10 = 560 connexions "logiques" côté
+            # app), avec de la marge côté staging (max=3 réplicas). Un
+            # seul réglage pour les deux environnements plutôt qu'un
+            # patch par overlay — default_pool_size, lui, n'a pas besoin
+            # de suivre : en pool_mode=transaction, un petit nombre de
+            # connexions réelles suffit à servir beaucoup plus de clients
+            # (chacun ne retient sa connexion que le temps d'une seule
+            # transaction).
             - name: MAX_CLIENT_CONN
-              value: "200"
+              value: "500"
             - name: DEFAULT_POOL_SIZE
               value: "20"
             - name: AUTH_TYPE

@@ -4,7 +4,12 @@ metadata:
   name: plongee-config
   namespace: plongee-app
 data:
-  DB_HOST: postgres
+  # Les services applicatifs passent par PgBouncer (k8s/base/13-pgbouncer.yaml),
+  # pas directement par postgres — nécessaire dès que le HPA multiplie les
+  # réplicas Node (voir le commentaire de 13-pgbouncer.yaml). PgBouncer,
+  # lui, cible directement "postgres" en amont (configuré en dur dans son
+  # propre manifest, indépendant de cette valeur).
+  DB_HOST: pgbouncer
   DB_PORT: "5432"
   DB_NAME: plongee_db
   DB_USER: postgres
