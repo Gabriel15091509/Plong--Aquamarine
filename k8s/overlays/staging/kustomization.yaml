@@ -6,7 +6,8 @@ resources:
 - ../../base
 - namespace.yaml
 - hpa.yaml
-- pgbouncer.yaml
+  # pgbouncer.yaml : promu dans ../../base (k8s/base/13-pgbouncer.yaml)
+  # après validation ici — plus besoin de le lister à part.
   # Pas d'ingress ni de sauvegarde automatique ici : staging n'est joignable
   # qu'en interne au cluster (kubectl port-forward), jamais exposé via le
   # nom de domaine public/TLS de production (voir overlays/production/).
@@ -86,14 +87,3 @@ patches:
         limits:
           cpu: 300m
           memory: 256Mi
-# PgBouncer (Phase 4, staging seul pour l'instant) : les services pointent
-# sur pgbouncer au lieu de postgres directement. DB_PORT/DB_USER/DB_NAME
-# restent inchangés (pgbouncer.yaml écoute sur le même port 5432 et route
-# vers la même base) — seul DB_HOST change.
-- target:
-    kind: ConfigMap
-    name: plongee-config
-  patch: |-
-    - op: replace
-      path: /data/DB_HOST
-      value: pgbouncer
