@@ -35,22 +35,15 @@
 # — la doc Tailscale n'étant pas garantie figée, vérifier au moment de
 # l'implémentation que la syntaxe ci-dessous correspond toujours à la
 # version installée : `helm show values tailscale/tailscale-operator`).
-# Pont cross-namespace : un Ingress ne référence un backend que dans son
-# PROPRE namespace (plongee-app), alors que le contrôleur nginx-public
-# vit dans son propre namespace (ingress-nginx-public, même schéma que le
-# contrôleur principal). Ce Service ExternalName fait juste relayer le
-# nom vers le vrai Service, sans copier ni dupliquer quoi que ce soit.
-apiVersion: v1
-kind: Service
-metadata:
-  name: ingress-nginx-public-bridge
-  namespace: plongee-app
-spec:
-  type: ExternalName
-  externalName: ingress-nginx-public-controller.ingress-nginx-public.svc.cluster.local
-  ports:
-    - port: 80
----
+# Le contrôleur nginx-public (Helm, voir DEPLOY.md 10.3) est installé
+# directement dans le namespace `plongee-app` — pas dans un namespace
+# séparé comme le contrôleur principal. Raison : un Ingress ne peut
+# référencer un backend que dans son PROPRE namespace, et l'opérateur
+# Tailscale exige une vraie ClusterIP (un Service `ExternalName`
+# cross-namespace essayé d'abord échoue avec "invalid ClusterIP" côté
+# tailscale-operator). Même namespace = référence directe, pas de pont
+# nécessaire. L'isolation des routes admin ne vient de toute façon pas
+# du namespace mais du fait que ce contrôleur ignore ces routes.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -62,7 +55,7 @@ spec:
   ingressClassName: tailscale
   defaultBackend:
     service:
-      name: ingress-nginx-public-bridge
+      name: ingress-nginx-public-controller
       port:
         number: 80
   tls:
