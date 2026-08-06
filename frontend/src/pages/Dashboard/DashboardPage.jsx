@@ -1,4 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
+import { useLocation } from "react-router-dom";
+import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import {
   FiUsers,
@@ -64,6 +66,16 @@ const staggerContainer = {
 
 const DashboardPage = () => {
   const { user } = useAuth();
+  const location = useLocation();
+
+  // Redirection depuis ProtectedRoute (accès à une page réservée au
+  // réseau local du club, ex. Paiements/Matériel, via l'URL publique
+  // Tailscale) — voir components/Common/ProtectedRoute.jsx.
+  useEffect(() => {
+    if (location.state?.notice) {
+      toast(location.state.notice, { icon: "🔒" });
+    }
+  }, [location.state]);
 
   // Un adhérent voit sa fiche récapitulative personnelle (niveau, échéances)
   // plutôt que les statistiques globales du club, réservées au staff.
