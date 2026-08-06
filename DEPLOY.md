@@ -206,4 +206,85 @@ Ce découpage n'appelle jamais l'API ArgoCD ni le cluster depuis la CI
 Desktop local) : c'est le contenu de Git lui-même qui encode le gate —
 ArgoCD (qui tourne côté cluster) se contente de refléter, en pull, ce
 que Git contient pour chaque environnement.
-# demo 08/05/2026 14:06:05
+
+## 10. Accès public pour les adhérents (Tailscale Funnel)
+
+**Contexte** : le poste qui héberge le cluster n'a pas toujours d'IP
+publique propre (partage de connexion mobile = CGNAT), donc aucune
+redirection de port sur un routeur n'est fiable. Le club n'a par
+ailleurs qu'un sous-domaine DuckDNS (`plongee-club.duckdns.org`), pas un
+domaine dont on possède la zone DNS — ce qu'exigerait un tunnel
+Cloudflare nommé. Tailscale Funnel résout les deux problèmes : connexion
+sortante uniquement (fonctionne derrière n'importe quel NAT/CGNAT) et
+hostname stable (`*.ts.net`) sans posséder de domaine.
+
+**Seules les routes adhérent sont exposées** (voir
+`k8s/overlays/production/17-ingress-public.yaml`) — jamais les routes
+finance/matériel/gestion des comptes, qui restent accessibles uniquement
+depuis le réseau local du club via `08-ingress.yaml`. L'isolation est
+garantie par un DEUXIÈME contrôleur ingress-nginx dédié (`nginx-public`),
+qui n'a tout simplement pas connaissance des routes admin, plutôt que par
+un filtrage qui pourrait se tromper.
+
+### 10.1 Compte et policy Tailscale (une fois, dans la console web)
+
+1. Créer un compte gratuit sur [tailscale.com](https://tailscale.com/).
+2. **Settings → HTTPS Certificates** : activer.
+3. **Settings → OAuth clients** : générer un client OAuth avec le scope
+   `Devices: Core` en écriture, tag `tag:k8s-operator`.
+4. **Access Controls** (policy ACL) : ajouter le tag et l'attribut
+   `funnel` :
+   ```json
+   "tagOwners": { "tag:k8s-operator": [] },
+   "nodeAttrs": [
+     { "target": ["tag:k8s-operator"], "attr": ["funnel"] }
+   ]
+   ```
+
+### 10.2 Installer l'opérateur Tailscale (une fois, cluster)
+
+```powershell
+kubectl create namespace tailscale
+kubectl create secret generic operator-oauth `
+  --namespace=tailscale `
+  --from-literal=client_id=<CLIENT_ID> `
+  --from-literal=client_secret=<CLIENT_SECRET>
+
+helm repo add tailscale https://pkgs.tailscale.com/helmcharts
+helm repo update
+helm upgrade --install tailscale-operator tailscale/tailscale-operator `
+  --namespace=tailscale `
+  --set-string oauth.clientId=<CLIENT_ID> `
+  --set-string oauth.clientSecret=<CLIENT_SECRET> `
+  --wait
+```
+Le Secret `operator-oauth` (comme `plongee-secrets`) n'est **jamais**
+commité — appliqué une fois à la main, hors de portée d'ArgoCD.
+
+### 10.3 Installer le contrôleur ingress-nginx dédié "public" (une fois, cluster)
+
+```powershell
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm install ingress-nginx-public ingress-nginx/ingress-nginx `
+  --namespace ingress-nginx-public --create-namespace `
+  --set controller.ingressClassResource.name=nginx-public `
+  --set controller.ingressClassResource.controllerValue="k8s.io/ingress-nginx-public" `
+  --set controller.electionID=ingress-nginx-public-leader `
+  --set controller.service.type=ClusterIP
+```
+
+### 10.4 Déployer et vérifier
+
+```powershell
+kubectl apply -k k8s/overlays/production
+kubectl get ingress plongee-ingress-funnel -n plongee-app
+# ADDRESS attendu : plongee-club.<tailnet>.ts.net
+```
+Tester depuis un appareil **hors** réseau du club : les routes adhérent
+répondent, les routes admin (ex. `/api/paiements`) ne sont pas
+joignables du tout via cette URL — elles restent uniquement accessibles
+via `plongee-club.duckdns.org` sur le réseau local.
+
+*(Les valeurs exactes des charts Helm ci-dessus peuvent évoluer — vérifier
+`helm show values tailscale/tailscale-operator` si une commande échoue.)*

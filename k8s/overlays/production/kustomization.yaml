@@ -8,9 +8,13 @@ resources:
 - 08-ingress.yaml
 - 12-postgres-backup.yaml
 - hpa.yaml
+- 17-ingress-public.yaml
+- 18-tailscale-funnel.yaml
   # secret.yaml n'est jamais listé ici : le Secret réel reste appliqué à la
   # main (kubectl apply -f k8s/secret.yaml, gitignoré) et hors de portée
   # d'ArgoCD (jamais tracké, donc jamais pruné/recréé par lui).
+  # Même règle pour le Secret OAuth de l'opérateur Tailscale
+  # (namespace tailscale, jamais dans ce dépôt) — voir DEPLOY.md section 10.
 
 # Les tags d'image sont réécrits dans ../../base/kustomization.yaml, mais
 # SEULEMENT après un E2E vert (job CI "update-manifests-production") —

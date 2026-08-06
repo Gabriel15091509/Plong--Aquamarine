@@ -1,0 +1,70 @@
+# Exposition publique (Phase 6) via Tailscale Funnel — l'opérateur
+# Tailscale Kubernetes doit être installé au préalable (namespace
+# `tailscale`, voir DEPLOY.md section 10), ce n'est PAS un manifeste
+# applicatif classique donc il ne vit pas dans un Deployment ici.
+#
+# Pourquoi Tailscale Funnel plutôt qu'une redirection de port sur le
+# routeur du club ou Cloudflare Tunnel : le poste qui héberge le cluster
+# est, au moins ponctuellement, derrière un CGNAT (partage de connexion
+# mobile) — aucune IP publique propre, donc aucune redirection de port
+# possible, quelle que soit la configuration du routeur. Un tunnel
+# sortant (connexion initiée PAR le cluster vers Tailscale) fonctionne
+# quel que soit le type de connexion internet derrière. Cloudflare Tunnel
+# écarté car un nom stable exige un domaine dont la zone DNS est gérée
+# par Cloudflare — le club n'a que plongee-club.duckdns.org, dont la
+# zone appartient à DuckDNS. Tailscale Funnel donne un hostname stable
+# (*.ts.net) sans posséder de domaine.
+#
+# `defaultBackend` pointe vers le DEUXIÈME contrôleur ingress-nginx
+# (`nginx-public`, voir 17-ingress-public.yaml) — jamais vers le
+# contrôleur principal (`nginx`, réseau local uniquement, sert aussi les
+# routes admin). C'est ce choix, pas une règle de filtrage, qui garantit
+# que les routes finance/matériel/gestion-comptes restent injoignables
+# depuis internet.
+#
+# Prérequis côté tailnet (console d'admin Tailscale, une fois) :
+#   - HTTPS Certificates activé (Settings → activer "HTTPS Certificates").
+#   - Policy ACL : ajouter un nodeAttr "funnel" sur le tag utilisé par
+#     l'opérateur, ex. :
+#       "nodeAttrs": [{ "target": ["tag:k8s-operator"], "attr": ["funnel"] }]
+#
+# Le hostname public final est déterminé par `spec.tls[0].hosts[0]` :
+# ici "plongee-club" → https://plongee-club.<nom-du-tailnet>.ts.net
+# (confirmer le hostname exact après application avec :
+#   kubectl get ingress plongee-ingress-funnel -n plongee-app
+# — la doc Tailscale n'étant pas garantie figée, vérifier au moment de
+# l'implémentation que la syntaxe ci-dessous correspond toujours à la
+# version installée : `helm show values tailscale/tailscale-operator`).
+# Pont cross-namespace : un Ingress ne référence un backend que dans son
+# PROPRE namespace (plongee-app), alors que le contrôleur nginx-public
+# vit dans son propre namespace (ingress-nginx-public, même schéma que le
+# contrôleur principal). Ce Service ExternalName fait juste relayer le
+# nom vers le vrai Service, sans copier ni dupliquer quoi que ce soit.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx-public-bridge
+  namespace: plongee-app
+spec:
+  type: ExternalName
+  externalName: ingress-nginx-public-controller.ingress-nginx-public.svc.cluster.local
+  ports:
+    - port: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: plongee-ingress-funnel
+  namespace: plongee-app
+  annotations:
+    tailscale.com/funnel: "true"
+spec:
+  ingressClassName: tailscale
+  defaultBackend:
+    service:
+      name: ingress-nginx-public-bridge
+      port:
+        number: 80
+  tls:
+    - hosts:
+        - plongee-club

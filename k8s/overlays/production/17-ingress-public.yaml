@@ -1,0 +1,105 @@
+# Ingress "public" (Phase 6 — accès adhérents depuis internet) : sous-
+# ensemble volontairement restreint des routes de 08-ingress.yaml, servi
+# par un DEUXIÈME contrôleur ingress-nginx totalement séparé (classe
+# `nginx-public`, installé via Helm — voir DEPLOY.md section 10), pas
+# celui de 08-ingress.yaml (classe `nginx`, accès réseau local du club
+# uniquement).
+#
+# Pourquoi un deuxième contrôleur plutôt qu'un deuxième Ingress sur le
+# même contrôleur : un contrôleur ingress-nginx partagé route TOUTES les
+# règles qui lui sont assignées, quel que soit l'Ingress qui les déclare
+# — restreindre par nom d'hôte ou par un Ingress "séparé" ne suffit donc
+# pas à empêcher une requête externe d'atteindre une route admin si elle
+# forge le bon Host. En isolant les routes admin sur un contrôleur que
+# rien n'expose jamais publiquement, l'isolation est garantie par
+# construction, pas par du filtrage qui peut se tromper.
+#
+# Ce contrôleur `nginx-public` reste un Service ClusterIP (jamais de
+# LoadBalancer/NodePort ici) : seul le pod de l'opérateur Tailscale peut
+# l'atteindre, via Funnel (voir 18-tailscale-funnel.yaml). Aucun cert
+# TLS ici : Tailscale termine le HTTPS public lui-même et reparle en
+# clair à l'intérieur du cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: plongee-ingress-public
+  namespace: plongee-app
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx-public
+  rules:
+    - http:
+        paths:
+          - path: /api/formations
+            pathType: Prefix
+            backend:
+              service: { name: formation-service, port: { number: 5010 } }
+          - path: /api/competences
+            pathType: Prefix
+            backend:
+              service: { name: formation-service, port: { number: 5010 } }
+          - path: /api/seances
+            pathType: Prefix
+            backend:
+              service: { name: formation-service, port: { number: 5010 } }
+          - path: /api/specialites-formation
+            pathType: Prefix
+            backend:
+              service: { name: formation-service, port: { number: 5010 } }
+          - path: /api/adhesions
+            pathType: Prefix
+            backend:
+              service: { name: vie-associative-service, port: { number: 5013 } }
+          - path: /api/certificats-medicaux
+            pathType: Prefix
+            backend:
+              service: { name: vie-associative-service, port: { number: 5013 } }
+          - path: /uploads/adhesions
+            pathType: Prefix
+            backend:
+              service: { name: vie-associative-service, port: { number: 5013 } }
+          - path: /uploads/certificats
+            pathType: Prefix
+            backend:
+              service: { name: vie-associative-service, port: { number: 5013 } }
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service: { name: identite-service, port: { number: 5014 } }
+          - path: /api/adherents
+            pathType: Prefix
+            backend:
+              service: { name: identite-service, port: { number: 5014 } }
+          - path: /uploads/avatars
+            pathType: Prefix
+            backend:
+              service: { name: identite-service, port: { number: 5014 } }
+          - path: /api/sorties
+            pathType: Prefix
+            backend:
+              service: { name: activites-service, port: { number: 5015 } }
+          - path: /api/inscriptions
+            pathType: Prefix
+            backend:
+              service: { name: activites-service, port: { number: 5015 } }
+          - path: /api/plongees
+            pathType: Prefix
+            backend:
+              service: { name: activites-service, port: { number: 5015 } }
+          - path: /api/palanquees
+            pathType: Prefix
+            backend:
+              service: { name: activites-service, port: { number: 5015 } }
+          - path: /api/incidents
+            pathType: Prefix
+            backend:
+              service: { name: activites-service, port: { number: 5015 } }
+          - path: /api/dashboard
+            pathType: Prefix
+            backend:
+              service: { name: gateway-service, port: { number: 5000 } }
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: frontend, port: { number: 80 } }
