@@ -127,6 +127,20 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const canSeeIncidents = hasRole(["president", "moniteur"]);
   const canSeeRoles = hasRole(["president"]);
 
+  // Accès public (Tailscale Funnel, voir k8s/overlays/production/
+  // 17-ingress-public.yaml) : seules les routes adhérent sont exposées
+  // depuis internet — /api/paiements, /api/materiels, /api/moniteurs,
+  // /api/president, /api/tresoriers, /api/users n'existent tout
+  // simplement pas sur ce chemin réseau (le contrôleur nginx-public ne
+  // les connaît pas). Un président/trésorier PEUT se connecter depuis
+  // l'extérieur (l'auth est publique), mais sans ce masquage il verrait
+  // des menus dont chaque clic échoue silencieusement (l'appel retombe
+  // sur le frontend statique au lieu du JSON attendu). "Incidents" reste
+  // volontairement visible : cette route-là est publique (décision
+  // produit — un adhérent doit pouvoir signaler un incident hors club).
+  const isPublicAccess =
+    typeof window !== "undefined" && window.location.hostname.endsWith(".ts.net");
+
   // ✅ Menu général - visible par tous
   const mainMenu = [
     { path: "/dashboard", icon: FiHome, label: "Tableau de bord" },
@@ -402,13 +416,13 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
           <MenuSection
             title="Paiements"
             items={paiementsMenu}
-            isVisible={canSeePaiements}
+            isVisible={canSeePaiements && !isPublicAccess}
             {...menuSectionProps}
           />
           <MenuSection
             title="Administration"
             items={adminMenu}
-            isVisible={canSeeAdministration}
+            isVisible={canSeeAdministration && !isPublicAccess}
             {...menuSectionProps}
           />
           <MenuSection
@@ -420,13 +434,13 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
           <MenuSection
             title="Rôles"
             items={rolesMenu}
-            isVisible={canSeeRoles}
+            isVisible={canSeeRoles && !isPublicAccess}
             {...menuSectionProps}
           />
           <MenuSection
             title="Utilisateurs"
             items={usersMenu}
-            isVisible={canSeeUsers}
+            isVisible={canSeeUsers && !isPublicAccess}
             {...menuSectionProps}
           />
 
