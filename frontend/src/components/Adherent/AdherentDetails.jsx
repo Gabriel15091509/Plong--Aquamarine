@@ -424,6 +424,37 @@ const AdherentDetails = () => {
             label="Date d'inscription"
             value={formatDate(adherent.date_inscription)}
           />
+        </SectionCard>
+
+        {/* Historique des brevets : une ligne par passage de niveau (jamais
+            écrasée, contrairement au niveau courant ci-dessus) */}
+        <SectionCard title="Historique des brevets" icon={FiBookOpen}>
+          {!adherent.brevets || adherent.brevets.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2">
+              Aucun passage de niveau enregistré.
+            </p>
+          ) : (
+            adherent.brevets.map((brevet) => (
+              <div
+                key={brevet.id_brevet}
+                className="flex items-center justify-between gap-3 p-4 rounded-xl"
+              >
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 dark:text-white">
+                    {brevet.niveau}
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {formatDate(brevet.date_obtention)}
+                    {brevet.num_brevet ? ` — Brevet n° ${brevet.num_brevet}` : ""}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </SectionCard>
+
+        {/* Informations club (suite) */}
+        <SectionCard title="Statut administratif" icon={FiAnchor}>
           <InfoItem
             icon={FiUserCheck}
             label="Statut"

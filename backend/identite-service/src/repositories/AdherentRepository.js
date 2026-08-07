@@ -3,6 +3,7 @@ const { Op } = require("sequelize");
 const {
   Adherent,
   User,
+  Brevet,
 } = require("../models");
 
 class AdherentRepository extends BaseRepository {
@@ -40,7 +41,10 @@ class AdherentRepository extends BaseRepository {
 
   async findByIdWithPhoto(id) {
     const row = await this.model.findByPk(id, {
-      include: [{ model: User, as: "user", attributes: ["photo"] }],
+      include: [
+        { model: User, as: "user", attributes: ["photo"] },
+        { model: Brevet, as: "brevets", separate: true, order: [["date_obtention", "DESC"]] },
+      ],
     });
     return row ? this._withUserPhoto(row) : null;
   }
@@ -56,7 +60,16 @@ class AdherentRepository extends BaseRepository {
   }
 
   async findWithDetails(id) {
-    return await this.model.findByPk(id);
+    return await this.model.findByPk(id, {
+      include: [
+        {
+          model: Brevet,
+          as: "brevets",
+          separate: true,
+          order: [["date_obtention", "DESC"]],
+        },
+      ],
+    });
   }
 
   async findByUserId(user_id) {

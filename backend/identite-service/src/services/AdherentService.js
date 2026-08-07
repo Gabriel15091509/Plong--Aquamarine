@@ -6,6 +6,7 @@ const paiementClient = require("../utils/serviceClients/paiementClient");
 const vieAssociativeClient = require("../utils/serviceClients/vieAssociativeClient");
 const activitesClient = require("../utils/serviceClients/activitesClient");
 const { sendCommunicationEmail } = require("../utils/email");
+const { friendlyUniqueConstraintMessage } = require("../utils/uniqueConstraintMessage");
 
 class AdherentService extends BaseService {
   constructor() {
@@ -107,7 +108,7 @@ class AdherentService extends BaseService {
       return welcomeEmail ? { ...plain, _welcomeEmail: welcomeEmail } : plain;
     } catch (error) {
       if (error.name === "SequelizeUniqueConstraintError") {
-        throw new Error("Un adhérent existe déjà avec cet email ou ce numéro d'adhérent");
+        throw new Error(friendlyUniqueConstraintMessage(error));
       }
       throw error;
     }
@@ -179,6 +180,8 @@ class AdherentService extends BaseService {
     const adherent = await this.repository.findById(num_adherent);
     if (!adherent) throw new Error("Adhérent non trouvé");
 
+    const ancienNiveau = adherent.niveau;
+
     adherent.niveau = niveau;
     adherent.date_obtention_niveau = new Date();
     if (extra.num_brevet !== undefined) adherent.num_brevet = extra.num_brevet || null;
@@ -186,6 +189,21 @@ class AdherentService extends BaseService {
       adherent.num_licence_ffesm = extra.num_licence_ffesm || null;
     }
     await adherent.save();
+
+    // Historique (table Brevet) : une ligne par vrai changement de niveau,
+    // jamais sur un no-op (ex. re-validation d'une formation déjà à ce
+    // niveau) — adherent.niveau/date_obtention_niveau ci-dessus restent le
+    // cache "niveau courant" utilisé partout ailleurs (isNiveauCompatible
+    // etc.), cette table ne fait qu'empiler l'historique en plus.
+    if (niveau !== ancienNiveau) {
+      const { Brevet } = require("../models");
+      await Brevet.create({
+        num_adherent,
+        niveau,
+        num_brevet: adherent.num_brevet,
+        date_obtention: adherent.date_obtention_niveau,
+      });
+    }
 
     return adherent;
   }

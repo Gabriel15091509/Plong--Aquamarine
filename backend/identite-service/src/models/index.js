@@ -4,6 +4,7 @@ const Adherent = require("./Adherent");
 const Moniteur = require("./Moniteur");
 const President = require("./President");
 const Tresorier = require("./Tresorier");
+const Brevet = require("./Brevet");
 
 // User/Adherent/Moniteur/President/Tresorier vivent tous dans le même
 // schéma (identite-service) : ces associations restent de vraies relations
@@ -58,6 +59,10 @@ User.belongsTo(President, { foreignKey: "created_by", as: "createur" });
 President.hasMany(Adherent, { foreignKey: "archived_by", as: "adherentsArchives" });
 Adherent.belongsTo(President, { foreignKey: "archived_by", as: "archivePar" });
 
+// 📌 Adherent - Brevet (historique des niveaux, voir Brevet.js)
+Adherent.hasMany(Brevet, { foreignKey: "num_adherent", as: "brevets" });
+Brevet.belongsTo(Adherent, { foreignKey: "num_adherent", as: "adherent" });
+
 module.exports = {
   sequelize,
   User,
@@ -65,4 +70,5 @@ module.exports = {
   Moniteur,
   President,
   Tresorier,
+  Brevet,
 };

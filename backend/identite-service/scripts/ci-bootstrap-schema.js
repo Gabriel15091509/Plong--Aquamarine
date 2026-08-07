@@ -12,14 +12,14 @@
 // local : "la relation... moniteurs n'existe pas"). On casse le cycle en
 // créant `users` sans la contrainte sur `created_by`, puis on l'ajoute une
 // fois que `president` existe.
-const { sequelize, User, Moniteur, Tresorier, President, Adherent } = require("../src/models");
+const { sequelize, User, Moniteur, Tresorier, President, Adherent, Brevet } = require("../src/models");
 
 async function bootstrap() {
   const schema = process.env.DB_SCHEMA || "identite";
   const queryInterface = sequelize.getQueryInterface();
 
   await sequelize.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
-  for (const table of ["adherents", "president", "tresoriers", "moniteurs", "users"]) {
+  for (const table of ["brevets", "adherents", "president", "tresoriers", "moniteurs", "users"]) {
     await queryInterface.dropTable({ tableName: table, schema }, { cascade: true }).catch(() => {});
   }
 
@@ -28,7 +28,7 @@ async function bootstrap() {
   delete usersAttributes.created_by.references;
   await queryInterface.createTable({ tableName: "users", schema }, usersAttributes);
 
-  for (const Model of [Moniteur, Tresorier, President, Adherent]) {
+  for (const Model of [Moniteur, Tresorier, President, Adherent, Brevet]) {
     await Model.sync();
   }
 

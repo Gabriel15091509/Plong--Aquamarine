@@ -8,6 +8,12 @@ const InscriptionWaitlistService = require("./InscriptionWaitlistService");
 const { isNiveauCompatible } = require("../utils/roleScope");
 const { withAdherent } = require("../utils/enrichAdherents");
 const {
+  getAge,
+  checkBaptemeDepthForAge,
+  isSameCalendarDay,
+  AGE_LIMITE_UNE_PLONGEE_PAR_JOUR,
+} = require("../utils/ageRules");
+const {
   sendInscriptionConfirmationEmail,
   sendInscriptionPaymentEmail,
 } = require("../utils/email");
@@ -307,6 +313,31 @@ class InscriptionService extends BaseService {
     const adherentRecord = await identiteClient.getAdherentById(num_adherent, data.authHeader);
     if (!isNiveauCompatible(adherentRecord?.niveau, sortie.niveau_requis)) {
       throw new Error("Niveau insuffisant pour cette sortie");
+    }
+
+    // ✅ Règles d'âge (Code du Sport) : profondeur max d'un baptême selon
+    // l'âge, et une seule plongée par jour avant 12 ans — voir utils/
+    // ageRules.js pour le détail des textes. L'âge inconnu ne bloque jamais
+    // (checkBaptemeDepthForAge renvoie null), seule une violation avérée le
+    // fait.
+    const age = getAge(adherentRecord?.date_naissance, new Date(sortie.date_heure));
+    if (sortie.type === "Baptême") {
+      const ageError = checkBaptemeDepthForAge(age, sortie.profondeur_max);
+      if (ageError) throw new Error(ageError);
+    }
+    if (age !== null && age < AGE_LIMITE_UNE_PLONGEE_PAR_JOUR) {
+      const autresInscriptions = await this.inscriptionRepository.findByAdherent(num_adherent);
+      const dejaUnePlongeeCeJourLa = autresInscriptions.some(
+        (i) =>
+          i.statut !== "Annulée" &&
+          i.sortie &&
+          isSameCalendarDay(i.sortie.date_heure, sortie.date_heure),
+      );
+      if (dejaUnePlongeeCeJourLa) {
+        throw new Error(
+          `Un enfant de moins de ${AGE_LIMITE_UNE_PLONGEE_PAR_JOUR} ans ne peut faire qu'une plongée par jour`,
+        );
+      }
     }
 
     // ✅ Un adhérent ne peut pas s'inscrire si son adhésion n'est pas
