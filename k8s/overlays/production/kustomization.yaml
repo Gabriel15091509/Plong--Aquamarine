@@ -62,3 +62,23 @@ patches:
         limits:
           cpu: 500m
           memory: 384Mi
+# Le nœud (Docker Desktop, un seul nœud, ~7,7Gi de RAM allouable partagés
+# avec staging + ArgoCD + cert-manager + Prometheus×2) tourne déjà à ~85%
+# des requests mémoire une fois le HPA monté en charge (jusqu'à 8 réplicas
+# sur certains services). Le rolling update par défaut (maxSurge 25%) a
+# besoin de programmer un pod EN PLUS le temps du remplacement — sur ce
+# nœud ça se traduit par un "Insufficient memory" transitoire pendant les
+# déploiements (observé concrètement sur frontend). maxSurge:0 fait un
+# remplacement pod-par-pod (jamais de pod supplémentaire à caser), au prix
+# d'un bref passage à N-1 réplicas au lieu de N+1 — acceptable puisque
+# minReplicas=2 garantit qu'il en reste toujours au moins 1 disponible.
+- target:
+    kind: Deployment
+  patch: |-
+    - op: add
+      path: /spec/strategy
+      value:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 0
+          maxUnavailable: 1
