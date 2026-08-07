@@ -25,7 +25,7 @@ resources:
 images:
 - name: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
-  newTag: sha-7181daf
+  newTag: sha-a72b031
 - name: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
   newTag: sha-7181daf
@@ -34,13 +34,13 @@ images:
   newTag: sha-7181daf
 - name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
-  newTag: sha-854bb99
+  newTag: sha-a72b031
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newTag: sha-7181daf
 - name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
-  newTag: sha-7181daf
+  newTag: sha-a72b031
 - name: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
   newTag: sha-7181daf
