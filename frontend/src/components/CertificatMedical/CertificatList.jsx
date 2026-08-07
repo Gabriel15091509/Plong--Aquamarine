@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -58,6 +58,14 @@ const CertificatList = () => {
   const [validationFilter, setValidationFilter] = useState(
     searchParams.get("validation") || "all",
   );
+  // Le lien de la Sidebar change juste ?validation=... sans démonter cette
+  // page (même route /certificats) : l'état initial de useState ci-dessus
+  // ne se ré-évalue pas tout seul dans ce cas, il faut le resynchroniser
+  // explicitement à chaque changement d'URL, sinon le clic ne fait rien de
+  // visible (l'URL change, le filtre affiché reste l'ancien).
+  useEffect(() => {
+    setValidationFilter(searchParams.get("validation") || "all");
+  }, [searchParams]);
   const [deleteModal, setDeleteModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectMotif, setRejectMotif] = useState("");
