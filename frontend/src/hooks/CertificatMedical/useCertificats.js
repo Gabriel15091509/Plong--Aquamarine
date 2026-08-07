@@ -61,6 +61,22 @@ export const useCertificats = () => {
     });
   };
 
+  const useValider = () => {
+    return useMutation({
+      mutationFn: ({ id, decision, motif }) => certificatService.valider(id, { decision, motif }),
+      onSuccess: (response, variables) => {
+        queryClient.invalidateQueries(['certificats']);
+        toast.success(
+          response.message ||
+            (variables.decision === "Validé" ? "Certificat validé" : "Certificat rejeté"),
+        );
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors de la validation");
+      },
+    });
+  };
+
   const useStatus = (numAdherent) => {
     return useQuery({
       queryKey: ['certificats', 'status', numAdherent],
@@ -97,5 +113,6 @@ export const useCertificats = () => {
     useStatus,
     useGetByAdherent,
     useAnalysePhoto,
+    useValider,
   };
 };

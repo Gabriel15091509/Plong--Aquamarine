@@ -22,6 +22,7 @@ import {
 import toast from "react-hot-toast";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import WebcamCaptureModal from "../Common/WebcamCaptureModal";
@@ -40,6 +41,13 @@ const CertificatForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const editMode = !!id;
+  const { user } = useAuth();
+  // Même schéma que AdhesionForm.jsx : un adhérent qui soumet lui-même son
+  // certificat médical (jamais en édition, réservée au staff — voir
+  // App.jsx) n'a pas à choisir l'adhérent (imposé) ni à saisir un statut
+  // (champ de suivi géré par le staff). Reste "En attente" jusqu'à
+  // validation par le président.
+  const isSelfSubmission = !editMode && user?.role === "adherent";
 
   const { useGetById, useCreate, useUpdate, useAnalysePhoto } = useCertificats();
   const { useGetAll } = useAdherents();
@@ -97,6 +105,16 @@ const CertificatForm = () => {
       setOpeningDocument(false);
     }
   };
+
+  // Auto-sélectionne l'adhérent connecté (le backend, côté identite-service,
+  // ne renvoie de toute façon que sa propre fiche à un appelant avec le rôle
+  // adherent — même motif que AdhesionForm.jsx).
+  useEffect(() => {
+    if (!isSelfSubmission || !adherentsData?.data?.length) return;
+    const soi = adherentsData.data[0];
+    setFormData((prev) => ({ ...prev, num_adherent: soi.num_adherent }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSelfSubmission, adherentsData]);
 
   useEffect(() => {
     if (editMode && id && certificatData?.data) {
@@ -307,12 +325,18 @@ const CertificatForm = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier le certificat" : "Nouveau certificat"}
+              {editMode
+                ? "Modifier le certificat"
+                : isSelfSubmission
+                  ? "Soumettre mon certificat médical"
+                  : "Nouveau certificat"}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {editMode
                 ? "Mettez à jour les informations du certificat"
-                : "Ajoutez un nouveau certificat médical"}
+                : isSelfSubmission
+                  ? "En attente de validation par le président avant d'être pris en compte."
+                  : "Ajoutez un nouveau certificat médical"}
             </p>
           </div>
           <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
@@ -323,25 +347,56 @@ const CertificatForm = () => {
 
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
+        {isSelfSubmission && (
+          <motion.div
+            {...fadeInUp}
+            className="flex items-start gap-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3"
+          >
+            <FiAlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              Votre certificat sera visible par le bureau avec le statut
+              <span className="font-medium"> « En attente »</span>. Il ne
+              sera pris en compte par le système (dossier complet,
+              éligibilité aux sorties, etc.) qu'une fois validé par le
+              président.
+            </p>
+          </motion.div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <motion.div {...fadeInUp}>
-            <SearchableSelect
-              label="Adhérent *"
-              value={formData.num_adherent}
-              onChange={(value) => {
-                setFormData((prev) => ({ ...prev, num_adherent: value }));
-                if (errors.num_adherent)
-                  setErrors((prev) => ({ ...prev, num_adherent: "" }));
-              }}
-              options={adherentsData?.data || []}
-              getOptionLabel={(a) =>
-                `${a.civilite} ${a.nom} ${a.prenom} - ${a.email}`
-              }
-              getOptionValue={(a) => a.num_adherent}
-              placeholder="Rechercher un adhérent..."
-              error={errors.num_adherent}
-              required={true}
-            />
+            {isSelfSubmission ? (
+              <>
+                <label className={labelClasses}>
+                  <span className="flex items-center gap-2">
+                    <FiUser className="w-4 h-4 text-gray-400" />
+                    Adhérent
+                  </span>
+                </label>
+                <div className="w-full px-4 py-2.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 text-gray-600 dark:text-gray-300">
+                  {adherentsData?.data?.[0]
+                    ? `${adherentsData.data[0].civilite} ${adherentsData.data[0].nom} ${adherentsData.data[0].prenom} (vous)`
+                    : "…"}
+                </div>
+              </>
+            ) : (
+              <SearchableSelect
+                label="Adhérent *"
+                value={formData.num_adherent}
+                onChange={(value) => {
+                  setFormData((prev) => ({ ...prev, num_adherent: value }));
+                  if (errors.num_adherent)
+                    setErrors((prev) => ({ ...prev, num_adherent: "" }));
+                }}
+                options={adherentsData?.data || []}
+                getOptionLabel={(a) =>
+                  `${a.civilite} ${a.nom} ${a.prenom} - ${a.email}`
+                }
+                getOptionValue={(a) => a.num_adherent}
+                placeholder="Rechercher un adhérent..."
+                error={errors.num_adherent}
+                required={true}
+              />
+            )}
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -435,28 +490,30 @@ const CertificatForm = () => {
             )}
           </motion.div>
 
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiAward className="w-4 h-4 text-gray-400" />
-                Statut
-              </span>
-            </label>
-            <select
-              name="statut"
-              value={formData.statut}
-              onChange={handleChange}
-              onFocus={() => handleFocus("statut")}
-              onBlur={handleBlur}
-              className={inputClasses("statut")}
-            >
-              {CERTIFICAT_STATUS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-          </motion.div>
+          {!isSelfSubmission && (
+            <motion.div {...fadeInUp}>
+              <label className={labelClasses}>
+                <span className="flex items-center gap-2">
+                  <FiAward className="w-4 h-4 text-gray-400" />
+                  Statut
+                </span>
+              </label>
+              <select
+                name="statut"
+                value={formData.statut}
+                onChange={handleChange}
+                onFocus={() => handleFocus("statut")}
+                onBlur={handleBlur}
+                className={inputClasses("statut")}
+              >
+                {CERTIFICAT_STATUS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </motion.div>
+          )}
 
           <motion.div {...fadeInUp} className="md:col-span-2">
             <label className={labelClasses}>
@@ -599,7 +656,11 @@ const CertificatForm = () => {
           ) : (
             <FiSave className="w-4 h-4" />
           )}
-          {editMode ? "Mettre à jour" : "Créer le certificat"}
+          {editMode
+            ? "Mettre à jour"
+            : isSelfSubmission
+              ? "Soumettre pour validation"
+              : "Créer le certificat"}
         </button>
       </div>
     </motion.form>

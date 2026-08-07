@@ -52,6 +52,11 @@ class CertificatService {
     return response.data;
   }
 
+  async valider(id, { decision, motif }) {
+    const response = await api.post(`/certificats-medicaux/${id}/valider`, { decision, motif });
+    return response.data;
+  }
+
   async analysePhoto({ photoFile, num_adherent, medecin, date_validite, date_delivrance }) {
     const payload = new FormData();
     payload.append('photo', photoFile);

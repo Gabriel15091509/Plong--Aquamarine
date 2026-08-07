@@ -12,7 +12,8 @@ class CertificatMedicalRepository extends BaseRepository {
     return await this.model.findAll({
       where: {
         date_validite: { [Op.gte]: today },
-        statut: 'Valide'
+        statut: 'Valide',
+        statut_validation: 'Validé',
       }
     });
   }
@@ -45,6 +46,7 @@ class CertificatMedicalRepository extends BaseRepository {
       where: {
         date_validite: { [Op.between]: [today, limit] },
         statut: 'Valide',
+        statut_validation: 'Validé',
       },
     });
   }
