@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -27,23 +27,21 @@ import {
   FiTool,
   FiDollarSign,
   FiX,
-  FiChevronDown,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { photoUrl } from "../../utils/photoUrl";
 import Logo from "../Common/Logo";
 
-// Élément de menu simple, ou avec un sous-menu déroulant (`item.children`) —
-// utilisé par Adhésions/Certificats pour donner un accès direct à la file
-// "en attente de validation" sans quitter la vue "toutes".
+// Élément de menu simple, ou avec un sous-menu (`item.children`) — utilisé
+// par Adhésions/Certificats pour donner un accès direct à la file "en
+// attente de validation" sans quitter la vue "toutes". Toujours déplié
+// (pas de clic requis pour le révéler) : un sous-menu replié par défaut
+// derrière un chevron passait inaperçu.
 const MenuItem = ({ item, isOpen, onNavigate }) => {
   const location = useLocation();
   const hasChildren = Array.isArray(item.children) && item.children.length > 0;
   const currentUrl = `${location.pathname}${location.search}`;
-  const [expanded, setExpanded] = useState(
-    hasChildren && item.children.some((child) => child.path === currentUrl),
-  );
 
   const linkClasses = ({ isActive }) => `
     relative flex items-center gap-3 px-3 py-2.5 rounded-xl
@@ -91,31 +89,12 @@ const MenuItem = ({ item, isOpen, onNavigate }) => {
 
   return (
     <div>
-      <div className="flex items-center gap-0.5">
-        <NavLink
-          to={item.path}
-          end
-          onClick={onNavigate}
-          className={({ isActive }) => `flex-1 ${linkClasses({ isActive })}`}
-        >
-          {linkContent}
-        </NavLink>
-        {isOpen && (
-          <button
-            type="button"
-            onClick={() => setExpanded((prev) => !prev)}
-            aria-label={expanded ? "Réduire" : "Développer"}
-            className="p-2 rounded-lg text-gray-400 hover:text-cyan-600 hover:bg-gray-50 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400 transition-colors duration-150 flex-shrink-0"
-          >
-            <FiChevronDown
-              className={`w-3.5 h-3.5 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`}
-            />
-          </button>
-        )}
-      </div>
+      <NavLink to={item.path} end onClick={onNavigate} className={linkClasses}>
+        {linkContent}
+      </NavLink>
 
-      {isOpen && expanded && (
-        <div className="ml-6 pl-2.5 border-l border-gray-200 dark:border-gray-700 mt-0.5 space-y-0.5">
+      {isOpen && (
+        <div className="ml-6 pl-2.5 border-l border-gray-200 dark:border-gray-700 mt-0.5 mb-1 space-y-0.5">
           {item.children.map((child) => (
             <NavLink
               key={child.path}
