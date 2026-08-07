@@ -70,6 +70,11 @@ class AdhesionService {
     return response.data;
   }
 
+  async valider(id, { decision, motif }) {
+    const response = await api.post(`/adhesions/${id}/valider`, { decision, motif });
+    return response.data;
+  }
+
   async analysePhoto({ photoFile, num_adherent, type, num_licence_ffesm, date_debut, date_fin }) {
     const payload = new FormData();
     payload.append('photo', photoFile);

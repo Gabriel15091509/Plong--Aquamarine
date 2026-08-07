@@ -222,7 +222,12 @@ function App() {
               <Route
                 path="/adhesions/create"
                 element={
-                  <ProtectedRoute requiredRoles={["president", "tresorier"]}>
+                  // "adherent" en plus du staff : un adhérent peut soumettre
+                  // sa propre licence FFESM / assurance (jamais l'adhésion
+                  // Club — AdhesionForm et le backend l'interdisent tous les
+                  // deux), la soumission reste "En attente" jusqu'à
+                  // validation par le président/trésorier.
+                  <ProtectedRoute requiredRoles={["president", "tresorier", "adherent"]}>
                     <Layout>
                       <AdhesionForm />
                     </Layout>

@@ -23,13 +23,35 @@ class AdhesionService extends BaseService {
   // cotisation Club, pas facturées séparément dans l'app) : pour ces autres
   // types, on se contente d'enregistrer la validité, sans montant ni ligne
   // Paiement, avec un statut "Payé" d'office (aucun encaissement à suivre).
+  //
+  // Un adhérent (pas le staff) peut soumettre lui-même une licence FFESM ou
+  // une assurance — jamais l'adhésion Club — mais l'entrée reste "En
+  // attente" (invisible pour checkDossierValidity) tant qu'un président/
+  // trésorier ne l'a pas validée via validerAdhesion. `num_adherent` est
+  // toujours recalculé depuis le token, jamais pris tel quel dans le corps
+  // de la requête, pour qu'un adhérent ne puisse pas soumettre au nom d'un
+  // autre.
   async create(data, user = null, authHeader = null) {
+    const adherent = await identiteClient.getAdherentForUser(user);
+    const estSoumissionAdherent = !!adherent;
+
+    if (estSoumissionAdherent) {
+      if (data.type === "Club") {
+        throw new Error("L'adhésion Club ne peut pas être soumise par l'adhérent lui-même.");
+      }
+      data = { ...data, num_adherent: adherent.num_adherent };
+    }
+
     if (data.type !== "Club") {
       return await this.adhesionRepository.create({
         ...data,
         montant: 0,
         montant_paye: 0,
         statut_paiement: "Payé",
+        soumis_par_adherent: estSoumissionAdherent,
+        statut_validation: estSoumissionAdherent ? "En attente" : "Validé",
+        valide_par: estSoumissionAdherent ? null : (user?.id ?? null),
+        valide_le: estSoumissionAdherent ? null : new Date(),
       });
     }
 
@@ -44,6 +66,9 @@ class AdhesionService extends BaseService {
       ...data,
       montant_paye: montantPaye,
       statut_paiement,
+      statut_validation: "Validé",
+      valide_par: user?.id ?? null,
+      valide_le: new Date(),
     });
 
     if (montantPaye > 0) {
@@ -129,6 +154,58 @@ class AdhesionService extends BaseService {
     return updated;
   }
 
+  // Verrou réservé aux entrées passées par le circuit de soumission
+  // adhérent (soumis_par_adherent) une fois validées — pas aux adhésions
+  // créées directement par le staff (ex. Club), qui restent modifiables
+  // comme avant. Sans ce distinguo, un trésorier ne pourrait plus jamais
+  // corriger un paiement Club existant, ce que la demande ne visait pas.
+  async update(id, data) {
+    const adhesion = await this.adhesionRepository.findById(id);
+    if (!adhesion) throw new Error("Adhésion non trouvée");
+    if (adhesion.soumis_par_adherent && adhesion.statut_validation === "Validé") {
+      throw new Error(
+        "Adhésion validée : non modifiable. Créez une nouvelle entrée si besoin d'une correction.",
+      );
+    }
+    return await this.adhesionRepository.update(id, data);
+  }
+
+  async delete(id) {
+    const adhesion = await this.adhesionRepository.findById(id);
+    if (!adhesion) throw new Error("Adhésion non trouvée");
+    if (adhesion.soumis_par_adherent && adhesion.statut_validation === "Validé") {
+      throw new Error("Adhésion validée : suppression impossible.");
+    }
+    return await this.adhesionRepository.delete(id);
+  }
+
+  // Réservé au président/trésorier (voir routes) : bascule une soumission
+  // "En attente" vers "Validé" (utilisable dès lors par checkDossierValidity)
+  // ou "Rejeté" (avec motif, l'adhérent peut resoumettre une nouvelle
+  // entrée). Passe par le repository directement, pas par this.update, qui
+  // bloque justement toute modification une fois "Validé" — cette méthode
+  // est la seule voie légitime pour poser cette décision.
+  async validerAdhesion(id, { decision, motif } = {}, user = null) {
+    if (!["Validé", "Rejeté"].includes(decision)) {
+      throw new Error('Décision invalide : "Validé" ou "Rejeté" attendu.');
+    }
+    const adhesion = await this.adhesionRepository.findById(id);
+    if (!adhesion) throw new Error("Adhésion non trouvée");
+    if (adhesion.statut_validation !== "En attente") {
+      throw new Error("Cette soumission a déjà été traitée et ne peut plus être modifiée.");
+    }
+    if (decision === "Rejeté" && !motif) {
+      throw new Error("Un motif de rejet est requis.");
+    }
+
+    return await this.adhesionRepository.update(id, {
+      statut_validation: decision,
+      valide_par: user?.id ?? null,
+      valide_le: new Date(),
+      motif_rejet: decision === "Rejeté" ? motif : null,
+    });
+  }
+
   async getAll(user = null) {
     const adherent = await identiteClient.getAdherentForUser(user);
     if (adherent) {
@@ -179,6 +256,7 @@ class AdhesionService extends BaseService {
         return (
           a.type === type &&
           a.statut_paiement === "Payé" &&
+          a.statut_validation === "Validé" &&
           new Date(a.date_debut) <= atDate &&
           new Date(a.date_fin) >= atDate
         );
