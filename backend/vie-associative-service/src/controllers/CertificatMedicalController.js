@@ -50,6 +50,25 @@ class CertificatMedicalController extends BaseController {
     }
   }
 
+  // BaseController.create n'appelle this.service.create(req.body) qu'avec le
+  // body — sans req.user, CertificatMedicalService.create ne peut jamais
+  // détecter une auto-soumission (identiteClient.getAdherentForUser(null)
+  // renvoie toujours null) : tout certificat, y compris ceux soumis par un
+  // adhérent, se retrouvait "Validé" d'office. Override nécessaire, même
+  // motif que AdhesionController.create.
+  async create(req, res, next) {
+    try {
+      const result = await this.certificatService.create(req.body, req.user);
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: "Certificat créé avec succès",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   // Document médical chiffré au repos (exigence 4.4) : déchiffré ici, à la
   // volée, jamais servi en statique. Réutilise l'autorisation déjà
   // appliquée par getById (adhérent propriétaire, ou staff sans fiche

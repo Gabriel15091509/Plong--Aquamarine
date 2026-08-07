@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiEye,
@@ -40,9 +40,16 @@ const AdhesionList = () => {
   const remove = useRemove();
   const valider = useValider();
 
+  // Filtre "statut_validation", initialisé depuis ?validation=... (lien du
+  // sous-menu "En attente de validation" dans la Sidebar) — distinct de
+  // `filter` ci-dessous qui porte sur `statut_paiement`, pas le même concept.
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [validationFilter, setValidationFilter] = useState(
+    searchParams.get("validation") || "all",
+  );
   const [deleteModal, setDeleteModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectMotif, setRejectMotif] = useState("");
@@ -76,6 +83,8 @@ const AdhesionList = () => {
 
       if (filter !== "all" && a.statut_paiement !== filter) return false;
       if (typeFilter !== "all" && a.type !== typeFilter) return false;
+      if (validationFilter !== "all" && a.statut_validation !== validationFilter)
+        return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -87,7 +96,7 @@ const AdhesionList = () => {
       }
       return true;
     });
-  }, [allAdhesions, adherentMap, filter, typeFilter, searchTerm]);
+  }, [allAdhesions, adherentMap, filter, typeFilter, validationFilter, searchTerm]);
 
   const totalPages = Math.ceil(filteredAdhesions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -145,7 +154,7 @@ const AdhesionList = () => {
           Aucune adhésion trouvée
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {searchTerm || filter !== "all" || typeFilter !== "all"
+          {searchTerm || filter !== "all" || typeFilter !== "all" || validationFilter !== "all"
             ? "Aucun résultat pour vos critères"
             : "Commencez par créer une nouvelle adhésion"}
         </p>
@@ -208,6 +217,19 @@ const AdhesionList = () => {
             <option value="Partiel">Partiels</option>
             <option value="Annulé">Annulés</option>
           </select>
+          <select
+            value={validationFilter}
+            onChange={(e) => {
+              setValidationFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">Toute validation</option>
+            <option value="En attente">En attente de validation</option>
+            <option value="Validé">Validées</option>
+            <option value="Rejeté">Rejetées</option>
+          </select>
           {(canManageAdhesion || canSubmitOwn) && (
             <Link
               to="/adhesions/create"
@@ -232,7 +254,7 @@ const AdhesionList = () => {
               Aucune adhésion trouvée
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-              {searchTerm || filter !== "all" || typeFilter !== "all"
+              {searchTerm || filter !== "all" || typeFilter !== "all" || validationFilter !== "all"
                 ? "Essayez de modifier vos filtres"
                 : "Aucune adhésion pour le moment"}
             </p>

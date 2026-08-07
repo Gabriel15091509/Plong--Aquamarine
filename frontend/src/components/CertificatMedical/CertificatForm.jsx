@@ -88,16 +88,28 @@ const CertificatForm = () => {
 
   // Document chiffré au repos, jamais accessible via une URL statique : on
   // le récupère par la route authentifiée puis on l'ouvre depuis un blob.
+  // L'onglet doit être ouvert de façon synchrone, dans le même tick que le
+  // clic — un `window.open` appelé après un `await` n'est plus rattaché au
+  // geste utilisateur et se fait bloquer silencieusement par le navigateur
+  // (pas d'erreur, juste rien qui s'affiche).
   const handleViewExistingDocument = async () => {
+    const tab = window.open("", "_blank", "noopener,noreferrer");
     setOpeningDocument(true);
     try {
       const response = await api.get(`/certificats-medicaux/${id}/document`, {
         responseType: "blob",
       });
       const url = URL.createObjectURL(response.data);
-      window.open(url, "_blank", "noopener,noreferrer");
+      if (tab) {
+        tab.location.href = url;
+      } else {
+        toast.error(
+          "Le navigateur a bloqué l'ouverture de l'onglet. Autorisez les pop-ups pour ce site.",
+        );
+      }
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (error) {
+      if (tab) tab.close();
       toast.error(
         error.response?.data?.message || "Impossible d'ouvrir le document",
       );
