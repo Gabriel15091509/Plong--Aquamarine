@@ -34,7 +34,7 @@ images:
   newTag: sha-7181daf
 - name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
-  newTag: sha-044a455
+  newTag: sha-8df9815
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newTag: sha-7181daf
@@ -46,7 +46,7 @@ images:
   newTag: sha-7181daf
 - name: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
-  newTag: sha-044a455
+  newTag: sha-8df9815
 
 # Réplicas de départ à 1 (= minReplicas des HPA ci-dessus) ; le HPA prend
 # ensuite la main entre 1 et 3 selon la charge CPU.
