@@ -23,6 +23,74 @@ class CertificatMedicalService extends BaseService {
     return data;
   }
 
+  // Un adhérent peut soumettre lui-même son certificat médical ; l'entrée
+  // reste "En attente" jusqu'à validation par le président (POST /:id/valider)
+  // — même schéma que AdhesionService.create. `num_adherent` est toujours
+  // recalculé depuis le token, jamais pris tel quel dans le corps de la
+  // requête.
+  async create(data, user = null) {
+    const adherent = await identiteClient.getAdherentForUser(user);
+    const estSoumissionAdherent = !!adherent;
+
+    if (estSoumissionAdherent) {
+      data = { ...data, num_adherent: adherent.num_adherent };
+    }
+
+    return await this.certificatRepository.create({
+      ...data,
+      soumis_par_adherent: estSoumissionAdherent,
+      statut_validation: estSoumissionAdherent ? "En attente" : "Validé",
+      valide_par: estSoumissionAdherent ? null : (user?.id ?? null),
+      valide_le: estSoumissionAdherent ? null : new Date(),
+    });
+  }
+
+  // Verrou réservé aux soumissions adhérent validées (soumis_par_adherent) —
+  // un certificat saisi directement par le staff reste modifiable comme
+  // avant (même distinguo que AdhesionService.update/delete).
+  async update(id, data) {
+    const certificat = await this.certificatRepository.findById(id);
+    if (!certificat) throw new Error("Certificat non trouvé");
+    if (certificat.soumis_par_adherent && certificat.statut_validation === "Validé") {
+      throw new Error(
+        "Certificat validé : non modifiable. Créez une nouvelle soumission si besoin d'une correction.",
+      );
+    }
+    return await this.certificatRepository.update(id, data);
+  }
+
+  async delete(id) {
+    const certificat = await this.certificatRepository.findById(id);
+    if (!certificat) throw new Error("Certificat non trouvé");
+    if (certificat.soumis_par_adherent && certificat.statut_validation === "Validé") {
+      throw new Error("Certificat validé : suppression impossible.");
+    }
+    return await this.certificatRepository.delete(id);
+  }
+
+  // Réservé au président (voir routes) : bascule "En attente" vers "Validé"
+  // ou "Rejeté" (motif requis, l'adhérent peut resoumettre).
+  async validerCertificat(id, { decision, motif } = {}, user = null) {
+    if (!["Validé", "Rejeté"].includes(decision)) {
+      throw new Error('Décision invalide : "Validé" ou "Rejeté" attendu.');
+    }
+    const certificat = await this.certificatRepository.findById(id);
+    if (!certificat) throw new Error("Certificat non trouvé");
+    if (certificat.statut_validation !== "En attente") {
+      throw new Error("Cette soumission a déjà été traitée et ne peut plus être modifiée.");
+    }
+    if (decision === "Rejeté" && !motif) {
+      throw new Error("Un motif de rejet est requis.");
+    }
+
+    return await this.certificatRepository.update(id, {
+      statut_validation: decision,
+      valide_par: user?.id ?? null,
+      valide_le: new Date(),
+      motif_rejet: decision === "Rejeté" ? motif : null,
+    });
+  }
+
   async getAll(user = null) {
     const adherent = await identiteClient.getAdherentForUser(user);
     const certificats = adherent
@@ -111,7 +179,7 @@ class CertificatMedicalService extends BaseService {
 
     const valid = certificates.filter(c => {
       const validite = new Date(c.date_validite);
-      return validite >= now && c.statut === 'Valide';
+      return validite >= now && c.statut === 'Valide' && c.statut_validation === 'Validé';
     });
 
     const expired = certificates.filter(c => {

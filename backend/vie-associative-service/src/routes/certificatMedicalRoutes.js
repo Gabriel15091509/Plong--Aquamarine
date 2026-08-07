@@ -23,12 +23,22 @@ router.post('/analyser-photo',
   certificatController.analysePhoto.bind(certificatController)
 );
 
+// Le staff (PRESIDENT_ONLY, comme avant) ET l'adhérent peuvent créer un
+// certificat : un adhérent qui soumet le sien reste "En attente" jusqu'à
+// validation (POST /:id/valider), un staff qui le crée est "Validé"
+// d'office — même schéma que adhesionRoutes.js.
 router.post('/',
   AuthMiddleware.authenticate,
-  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize([...ROLES.PRESIDENT_ONLY, 'adherent']),
   ...uploadCertificatDocument,
   certificatController.validateBeforeCreate.bind(certificatController),
   certificatController.create.bind(certificatController)
+);
+
+router.post('/:id/valider',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  certificatController.valider.bind(certificatController)
 );
 
 router.put('/:id',

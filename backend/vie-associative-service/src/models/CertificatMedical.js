@@ -45,6 +45,37 @@ const CertificatMedical = sequelize.define(
       allowNull: false,
       defaultValue: "Valide",
     },
+    // Circuit de validation (même schéma que Adhesion.js) — distinct de
+    // `statut` ci-dessus, qui parle d'EXPIRATION (Valide/Expiré), pas de
+    // validation par le président. Un adhérent peut soumettre lui-même son
+    // certificat médical ; il reste "En attente" (jamais compté "utilisable"
+    // par CertificatMedicalService.checkCertificateStatus/findValidCertificates)
+    // tant qu'un président ne l'a pas validé.
+    statut_validation: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: "Validé",
+    },
+    // Distingue une soumission adhérent (verrouillée une fois validée, voir
+    // CertificatMedicalService.update/delete) d'un certificat saisi
+    // directement par le staff (reste modifiable comme avant).
+    soumis_par_adherent: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    valide_par: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    valide_le: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    motif_rejet: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
   },
   {
     schema: process.env.DB_SCHEMA || "vie_associative",

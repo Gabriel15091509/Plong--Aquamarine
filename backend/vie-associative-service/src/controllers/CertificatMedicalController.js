@@ -168,6 +168,24 @@ class CertificatMedicalController extends BaseController {
     }
   }
 
+  async valider(req, res, next) {
+    try {
+      const { decision, motif } = req.body;
+      const result = await this.certificatService.validerCertificat(
+        req.params.id,
+        { decision, motif },
+        req.user,
+      );
+      res.json({
+        success: true,
+        data: result,
+        message: decision === "Validé" ? "Certificat validé" : "Certificat rejeté",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async validateBeforeCreate(req, res, next) {
     const errors = await this.certificatService.validateCertificatData(req.body);
     if (errors.length > 0) {

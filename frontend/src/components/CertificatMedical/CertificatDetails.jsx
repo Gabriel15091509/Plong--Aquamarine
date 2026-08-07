@@ -18,12 +18,14 @@ import {
   FiHeart,
   FiUserCheck,
   FiPaperclip,
+  FiAlertCircle,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
+import ModalOverlay from "../Common/ModalOverlay";
 import ConfirmModal from "../Common/ConfirmModal";
 import StatusBadge from "../Common/StatusBadge";
 import SectionCard from "../Common/SectionCard";
@@ -48,13 +50,16 @@ const CertificatDetails = () => {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const canManageCertificat = hasRole(["president"]);
-  const { useGetById, useRemove } = useCertificats();
+  const { useGetById, useRemove, useValider } = useCertificats();
   const { useGetAll } = useAdherents();
   const { data, isLoading } = useGetById(id);
   const { data: adherentsData } = useGetAll();
   const remove = useRemove();
+  const valider = useValider();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [openingDocument, setOpeningDocument] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectMotif, setRejectMotif] = useState("");
 
   const certificat = data?.data;
   const adherent = adherentsData?.data?.find(
@@ -65,6 +70,25 @@ const CertificatDetails = () => {
     try {
       await remove.mutateAsync(id);
       navigate("/certificats");
+    } catch (error) {
+      // toast déjà géré par le hook
+    }
+  };
+
+  const handleValider = async () => {
+    try {
+      await valider.mutateAsync({ id, decision: "Validé" });
+    } catch (error) {
+      // toast déjà géré par le hook
+    }
+  };
+
+  const handleRejeter = async () => {
+    if (!rejectMotif.trim()) return;
+    try {
+      await valider.mutateAsync({ id, decision: "Rejeté", motif: rejectMotif.trim() });
+      setShowRejectModal(false);
+      setRejectMotif("");
     } catch (error) {
       // toast déjà géré par le hook
     }
@@ -186,21 +210,49 @@ const CertificatDetails = () => {
           </div>
         </div>
         {canManageCertificat && (
-          <div className="flex gap-2">
-            <Link
-              to={`/certificats/edit/${certificat.id_certificat}`}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-            >
-              <FiEdit className="w-4 h-4" />
-              Modifier
-            </Link>
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
-            >
-              <FiTrash2 className="w-4 h-4" />
-              Supprimer
-            </button>
+          <div className="flex gap-2 flex-wrap">
+            {certificat.statut_validation === "En attente" && (
+              <>
+                <button
+                  onClick={handleValider}
+                  disabled={valider.isPending}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors duration-150 disabled:opacity-60"
+                >
+                  <FiCheckCircle className="w-4 h-4" />
+                  Valider
+                </button>
+                <button
+                  onClick={() => setShowRejectModal(true)}
+                  disabled={valider.isPending}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-xl transition-colors duration-150 disabled:opacity-60"
+                >
+                  <FiAlertCircle className="w-4 h-4" />
+                  Rejeter
+                </button>
+              </>
+            )}
+            {/* Verrouillé côté serveur une fois validé, mais seulement pour
+                une soumission adhérent (voir CertificatMedicalService.
+                update/delete) — un certificat créé par le staff reste
+                modifiable comme avant. */}
+            {!(certificat.soumis_par_adherent && certificat.statut_validation === "Validé") && (
+              <>
+                <Link
+                  to={`/certificats/edit/${certificat.id_certificat}`}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
+                >
+                  <FiEdit className="w-4 h-4" />
+                  Modifier
+                </Link>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
+                >
+                  <FiTrash2 className="w-4 h-4" />
+                  Supprimer
+                </button>
+              </>
+            )}
           </div>
         )}
       </motion.div>
@@ -340,6 +392,22 @@ const CertificatDetails = () => {
             label="Statut"
             value={<StatusBadge status={certificat.statut} />}
           />
+          {certificat.statut_validation !== "Validé" && (
+            <InfoItem
+              icon={FiAlertCircle}
+              label="Validation"
+              value={
+                <div>
+                  <StatusBadge status={certificat.statut_validation} />
+                  {certificat.statut_validation === "Rejeté" && certificat.motif_rejet && (
+                    <p className="text-sm text-red-600 dark:text-red-400 mt-1 italic">
+                      Motif : {certificat.motif_rejet}
+                    </p>
+                  )}
+                </div>
+              }
+            />
+          )}
           <InfoItem
             icon={isExpired ? FiXCircle : FiCheckCircle}
             label="Validité"
@@ -388,6 +456,49 @@ const CertificatDetails = () => {
           )}
         </SectionCard>
       </motion.div>
+
+      {/* Modal de rejet */}
+      {showRejectModal && (
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+              Rejeter cette soumission
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              L&apos;adhérent verra ce motif et pourra soumettre un nouveau certificat corrigé.
+            </p>
+            <textarea
+              value={rejectMotif}
+              onChange={(e) => setRejectMotif(e.target.value)}
+              placeholder="Ex. : document illisible, date de validité incohérente"
+              rows={3}
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-300 focus:outline-none"
+            />
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectMotif("");
+                }}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleRejeter}
+                disabled={!rejectMotif.trim() || valider.isPending}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Rejeter
+              </button>
+            </div>
+          </motion.div>
+        </ModalOverlay>
+      )}
 
       <ConfirmModal
         isOpen={showDeleteModal}

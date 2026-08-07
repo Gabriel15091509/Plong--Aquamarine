@@ -269,7 +269,10 @@ function App() {
               <Route
                 path="/certificats/create"
                 element={
-                  <ProtectedRoute requiredRoles={["president"]}>
+                  // "adherent" en plus du président : un adhérent peut
+                  // soumettre son propre certificat médical, en attente de
+                  // validation (voir AdhesionForm pour le même schéma).
+                  <ProtectedRoute requiredRoles={["president", "adherent"]}>
                     <Layout>
                       <CertificatForm />
                     </Layout>
