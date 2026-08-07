@@ -343,8 +343,12 @@ const AdhesionList = () => {
                                 </span>
                               </>
                             )}
-                            <span>•</span>
-                            <StatusBadge status={adhesion.statut_paiement} />
+                            {adhesion.type === "Club" && (
+                              <>
+                                <span>•</span>
+                                <StatusBadge status={adhesion.statut_paiement} />
+                              </>
+                            )}
                             {adhesion.statut_validation !== "Validé" && (
                               <>
                                 <span>•</span>
