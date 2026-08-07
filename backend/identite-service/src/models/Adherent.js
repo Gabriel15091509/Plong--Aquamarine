@@ -80,10 +80,15 @@ const Adherent = sequelize.define(
     },
     // Source de vérité pour l'auto-remplissage du formulaire d'ajout
     // d'adhésion (au lieu de la dernière ligne Adhesion.num_licence_ffesm,
-    // peu fiable). Un Baptême n'est pas licencié FFESM : reste null.
+    // peu fiable). Un Baptême n'est pas licencié FFESM : reste null (une
+    // contrainte unique Postgres autorise plusieurs NULL sans conflit, donc
+    // ça ne bloque pas les Baptêmes entre eux). Le n° de licence FFESM est un
+    // identifiant personnel délivré une seule fois par la fédération : deux
+    // adhérents ne peuvent pas légitimement en partager un.
     num_licence_ffesm: {
       type: DataTypes.STRING(30),
       allowNull: true,
+      unique: true,
     },
     statut: {
       type: DataTypes.ENUM(

@@ -1,6 +1,7 @@
 const BaseController = require("./BaseController");
 const AdherentService = require("../services/AdherentService");
 const { withStatus } = require("../utils/errors");
+const { friendlyUniqueConstraintMessage } = require("../utils/uniqueConstraintMessage");
 
 class AdherentController extends BaseController {
   constructor() {
@@ -262,7 +263,7 @@ class AdherentController extends BaseController {
       if (error.name === "SequelizeUniqueConstraintError") {
         return res.status(400).json({
           success: false,
-          message: "Un autre adhérent utilise déjà cet email",
+          message: friendlyUniqueConstraintMessage(error),
         });
       }
       next(withStatus(error, 400));
@@ -323,6 +324,12 @@ class AdherentController extends BaseController {
         message: "Niveau mis à jour avec succès",
       });
     } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        return res.status(400).json({
+          success: false,
+          message: friendlyUniqueConstraintMessage(error),
+        });
+      }
       next(withStatus(error, 500));
     }
   }

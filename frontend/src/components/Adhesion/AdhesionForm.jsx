@@ -607,7 +607,7 @@ const AdhesionForm = () => {
               onFocus={() => handleFocus("num_licence_ffesm")}
               onBlur={handleBlur}
               className={inputClasses("num_licence_ffesm")}
-              placeholder="FFESM-2024-XXXX"
+              placeholder="FF12345"
             />
           </motion.div>
 
