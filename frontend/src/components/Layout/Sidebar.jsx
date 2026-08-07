@@ -1,5 +1,5 @@
-import React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiHome,
@@ -27,11 +27,117 @@ import {
   FiTool,
   FiDollarSign,
   FiX,
+  FiChevronDown,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { photoUrl } from "../../utils/photoUrl";
 import Logo from "../Common/Logo";
+
+// Élément de menu simple, ou avec un sous-menu déroulant (`item.children`) —
+// utilisé par Adhésions/Certificats pour donner un accès direct à la file
+// "en attente de validation" sans quitter la vue "toutes".
+const MenuItem = ({ item, isOpen, onNavigate }) => {
+  const location = useLocation();
+  const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+  const currentUrl = `${location.pathname}${location.search}`;
+  const [expanded, setExpanded] = useState(
+    hasChildren && item.children.some((child) => child.path === currentUrl),
+  );
+
+  const linkClasses = ({ isActive }) => `
+    relative flex items-center gap-3 px-3 py-2.5 rounded-xl
+    transition-colors duration-150
+    ${
+      isActive
+        ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400"
+        : "text-gray-600 hover:bg-gray-50 hover:text-cyan-700 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400"
+    }
+    ${!isOpen ? "justify-center" : ""}
+    group
+  `;
+
+  const linkContent = ({ isActive }) => (
+    <>
+      <span
+        className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-full bg-cyan-500 transition-all duration-150 ${
+          isActive ? "h-5 opacity-100" : "h-5 opacity-0"
+        }`}
+      />
+
+      <item.icon
+        className={`relative z-10 w-5 h-5 flex-shrink-0 transition-colors duration-150 ${
+          isActive
+            ? "text-cyan-600 dark:text-cyan-400"
+            : "text-gray-500 group-hover:text-cyan-600 dark:text-gray-500 dark:group-hover:text-cyan-400"
+        }`}
+      />
+
+      {isOpen && (
+        <span className="relative z-10 text-sm font-medium truncate">
+          {item.label}
+        </span>
+      )}
+    </>
+  );
+
+  if (!hasChildren) {
+    return (
+      <NavLink to={item.path} onClick={onNavigate} className={linkClasses}>
+        {linkContent}
+      </NavLink>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-0.5">
+        <NavLink
+          to={item.path}
+          end
+          onClick={onNavigate}
+          className={({ isActive }) => `flex-1 ${linkClasses({ isActive })}`}
+        >
+          {linkContent}
+        </NavLink>
+        {isOpen && (
+          <button
+            type="button"
+            onClick={() => setExpanded((prev) => !prev)}
+            aria-label={expanded ? "Réduire" : "Développer"}
+            className="p-2 rounded-lg text-gray-400 hover:text-cyan-600 hover:bg-gray-50 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400 transition-colors duration-150 flex-shrink-0"
+          >
+            <FiChevronDown
+              className={`w-3.5 h-3.5 transition-transform duration-150 ${expanded ? "rotate-180" : ""}`}
+            />
+          </button>
+        )}
+      </div>
+
+      {isOpen && expanded && (
+        <div className="ml-6 pl-2.5 border-l border-gray-200 dark:border-gray-700 mt-0.5 space-y-0.5">
+          {item.children.map((child) => (
+            <NavLink
+              key={child.path}
+              to={child.path}
+              onClick={onNavigate}
+              className={() => `
+                block px-3 py-2 rounded-lg text-sm truncate transition-colors duration-150
+                ${
+                  currentUrl === child.path
+                    ? "text-cyan-700 bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/30 font-medium"
+                    : "text-gray-500 hover:text-cyan-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400"
+                }
+              `}
+            >
+              {child.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const MenuSection = ({
   title,
@@ -57,46 +163,7 @@ const MenuSection = ({
         </motion.p>
       )}
       {items.map((item) => (
-        <NavLink
-          key={item.path}
-          to={item.path}
-          onClick={onNavigate}
-          className={({ isActive }) => `
-            relative flex items-center gap-3 px-3 py-2.5 rounded-xl
-            transition-colors duration-150
-            ${
-              isActive
-                ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400"
-                : "text-gray-600 hover:bg-gray-50 hover:text-cyan-700 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400"
-            }
-            ${!isOpen ? "justify-center" : ""}
-            group
-          `}
-        >
-          {({ isActive }) => (
-            <>
-              <span
-                className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-full bg-cyan-500 transition-all duration-150 ${
-                  isActive ? "h-5 opacity-100" : "h-5 opacity-0"
-                }`}
-              />
-
-              <item.icon
-                className={`relative z-10 w-5 h-5 flex-shrink-0 transition-colors duration-150 ${
-                  isActive
-                    ? "text-cyan-600 dark:text-cyan-400"
-                    : "text-gray-500 group-hover:text-cyan-600 dark:text-gray-500 dark:group-hover:text-cyan-400"
-                }`}
-              />
-
-              {isOpen && (
-                <span className="relative z-10 text-sm font-medium truncate">
-                  {item.label}
-                </span>
-              )}
-            </>
-          )}
-        </NavLink>
+        <MenuItem key={item.path} item={item} isOpen={isOpen} onNavigate={onNavigate} />
       ))}
     </>
   );
@@ -126,6 +193,12 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const canSeeMyFormations = hasRole(["president", "moniteur", "adherent"]);
   const canSeeIncidents = hasRole(["president", "moniteur"]);
   const canSeeRoles = hasRole(["president"]);
+  // Validateurs des auto-soumissions (licence FFESM/assurances, certificat
+  // médical) — voir AdhesionService.validerAdhesion /
+  // CertificatMedicalService.validerCertificat. Un adhérent n'a rien à
+  // valider, donc pas de sous-menu pour lui, juste le lien direct.
+  const canValidateAdhesions = hasRole(["president", "tresorier"]);
+  const canValidateCertificats = hasRole(["president"]);
 
   // Accès public (Tailscale Funnel, voir k8s/overlays/production/
   // 17-ingress-public.yaml) : seules les routes adhérent sont exposées
@@ -149,8 +222,34 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       icon: FiUsers,
       label: "Adhérents",
     },
-    { path: "/adhesions", icon: FiFileText, label: "Adhésions" },
-    { path: "/certificats", icon: FiClipboard, label: "Certificats" },
+    {
+      path: "/adhesions",
+      icon: FiFileText,
+      label: "Adhésions",
+      children: canValidateAdhesions
+        ? [
+            { path: "/adhesions", label: "Toutes les adhésions" },
+            {
+              path: "/adhesions?validation=En+attente",
+              label: "En attente de validation",
+            },
+          ]
+        : undefined,
+    },
+    {
+      path: "/certificats",
+      icon: FiClipboard,
+      label: "Certificats",
+      children: canValidateCertificats
+        ? [
+            { path: "/certificats", label: "Tous les certificats" },
+            {
+              path: "/certificats?validation=En+attente",
+              label: "En attente de validation",
+            },
+          ]
+        : undefined,
+    },
   ].filter(Boolean);
 
   const calendrierMenu = [

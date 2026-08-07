@@ -16,9 +16,13 @@ router.get('/adherent/:num_adherent/status', AuthMiddleware.authenticate, certif
 router.get('/:id', AuthMiddleware.authenticate, certificatController.getById.bind(certificatController));
 router.get('/:id/document', AuthMiddleware.authenticate, certificatController.downloadDocument.bind(certificatController));
 
+// Ouvert à l'adhérent aussi : c'est lui qui déclenche l'analyse OCR en
+// choisissant/prenant sa photo dans CertificatForm.jsx lors d'une
+// auto-soumission (voir POST / plus bas) — sans quoi le simple fait de
+// sélectionner un fichier renvoyait 403 avant même la création.
 router.post('/analyser-photo',
   AuthMiddleware.authenticate,
-  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  AuthMiddleware.authorize([...ROLES.PRESIDENT_ONLY, 'adherent']),
   handleAnalysePhotoUpload,
   certificatController.analysePhoto.bind(certificatController)
 );

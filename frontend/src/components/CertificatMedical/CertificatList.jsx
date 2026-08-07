@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiEye,
@@ -45,8 +45,19 @@ const CertificatList = () => {
   const remove = useRemove();
   const valider = useValider();
 
+  // Filtre "statut_validation", initialisé depuis ?validation=... (lien du
+  // sous-menu "En attente de validation" dans la Sidebar) — distinct de
+  // `filter` ci-dessous qui porte sur `statut` (Valide/Expiré : la
+  // péremption, pas la validation par le président). L'option "En attente"
+  // qui existait auparavant dans `filter` ne correspondait à aucune valeur
+  // réelle de `statut` et ne renvoyait donc jamais rien — retirée d'ici,
+  // remplacée par ce filtre dédié.
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+  const [validationFilter, setValidationFilter] = useState(
+    searchParams.get("validation") || "all",
+  );
   const [deleteModal, setDeleteModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectMotif, setRejectMotif] = useState("");
@@ -79,6 +90,8 @@ const CertificatList = () => {
       const adherentName = adherentInfo.nom;
 
       if (filter !== "all" && c.statut !== filter) return false;
+      if (validationFilter !== "all" && c.statut_validation !== validationFilter)
+        return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -90,7 +103,7 @@ const CertificatList = () => {
       }
       return true;
     });
-  }, [allCertificats, adherentMap, filter, searchTerm]);
+  }, [allCertificats, adherentMap, filter, validationFilter, searchTerm]);
 
   const totalPages = Math.ceil(filteredCertificats.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -147,7 +160,7 @@ const CertificatList = () => {
           Aucun certificat trouvé
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {searchTerm || filter !== "all"
+          {searchTerm || filter !== "all" || validationFilter !== "all"
             ? "Aucun résultat pour vos critères"
             : "Commencez par créer un nouveau certificat"}
         </p>
@@ -192,7 +205,19 @@ const CertificatList = () => {
             <option value="all">Tous</option>
             <option value="Valide">Valides</option>
             <option value="Expiré">Expirés</option>
-            <option value="En attente">En attente</option>
+          </select>
+          <select
+            value={validationFilter}
+            onChange={(e) => {
+              setValidationFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">Toute validation</option>
+            <option value="En attente">En attente de validation</option>
+            <option value="Validé">Validés</option>
+            <option value="Rejeté">Rejetés</option>
           </select>
           {(canManageCertificat || canSubmitOwn) && (
             <Link
@@ -218,7 +243,7 @@ const CertificatList = () => {
               Aucun certificat trouvé
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-              {searchTerm || filter !== "all"
+              {searchTerm || filter !== "all" || validationFilter !== "all"
                 ? "Essayez de modifier vos filtres"
                 : "Aucun certificat pour le moment"}
             </p>

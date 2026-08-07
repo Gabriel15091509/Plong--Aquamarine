@@ -17,9 +17,13 @@ router.get('/adherent/:num_adherent/dossier-status', AuthMiddleware.authenticate
 router.get('/adherent/:num_adherent/attestation', AuthMiddleware.authenticate, adhesionController.getAttestation.bind(adhesionController));
 router.get('/:id', AuthMiddleware.authenticate, adhesionController.getById.bind(adhesionController));
 
+// Ouvert à l'adhérent aussi : c'est lui qui déclenche l'analyse OCR en
+// choisissant/prenant sa photo dans AdhesionForm.jsx lors d'une
+// auto-soumission (voir POST / plus bas) — sans quoi le simple fait de
+// sélectionner un fichier renvoyait 403 avant même la création.
 router.post('/analyser-photo',
   AuthMiddleware.authenticate,
-  AuthMiddleware.authorize(ROLES.PRESIDENT_TRESORIER),
+  AuthMiddleware.authorize([...ROLES.PRESIDENT_TRESORIER, 'adherent']),
   handleAnalysePhotoUpload,
   adhesionController.analysePhoto.bind(adhesionController)
 );
