@@ -22,7 +22,9 @@ class AdhesionService extends BaseService {
   // dans ce club (la licence FFESM et les assurances sont couvertes par la
   // cotisation Club, pas facturées séparément dans l'app) : pour ces autres
   // types, on se contente d'enregistrer la validité, sans montant ni ligne
-  // Paiement, avec un statut "Payé" d'office (aucun encaissement à suivre).
+  // Paiement, avec un statut "Payé" d'office (aucun encaissement à suivre —
+  // voir le commentaire sur statut_paiement plus bas pour pourquoi cette
+  // valeur reste "Payé" en base malgré tout).
   //
   // Un adhérent (pas le staff) peut soumettre lui-même une licence FFESM ou
   // une assurance — jamais l'adhésion Club — mais l'entrée reste "En
@@ -47,6 +49,15 @@ class AdhesionService extends BaseService {
         ...data,
         montant: 0,
         montant_paye: 0,
+        // Reste "Payé" en base (valeur technique) : findActiveAdhesions/
+        // findExpiringAdhesions (AdhesionRepository), l'alerte d'expiration
+        // (AlerteService) et surtout checkDossierValidity exigent tous
+        // statut_paiement === "Payé" pour compter FFESM/Assurance comme
+        // couverts — le changer casserait silencieusement la validité du
+        // dossier adhérent. "Payé" est trompeur affiché tel quel dans
+        // l'UI, donc c'est là qu'il est masqué (AdhesionList.jsx/
+        // AdhesionDetails.jsx : badge affiché seulement pour type Club),
+        // pas ici.
         statut_paiement: "Payé",
         soumis_par_adherent: estSoumissionAdherent,
         statut_validation: estSoumissionAdherent ? "En attente" : "Validé",
