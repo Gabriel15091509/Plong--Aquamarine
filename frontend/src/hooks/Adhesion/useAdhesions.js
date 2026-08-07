@@ -76,6 +76,22 @@ export const useAdhesions = () => {
     });
   };
 
+  const useValider = () => {
+    return useMutation({
+      mutationFn: ({ id, decision, motif }) => adhesionService.valider(id, { decision, motif }),
+      onSuccess: (response, variables) => {
+        queryClient.invalidateQueries(['adhesions']);
+        toast.success(
+          response.message ||
+            (variables.decision === "Validé" ? "Adhésion validée" : "Adhésion rejetée"),
+        );
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Erreur lors de la validation");
+      },
+    });
+  };
+
   const useGetByAdherent = (numAdherent) => {
     return useQuery({
       queryKey: ['adhesions', 'adherent', numAdherent],
@@ -113,5 +129,6 @@ export const useAdhesions = () => {
     useDossierStatus,
     useEnregistrerPaiement,
     useAnalysePhoto,
+    useValider,
   };
 };

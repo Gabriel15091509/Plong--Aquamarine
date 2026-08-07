@@ -24,12 +24,24 @@ router.post('/analyser-photo',
   adhesionController.analysePhoto.bind(adhesionController)
 );
 
+// Le staff (Club + FFESM + assurances) ET l'adhérent (FFESM/assurances
+// uniquement, jamais Club — voir AdhesionService.create) peuvent créer une
+// entrée : un adhérent qui soumet sa licence FFESM lui-même reste "En
+// attente" jusqu'à validation (POST /:id/valider), un staff qui la crée
+// est "Validé" d'office. Le rejet de l'adhésion Club pour un adhérent se
+// fait service-side, pas ici, pour garder une seule route de création.
 router.post('/',
   AuthMiddleware.authenticate,
-  AuthMiddleware.authorize(ROLES.PRESIDENT_TRESORIER),
+  AuthMiddleware.authorize([...ROLES.PRESIDENT_TRESORIER, 'adherent']),
   ...uploadAdhesionDocument,
   adhesionController.validateBeforeCreate.bind(adhesionController),
   adhesionController.create.bind(adhesionController)
+);
+
+router.post('/:id/valider',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_TRESORIER),
+  adhesionController.valider.bind(adhesionController)
 );
 
 router.put('/:id',

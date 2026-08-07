@@ -10,6 +10,8 @@ import {
   FiUser,
   FiDollarSign,
   FiCalendar,
+  FiCheck,
+  FiX,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
@@ -25,18 +27,25 @@ const AdhesionList = () => {
   // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { hasRole } = useAuth();
   const canManageAdhesion = hasRole(["president", "tresorier"]);
-  const { useGetAll, useRemove } = useAdhesions();
+  // Un adhérent ne gère pas les adhésions des autres, mais peut soumettre
+  // sa propre licence FFESM / assurance (voir AdhesionForm) — CTA distincte
+  // de "Nouvelle adhésion", jamais les deux en même temps pour un rôle donné.
+  const canSubmitOwn = hasRole(["adherent"]);
+  const { useGetAll, useRemove, useValider } = useAdhesions();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
   const { data, isLoading, error, refetch } = useGetAll();
   const { data: adherentsData, isLoading: loadingAdherents } =
     useGetAllAdherents();
   const remove = useRemove();
+  const valider = useValider();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rejectMotif, setRejectMotif] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -97,6 +106,27 @@ const AdhesionList = () => {
     }
   };
 
+  const handleValider = async (id) => {
+    try {
+      await valider.mutateAsync({ id, decision: "Validé" });
+      refetch();
+    } catch (error) {
+      console.error("Validation error:", error);
+    }
+  };
+
+  const handleRejeter = async () => {
+    if (!rejectModal || !rejectMotif.trim()) return;
+    try {
+      await valider.mutateAsync({ id: rejectModal, decision: "Rejeté", motif: rejectMotif.trim() });
+      refetch();
+      setRejectModal(null);
+      setRejectMotif("");
+    } catch (error) {
+      console.error("Rejection error:", error);
+    }
+  };
+
   // ✅ RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
   if (isLoading || loadingAdherents) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
@@ -119,12 +149,13 @@ const AdhesionList = () => {
             ? "Aucun résultat pour vos critères"
             : "Commencez par créer une nouvelle adhésion"}
         </p>
-        {canManageAdhesion && (
+        {(canManageAdhesion || canSubmitOwn) && (
           <Link
             to="/adhesions/create"
             className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
           >
-            <FiPlus className="w-4 h-4" /> Nouvelle adhésion
+            <FiPlus className="w-4 h-4" />
+            {canManageAdhesion ? "Nouvelle adhésion" : "Soumettre ma licence / assurance"}
           </Link>
         )}
       </motion.div>
@@ -177,13 +208,13 @@ const AdhesionList = () => {
             <option value="Partiel">Partiels</option>
             <option value="Annulé">Annulés</option>
           </select>
-          {canManageAdhesion && (
+          {(canManageAdhesion || canSubmitOwn) && (
             <Link
               to="/adhesions/create"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap"
             >
               <FiPlus className="w-4 h-4" />
-              Nouvelle
+              {canManageAdhesion ? "Nouvelle" : "Soumettre"}
             </Link>
           )}
         </div>
@@ -284,6 +315,18 @@ const AdhesionList = () => {
                             )}
                             <span>•</span>
                             <StatusBadge status={adhesion.statut_paiement} />
+                            {adhesion.statut_validation !== "Validé" && (
+                              <>
+                                <span>•</span>
+                                <StatusBadge status={adhesion.statut_validation} />
+                              </>
+                            )}
+                            {adhesion.statut_validation === "Rejeté" &&
+                              adhesion.motif_rejet && (
+                                <span className="text-xs text-red-500 dark:text-red-400 italic">
+                                  ({adhesion.motif_rejet})
+                                </span>
+                              )}
                             {adhesion.num_licence_ffesm && (
                               <>
                                 <span>•</span>
@@ -304,7 +347,32 @@ const AdhesionList = () => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          {canManageAdhesion && (
+                          {canManageAdhesion && adhesion.statut_validation === "En attente" && (
+                            <>
+                              <button
+                                onClick={() => handleValider(adhesion.id_adhesion)}
+                                disabled={valider.isPending}
+                                className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="Valider"
+                              >
+                                <FiCheck className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setRejectModal(adhesion.id_adhesion)}
+                                disabled={valider.isPending}
+                                className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="Rejeter"
+                              >
+                                <FiX className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {/* Verrouillé côté serveur (AdhesionService.update/delete)
+                              uniquement pour une soumission adhérent déjà validée —
+                              une adhésion créée par le staff (ex. Club) reste
+                              modifiable comme avant. */}
+                          {canManageAdhesion &&
+                            !(adhesion.soumis_par_adherent && adhesion.statut_validation === "Validé") && (
                             <>
                               <Link
                                 to={`/adhesions/edit/${adhesion.id_adhesion}`}
@@ -395,6 +463,53 @@ const AdhesionList = () => {
                 className="px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors"
               >
                 Supprimer
+              </button>
+            </div>
+          </motion.div>
+        </ModalOverlay>
+      )}
+
+      {/* Modal de rejet (motif obligatoire — l'adhérent doit savoir pourquoi
+          pour pouvoir resoumettre) */}
+      {rejectModal && (
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center gap-3 text-orange-600 dark:text-orange-400 mb-4">
+              <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/30">
+                <FiX className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold">Rejeter cette soumission</h3>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-3 text-sm">
+              L&apos;adhérent verra ce motif et pourra soumettre une nouvelle entrée corrigée.
+            </p>
+            <textarea
+              value={rejectMotif}
+              onChange={(e) => setRejectMotif(e.target.value)}
+              placeholder="Ex. : numéro de licence illisible sur la photo"
+              rows={3}
+              className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-300 focus:outline-none"
+            />
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setRejectModal(null);
+                  setRejectMotif("");
+                }}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleRejeter}
+                disabled={!rejectMotif.trim() || valider.isPending}
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Rejeter
               </button>
             </div>
           </motion.div>

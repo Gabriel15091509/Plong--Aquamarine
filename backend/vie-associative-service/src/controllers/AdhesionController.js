@@ -198,6 +198,24 @@ class AdhesionController extends BaseController {
     }
   }
 
+  async valider(req, res, next) {
+    try {
+      const { decision, motif } = req.body;
+      const result = await this.adhesionService.validerAdhesion(
+        req.params.id,
+        { decision, motif },
+        req.user,
+      );
+      res.json({
+        success: true,
+        data: result,
+        message: decision === "Validé" ? "Adhésion validée" : "Adhésion rejetée",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async validateBeforeCreate(req, res, next) {
     const errors = await this.adhesionService.validateAdhesionData(req.body);
     if (errors.length > 0) {

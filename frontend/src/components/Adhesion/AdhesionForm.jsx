@@ -20,6 +20,7 @@ import {
 } from "react-icons/fi";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import WebcamCaptureModal from "../Common/WebcamCaptureModal";
@@ -39,6 +40,14 @@ const AdhesionForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const editMode = !!id;
+  const { user } = useAuth();
+  // Un adhérent qui soumet lui-même sa licence FFESM / assurance (jamais
+  // en édition — cette route reste réservée au staff, voir App.jsx) :
+  // pas de choix d'adhérent (soi-même, imposé), pas de type "Club" (le
+  // backend le refuserait de toute façon — AdhesionService.create), pas de
+  // champ montant/paiement. La soumission reste "En attente" jusqu'à
+  // validation par le président/trésorier (AdhesionList affiche le statut).
+  const isSelfSubmission = !editMode && user?.role === "adherent";
 
   const { useGetById, useCreate, useUpdate, useAnalysePhoto } = useAdhesions();
   const { useGetAll } = useAdherents();
@@ -79,6 +88,23 @@ const AdhesionForm = () => {
   const [existingDocumentPath, setExistingDocumentPath] = useState(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const [showWebcam, setShowWebcam] = useState(false);
+
+  // Auto-sélectionne l'adhérent connecté comme seul "adhérent" possible
+  // (le backend, côté identite-service, ne renvoie de toute façon que sa
+  // propre fiche à un appelant avec le rôle adherent — voir le même motif
+  // dans AdherentRecapCard) et verrouille le type sur le premier choix
+  // non-Club, pour ne jamais laisser un état incohérent avec ce que le
+  // serveur acceptera.
+  useEffect(() => {
+    if (!isSelfSubmission || !adherentsData?.data?.length) return;
+    const soi = adherentsData.data[0];
+    setFormData((prev) => ({
+      ...prev,
+      num_adherent: soi.num_adherent,
+      type: prev.type === "Club" ? "FFESM" : prev.type,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSelfSubmission, adherentsData]);
 
   // ✅ En création, dès qu'on sélectionne l'adhérent, on reprend son n° de
   // licence FFESM depuis sa fiche Adherent (source de vérité, plutôt que la
@@ -236,6 +262,9 @@ const AdhesionForm = () => {
   const handleBlur = () => setFocused(null);
 
   const isClub = formData.type === "Club";
+  const typeOptions = isSelfSubmission
+    ? TYPE_ADHESION_OPTIONS.filter((opt) => opt.value !== "Club")
+    : TYPE_ADHESION_OPTIONS;
 
   const validate = () => {
     const newErrors = {};
@@ -311,12 +340,18 @@ const AdhesionForm = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier l'adhésion" : "Nouvelle adhésion"}
+              {editMode
+                ? "Modifier l'adhésion"
+                : isSelfSubmission
+                  ? "Soumettre ma licence / assurance"
+                  : "Nouvelle adhésion"}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {editMode
                 ? "Mettez à jour les informations d'adhésion"
-                : "Ajoutez une nouvelle adhésion au club"}
+                : isSelfSubmission
+                  ? "En attente de validation par le président/trésorier avant d'être prise en compte."
+                  : "Ajoutez une nouvelle adhésion au club"}
             </p>
           </div>
           <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
@@ -327,25 +362,56 @@ const AdhesionForm = () => {
 
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
+        {isSelfSubmission && (
+          <motion.div
+            {...fadeInUp}
+            className="flex items-start gap-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3"
+          >
+            <FiAlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              Votre document sera visible par le bureau avec le statut
+              <span className="font-medium"> « En attente »</span>. Il ne
+              sera pris en compte par le système (dossier complet, éligibilité
+              aux sorties, etc.) qu'une fois validé par le président ou le
+              trésorier.
+            </p>
+          </motion.div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <motion.div {...fadeInUp}>
-            <SearchableSelect
-              label="Adhérent *"
-              value={formData.num_adherent}
-              onChange={(value) => {
-                setFormData((prev) => ({ ...prev, num_adherent: value }));
-                if (errors.num_adherent)
-                  setErrors((prev) => ({ ...prev, num_adherent: "" }));
-              }}
-              options={adherentsData?.data || []}
-              getOptionLabel={(a) =>
-                `${a.civilite} ${a.nom} ${a.prenom} - ${a.email}`
-              }
-              getOptionValue={(a) => a.num_adherent}
-              placeholder="Rechercher un adhérent..."
-              error={errors.num_adherent}
-              required={true}
-            />
+            {isSelfSubmission ? (
+              <>
+                <label className={labelClasses}>
+                  <span className="flex items-center gap-2">
+                    <FiUser className="w-4 h-4 text-gray-400" />
+                    Adhérent
+                  </span>
+                </label>
+                <div className="w-full px-4 py-2.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 text-gray-600 dark:text-gray-300">
+                  {adherentsData?.data?.[0]
+                    ? `${adherentsData.data[0].civilite} ${adherentsData.data[0].nom} ${adherentsData.data[0].prenom} (vous)`
+                    : "…"}
+                </div>
+              </>
+            ) : (
+              <SearchableSelect
+                label="Adhérent *"
+                value={formData.num_adherent}
+                onChange={(value) => {
+                  setFormData((prev) => ({ ...prev, num_adherent: value }));
+                  if (errors.num_adherent)
+                    setErrors((prev) => ({ ...prev, num_adherent: "" }));
+                }}
+                options={adherentsData?.data || []}
+                getOptionLabel={(a) =>
+                  `${a.civilite} ${a.nom} ${a.prenom} - ${a.email}`
+                }
+                getOptionValue={(a) => a.num_adherent}
+                placeholder="Rechercher un adhérent..."
+                error={errors.num_adherent}
+                required={true}
+              />
+            )}
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -363,7 +429,7 @@ const AdhesionForm = () => {
               onBlur={handleBlur}
               className={inputClasses("type")}
             >
-              {TYPE_ADHESION_OPTIONS.map((opt) => (
+              {typeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label} {opt.obligatoire ? "*" : "(facultatif)"}
                 </option>
@@ -710,7 +776,11 @@ const AdhesionForm = () => {
           ) : (
             <FiSave className="w-4 h-4" />
           )}
-          {editMode ? "Mettre à jour" : "Créer l'adhésion"}
+          {editMode
+            ? "Mettre à jour"
+            : isSelfSubmission
+              ? "Soumettre pour validation"
+              : "Créer l'adhésion"}
         </button>
       </div>
     </motion.form>
