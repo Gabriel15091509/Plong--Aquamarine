@@ -196,7 +196,11 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   // Validateurs des auto-soumissions (licence FFESM/assurances, certificat
   // médical) — voir AdhesionService.validerAdhesion /
   // CertificatMedicalService.validerCertificat. Un adhérent n'a rien à
-  // valider, donc pas de sous-menu pour lui, juste le lien direct.
+  // valider, donc pas de sous-menu pour lui, juste le lien direct. Le lien
+  // "Validation" pointe vers ?validation=soumis, qui affiche toutes les
+  // auto-soumissions (soumis_par_adherent) quel que soit leur statut — pas
+  // seulement celles en attente — vu que la page ne propose plus de filtre
+  // dédié pour distinguer en attente/validées/rejetées.
   const canValidateAdhesions = hasRole(["president", "tresorier"]);
   const canValidateCertificats = hasRole(["president"]);
 
@@ -230,8 +234,8 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
         ? [
             { path: "/adhesions", label: "Toutes les adhésions" },
             {
-              path: "/adhesions?validation=En+attente",
-              label: "En attente de validation",
+              path: "/adhesions?validation=soumis",
+              label: "Validation",
             },
           ]
         : undefined,
@@ -244,8 +248,8 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
         ? [
             { path: "/certificats", label: "Tous les certificats" },
             {
-              path: "/certificats?validation=En+attente",
-              label: "En attente de validation",
+              path: "/certificats?validation=soumis",
+              label: "Validation",
             },
           ]
         : undefined,

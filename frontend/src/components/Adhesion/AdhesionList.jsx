@@ -40,23 +40,26 @@ const AdhesionList = () => {
   const remove = useRemove();
   const valider = useValider();
 
-  // Filtre "statut_validation", initialisé depuis ?validation=... (lien du
-  // sous-menu "En attente de validation" dans la Sidebar) — distinct de
-  // `filter` ci-dessous qui porte sur `statut_paiement`, pas le même concept.
+  // "Validation" : activé depuis ?validation=soumis (lien du sous-menu
+  // "Validation" dans la Sidebar) — affiche uniquement les auto-soumissions
+  // (soumis_par_adherent), tous statuts confondus (en attente/validée/
+  // rejetée, distingués par le badge sur chaque ligne). Ce n'est plus un
+  // filtre réglable en page : c'est une vue dédiée, il n'y a donc pas de
+  // <select> correspondant, seulement ce booléen dérivé de l'URL.
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [validationFilter, setValidationFilter] = useState(
-    searchParams.get("validation") || "all",
+  const [showValidationOnly, setShowValidationOnly] = useState(
+    searchParams.get("validation") === "soumis",
   );
   // Le lien de la Sidebar change juste ?validation=... sans démonter cette
   // page (même route /adhesions) : l'état initial de useState ci-dessus ne
   // se ré-évalue pas tout seul dans ce cas, il faut le resynchroniser
   // explicitement à chaque changement d'URL, sinon le clic ne fait rien de
-  // visible (l'URL change, le filtre affiché reste l'ancien).
+  // visible (l'URL change, la vue affichée reste l'ancienne).
   useEffect(() => {
-    setValidationFilter(searchParams.get("validation") || "all");
+    setShowValidationOnly(searchParams.get("validation") === "soumis");
   }, [searchParams]);
   const [deleteModal, setDeleteModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
@@ -91,8 +94,7 @@ const AdhesionList = () => {
 
       if (filter !== "all" && a.statut_paiement !== filter) return false;
       if (typeFilter !== "all" && a.type !== typeFilter) return false;
-      if (validationFilter !== "all" && a.statut_validation !== validationFilter)
-        return false;
+      if (showValidationOnly && !a.soumis_par_adherent) return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -104,7 +106,7 @@ const AdhesionList = () => {
       }
       return true;
     });
-  }, [allAdhesions, adherentMap, filter, typeFilter, validationFilter, searchTerm]);
+  }, [allAdhesions, adherentMap, filter, typeFilter, showValidationOnly, searchTerm]);
 
   const totalPages = Math.ceil(filteredAdhesions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -162,7 +164,7 @@ const AdhesionList = () => {
           Aucune adhésion trouvée
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {searchTerm || filter !== "all" || typeFilter !== "all" || validationFilter !== "all"
+          {searchTerm || filter !== "all" || typeFilter !== "all" || showValidationOnly
             ? "Aucun résultat pour vos critères"
             : "Commencez par créer une nouvelle adhésion"}
         </p>
@@ -225,19 +227,6 @@ const AdhesionList = () => {
             <option value="Partiel">Partiels</option>
             <option value="Annulé">Annulés</option>
           </select>
-          <select
-            value={validationFilter}
-            onChange={(e) => {
-              setValidationFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="all">Toute validation</option>
-            <option value="En attente">En attente de validation</option>
-            <option value="Validé">Validées</option>
-            <option value="Rejeté">Rejetées</option>
-          </select>
           {(canManageAdhesion || canSubmitOwn) && (
             <Link
               to="/adhesions/create"
@@ -262,7 +251,7 @@ const AdhesionList = () => {
               Aucune adhésion trouvée
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-              {searchTerm || filter !== "all" || typeFilter !== "all" || validationFilter !== "all"
+              {searchTerm || filter !== "all" || typeFilter !== "all" || showValidationOnly
                 ? "Essayez de modifier vos filtres"
                 : "Aucune adhésion pour le moment"}
             </p>
