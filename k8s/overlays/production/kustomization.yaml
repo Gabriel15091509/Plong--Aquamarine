@@ -46,9 +46,21 @@ replicas:
 
 # Le HPA a besoin de `resources.requests.cpu` sur les conteneurs pour
 # calculer un pourcentage d'utilisation — la base n'en définit pas (même
-# raison que ../staging/kustomization.yaml). Valeurs un cran au-dessus de
-# celles de staging : la production doit absorber du vrai trafic, pas
-# juste démarrer.
+# raison que ../staging/kustomization.yaml).
+#
+# Right-sizing (mesuré via `kubectl top pods`, pic observé sur plusieurs
+# relevés pendant une montée en charge HPA réelle) : la valeur unique
+# 192Mi précédente était 3 à 9 fois l'usage réel constaté (7-77Mi/pod
+# selon le service), ce qui réservait beaucoup de RAM inutilisée sur un
+# nœud à ~7,7Gi et contribuait aux "Insufficient memory" pendant les
+# rollouts. Trois paliers, marge ~2x le pic observé par groupe :
+#   - léger   (frontend statique nginx, gateway proxy, pgbouncer)     : pic ≤38Mi  → 64Mi / 256Mi
+#   - médian  (formation, materiel, finance, prometheus)              : pic ≤52Mi  → 96Mi / 320Mi
+#   - lourd   (identite, activites, vie-associative : upload de fichiers
+#     + requêtes SQL plus consistantes)                               : pic ≤77Mi  → 128Mi / 384Mi
+# Les `limits` restent un filet de sécurité large (jamais atteintes en
+# usage normal) — si un service les dépasse un jour, il sera visible
+# immédiatement via un restart (OOMKilled), pas silencieusement dégradé.
 patches:
 - target:
     kind: Deployment
@@ -58,7 +70,33 @@ patches:
       value:
         requests:
           cpu: 100m
-          memory: 192Mi
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+- target:
+    kind: Deployment
+    name: "formation-service|materiel-service|finance-service|prometheus"
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          cpu: 100m
+          memory: 96Mi
+        limits:
+          cpu: 500m
+          memory: 320Mi
+- target:
+    kind: Deployment
+    name: "identite-service|activites-service|vie-associative-service"
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/resources
+      value:
+        requests:
+          cpu: 100m
+          memory: 128Mi
         limits:
           cpu: 500m
           memory: 384Mi
