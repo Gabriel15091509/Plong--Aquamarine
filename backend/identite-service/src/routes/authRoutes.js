@@ -16,6 +16,10 @@ const authLimiter = rateLimit({
     success: false,
     message: "Trop de tentatives de connexion, veuillez réessayer plus tard",
   },
+  // Hors production : voir gateway-service/src/app.js pour le raisonnement.
+  // Le brute-force n'est un risque réel qu'en prod ; en dev, un simple aller-
+  // retour login/logout répété pendant des tests atteint vite 20/15min.
+  skip: () => process.env.NODE_ENV !== "production",
 });
 
 router.post('/login', authLimiter, authController.login.bind(authController));

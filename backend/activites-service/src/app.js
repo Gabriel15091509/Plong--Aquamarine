@@ -89,6 +89,9 @@ const limiter = rateLimit({
     success: false,
     message: "Trop de requêtes, veuillez réessayer plus tard",
   },
+  // Hors production : voir gateway-service/src/app.js pour le raisonnement
+  // (le rate limiting global n'a de sens que face à un vrai trafic public).
+  skip: () => process.env.NODE_ENV !== "production",
 });
 app.use("/api", limiter);
 
