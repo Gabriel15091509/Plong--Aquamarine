@@ -8,17 +8,28 @@ const BASE_URL = process.env.ACTIVITES_SERVICE_URL
   : "http://localhost:5015/api";
 
 async function getCarnetStats(num_adherent, authHeader) {
-  const response = await fetch(`${BASE_URL}/plongees/adherent/${num_adherent}`, {
-    headers: authHeader ? { Authorization: authHeader } : {},
-  });
-  if (!response.ok) return null;
-  const body = await response.json();
-  if (typeof body.count !== "number") return null;
-  return {
-    count: body.count,
-    profondeurMax: body.profondeurMax ?? null,
-    dureeTotale: body.dureeTotale ?? null,
-  };
+  // Best-effort, y compris au niveau réseau : `fetch` lui-même peut rejeter
+  // (activites-service pas encore levé, ex. la fenêtre de démarrage en
+  // parallèle de `npm run dev`/`concurrently`, ou down ponctuellement) —
+  // pas seulement renvoyer un statut non-2xx. Sans ce try/catch, l'erreur
+  // remontait non gérée jusqu'à AdherentController.getById, qui la faisait
+  // échouer avec un 403 trompeur (défaut de withStatus) au lieu de
+  // simplement laisser ces champs à `null` comme documenté ci-dessus.
+  try {
+    const response = await fetch(`${BASE_URL}/plongees/adherent/${num_adherent}`, {
+      headers: authHeader ? { Authorization: authHeader } : {},
+    });
+    if (!response.ok) return null;
+    const body = await response.json();
+    if (typeof body.count !== "number") return null;
+    return {
+      count: body.count,
+      profondeurMax: body.profondeurMax ?? null,
+      dureeTotale: body.dureeTotale ?? null,
+    };
+  } catch (_error) {
+    return null;
+  }
 }
 
 module.exports = { getCarnetStats };
