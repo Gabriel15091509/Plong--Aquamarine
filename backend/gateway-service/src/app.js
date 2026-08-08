@@ -116,6 +116,12 @@ const limiter = rateLimit({
     message: "Trop de requêtes, veuillez réessayer plus tard",
   },
   skip: (req) => {
+    // Hors production : une session de dev/test (rechargements, plusieurs
+    // services qui se retestent l'un l'autre, React Query qui reparallélise
+    // au moindre remount) épuise les 1000/15min en quelques minutes sans
+    // qu'il y ait le moindre abus - le rate limiting n'a de sens qu'en prod,
+    // où trafic public + brute-force sont de vrais risques.
+    if (process.env.NODE_ENV !== "production") return true;
     const userAgent = req.headers["user-agent"] || "";
     return (
       userAgent.includes("Expo") ||
