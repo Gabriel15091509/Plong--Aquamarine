@@ -57,4 +57,4 @@ images:
   newTag: sha-7181daf
 - name: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
-  newTag: sha-c043d59
+  newTag: sha-ba3da0f
