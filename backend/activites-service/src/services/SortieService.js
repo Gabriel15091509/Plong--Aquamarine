@@ -209,6 +209,15 @@ class SortieService extends BaseService {
     for (const insc of inscriptions) {
       const inscription = await this.inscriptionRepository.findById(insc.id);
       if (!inscription) continue;
+      // Seules les inscriptions "Confirmée" de CETTE sortie sont pointables
+      // — une inscription "Annulée"/"En attente"/"Liste d'attente", ou
+      // rattachée à une autre sortie, ne doit jamais pouvoir être marquée
+      // présente/absente (le frontend ne les propose plus non plus, voir
+      // SortiePointage.jsx, mais l'API doit refuser même appelée
+      // directement).
+      if (inscription.id_sortie !== id_sortie || inscription.statut !== "Confirmée") {
+        continue;
+      }
 
       // Un inscrit qui n'a pas commencé à régler le tarif de la sortie ne
       // peut pas être pointé présent : le paiement doit avoir débuté avant
