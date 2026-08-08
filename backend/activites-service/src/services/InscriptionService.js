@@ -1,3 +1,4 @@
+const { sequelize } = require("../models");
 const BaseService = require("./BaseService");
 const InscriptionRepository = require("../repositories/InscriptionRepository");
 const SortieService = require("./SortieService");
@@ -156,19 +157,6 @@ class InscriptionService extends BaseService {
       updateData.statut = "Annulée";
     }
 
-    if (statusWillChange && nextStatus === "Confirmée") {
-      const { placesDisponibles } = await this.waitlistService.getSortieCapacity(
-        inscription.id_sortie,
-        id,
-        data.authHeader,
-      );
-      if (placesDisponibles <= 0) {
-        throw new Error("Plus de places disponibles");
-      }
-      updateData.rang_liste_attente = null;
-      updateData.date_confirmation = updateData.date_confirmation || new Date();
-    }
-
     if (statusWillChange && nextStatus === "Liste d'attente") {
       updateData.rang_liste_attente = await this.waitlistService.getNextWaitlistRank(
         inscription.id_sortie,
@@ -181,7 +169,26 @@ class InscriptionService extends BaseService {
       updateData.rang_liste_attente = null;
     }
 
-    const updated = await this.inscriptionRepository.update(id, updateData);
+    let updated;
+    if (statusWillChange && nextStatus === "Confirmée") {
+      // Capacité lue et écriture faites sous le même verrou sur la sortie —
+      // voir le raisonnement dans createInscription.
+      updated = await sequelize.transaction(async (transaction) => {
+        const { placesDisponibles } = await this.waitlistService.getSortieCapacityLocked(
+          inscription.id_sortie,
+          id,
+          transaction,
+        );
+        if (placesDisponibles <= 0) {
+          throw new Error("Plus de places disponibles");
+        }
+        updateData.rang_liste_attente = null;
+        updateData.date_confirmation = updateData.date_confirmation || new Date();
+        return await this.inscriptionRepository.update(id, updateData, { transaction });
+      });
+    } else {
+      updated = await this.inscriptionRepository.update(id, updateData);
+    }
 
     if (statusWillChange && oldStatus === "Confirmée") {
       await this.waitlistService.promoteNextFromWaitlist(inscription.id_sortie, data.authHeader);
@@ -359,40 +366,69 @@ class InscriptionService extends BaseService {
       throw new Error("Le certificat médical est expiré ou manquant");
     }
 
-    const { placesDisponibles } = await this.waitlistService.getSortieCapacity(id_sortie, null, data.authHeader);
-
-    let statut = data.statut || "Confirmée";
-    let rangListeAttente = null;
-
-    if (!canManage) {
-      statut = "En attente";
-    } else if (placesDisponibles <= 0 && statut !== "En attente") {
-      statut = "Liste d'attente";
-      rangListeAttente = await this.waitlistService.getNextWaitlistRank(id_sortie);
-    } else if (statut === "Confirmée") {
-      rangListeAttente = null;
-    } else if (statut === "Liste d'attente") {
-      rangListeAttente = await this.waitlistService.getNextWaitlistRank(id_sortie);
-    }
-
     // Le tarif adhérent de la sortie est figé au moment de l'inscription :
     // un changement de tarif ultérieur sur la sortie ne doit pas modifier
     // rétroactivement ce qui est dû par les inscrits déjà enregistrés.
     const montantDu = Number(sortie.tarif_adherent) || 0;
-    const inscriptionData = {
+    const baseInscriptionData = {
       num_adherent,
       id_sortie,
-      statut,
-      rang_liste_attente: rangListeAttente,
       presence: data.presence || false,
-      date_confirmation:
-        data.date_confirmation || (statut === "Confirmée" ? new Date() : null),
       montant_du: montantDu,
       montant_paye: 0,
       paye: montantDu <= 0,
     };
 
-    const inscription = await this.inscriptionRepository.create(inscriptionData);
+    let inscription;
+    if (!canManage) {
+      // Auto-inscription : toujours "En attente" quelle que soit la
+      // capacité restante — un adhérent ne peut ni s'auto-confirmer ni
+      // s'auto-placer en liste d'attente, seul un gestionnaire décide
+      // ensuite (confirmInscription/update). Aucune place n'est comptée
+      // avant cette décision : pas besoin de verrouiller la sortie ici.
+      inscription = await this.inscriptionRepository.create({
+        ...baseInscriptionData,
+        statut: "En attente",
+        rang_liste_attente: null,
+        date_confirmation: null,
+      });
+    } else {
+      // Préinscription par un gestionnaire : la capacité doit être lue ET
+      // l'inscription écrite sous le même verrou posé sur la ligne de la
+      // sortie (voir InscriptionWaitlistService.getSortieCapacityLocked) —
+      // sans ça, deux préinscriptions "Confirmée" concurrentes pour la
+      // dernière place peuvent toutes les deux lire "1 place disponible" et
+      // toutes les deux réussir, faisant déborder nb_inscrits au-dessus de
+      // nb_places.
+      inscription = await sequelize.transaction(async (transaction) => {
+        const { placesDisponibles } = await this.waitlistService.getSortieCapacityLocked(
+          id_sortie,
+          null,
+          transaction,
+        );
+
+        let statut = data.statut || "Confirmée";
+        let rangListeAttente = null;
+
+        if (placesDisponibles <= 0 && statut !== "En attente") {
+          statut = "Liste d'attente";
+        }
+        if (statut === "Liste d'attente") {
+          rangListeAttente = await this.waitlistService.getNextWaitlistRank(id_sortie);
+        }
+
+        return await this.inscriptionRepository.create(
+          {
+            ...baseInscriptionData,
+            statut,
+            rang_liste_attente: rangListeAttente,
+            date_confirmation:
+              data.date_confirmation || (statut === "Confirmée" ? new Date() : null),
+          },
+          { transaction },
+        );
+      });
+    }
 
     if (adherentRecord?.email) {
       sendInscriptionConfirmationEmail({
@@ -418,20 +454,24 @@ class InscriptionService extends BaseService {
       return inscription;
     }
 
-    const { placesDisponibles } = await this.waitlistService.getSortieCapacity(
-      inscription.id_sortie,
-      id,
-      authHeader,
-    );
+    // Capacité lue et écriture faites sous le même verrou sur la sortie —
+    // voir le raisonnement dans createInscription.
+    await sequelize.transaction(async (transaction) => {
+      const { placesDisponibles } = await this.waitlistService.getSortieCapacityLocked(
+        inscription.id_sortie,
+        id,
+        transaction,
+      );
 
-    if (placesDisponibles <= 0) {
-      throw new Error("Plus de places disponibles");
-    }
+      if (placesDisponibles <= 0) {
+        throw new Error("Plus de places disponibles");
+      }
 
-    inscription.statut = "Confirmée";
-    inscription.rang_liste_attente = null;
-    inscription.date_confirmation = new Date();
-    await inscription.save();
+      inscription.statut = "Confirmée";
+      inscription.rang_liste_attente = null;
+      inscription.date_confirmation = new Date();
+      await inscription.save({ transaction });
+    });
     await this.waitlistService.normalizeWaitlistRanks(inscription.id_sortie);
 
     return inscription;

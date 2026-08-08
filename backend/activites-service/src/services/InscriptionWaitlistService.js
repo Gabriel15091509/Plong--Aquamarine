@@ -1,3 +1,4 @@
+const { sequelize } = require("../models");
 const SortieService = require("./SortieService");
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const { sendWaitlistPromotedEmail } = require("../utils/email");
@@ -44,6 +45,39 @@ class InscriptionWaitlistService {
     };
   }
 
+  // Variante transactionnelle de getSortieCapacity : pose un verrou
+  // pessimiste sur la ligne de la sortie (SortieRepository.
+  // lockForCapacityCheck) et compte les inscriptions Confirmée sous ce même
+  // verrou, à appeler à l'intérieur de la transaction qui écrira ensuite le
+  // nouveau statut "Confirmée" (createInscription/confirmInscription/
+  // update). Sans ça, deux confirmations concurrentes pour la dernière
+  // place libre lisent chacune "1 place disponible" avant que l'une des
+  // deux écritures n'ait eu lieu, et les deux passent en "Confirmée" —
+  // nb_inscrits dépasse alors nb_places, cassant l'invariant "1 confirmée =
+  // 1 place occupée, le reste en liste d'attente" que ce service existe
+  // pour garantir.
+  async getSortieCapacityLocked(id_sortie, excludeInscriptionId, transaction) {
+    const sortie = await this.sortieService.sortieRepository.lockForCapacityCheck(
+      id_sortie,
+      transaction,
+    );
+    if (!sortie) {
+      throw new Error("Sortie non trouvée");
+    }
+
+    const confirmedCount = await this.inscriptionRepository.countConfirmedBySortie(
+      id_sortie,
+      excludeInscriptionId,
+      transaction,
+    );
+
+    return {
+      sortie,
+      confirmedCount,
+      placesDisponibles: Math.max(sortie.nb_places - confirmedCount, 0),
+    };
+  }
+
   async getWaitlistBySortie(id_sortie) {
     return await this.inscriptionRepository.getWaitlistBySortie(id_sortie);
   }
@@ -71,17 +105,34 @@ class InscriptionWaitlistService {
   }
 
   async promoteNextFromWaitlist(id_sortie, authHeader = null) {
-    const { placesDisponibles } = await this.getSortieCapacity(id_sortie, null, authHeader);
-    if (placesDisponibles <= 0) return null;
+    // Verrouillée comme les autres écritures qui touchent la capacité
+    // (createInscription/confirmInscription/update dans InscriptionService)
+    // : une annulation qui libère la dernière place et une confirmation
+    // manuelle concurrente pour cette même place ne doivent pas pouvoir
+    // toutes les deux réussir.
+    const next = await sequelize.transaction(async (transaction) => {
+      const { placesDisponibles } = await this.getSortieCapacityLocked(
+        id_sortie,
+        null,
+        transaction,
+      );
+      if (placesDisponibles <= 0) return null;
 
-    const waitlist = await this.getWaitlistBySortie(id_sortie);
-    const next = waitlist[0];
+      const waitlist = await this.inscriptionRepository.getWaitlistBySortie(
+        id_sortie,
+        transaction,
+      );
+      const candidate = waitlist[0];
+      if (!candidate) return null;
+
+      candidate.statut = "Confirmée";
+      candidate.rang_liste_attente = null;
+      candidate.date_confirmation = new Date();
+      await candidate.save({ transaction });
+      return candidate;
+    });
+
     if (!next) return null;
-
-    next.statut = "Confirmée";
-    next.rang_liste_attente = null;
-    next.date_confirmation = new Date();
-    await next.save();
     await this.normalizeWaitlistRanks(id_sortie);
 
     try {

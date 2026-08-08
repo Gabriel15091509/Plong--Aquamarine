@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const { Inscription, Sortie } = require("../models");
 const { NotFoundError } = require("../utils/errors");
 
@@ -34,7 +35,7 @@ class InscriptionRepository {
     });
   }
 
-  async create(data) {
+  async create(data, options = {}) {
     const cleanData = {
       num_adherent: data.num_adherent,
       id_sortie: parseInt(data.id_sortie),
@@ -46,7 +47,7 @@ class InscriptionRepository {
       date_confirmation: data.date_confirmation || null,
     };
 
-    return await Inscription.create(cleanData);
+    return await Inscription.create(cleanData, options);
   }
 
   async update(id, data, options = {}) {
@@ -68,6 +69,18 @@ class InscriptionRepository {
     return true;
   }
 
+  // Compte à tenir DANS la transaction qui a posé le verrou sur la sortie
+  // (voir SortieRepository.lockForCapacityCheck) : lu et écrit sous le même
+  // verrou, deux confirmations concurrentes ne peuvent plus lire le même
+  // compte "avant écriture" et déborder ensemble de nb_places.
+  async countConfirmedBySortie(id_sortie, excludeInscriptionId, transaction) {
+    const where = { id_sortie, statut: "Confirmée" };
+    if (excludeInscriptionId) {
+      where.id_inscription = { [Op.ne]: excludeInscriptionId };
+    }
+    return await Inscription.count({ where, transaction });
+  }
+
   async findConfirmationsBySortie(id_sortie) {
     return await Inscription.findAll({
       where: {
@@ -86,13 +99,14 @@ class InscriptionRepository {
     });
   }
 
-  async getWaitlistBySortie(id_sortie) {
+  async getWaitlistBySortie(id_sortie, transaction) {
     return await Inscription.findAll({
       where: {
         id_sortie,
         statut: "Liste d'attente",
       },
       order: [["rang_liste_attente", "ASC"]],
+      transaction,
     });
   }
 
