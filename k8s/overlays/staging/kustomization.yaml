@@ -46,7 +46,7 @@ images:
   newTag: sha-7181daf
 - name: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
-  newTag: sha-c043d59
+  newTag: sha-ba3da0f
 
 # Réplicas de départ à 1 (= minReplicas des HPA ci-dessus) ; le HPA prend
 # ensuite la main entre 1 et 3 selon la charge CPU.
