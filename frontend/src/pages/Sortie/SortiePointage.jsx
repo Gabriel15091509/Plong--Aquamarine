@@ -49,14 +49,14 @@ const SortiePointage = () => {
     useEnregistrerPointage,
     useAnnulerPointage,
   } = useSorties();
-  const { useGetAll } = useInscriptions();
+  const { useGetConfirmationsBySortie } = useInscriptions();
 
   const { data: sortie, isLoading: loadingSortie } = useGetSortie(id_sortie);
   const {
     data: inscriptions,
     isLoading: loadingInscriptions,
     refetch,
-  } = useGetAll();
+  } = useGetConfirmationsBySortie(id_sortie);
   const enregistrerPointage = useEnregistrerPointage();
   const annulerPointage = useAnnulerPointage();
 
@@ -69,10 +69,17 @@ const SortiePointage = () => {
     notChecked: 0,
   });
 
-  const sortieInscriptions = useMemo(() => {
-    if (!inscriptions?.data) return [];
-    return inscriptions.data.filter((i) => i.id_sortie === parseInt(id_sortie));
-  }, [inscriptions, id_sortie]);
+  // Déjà scopé côté backend (statut "Confirmée" + cette sortie uniquement,
+  // voir InscriptionRepository.findConfirmationsBySortie) — contrairement à
+  // l'ancien useGetAll()+filter côté client, qui ramenait TOUTES les
+  // inscriptions du système (toutes sorties, tous statuts confondus,
+  // y compris "Annulée"/"En attente"/"Liste d'attente") et laissait
+  // pointer/dépointer des inscriptions qui n'auraient jamais dû apparaître
+  // ici.
+  const sortieInscriptions = useMemo(
+    () => inscriptions?.data || [],
+    [inscriptions],
+  );
 
   useEffect(() => {
     const total = sortieInscriptions.length;
