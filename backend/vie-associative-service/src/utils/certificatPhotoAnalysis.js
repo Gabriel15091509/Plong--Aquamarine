@@ -56,6 +56,11 @@ async function analyserPhotoCertificat(buffer, { nom, prenom, medecin, dateValid
     avertissements,
     coherent: avertissements.length === 0,
     texteDetecteVide: texteDetecte.length === 0,
+    // Texte OCR brut, réutilisé par CertificatMedicalService.
+    // judgeSubmittedDocument (validation automatique Ollama) — les
+    // heuristiques ci-dessus servent de signal complémentaire, pas de
+    // substitut au texte lui-même.
+    texteDetecte,
     extraction,
   };
 }

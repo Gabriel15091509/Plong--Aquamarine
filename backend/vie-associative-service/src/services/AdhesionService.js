@@ -5,6 +5,8 @@ const identiteClient = require('../utils/serviceClients/identiteClient');
 const paiementClient = require('../utils/serviceClients/paiementClient');
 const { sendAdhesionPaymentEmail } = require('../utils/email');
 const { analyserPhotoAdhesion } = require('../utils/adhesionPhotoAnalysis');
+const { readAdhesionDocument } = require('../middlewares/upload');
+const { judgeDocumentCoherence } = require('../utils/groqClient');
 
 // ✅ Les 3 éléments obligatoires de l'adhésion (l'Assurance RC est incluse
 // dans la Licence FFESM mais tracée comme une ligne distincte, comme dans
@@ -45,6 +47,32 @@ class AdhesionService extends BaseService {
     }
 
     if (data.type !== "Club") {
+      // Plus de validation manuelle du président pour une soumission
+      // adhérent : Ollama tranche seul (Validé/Rejeté), voir
+      // judgeSubmittedDocument. Une entrée créée par le staff reste
+      // "Validé" d'office comme avant, aucune analyse n'est nécessaire.
+      let statut_validation = "Validé";
+      let valide_par = user?.id ?? null;
+      let valide_le = new Date();
+      let motif_rejet = null;
+
+      if (estSoumissionAdherent) {
+        const decision = await this.judgeSubmittedDocument({
+          typeDocument: data.type,
+          document_path: data.document_path,
+          adherent,
+          champs: {
+            num_licence_ffesm: data.num_licence_ffesm,
+            date_debut: data.date_debut,
+            date_fin: data.date_fin,
+          },
+        });
+        statut_validation = decision.decision;
+        valide_par = null;
+        valide_le = new Date();
+        motif_rejet = decision.decision === "Rejeté" ? decision.motif : null;
+      }
+
       return await this.adhesionRepository.create({
         ...data,
         montant: 0,
@@ -60,9 +88,10 @@ class AdhesionService extends BaseService {
         // pas ici.
         statut_paiement: "Payé",
         soumis_par_adherent: estSoumissionAdherent,
-        statut_validation: estSoumissionAdherent ? "En attente" : "Validé",
-        valide_par: estSoumissionAdherent ? null : (user?.id ?? null),
-        valide_le: estSoumissionAdherent ? null : new Date(),
+        statut_validation,
+        valide_par,
+        valide_le,
+        motif_rejet,
       });
     }
 
@@ -97,6 +126,60 @@ class AdhesionService extends BaseService {
     }
 
     return adhesion;
+  }
+
+  // Décision automatique (plus de validation manuelle du président pour ce
+  // circuit) : relit le document tout juste enregistré sur disque, réutilise
+  // les mêmes heuristiques OCR que l'aperçu pré-soumission
+  // (analyserPhotoAdhesion, déjà utilisée par analyserPhoto ci-dessous),
+  // puis soumet le texte détecté + les champs saisis à Ollama pour un
+  // jugement final. Toute défaillance (pas de document, lecture impossible,
+  // Ollama injoignable) aboutit à un rejet explicite plutôt qu'à une
+  // validation par défaut — voir groqClient.judgeDocumentCoherence pour
+  // cette politique (actée : aucun repli vers une validation humaine).
+  async judgeSubmittedDocument({ typeDocument, document_path, adherent, champs }) {
+    if (!document_path) {
+      return {
+        decision: "Rejeté",
+        motif: "Aucun document fourni avec cette soumission.",
+      };
+    }
+
+    // Tout accroc dans la lecture/l'OCR (fichier illisible, image
+    // corrompue...) doit aboutir à un rejet explicite comme le reste de
+    // cette politique — pas d'exception non gérée qui ferait échouer toute
+    // la requête de soumission avec une 500 opaque.
+    try {
+      const buffer = readAdhesionDocument(document_path);
+      const champsAttendus = {
+        nom: adherent.nom,
+        prenom: adherent.prenom,
+        num_licence_ffesm: champs.num_licence_ffesm,
+        date_debut: champs.date_debut,
+        date_fin: champs.date_fin,
+      };
+
+      const analyse = await analyserPhotoAdhesion(buffer, {
+        nom: adherent.nom,
+        prenom: adherent.prenom,
+        type: typeDocument,
+        num_licence_ffesm: champs.num_licence_ffesm,
+        date_debut: champs.date_debut,
+        date_fin: champs.date_fin,
+      });
+
+      return await judgeDocumentCoherence({
+        typeDocument,
+        champsAttendus,
+        texteOcr: analyse.texteDetecte,
+        avertissementsHeuristiques: analyse.avertissements,
+      });
+    } catch (error) {
+      return {
+        decision: "Rejeté",
+        motif: "Le document envoyé n'a pas pu être analysé (fichier illisible ou corrompu).",
+      };
+    }
   }
 
   async notifyPayment(adhesion, authHeader) {

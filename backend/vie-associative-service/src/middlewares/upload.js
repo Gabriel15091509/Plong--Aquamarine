@@ -111,6 +111,17 @@ function readEncryptedDocument(subfolder, filename) {
   return decryptBuffer(fs.readFileSync(filePath));
 }
 
+// Lecture d'un document d'adhésion NON chiffré à partir du chemin stocké en
+// base (`/uploads/adhesions/<fichier>`) — utilisé par AdhesionService.
+// judgeSubmittedDocument (validation automatique Ollama), qui a besoin des
+// octets bruts pour l'OCR, pas seulement de l'URL statique servie par
+// express.static.
+function readAdhesionDocument(document_path) {
+  const filename = path.basename(document_path);
+  const filePath = path.join(UPLOADS_ROOT, "adhesions", filename);
+  return fs.readFileSync(filePath);
+}
+
 // Photo envoyée uniquement pour l'analyse OCR de cohérence (pré-soumission
 // du formulaire) : jamais écrite sur disque, ni chiffrée, ni conservée —
 // le buffer sert une fois à l'analyse puis est jeté. Images uniquement (pas
@@ -139,5 +150,6 @@ module.exports = {
   uploadAdhesionDocument: makeUploader("adhesions"),
   uploadCertificatDocument: makeUploader("certificats", { encrypt: true }),
   readEncryptedDocument,
+  readAdhesionDocument,
   handleAnalysePhotoUpload,
 };

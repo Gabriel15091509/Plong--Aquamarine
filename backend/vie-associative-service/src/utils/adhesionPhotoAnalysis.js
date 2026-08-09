@@ -54,6 +54,10 @@ async function analyserPhotoAdhesion(buffer, { nom, prenom, type, num_licence_ff
     avertissements,
     coherent: avertissements.length === 0,
     texteDetecteVide: texteDetecte.length === 0,
+    // Texte OCR brut, réutilisé par AdhesionService.judgeSubmittedDocument
+    // (validation automatique Ollama) — les heuristiques ci-dessus servent
+    // de signal complémentaire, pas de substitut au texte lui-même.
+    texteDetecte,
     extraction,
   };
 }
