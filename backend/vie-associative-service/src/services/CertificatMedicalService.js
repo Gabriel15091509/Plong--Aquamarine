@@ -2,6 +2,8 @@ const BaseService = require('./BaseService');
 const CertificatMedicalRepository = require('../repositories/CertificatMedicalRepository');
 const identiteClient = require('../utils/serviceClients/identiteClient');
 const { analyserPhotoCertificat } = require('../utils/certificatPhotoAnalysis');
+const { readEncryptedDocument } = require('../middlewares/upload');
+const { judgeDocumentCoherence } = require('../utils/groqClient');
 
 class CertificatMedicalService extends BaseService {
   constructor() {
@@ -23,11 +25,12 @@ class CertificatMedicalService extends BaseService {
     return data;
   }
 
-  // Un adhérent peut soumettre lui-même son certificat médical ; l'entrée
-  // reste "En attente" jusqu'à validation par le président (POST /:id/valider)
-  // — même schéma que AdhesionService.create. `num_adherent` est toujours
-  // recalculé depuis le token, jamais pris tel quel dans le corps de la
-  // requête.
+  // Un adhérent peut soumettre lui-même son certificat médical. Plus de
+  // validation manuelle du président pour ce circuit : Ollama tranche seul
+  // (Validé/Rejeté), voir judgeSubmittedDocument. Une entrée créée
+  // directement par le staff reste "Validé" d'office comme avant.
+  // `num_adherent` est toujours recalculé depuis le token, jamais pris tel
+  // quel dans le corps de la requête.
   async create(data, user = null) {
     const adherent = await identiteClient.getAdherentForUser(user);
     const estSoumissionAdherent = !!adherent;
@@ -36,13 +39,86 @@ class CertificatMedicalService extends BaseService {
       data = { ...data, num_adherent: adherent.num_adherent };
     }
 
+    let statut_validation = "Validé";
+    let valide_par = user?.id ?? null;
+    let valide_le = new Date();
+    let motif_rejet = null;
+
+    if (estSoumissionAdherent) {
+      const decision = await this.judgeSubmittedDocument({
+        document_path: data.document_path,
+        adherent,
+        champs: {
+          medecin: data.medecin,
+          date_validite: data.date_validite,
+          date_delivrance: data.date_delivrance,
+        },
+      });
+      statut_validation = decision.decision;
+      valide_par = null;
+      valide_le = new Date();
+      motif_rejet = decision.decision === "Rejeté" ? decision.motif : null;
+    }
+
     return await this.certificatRepository.create({
       ...data,
       soumis_par_adherent: estSoumissionAdherent,
-      statut_validation: estSoumissionAdherent ? "En attente" : "Validé",
-      valide_par: estSoumissionAdherent ? null : (user?.id ?? null),
-      valide_le: estSoumissionAdherent ? null : new Date(),
+      statut_validation,
+      valide_par,
+      valide_le,
+      motif_rejet,
     });
+  }
+
+  // Décision automatique — même principe que AdhesionService.
+  // judgeSubmittedDocument : relit le document (déchiffré, exigence 4.4)
+  // tout juste enregistré, réutilise les heuristiques OCR de l'aperçu
+  // pré-soumission (analyserPhotoCertificat), puis soumet le texte détecté
+  // + les champs saisis à Ollama. Toute défaillance (pas de document,
+  // lecture/déchiffrement impossible, Ollama injoignable) aboutit à un
+  // rejet explicite plutôt qu'à une validation par défaut.
+  async judgeSubmittedDocument({ document_path, adherent, champs }) {
+    if (!document_path) {
+      return {
+        decision: "Rejeté",
+        motif: "Aucun document fourni avec cette soumission.",
+      };
+    }
+
+    // Tout accroc dans la lecture/le déchiffrement/l'OCR doit aboutir à un
+    // rejet explicite comme le reste de cette politique — pas d'exception
+    // non gérée qui ferait échouer toute la requête de soumission avec une
+    // 500 opaque.
+    try {
+      const buffer = readEncryptedDocument("certificats", document_path);
+      const champsAttendus = {
+        nom: adherent.nom,
+        prenom: adherent.prenom,
+        medecin: champs.medecin,
+        date_validite: champs.date_validite,
+        date_delivrance: champs.date_delivrance,
+      };
+
+      const analyse = await analyserPhotoCertificat(buffer, {
+        nom: adherent.nom,
+        prenom: adherent.prenom,
+        medecin: champs.medecin,
+        dateValidite: champs.date_validite,
+        dateDelivrance: champs.date_delivrance,
+      });
+
+      return await judgeDocumentCoherence({
+        typeDocument: "Certificat médical",
+        champsAttendus,
+        texteOcr: analyse.texteDetecte,
+        avertissementsHeuristiques: analyse.avertissements,
+      });
+    } catch (error) {
+      return {
+        decision: "Rejeté",
+        motif: "Le document envoyé n'a pas pu être analysé (fichier illisible, corrompu, ou déchiffrement impossible).",
+      };
+    }
   }
 
   // Verrou réservé aux soumissions adhérent validées (soumis_par_adherent) —
