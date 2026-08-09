@@ -78,6 +78,7 @@ const AdhesionDetails = () => {
     mode: "Espèces",
   });
   const [downloading, setDownloading] = useState(false);
+  const [openingDocument, setOpeningDocument] = useState(false);
   // Meme garde-fou que PaiementForm.jsx : sans lui, un double-clic sur
   // "Enregistrer" envoie deux mutations avant que le re-render (asynchrone)
   // ne desactive le bouton, ce qui cree deux paiements lies a l'adhesion.
@@ -101,6 +102,42 @@ const AdhesionDetails = () => {
       // toast déjà géré par le hook
     } finally {
       submittingPaiementRef.current = false;
+    }
+  };
+
+  // Un <a href> brut vers un fichier introuvable/supprimé ouvrait un onglet
+  // totalement blanc sans aucun indice (ni toast, ni message) sur ce qui
+  // s'était passé. Même schéma que CertificatDetails.handleViewDocument :
+  // on ouvre l'onglet de façon synchrone (dans le même tick que le clic,
+  // sinon le navigateur bloque silencieusement un window.open() appelé
+  // après un await), puis on vérifie réellement la réponse avant d'y
+  // charger le document — une 404/erreur réseau se traduit maintenant par
+  // un toast explicite et l'onglet vide se referme au lieu de rester blanc.
+  const handleViewDocument = async () => {
+    const tab = window.open("", "_blank", "noopener,noreferrer");
+    setOpeningDocument(true);
+    try {
+      const response = await fetch(adhesion.document_path);
+      if (!response.ok) {
+        throw new Error("Document introuvable");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      if (tab) {
+        tab.location.href = url;
+      } else {
+        toast.error(
+          "Le navigateur a bloqué l'ouverture de l'onglet. Autorisez les pop-ups pour ce site.",
+        );
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      if (tab) tab.close();
+      toast.error(
+        "Document introuvable : il a peut-être été supprimé côté serveur. Réessayez de le téléverser depuis le formulaire de modification.",
+      );
+    } finally {
+      setOpeningDocument(false);
     }
   };
 
@@ -506,14 +543,14 @@ const AdhesionDetails = () => {
           />
           {adhesion.document_path && (
             <InfoItem icon={FiPaperclip} label="Document">
-              <a
-                href={adhesion.document_path}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-0.5 inline-block"
+              <button
+                type="button"
+                onClick={handleViewDocument}
+                disabled={openingDocument}
+                className="font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-0.5 inline-block disabled:opacity-50"
               >
-                Voir le document
-              </a>
+                {openingDocument ? "Ouverture..." : "Voir le document"}
+              </button>
             </InfoItem>
           )}
         </SectionCard>
