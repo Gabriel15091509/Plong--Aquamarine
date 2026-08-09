@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -78,7 +78,11 @@ const AdhesionDetails = () => {
     mode: "Espèces",
   });
   const [downloading, setDownloading] = useState(false);
-  const [openingDocument, setOpeningDocument] = useState(false);
+  // "checking" tant que la vérification n'a pas répondu, "ok"/"missing"
+  // ensuite — voir le useEffect plus bas pour le raisonnement (remplace un
+  // essai d'ouverture en blob dans un nouvel onglet, qui s'est révélé peu
+  // fiable pour naviguer une fenêtre tierce).
+  const [documentStatus, setDocumentStatus] = useState("checking");
   // Meme garde-fou que PaiementForm.jsx : sans lui, un double-clic sur
   // "Enregistrer" envoie deux mutations avant que le re-render (asynchrone)
   // ne desactive le bouton, ce qui cree deux paiements lies a l'adhesion.
@@ -105,42 +109,6 @@ const AdhesionDetails = () => {
     }
   };
 
-  // Un <a href> brut vers un fichier introuvable/supprimé ouvrait un onglet
-  // totalement blanc sans aucun indice (ni toast, ni message) sur ce qui
-  // s'était passé. Même schéma que CertificatDetails.handleViewDocument :
-  // on ouvre l'onglet de façon synchrone (dans le même tick que le clic,
-  // sinon le navigateur bloque silencieusement un window.open() appelé
-  // après un await), puis on vérifie réellement la réponse avant d'y
-  // charger le document — une 404/erreur réseau se traduit maintenant par
-  // un toast explicite et l'onglet vide se referme au lieu de rester blanc.
-  const handleViewDocument = async () => {
-    const tab = window.open("", "_blank", "noopener,noreferrer");
-    setOpeningDocument(true);
-    try {
-      const response = await fetch(adhesion.document_path);
-      if (!response.ok) {
-        throw new Error("Document introuvable");
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      if (tab) {
-        tab.location.href = url;
-      } else {
-        toast.error(
-          "Le navigateur a bloqué l'ouverture de l'onglet. Autorisez les pop-ups pour ce site.",
-        );
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (error) {
-      if (tab) tab.close();
-      toast.error(
-        "Document introuvable : il a peut-être été supprimé côté serveur. Réessayez de le téléverser depuis le formulaire de modification.",
-      );
-    } finally {
-      setOpeningDocument(false);
-    }
-  };
-
   const handleDownloadAttestation = async () => {
     setDownloading(true);
     try {
@@ -159,6 +127,31 @@ const AdhesionDetails = () => {
   const adherent = adherentsData?.data?.find(
     (a) => a.num_adherent === adhesion?.num_adherent,
   );
+
+  // Vérifie que le fichier existe encore avant même d'afficher le lien,
+  // plutôt que de laisser cliquer puis échouer silencieusement. Fait exprès
+  // en <a href> natif (pas de window.open()+blob() : ouvrir un onglet vide
+  // puis le faire naviguer par-dessus depuis la fenêtre d'origine s'est
+  // révélé peu fiable pour afficher quoi que ce soit, y compris avec une
+  // URL bien accessible — un lien classique, lui, fonctionne toujours) ;
+  // le document n'étant pas chiffré (contrairement aux certificats médicaux),
+  // rien n'empêche de le pointer directement sans passer par une route
+  // authentifiée.
+  useEffect(() => {
+    if (!adhesion?.document_path) return;
+    let cancelled = false;
+    setDocumentStatus("checking");
+    fetch(adhesion.document_path, { method: "HEAD" })
+      .then((res) => {
+        if (!cancelled) setDocumentStatus(res.ok ? "ok" : "missing");
+      })
+      .catch(() => {
+        if (!cancelled) setDocumentStatus("missing");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [adhesion?.document_path]);
 
   const handleDelete = async () => {
     try {
@@ -543,14 +536,24 @@ const AdhesionDetails = () => {
           />
           {adhesion.document_path && (
             <InfoItem icon={FiPaperclip} label="Document">
-              <button
-                type="button"
-                onClick={handleViewDocument}
-                disabled={openingDocument}
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-0.5 inline-block disabled:opacity-50"
-              >
-                {openingDocument ? "Ouverture..." : "Voir le document"}
-              </button>
+              {documentStatus === "missing" ? (
+                <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 text-sm font-medium">
+                  <FiAlertCircle className="w-4 h-4" />
+                  Document introuvable (supprimé côté serveur) — à re-téléverser
+                  depuis le formulaire de modification
+                </span>
+              ) : (
+                <a
+                  href={adhesion.document_path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-0.5 inline-block ${
+                    documentStatus === "checking" ? "opacity-50 pointer-events-none" : ""
+                  }`}
+                >
+                  {documentStatus === "checking" ? "Vérification..." : "Voir le document"}
+                </a>
+              )}
             </InfoItem>
           )}
         </SectionCard>

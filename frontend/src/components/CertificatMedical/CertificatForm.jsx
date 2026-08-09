@@ -93,7 +93,15 @@ const CertificatForm = () => {
   // geste utilisateur et se fait bloquer silencieusement par le navigateur
   // (pas d'erreur, juste rien qui s'affiche).
   const handleViewExistingDocument = async () => {
-    const tab = window.open("", "_blank", "noopener,noreferrer");
+    // Sans "noopener"/"noreferrer" ici (contrairement à un <a target="_blank">
+    // classique) : ces deux flags forcent window.open() à renvoyer null (pas
+    // de référence vers l'onglet créé), ce qui empêchait justement la ligne
+    // `tab.location.href = url` plus bas de s'exécuter — l'onglet ouvert
+    // restait sur about:blank indéfiniment (page blanche, sans la moindre
+    // erreur ni toast). Confirmé en testant directement window.open() dans
+    // Chromium. Pas de risque ici : l'onglet ne navigue jamais vers une URL
+    // fournie par un tiers, seulement vers un blob qu'on vient de créer.
+    const tab = window.open("", "_blank");
     setOpeningDocument(true);
     try {
       const response = await api.get(`/certificats-medicaux/${id}/document`, {
