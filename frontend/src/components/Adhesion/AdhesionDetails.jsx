@@ -344,27 +344,36 @@ const AdhesionDetails = () => {
         className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6 md:p-8"
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div>
-            <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-              {isClub ? "Statut du paiement" : "Statut"}
-            </p>
-            <div className="flex items-center gap-3 mt-2">
-              {isClub ? (
-                <StatusBadge status={adhesion.statut_paiement} />
-              ) : (
-                <StatusBadge status={adhesion.statut_validation} />
-              )}
-              {/* Valide/Expiré dérivé de date_fin (AdhesionService.deriveStatut) —
-                  indépendant du paiement/de la validation ci-dessus : une
-                  adhésion payée et validée reste affichée "Payé"/"Validé" même
-                  périmée sans ce badge. */}
-              <StatusBadge status={adhesion.statut} />
-            </div>
-            {adhesion.statut_validation === "Rejeté" && adhesion.motif_rejet && (
-              <p className="text-sm text-red-600 dark:text-red-400 mt-2 italic">
-                Motif : {adhesion.motif_rejet}
+          <div className="flex flex-col sm:flex-row gap-6">
+            <div>
+              <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                {isClub ? "Statut du paiement" : "Statut de validation"}
               </p>
-            )}
+              <div className="mt-2">
+                {isClub ? (
+                  <StatusBadge status={adhesion.statut_paiement} />
+                ) : (
+                  <StatusBadge status={adhesion.statut_validation} />
+                )}
+              </div>
+              {adhesion.statut_validation === "Rejeté" && adhesion.motif_rejet && (
+                <p className="text-sm text-red-600 dark:text-red-400 mt-2 italic">
+                  Motif : {adhesion.motif_rejet}
+                </p>
+              )}
+            </div>
+            {/* Validité (Valide/Expiré) dérivée de date_fin — distincte du
+                circuit de validation/paiement ci-dessus, dans son propre
+                bloc étiqueté pour ne pas se lire comme un doublon accolé
+                (ex. "Validé" + "Validé"/"Expiré" sans contexte). */}
+            <div>
+              <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                Validité
+              </p>
+              <div className="mt-2">
+                <StatusBadge status={adhesion.statut} />
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-8 flex-wrap">
             {isClub && (
