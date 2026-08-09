@@ -12,6 +12,15 @@ const ALERT_TYPES = {
     preferred: "Adhesion expire bientot",
     fallback: "Adhésion expirée",
   },
+  // Adhésion dont date_fin est déjà dépassée (pas seulement "bientôt") —
+  // jusqu'ici seule la fenêtre des 30 prochains jours était couverte par
+  // syncExpirationAlertes, une adhésion déjà expirée depuis longtemps ne
+  // générait donc jamais cette alerte au passé, malgré son libellé/sa
+  // description ("L'adhésion est arrivée à expiration") déjà prévus pour ça.
+  adhesionExpired: {
+    preferred: "Adhésion expirée",
+    fallback: "Adhésion expirée",
+  },
   certificatExpiring: {
     preferred: "Certificat expire bientot",
     fallback: "Certificat expiré",
@@ -170,10 +179,18 @@ class AlerteService extends BaseService {
     const today = this.startOfDay(new Date());
     const limit = this.endOfDay(this.addDays(today, days));
 
-    const [adhesions, certificats] = await Promise.all([
+    const [adhesionsExpirantBientot, adhesionsExpirees, certificats] = await Promise.all([
       Adhesion.findAll({
         where: {
           date_fin: { [Op.between]: [today, limit] },
+          statut_paiement: "Payé",
+        },
+      }),
+      // date_fin déjà dépassée (pas juste "bientôt") — voir ALERT_TYPES.
+      // adhesionExpired.
+      Adhesion.findAll({
+        where: {
+          date_fin: { [Op.lt]: today },
           statut_paiement: "Payé",
         },
       }),
@@ -185,10 +202,17 @@ class AlerteService extends BaseService {
       }),
     ]);
 
-    for (const adhesion of adhesions) {
+    for (const adhesion of adhesionsExpirantBientot) {
       await this.upsertAutomaticAlerte(
         adhesion.num_adherent,
         ALERT_TYPES.adhesionExpiring,
+      );
+    }
+
+    for (const adhesion of adhesionsExpirees) {
+      await this.upsertAutomaticAlerte(
+        adhesion.num_adherent,
+        ALERT_TYPES.adhesionExpired,
       );
     }
 

@@ -165,6 +165,21 @@ class AdhesionService extends BaseService {
     return updated;
   }
 
+  // Statut affichable dérivé de date_fin, calculé à chaque lecture plutôt
+  // que stocké : contrairement à CertificatMedical.statut (saisi
+  // manuellement par le moniteur/président, donc capable de rester
+  // "Valide" en base après la date sans un cron pour le rattraper — voir
+  // CertificatMedicalService.deriveStatut/expireOverdueCertificates),
+  // l'adhésion n'a pas de statut de validité éditable : date_fin est déjà
+  // l'unique source de vérité (comme dans checkDossierValidity ci-dessus),
+  // donc pas de colonne à faire décaler ni de cron à prévoir ici — un
+  // simple recalcul à la lecture suffit et ne peut jamais être périmé.
+  deriveStatut(adhesion) {
+    const data = adhesion.toJSON ? adhesion.toJSON() : adhesion;
+    const expiree = data.date_fin && new Date(data.date_fin) < new Date();
+    return { ...data, statut: expiree ? "Expiré" : "Valide" };
+  }
+
   // Verrou réservé aux entrées passées par le circuit de soumission
   // adhérent (soumis_par_adherent) une fois validées — pas aux adhésions
   // créées directement par le staff (ex. Club), qui restent modifiables
@@ -219,10 +234,10 @@ class AdhesionService extends BaseService {
 
   async getAll(user = null) {
     const adherent = await identiteClient.getAdherentForUser(user);
-    if (adherent) {
-      return await this.adhesionRepository.findByAdherent(adherent.num_adherent);
-    }
-    return await this.adhesionRepository.findAll();
+    const adhesions = adherent
+      ? await this.adhesionRepository.findByAdherent(adherent.num_adherent)
+      : await this.adhesionRepository.findAll();
+    return adhesions.map((a) => this.deriveStatut(a));
   }
 
   async getById(id, user = null) {
@@ -232,16 +247,19 @@ class AdhesionService extends BaseService {
       if (adherent && adhesion.num_adherent !== adherent.num_adherent) {
         throw new Error("Accès refusé à cette adhésion");
       }
+      return this.deriveStatut(adhesion);
     }
     return adhesion;
   }
 
   async getActiveAdhesions() {
-    return await this.adhesionRepository.findActiveAdhesions();
+    const adhesions = await this.adhesionRepository.findActiveAdhesions();
+    return adhesions.map((a) => this.deriveStatut(a));
   }
 
   async getExpiringAdhesions(days = 30) {
-    return await this.adhesionRepository.findExpiringAdhesions(days);
+    const adhesions = await this.adhesionRepository.findExpiringAdhesions(days);
+    return adhesions.map((a) => this.deriveStatut(a));
   }
 
   async getAdhesionsByAdherent(num_adherent, user = null) {
@@ -249,7 +267,8 @@ class AdhesionService extends BaseService {
     if (adherent && num_adherent !== adherent.num_adherent) {
       throw new Error("Accès refusé à ces adhésions");
     }
-    return await this.adhesionRepository.findByAdherent(num_adherent);
+    const adhesions = await this.adhesionRepository.findByAdherent(num_adherent);
+    return adhesions.map((a) => this.deriveStatut(a));
   }
 
   async getAdhesionStats() {
