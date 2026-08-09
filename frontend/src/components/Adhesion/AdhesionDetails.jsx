@@ -354,6 +354,11 @@ const AdhesionDetails = () => {
               ) : (
                 <StatusBadge status={adhesion.statut_validation} />
               )}
+              {/* Valide/Expiré dérivé de date_fin (AdhesionService.deriveStatut) —
+                  indépendant du paiement/de la validation ci-dessus : une
+                  adhésion payée et validée reste affichée "Payé"/"Validé" même
+                  périmée sans ce badge. */}
+              <StatusBadge status={adhesion.statut} />
             </div>
             {adhesion.statut_validation === "Rejeté" && adhesion.motif_rejet && (
               <p className="text-sm text-red-600 dark:text-red-400 mt-2 italic">
@@ -449,7 +454,12 @@ const AdhesionDetails = () => {
           <InfoItem
             icon={FiCalendar}
             label="Date de fin"
-            value={formatDate(adhesion.date_fin)}
+            value={
+              <span className="flex items-center gap-2">
+                {formatDate(adhesion.date_fin)}
+                <StatusBadge status={adhesion.statut} />
+              </span>
+            }
           />
           {isClub && (
             <>

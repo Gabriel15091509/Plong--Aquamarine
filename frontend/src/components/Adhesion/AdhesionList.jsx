@@ -323,6 +323,8 @@ const AdhesionList = () => {
                               <FiCalendar className="w-3.5 h-3.5" />
                               {formatDate(adhesion.date_fin)}
                             </span>
+                            <span>•</span>
+                            <StatusBadge status={adhesion.statut} />
                             {adhesion.type === "Club" && (
                               <>
                                 <span>•</span>
