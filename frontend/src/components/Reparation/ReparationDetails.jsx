@@ -66,7 +66,7 @@ const ReparationDetails = () => {
   if (!reparation) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         className="text-center py-16"
       >
@@ -96,7 +96,7 @@ const ReparationDetails = () => {
       className="space-y-6 px-4"
     >
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
@@ -136,7 +136,7 @@ const ReparationDetails = () => {
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${
           isEnCours

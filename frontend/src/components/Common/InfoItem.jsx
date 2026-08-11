@@ -2,9 +2,9 @@ import React from "react";
 import { motion } from "framer-motion";
 
 const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4, ease: "easeOut" },
+  transition: { duration: 0.25, ease: "easeOut" },
 };
 
 const InfoItem = ({ icon: Icon, label, value, highlight = false, children }) => (
@@ -12,7 +12,7 @@ const InfoItem = ({ icon: Icon, label, value, highlight = false, children }) => 
     variants={fadeInUp}
     className={`flex items-start gap-4 p-4 rounded-xl transition-colors duration-150 ${
       highlight
-        ? "bg-cyan-50 dark:bg-cyan-900/10 border-l-4 border-cyan-500"
+        ? "border-l-2 border-cyan-600 dark:border-cyan-500"
         : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
     }`}
   >
