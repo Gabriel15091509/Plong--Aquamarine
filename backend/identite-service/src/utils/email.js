@@ -2,8 +2,11 @@
 // bienvenue (création de compte) — les autres gabarits (paiement, alerte,
 // inscription...) vivent dans le service propriétaire du domaine concerné.
 const nodemailer = require("nodemailer");
+const path = require("path");
 
 const emailCache = new Map();
+const LOGO_PATH = path.join(__dirname, "../assets/logo.png");
+const LOGO_CID = "logo-aquanature";
 
 const createTransporter = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
@@ -78,6 +81,9 @@ const sendEmail = async (params = {}) => {
             .replace(/<[^>]*>/g, " ")
             .replace(/\s+/g, " ")
             .trim(),
+        attachments: [
+          { filename: "logo.png", path: LOGO_PATH, cid: LOGO_CID },
+        ],
       };
 
       await transporter.sendMail(mailOptions);
@@ -102,46 +108,50 @@ const sendWelcomeEmail = async ({ to, user, temporaryPassword, loginUrl }) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bienvenue au Club de Plongée</title>
+  <title>Bienvenue — Aquanature Plongée</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f0f4f8; margin: 0; padding: 40px 20px; line-height: 1.6; color: #1a202c; }
-    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); overflow: hidden; }
-    .header { background: linear-gradient(135deg, #06b6d4, #3b82f6, #4f46e5); padding: 48px 40px 40px; text-align: center; }
-    .header h1 { color: #ffffff; font-size: 32px; font-weight: 800; }
-    .header p { color: rgba(255,255,255,0.85); font-size: 16px; }
-    .header .badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #ffffff; margin-top: 12px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #eef1f4; margin: 0; padding: 40px 20px; line-height: 1.6; color: #1f2937; }
+    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,23,42,0.08), 0 12px 32px rgba(15,23,42,0.07); overflow: hidden; }
+    .header { background: #0b3552; padding: 36px 40px 32px; text-align: center; border-bottom: 3px solid #c9a227; }
+    .header .logo-badge { display: inline-block; width: 72px; height: 72px; border-radius: 50%; background: #ffffff; padding: 4px; margin-bottom: 14px; }
+    .header .logo-badge img { display: block; width: 100%; height: 100%; border-radius: 50%; }
+    .header .brand { color: #ffffff; font-size: 17px; font-weight: 700; letter-spacing: 0.5px; }
+    .header .tagline { color: rgba(255,255,255,0.6); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px; }
     .content { padding: 40px; }
-    .greeting { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
-    .greeting span { color: #3b82f6; }
-    .sub-greeting { color: #718096; font-size: 16px; margin-bottom: 24px; }
-    .info-card { background: #f7fafc; border-radius: 12px; padding: 16px; margin: 12px 0; border-left: 4px solid #3b82f6; }
-    .info-card .label { font-size: 12px; font-weight: 600; text-transform: uppercase; color: #a0aec0; }
-    .info-card .value { font-size: 16px; font-weight: 600; color: #2d3748; margin-top: 4px; }
-    .password-box { background: #fffbeb; border-radius: 12px; padding: 24px; margin: 20px 0; border: 2px dashed #f59e0b; text-align: center; }
-    .password-box .pwd { font-family: 'Courier New', monospace; font-size: 28px; font-weight: 800; color: #92400e; letter-spacing: 4px; background: #fef3c7; padding: 8px 24px; border-radius: 8px; display: inline-block; margin-top: 8px; }
-    .warning { background: #fef2f2; border-radius: 12px; padding: 16px; margin: 20px 0; border-left: 4px solid #ef4444; }
+    .eyebrow { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9a7817; background: #fdf6e3; padding: 4px 10px; border-radius: 4px; margin-bottom: 16px; }
+    .greeting { font-size: 22px; font-weight: 700; margin-bottom: 8px; color: #0b3552; }
+    .sub-greeting { color: #6b7280; font-size: 15px; margin-bottom: 24px; }
+    .info-card { background: #f8fafc; border-radius: 8px; padding: 16px; margin: 12px 0; border-left: 3px solid #0b3552; }
+    .info-card .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; }
+    .info-card .value { font-size: 16px; font-weight: 600; color: #1f2937; margin-top: 4px; }
+    .password-box { background: #fdf6e3; border-radius: 10px; padding: 24px; margin: 20px 0; border: 1px solid #e8d38f; text-align: center; }
+    .password-box .lbl { font-size: 13px; color: #7a5e10; font-weight: 600; }
+    .password-box .pwd { font-family: 'Courier New', monospace; font-size: 26px; font-weight: 800; color: #4a3a09; letter-spacing: 3px; background: #ffffff; padding: 10px 24px; border-radius: 8px; display: inline-block; margin-top: 10px; border: 1px solid #e8d38f; }
+    .warning { background: #fef2f2; border-radius: 10px; padding: 16px; margin: 20px 0; border-left: 3px solid #dc2626; }
     .warning p { color: #991b1b; font-size: 14px; }
-    .btn { display: inline-block; padding: 14px 40px; background: linear-gradient(135deg, #06b6d4, #3b82f6); color: #fff !important; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 16px; }
-    .footer { padding: 24px 40px; border-top: 1px solid #edf2f7; text-align: center; }
-    .footer p { color: #a0aec0; font-size: 13px; }
+    .btn { display: inline-block; padding: 13px 40px; background: #0b3552; color: #fff !important; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; }
+    .footer { padding: 22px 40px; border-top: 1px solid #eef1f4; text-align: center; }
+    .footer .club { color: #64748b; font-weight: 600; margin-bottom: 2px; font-size: 13px; }
+    .footer p { color: #94a3b8; font-size: 12px; }
     @media (max-width: 480px) {
-      .header { padding: 32px 24px; }
+      .header { padding: 28px 24px; }
       .content { padding: 24px 20px; }
-      .password-box .pwd { font-size: 20px; letter-spacing: 2px; }
+      .password-box .pwd { font-size: 19px; letter-spacing: 2px; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>Club de Plongée</h1>
-      <p>Bienvenue dans l'aventure sous-marine</p>
-      <span class="badge">Nouveau membre</span>
+      <div class="logo-badge"><img src="cid:${LOGO_CID}" width="64" height="64" alt="Aquanature Plongée" /></div>
+      <div class="brand">AQUANATURE PLONGÉE</div>
+      <div class="tagline">Club de plongée · Saint-Leu · La Réunion</div>
     </div>
     <div class="content">
-      <div class="greeting">Bonjour <span>${name}</span>,</div>
-      <p class="sub-greeting">Votre compte a été créé avec succès. Voici vos identifiants :</p>
+      <span class="eyebrow">Nouveau membre</span>
+      <div class="greeting">Bonjour ${name},</div>
+      <p class="sub-greeting">Votre compte a été créé avec succès. Voici vos identifiants de connexion :</p>
 
       <div class="info-card">
         <div class="label">Email de connexion</div>
@@ -154,22 +164,21 @@ const sendWelcomeEmail = async ({ to, user, temporaryPassword, loginUrl }) => {
       </div>
 
       <div class="password-box">
-        <div style="font-size:14px;color:#92400e;font-weight:600;">Mot de passe temporaire</div>
+        <div class="lbl">Mot de passe temporaire</div>
         <div class="pwd">${temporaryPassword}</div>
-        <div style="font-size:12px;color:#92400e;opacity:0.7;margin-top:8px;">Copiez ce mot de passe pour vous connecter</div>
       </div>
 
       <div class="warning">
-        <p><strong>Important :</strong> Changez votre mot de passe lors de votre première connexion.</p>
+        <p><strong>Important :</strong> changez votre mot de passe lors de votre première connexion.</p>
       </div>
 
-      <div style="text-align:center;margin:24px 0;">
+      <div style="text-align:center;margin:28px 0 4px;">
         <a href="${loginLink}" class="btn">Se connecter</a>
       </div>
     </div>
     <div class="footer">
-      <p>© ${new Date().getFullYear()} Club de Plongée</p>
-      <p style="font-size:12px;color:#cbd5e0;">Email automatique, ne pas répondre</p>
+      <p class="club">Aquanature Plongée</p>
+      <p>© ${new Date().getFullYear()} — email automatique, ne pas répondre</p>
     </div>
   </div>
 </body>
@@ -213,27 +222,39 @@ const sendCommunicationEmail = async ({ to, adherentName, subject, message }) =>
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject} — Aquanature Plongée</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f0f4f8; margin: 0; padding: 40px 20px; line-height: 1.6; color: #1a202c; }
-    .container { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); overflow: hidden; }
-    .header { background: linear-gradient(135deg, #06b6d4, #3b82f6, #4f46e5); padding: 32px 40px; }
-    .header h1 { color: #ffffff; font-size: 22px; font-weight: 800; }
-    .content { padding: 32px 40px; white-space: pre-wrap; }
-    .content p { margin-bottom: 12px; color: #2d3748; }
-    .footer { padding: 20px 40px; border-top: 1px solid #edf2f7; text-align: center; }
-    .footer p { color: #a0aec0; font-size: 12px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #eef1f4; margin: 0; padding: 40px 20px; line-height: 1.6; color: #1f2937; }
+    .container { max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(15,23,42,0.08), 0 10px 30px rgba(15,23,42,0.06); overflow: hidden; }
+    .header { background: #0b3552; padding: 28px 40px; text-align: center; border-bottom: 3px solid #c9a227; }
+    .header .logo-badge { display: inline-block; width: 64px; height: 64px; border-radius: 50%; background: #ffffff; padding: 4px; margin-bottom: 12px; }
+    .header .logo-badge img { display: block; width: 100%; height: 100%; border-radius: 50%; }
+    .header .brand { color: #ffffff; font-size: 15px; font-weight: 700; letter-spacing: 0.5px; }
+    .header .tagline { color: rgba(255,255,255,0.6); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 3px; }
+    .eyebrow { padding: 24px 40px 0; }
+    .eyebrow span { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9a7817; background: #fdf6e3; padding: 4px 10px; border-radius: 4px; }
+    .content { padding: 14px 40px 32px; }
+    .content p { margin-bottom: 12px; color: #374151; font-size: 15px; }
+    .content .message { white-space: pre-wrap; }
+    .footer { padding: 20px 40px; border-top: 1px solid #eef1f4; text-align: center; }
+    .footer .club { color: #64748b; font-weight: 600; margin-bottom: 2px; }
+    .footer p { color: #94a3b8; font-size: 12px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header"><h1>Club de Plongée</h1></div>
-    <div class="content">
-      <p>Bonjour ${adherentName},</p>
-      <p>${message}</p>
+    <div class="header">
+      <div class="logo-badge"><img src="cid:${LOGO_CID}" width="56" height="56" alt="Aquanature Plongée" /></div>
+      <div class="brand">AQUANATURE PLONGÉE</div>
+      <div class="tagline">Club de plongée · Saint-Leu · La Réunion</div>
     </div>
+    <div class="eyebrow"><span>Message du club</span></div>
+    <div class="content"><p>Bonjour ${adherentName},</p><p class="message">${message}</p></div>
     <div class="footer">
-      <p>© ${new Date().getFullYear()} Club de Plongée — email envoyé par le club</p>
+      <p class="club">Aquanature Plongée</p>
+      <p>© ${new Date().getFullYear()} — email envoyé par le club</p>
     </div>
   </div>
 </body>
@@ -254,30 +275,44 @@ const sendOtpEmail = async ({ to, name, code }) => {
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code de connexion — Aquanature Plongée</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f0f4f8; margin: 0; padding: 40px 20px; line-height: 1.6; color: #1a202c; }
-    .container { max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); overflow: hidden; }
-    .header { background: linear-gradient(135deg, #06b6d4, #3b82f6, #4f46e5); padding: 32px 40px; text-align: center; }
-    .header h1 { color: #ffffff; font-size: 20px; font-weight: 800; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #eef1f4; margin: 0; padding: 40px 20px; line-height: 1.6; color: #1f2937; }
+    .container { max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(15,23,42,0.08), 0 10px 30px rgba(15,23,42,0.06); overflow: hidden; }
+    .header { background: #0b3552; padding: 28px 40px; text-align: center; border-bottom: 3px solid #c9a227; }
+    .header .logo-badge { display: inline-block; width: 56px; height: 56px; border-radius: 50%; background: #ffffff; padding: 4px; margin-bottom: 10px; }
+    .header .logo-badge img { display: block; width: 100%; height: 100%; border-radius: 50%; }
+    .header .brand { color: #ffffff; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; }
     .content { padding: 32px 40px; text-align: center; }
-    .code { font-family: 'Courier New', monospace; font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #1e3a8a; background: #eff6ff; border: 2px dashed #3b82f6; border-radius: 12px; padding: 16px 24px; display: inline-block; margin: 16px 0; }
-    .warning { color: #991b1b; font-size: 13px; margin-top: 16px; }
-    .footer { padding: 20px 40px; border-top: 1px solid #edf2f7; text-align: center; }
-    .footer p { color: #a0aec0; font-size: 12px; }
+    .eyebrow { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9a7817; background: #fdf6e3; padding: 4px 10px; border-radius: 4px; margin-bottom: 14px; }
+    .content p { color: #374151; font-size: 15px; }
+    .code { font-family: 'Courier New', monospace; font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #0b3552; background: #f8fafc; border: 1px solid #dbe4ee; border-radius: 10px; padding: 16px 24px; display: inline-block; margin: 18px 0; }
+    .meta { color: #94a3b8; font-size: 13px; }
+    .warning { background: #fef2f2; border-radius: 10px; padding: 14px 16px; margin-top: 18px; border-left: 3px solid #dc2626; text-align: left; }
+    .warning p { color: #991b1b; font-size: 13px; }
+    .footer { padding: 20px 40px; border-top: 1px solid #eef1f4; text-align: center; }
+    .footer p { color: #94a3b8; font-size: 12px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header"><h1>Code de connexion</h1></div>
+    <div class="header">
+      <div class="logo-badge"><img src="cid:${LOGO_CID}" width="48" height="48" alt="Aquanature Plongée" /></div>
+      <div class="brand">AQUANATURE PLONGÉE</div>
+    </div>
     <div class="content">
+      <span class="eyebrow">Code de connexion</span>
       <p>Bonjour ${name},</p>
       <p style="margin-top:8px;">Voici votre code à usage unique pour finaliser votre connexion :</p>
       <div class="code">${code}</div>
-      <p style="color:#718096;font-size:13px;">Valable 5 minutes — demandé le ${now}</p>
-      <p class="warning">Si vous n'êtes pas à l'origine de cette connexion, changez votre mot de passe immédiatement.</p>
+      <p class="meta">Valable 5 minutes — demandé le ${now}</p>
+      <div class="warning">
+        <p>Si vous n'êtes pas à l'origine de cette connexion, changez votre mot de passe immédiatement.</p>
+      </div>
     </div>
-    <div class="footer"><p>© ${new Date().getFullYear()} Club de Plongée</p></div>
+    <div class="footer"><p>© ${new Date().getFullYear()} Aquanature Plongée — email automatique, ne pas répondre</p></div>
   </div>
 </body>
 </html>`;
