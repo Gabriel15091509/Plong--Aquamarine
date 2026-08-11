@@ -122,7 +122,7 @@ app.use(ErrorHandler.handle);
 const initializeApp = async () => {
   const connected = await testConnection();
   if (!connected) {
-    logger.error("❌ [vie-associative-service] Database connection failed");
+    logger.error("[vie-associative-service] Database connection failed");
     process.exit(1);
   }
 
@@ -132,7 +132,7 @@ const initializeApp = async () => {
   const alerteService = new AlerteService();
   await alerteService.syncExpirationAlertes();
   cron.schedule("0 6 * * *", () => alerteService.syncExpirationAlertes());
-  logger.info("✅ Planification des alertes d'expiration active (quotidien 06:00)");
+  logger.info("Planification des alertes d'expiration active (quotidien 06:00)");
 
   // Auto-expiration des certificats médicaux : `statut` est saisi
   // manuellement (par le moniteur/président) et ne se corrige jamais tout
@@ -142,10 +142,10 @@ const initializeApp = async () => {
   const certificatMedicalService = new CertificatMedicalService();
   const nbExpires = await certificatMedicalService.expireOverdueCertificates();
   if (nbExpires > 0) {
-    logger.info(`🩺 ${nbExpires} certificat(s) médical(aux) marqué(s) "Expiré" (date de validité dépassée)`);
+    logger.info(`${nbExpires} certificat(s) médical(aux) marqué(s) "Expiré" (date de validité dépassée)`);
   }
   cron.schedule("5 6 * * *", () => certificatMedicalService.expireOverdueCertificates());
-  logger.info("✅ Auto-expiration des certificats médicaux active (quotidien 06:05)");
+  logger.info("Auto-expiration des certificats médicaux active (quotidien 06:05)");
 };
 
 process.on("unhandledRejection", (err) => {

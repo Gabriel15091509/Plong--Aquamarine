@@ -117,7 +117,7 @@ app.use(ErrorHandler.handle);
 const initializeApp = async () => {
   const connected = await testConnection();
   if (!connected) {
-    logger.error("❌ [activites-service] Database connection failed");
+    logger.error("[activites-service] Database connection failed");
     process.exit(1);
   }
 
@@ -130,7 +130,7 @@ const initializeApp = async () => {
   await plongeeService.alerterInactifs();
   cron.schedule("0 7 * * *", () => attributionService.alerterRetards());
   cron.schedule("0 7 * * *", () => plongeeService.alerterInactifs());
-  logger.info("✅ Planification des alertes matériel/plongée active (quotidien 07:00)");
+  logger.info("Planification des alertes matériel/plongée active (quotidien 07:00)");
 
   // Rappel 24h avant sortie (3.2.2) : un premier passage immédiat au
   // démarrage, puis tous les jours à 18h.
@@ -138,7 +138,7 @@ const initializeApp = async () => {
   const systemAuthHeader = getSystemAuthHeader();
   await sortieService.envoyerRappels(systemAuthHeader);
   cron.schedule("0 18 * * *", () => sortieService.envoyerRappels(getSystemAuthHeader()));
-  logger.info("✅ Planification des rappels de sortie active (quotidien 18:00)");
+  logger.info("Planification des rappels de sortie active (quotidien 18:00)");
 };
 
 process.on("unhandledRejection", (err) => {

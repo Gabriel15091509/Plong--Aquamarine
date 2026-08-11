@@ -28,10 +28,10 @@ const sequelize = new Sequelize(
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
-    console.log("✅ [gateway-service] Connexion à la base de données établie.");
+    console.log("[gateway-service] Connexion à la base de données établie.");
     return true;
   } catch (error) {
-    console.error("❌ [gateway-service] Impossible de se connecter à la base de données :", error);
+    console.error("[gateway-service] Impossible de se connecter à la base de données :", error);
     return false;
   }
 };
@@ -39,10 +39,10 @@ const testConnection = async () => {
 // Synchronisation désactivée : le schéma est géré manuellement (migrations).
 const syncDatabase = async (_options = {}) => {
   try {
-    console.log("✅ [gateway-service] Synchronisation ignorée (gestion manuelle du schéma).");
+    console.log("[gateway-service] Synchronisation ignorée (gestion manuelle du schéma).");
     return true;
   } catch (error) {
-    console.error("❌ [gateway-service] Échec de la synchronisation de la base de données :", error);
+    console.error("[gateway-service] Échec de la synchronisation de la base de données :", error);
     return false;
   }
 };

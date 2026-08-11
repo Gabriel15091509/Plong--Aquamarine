@@ -34,7 +34,7 @@ const toArray = (value) => {
 };
 
 const MoniteurList = () => {
-  // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
+  // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { useGetAll, useRemove } = useMoniteurs();
   const { useGetAll: useGetAllUsers } = useUsers();
 
@@ -93,7 +93,7 @@ const MoniteurList = () => {
     }
   };
 
-  // ✅ RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
+  // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
   if (isLoading || loadingUsers) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 

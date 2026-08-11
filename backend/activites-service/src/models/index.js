@@ -13,7 +13,7 @@ const Incident = require("./Incident");
 // les serviceClients HTTP quand nécessaire — voir SortieService/
 // PlongeeService/PalanqueeService/InscriptionService/AttributionService.
 
-// 📌 Sortie - Inscription
+// Sortie - Inscription
 Sortie.hasMany(Inscription, {
   foreignKey: "id_sortie",
   as: "inscriptions",
@@ -23,7 +23,7 @@ Inscription.belongsTo(Sortie, {
   as: "sortie",
 });
 
-// 📌 Sortie - Plongee
+// Sortie - Plongee
 Sortie.hasMany(Plongee, {
   foreignKey: "id_sortie",
   as: "plongees",
@@ -33,7 +33,7 @@ Plongee.belongsTo(Sortie, {
   as: "sortie",
 });
 
-// 📌 Palanquee - Plongee (carnets individuels générés à partir de la palanquée)
+// Palanquee - Plongee (carnets individuels générés à partir de la palanquée)
 Palanquee.hasMany(Plongee, {
   foreignKey: "id_palanquee",
   as: "carnets",
@@ -44,7 +44,7 @@ Plongee.belongsTo(Palanquee, {
   constraints: false,
 });
 
-// 📌 Sortie - Palanquee
+// Sortie - Palanquee
 Sortie.hasMany(Palanquee, {
   foreignKey: "id_sortie",
   as: "palanquees",
@@ -54,7 +54,7 @@ Palanquee.belongsTo(Sortie, {
   as: "sortie",
 });
 
-// 📌 Palanquee - Composer
+// Palanquee - Composer
 Palanquee.hasMany(Composer, {
   foreignKey: "id_palanquee",
   as: "composers",
@@ -64,7 +64,7 @@ Composer.belongsTo(Palanquee, {
   as: "palanquee",
 });
 
-// 📌 Sortie - Attribution
+// Sortie - Attribution
 Sortie.hasMany(Attribution, {
   foreignKey: "id_sortie",
   as: "attributions",
@@ -74,7 +74,7 @@ Attribution.belongsTo(Sortie, {
   as: "sortie",
 });
 
-// 📌 Palanquee - Attribution (matériel attribué à la palanquée)
+// Palanquee - Attribution (matériel attribué à la palanquée)
 Palanquee.hasMany(Attribution, {
   foreignKey: "id_palanquee",
   as: "attributions",
@@ -85,7 +85,7 @@ Attribution.belongsTo(Palanquee, {
   constraints: false,
 });
 
-// 📌 Sortie - Incident
+// Sortie - Incident
 Sortie.hasMany(Incident, {
   foreignKey: "id_sortie",
   as: "incidents",

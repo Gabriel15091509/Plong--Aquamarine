@@ -8,9 +8,9 @@ import {
   STATUT_ECHEANCE,
 } from "../../utils/constants";
 
-// ✅ Configuration complète des statuts (sans icônes)
+// Configuration complète des statuts (sans icônes)
 const statusConfig = {
-  // 📌 Statuts des sorties
+  // Statuts des sorties
   [STATUT_SORTIE.PLANIFIEE]: {
     color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
     border: "border-blue-200 dark:border-blue-800/30",
@@ -33,7 +33,7 @@ const statusConfig = {
     label: STATUT_SORTIE.ANNULEE,
   },
 
-  // 📌 Statuts des inscriptions
+  // Statuts des inscriptions
   [STATUT_INSCRIPTION.EN_ATTENTE]: {
     color:
       "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
@@ -52,7 +52,7 @@ const statusConfig = {
     label: STATUT_INSCRIPTION.LISTE_ATTENTE,
   },
 
-  // 📌 Statuts des adhérents
+  // Statuts des adhérents
   Actif: {
     color:
       "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
@@ -81,7 +81,7 @@ const statusConfig = {
     label: "Ancien",
   },
 
-  // 📌 Statuts des paiements
+  // Statuts des paiements
   [STATUT_PAIEMENT.PAYE]: {
     color:
       "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
@@ -101,7 +101,7 @@ const statusConfig = {
     label: "Remboursé",
   },
 
-  // 📌 Circuit de validation des adhésions soumises par l'adhérent
+  // Circuit de validation des adhésions soumises par l'adhérent
   // (licence FFESM / assurances — voir AdhesionForm/AdhesionList).
   // "En attente" réutilise déjà STATUT_INSCRIPTION.EN_ATTENTE ci-dessus.
   Validé: {
@@ -116,7 +116,7 @@ const statusConfig = {
     label: "Rejeté",
   },
 
-  // 📌 Statuts des certificats
+  // Statuts des certificats
   Expiré: {
     color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     border: "border-red-200 dark:border-red-800/30",
@@ -129,7 +129,7 @@ const statusConfig = {
     label: "Valide",
   },
 
-  // 📌 Statuts de l'échéancier ("En attente"/"En cours"/"Annulée" déjà
+  // Statuts de l'échéancier ("En attente"/"En cours"/"Annulée" déjà
   // couverts ci-dessus par d'autres domaines, mêmes couleurs)
   [STATUT_ECHEANCE.PAYEE]: {
     color:
@@ -149,7 +149,7 @@ const statusConfig = {
     label: STATUT_ECHEANCIER.SOLDE,
   },
 
-  // 📌 Statuts des formations
+  // Statuts des formations
   [STATUT_FORMATION.ABANDONNEE]: {
     color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     border: "border-red-200 dark:border-red-800/30",
@@ -172,7 +172,7 @@ const statusConfig = {
     label: STATUT_FORMATION.AJOURNEE,
   },
 
-  // 📌 Appréciation du moniteur (formations)
+  // Appréciation du moniteur (formations)
   Insuffisant: {
     color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     border: "border-red-200 dark:border-red-800/30",
@@ -196,7 +196,7 @@ const statusConfig = {
     label: "Excellent",
   },
 
-  // 📌 Statuts du matériel
+  // Statuts du matériel
   Neuf: {
     color:
       "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
@@ -228,7 +228,7 @@ const statusConfig = {
 };
 
 const StatusBadge = ({ status, showLabel = true }) => {
-  // ✅ Si status est undefined ou null, afficher un badge par défaut
+  // Si status est undefined ou null, afficher un badge par défaut
   if (!status) {
     return (
       <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border border-gray-200 bg-gray-100 text-gray-600 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-400">
@@ -239,7 +239,7 @@ const StatusBadge = ({ status, showLabel = true }) => {
 
   const config = statusConfig[status];
 
-  // ✅ Si le statut n'est pas trouvé dans la config, afficher un badge par défaut
+  // Si le statut n'est pas trouvé dans la config, afficher un badge par défaut
   if (!config) {
     return (
       <span className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border border-gray-200 bg-gray-100 text-gray-600 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-400">

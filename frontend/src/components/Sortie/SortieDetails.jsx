@@ -95,7 +95,7 @@ const SortieDetails = () => {
     adherentMap[a.num_adherent] = `${a.nom} ${a.prenom}`;
   });
 
-  // ✅ La date de la sortie est passée mais son statut n'a pas été mis à
+  // La date de la sortie est passée mais son statut n'a pas été mis à
   // jour manuellement : on alerte le staff pour qu'il clôture/annule.
   const needsStatusUpdate =
     sortie &&
@@ -710,7 +710,6 @@ const SortieDetails = () => {
             ?
           </>
         }
-        warningText="⚠️ Cette action est irréversible."
         confirmLabel="Confirmer la suppression"
         onCancel={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}

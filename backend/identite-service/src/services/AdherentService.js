@@ -29,7 +29,7 @@ class AdherentService extends BaseService {
     }
   }
 
-  // ✅ nb_plongees_reelles/profondeur_max_reelle/duree_totale_reelle sont
+  // nb_plongees_reelles/profondeur_max_reelle/duree_totale_reelle sont
   // calculés à la volée depuis activites-service (carnets Plongee réellement
   // enregistrés), affichés à côté de nb_plongees_total qui reste un champ
   // éditable manuellement (point de départ/historique, pilote le niveau
@@ -49,7 +49,7 @@ class AdherentService extends BaseService {
     };
   }
 
-  // ✅ Crée l'adhérent ; si aucun user_id n'est fourni, réutilise un compte
+  // Crée l'adhérent ; si aucun user_id n'est fourni, réutilise un compte
   // utilisateur existant pour cet email (ex: créé au préalable via "Gestion
   // des utilisateurs") plutôt que d'en recréer un en double, sinon crée le
   // compte utilisateur lié (role "adherent"), conformément au schéma

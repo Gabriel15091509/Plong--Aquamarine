@@ -439,7 +439,7 @@ const CertificatDetails = () => {
                     : "text-green-600 dark:text-green-400"
                 }`}
               >
-                {isExpired ? "❌ Expiré" : "✅ Valide"}
+                {isExpired ? "Expiré" : "Valide"}
               </span>
             }
           />

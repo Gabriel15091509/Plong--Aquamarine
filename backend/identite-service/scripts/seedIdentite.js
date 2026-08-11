@@ -60,12 +60,12 @@ const CIVILITES = ["M.", "Mme", "Mlle"];
 
 async function seed() {
   await sequelize.authenticate();
-  console.log("✅ [identite] connexion établie");
+  console.log("[identite] connexion établie");
 
   await sequelize.query(
     "TRUNCATE TABLE identite.users, identite.adherents, identite.moniteurs, identite.president, identite.tresoriers RESTART IDENTITY CASCADE",
   );
-  console.log("✅ [identite] tables vidées");
+  console.log("[identite] tables vidées");
 
   const currentYear = new Date().getFullYear();
 
@@ -92,7 +92,7 @@ async function seed() {
     annee_en_poste: currentYear,
     acces: ["all"],
   });
-  console.log(`✅ [identite] président créé (${presidentUser.email})`);
+  console.log(`[identite] président créé (${presidentUser.email})`);
 
   // ==================== MONITEURS ====================
   const moniteurIds = [presidentMoniteur.id_moniteur];
@@ -117,7 +117,7 @@ async function seed() {
     });
     moniteurIds.push(moniteur.id_moniteur);
   }
-  console.log(`✅ [identite] ${moniteurIds.length} moniteurs créés au total (dont le président)`);
+  console.log(`[identite] ${moniteurIds.length} moniteurs créés au total (dont le président)`);
 
   // ==================== TRÉSORIER ====================
   const tresorierUser = await User.create({
@@ -133,7 +133,7 @@ async function seed() {
     user_id: tresorierUser.id,
     annee_en_poste: currentYear,
   });
-  console.log(`✅ [identite] trésorier créé (${tresorierUser.email})`);
+  console.log(`[identite] trésorier créé (${tresorierUser.email})`);
 
   // ==================== ADHÉRENTS ====================
   const adherentIds = [];
@@ -174,7 +174,7 @@ async function seed() {
     adherentIds.push(numAdherent);
     adherentNiveauMap[numAdherent] = niveau;
   }
-  console.log(`✅ [identite] ${adherentIds.length} adhérents créés (adherent@plongee.com / adherent123)`);
+  console.log(`[identite] ${adherentIds.length} adhérents créés (adherent@plongee.com / adherent123)`);
 
   writeSeedData("identite", {
     presidentUserId: presidentUser.id,
@@ -187,11 +187,11 @@ async function seed() {
     adherentNiveauMap,
   });
 
-  console.log("🎉 [identite] seed terminé");
+  console.log("[identite] seed terminé");
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error("❌ [identite] erreur de seed :", err);
+  console.error("[identite] erreur de seed :", err);
   process.exit(1);
 });

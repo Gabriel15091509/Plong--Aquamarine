@@ -53,12 +53,12 @@ const STATUT_SEANCE_WEIGHTS = [["Réalisée", 0.65], ["Planifiée", 0.25], ["Abs
 
 async function seed() {
   await sequelize.authenticate();
-  console.log("✅ [formation] connexion établie");
+  console.log("[formation] connexion établie");
 
   await sequelize.query(
     "TRUNCATE TABLE formation.formations, formation.competences, formation.formations_specialites, formation.seances RESTART IDENTITY CASCADE",
   );
-  console.log("✅ [formation] tables vidées");
+  console.log("[formation] tables vidées");
 
   const identite = readSeedData("identite");
   const activites = readSeedData("activites");
@@ -98,7 +98,7 @@ async function seed() {
     });
   }
   await Formation.bulkCreate(formations);
-  console.log(`✅ [formation] ${formations.length} formations créées`);
+  console.log(`[formation] ${formations.length} formations créées`);
 
   const formationRows = await Formation.findAll({
     attributes: ["id_formation", "date_debut", "date_fin_prevue", "num_adherent", "montant_total", "montant_paye"],
@@ -119,7 +119,7 @@ async function seed() {
     });
   }
   await Competence.bulkCreate(competences);
-  console.log(`✅ [formation] ${competences.length} compétences créées`);
+  console.log(`[formation] ${competences.length} compétences créées`);
 
   // ==================== FORMATIONS SPECIALITES ====================
   const specialites = [];
@@ -136,7 +136,7 @@ async function seed() {
     });
   }
   await FormationSpecialite.bulkCreate(specialites);
-  console.log(`✅ [formation] ${specialites.length} spécialités créées`);
+  console.log(`[formation] ${specialites.length} spécialités créées`);
 
   // ==================== SEANCES ====================
   const seances = [];
@@ -184,7 +184,7 @@ async function seed() {
     });
   }
   await Seance.bulkCreate(seances);
-  console.log(`✅ [formation] ${seances.length} séances créées`);
+  console.log(`[formation] ${seances.length} séances créées`);
 
   writeSeedData("formation", {
     formationIdList,
@@ -199,11 +199,11 @@ async function seed() {
     ),
   });
 
-  console.log("🎉 [formation] seed terminé");
+  console.log("[formation] seed terminé");
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error("❌ [formation] erreur de seed :", err);
+  console.error("[formation] erreur de seed :", err);
   process.exit(1);
 });

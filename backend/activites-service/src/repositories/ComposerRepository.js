@@ -7,7 +7,7 @@ class ComposerRepository extends BaseRepository {
     super(Composer);
   }
 
-  // ⚠️ Composer est identifié fonctionnellement par le couple (id_palanquee, num_adherent).
+  // Composer est identifié fonctionnellement par le couple (id_palanquee, num_adherent).
   // On surcharge findById/update/delete de BaseRepository (basés sur findByPk) pour
   // accepter un objet { id_palanquee, num_adherent } au lieu d'un id scalaire.
   async findById({ id_palanquee, num_adherent } = {}) {

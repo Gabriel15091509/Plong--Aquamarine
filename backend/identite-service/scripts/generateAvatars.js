@@ -51,7 +51,7 @@ const run = async () => {
     await sequelize.query(`UPDATE identite.users SET photo = :photo WHERE id = :id`, {
       replacements: { photo: photoPath, id: user.id },
     });
-    console.log(`✅ #${user.id} (${user.role}) ${user.name} -> ${photoPath}`);
+    console.log(`#${user.id} (${user.role}) ${user.name} -> ${photoPath}`);
   }
 
   console.log(`\nTerminé : ${users.length} avatar(s) généré(s).`);
@@ -59,6 +59,6 @@ const run = async () => {
 };
 
 run().catch((error) => {
-  console.error("❌ Erreur:", error);
+  console.error("Erreur:", error);
   process.exit(1);
 });

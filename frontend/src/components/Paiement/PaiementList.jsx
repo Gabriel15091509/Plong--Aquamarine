@@ -25,7 +25,7 @@ import { formatDate, formatCurrency } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 
 const PaiementList = () => {
-  // ✅ 1. TOUS LES HOOKS au même niveau, avant toute condition
+  // 1. TOUS LES HOOKS au même niveau, avant toute condition
   const { hasRole } = useAuth();
   const canManagePaiement = hasRole(["president", "tresorier"]);
   const { useGetAll, useRemove, useProcess, useCancel } = usePaiements();
@@ -39,7 +39,7 @@ const PaiementList = () => {
   const process = useProcess();
   const cancel = useCancel();
 
-  // ✅ Tous les useState
+  // Tous les useState
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
@@ -47,7 +47,7 @@ const PaiementList = () => {
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 10;
 
-  // ✅ Tous les useMemo
+  // Tous les useMemo
   const adherentMap = useMemo(() => {
     const map = {};
     if (adherentsData?.data) {
@@ -86,7 +86,7 @@ const PaiementList = () => {
     });
   }, [allPaiements, adherentMap, filter, searchTerm]);
 
-  // ✅ Calculs de pagination
+  // Calculs de pagination
   const totalPages = Math.ceil(filteredPaiements.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedPaiements = filteredPaiements.slice(
@@ -94,7 +94,7 @@ const PaiementList = () => {
     startIndex + itemsPerPage,
   );
 
-  // ✅ Handlers (pas des hooks, donc peuvent être après les conditions)
+  // Handlers (pas des hooks, donc peuvent être après les conditions)
   const handleDelete = async (id) => {
     try {
       setLoading(true);
@@ -134,11 +134,11 @@ const PaiementList = () => {
     }
   };
 
-  // ✅ 2. RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
+  // 2. RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
   if (isLoading || loadingAdherents) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
-  // ✅ 3. RENDU PRINCIPAL
+  // 3. RENDU PRINCIPAL
   if (filteredPaiements.length === 0) {
     return (
       <motion.div

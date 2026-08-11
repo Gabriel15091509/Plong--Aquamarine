@@ -39,7 +39,7 @@ export const usePaiements = () => {
     });
   };
 
-  // ✅ CORRECTION: useGetStats existe bien
+  // CORRECTION: useGetStats existe bien
   const useGetStats = () => {
     return useQuery({
       queryKey: ["paiements", "stats"],
@@ -138,7 +138,7 @@ export const usePaiements = () => {
     useGetById,
     useGetPending,
     useGetByAdherent,
-    useGetStats, // ✅ Bien retourné
+    useGetStats, // Bien retourné
     useCreate,
     useUpdate,
     useRemove,

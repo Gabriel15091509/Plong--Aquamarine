@@ -23,7 +23,7 @@ class UserService extends BaseService {
     this.userRepository = repository;
   }
 
-  // ✅ Point d'entrée du formulaire générique "Utilisateurs → Nouvel
+  // Point d'entrée du formulaire générique "Utilisateurs → Nouvel
   // utilisateur". Les rôles métier ont chacun leur propre écran dédié qui
   // crée à la fois le compte ET la fiche associée en appelant directement
   // `createUserByDirector` (AdherentService/MoniteurService/TresorierService) —
@@ -49,14 +49,14 @@ class UserService extends BaseService {
     return this.createUserByDirector(data, requestingUser.id);
   }
 
-  // ✅ Créer un compte utilisateur (par le directeur technique)
+  // Créer un compte utilisateur (par le directeur technique)
   async createUserByDirector(data, createdBy) {
     const {
       email,
       name,
       role = "adherent",
       phone,
-      password, // ✅ mot de passe déjà généré et envoyé par email côté frontend
+      password, // mot de passe déjà généré et envoyé par email côté frontend
     } = data;
 
     const existing = await this.userRepository.findByEmail(email);
@@ -64,13 +64,13 @@ class UserService extends BaseService {
       throw new Error("Cet email est déjà utilisé");
     }
 
-    // ✅ Utiliser le mot de passe fourni (celui déjà envoyé par email),
+    // Utiliser le mot de passe fourni (celui déjà envoyé par email),
     // avec un fallback de sécurité si jamais il n'est pas fourni.
     const tempPassword = password || this.generateTempPassword();
 
     const user = await this.userRepository.create({
       email,
-      password: tempPassword, // ✅ clair ici, hashé par le hook beforeCreate
+      password: tempPassword, // clair ici, hashé par le hook beforeCreate
       name,
       role,
       phone,
@@ -79,7 +79,7 @@ class UserService extends BaseService {
       active: true,
     });
 
-    // ❌ Plus d'envoi d'email ici : le frontend l'a déjà envoyé
+    // Plus d'envoi d'email ici : le frontend l'a déjà envoyé
     // via /api/email/send-welcome avant d'appeler cette route.
 
     return {
@@ -96,7 +96,7 @@ class UserService extends BaseService {
     };
   }
 
-  // ✅ Générer un mot de passe temporaire (fallback uniquement)
+  // Générer un mot de passe temporaire (fallback uniquement)
   generateTempPassword() {
     const chars =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
@@ -107,7 +107,7 @@ class UserService extends BaseService {
     return password;
   }
 
-  // ✅ Changer le mot de passe (pour l'utilisateur connecté)
+  // Changer le mot de passe (pour l'utilisateur connecté)
   async changePassword(userId, oldPassword, newPassword) {
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -119,7 +119,7 @@ class UserService extends BaseService {
       throw new Error("Ancien mot de passe incorrect");
     }
 
-    // ✅ Mot de passe en clair ici : le hook beforeUpdate du modèle User le
+    // Mot de passe en clair ici : le hook beforeUpdate du modèle User le
     // hashe déjà à la sauvegarde (le hasher ici en plus produirait un
     // double hash, et le mot de passe communiqué ne fonctionnerait jamais).
     user.password = newPassword;
@@ -143,7 +143,7 @@ class UserService extends BaseService {
     });
   }
 
-  // ✅ Réinitialiser le mot de passe (par le directeur technique)
+  // Réinitialiser le mot de passe (par le directeur technique)
   async resetPasswordByDirector(userId) {
     const user = await this.userRepository.findById(userId);
     if (!user) {

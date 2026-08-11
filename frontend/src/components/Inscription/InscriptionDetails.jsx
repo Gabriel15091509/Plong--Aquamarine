@@ -64,7 +64,7 @@ const InscriptionDetails = () => {
   const { id } = useParams();
   const inscriptionId = parseInt(id);
 
-  // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
+  // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { hasRole } = useAuth();
   const canManage = hasRole(["president", "moniteur", "tresorier"]);
   const { useGetById: useGetInscriptionById, useEnregistrerPaiement } = useInscriptions();
@@ -99,7 +99,7 @@ const InscriptionDetails = () => {
     error: inscriptionError,
   } = useGetInscriptionById(inscriptionId);
 
-  // ✅ Récupération des données liées avec des hooks directs
+  // Récupération des données liées avec des hooks directs
   const numAdherent = useMemo(() => {
     if (!inscriptionData?.data) return null;
     return inscriptionData.data.num_adherent;
@@ -110,7 +110,7 @@ const InscriptionDetails = () => {
     return inscriptionData.data.id_sortie;
   }, [inscriptionData]);
 
-  // ✅ Appel des hooks pour les données liées
+  // Appel des hooks pour les données liées
   const {
     data: adherentData,
     isLoading: isLoadingAdherent,
@@ -127,7 +127,7 @@ const InscriptionDetails = () => {
     enabled: !!idSortie, // Ne s'exécute que si idSortie existe
   });
 
-  // ✅ Construction des états avec useMemo
+  // Construction des états avec useMemo
   const inscription = useMemo(() => {
     if (!inscriptionData?.data) return null;
     return inscriptionData.data;
@@ -143,11 +143,11 @@ const InscriptionDetails = () => {
     return sortieData.data;
   }, [sortieData]);
 
-  // ✅ Vérification du chargement combiné
+  // Vérification du chargement combiné
   const isLoading = isLoadingInscription || isLoadingAdherent || isLoadingSortie;
   const error = inscriptionError || adherentError || sortieError;
 
-  // ✅ RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
+  // RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">

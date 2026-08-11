@@ -311,7 +311,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
             />
             {sortieIdParam && selectedSortie && !editMode && (
               <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
-                ✅ Sortie pré-sélectionnée : {selectedSortie.type} -{" "}
+                Sortie pré-sélectionnée : {selectedSortie.type} -{" "}
                 {selectedSortie.lieu}
               </p>
             )}

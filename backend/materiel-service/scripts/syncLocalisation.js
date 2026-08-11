@@ -8,7 +8,7 @@ const { sequelize, Materiel, Reparation } = require("../src/models");
 
 async function sync() {
   await sequelize.authenticate();
-  console.log("✅ [materiel] connexion établie");
+  console.log("[materiel] connexion établie");
 
   // Cross-schéma (même base Postgres, schéma qualifié explicitement) : un
   // prêt "Prêté" n'a pas encore de date de retour réelle.
@@ -39,13 +39,13 @@ async function sync() {
       updated++;
     }
   }
-  console.log(`✅ [materiel] localisation resynchronisée sur ${materiels.length} matériels (${updated} corrigés) — ${enReparation.size} en réparation, ${pretes.size} prêtés`);
+  console.log(`[materiel] localisation resynchronisée sur ${materiels.length} matériels (${updated} corrigés) — ${enReparation.size} en réparation, ${pretes.size} prêtés`);
 
-  console.log("🎉 [materiel] synchronisation terminée");
+  console.log("[materiel] synchronisation terminée");
   process.exit(0);
 }
 
 sync().catch((err) => {
-  console.error("❌ [materiel] erreur de synchronisation :", err);
+  console.error("[materiel] erreur de synchronisation :", err);
   process.exit(1);
 });

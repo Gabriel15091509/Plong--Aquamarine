@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link, useNavigate } from "react-router-dom"; // ✅ Ajouter useNavigate ici
+import { Link, useNavigate } from "react-router-dom"; // Ajouter useNavigate ici
 import toast from "react-hot-toast";
 import {
   FiPlus,
@@ -45,7 +45,7 @@ const SORTIE_STATUS = [
 ];
 
 const SortiesPage = () => {
-  // ✅ useNavigate doit être appelé à l'intérieur du composant
+  // useNavigate doit être appelé à l'intérieur du composant
   const navigate = useNavigate();
 
   const { useGetAll, useRemove } = useSorties();
@@ -173,7 +173,7 @@ const SortiesPage = () => {
     }
   };
 
-  // ✅ Ajouter une inscription pour un autre adhérent (admin) - avec navigate
+  // Ajouter une inscription pour un autre adhérent (admin) - avec navigate
   const handleAddInscription = (sortieId) => {
     navigate(`/inscriptions/create?sortie=${sortieId}`);
   };

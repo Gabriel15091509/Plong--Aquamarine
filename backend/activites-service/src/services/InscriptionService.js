@@ -293,7 +293,7 @@ class InscriptionService extends BaseService {
       throw new Error("Cette sortie est annulée");
     }
 
-    // ✅ On ne peut s'inscrire qu'à une sortie encore au stade "Planifiée" :
+    // On ne peut s'inscrire qu'à une sortie encore au stade "Planifiée" :
     // une fois "En cours"/"Terminée", les inscriptions n'ont plus de sens.
     if (sortie.statut !== "Planifiée") {
       throw new Error(
@@ -301,7 +301,7 @@ class InscriptionService extends BaseService {
       );
     }
 
-    // ✅ Les inscriptions autonomes ne sont ouvertes qu'à partir de la date
+    // Les inscriptions autonomes ne sont ouvertes qu'à partir de la date
     // fixée sur la sortie (ex : 7 jours avant) ; le directeur technique/staff
     // (canManage) peut en revanche préinscrire un adhérent avant cette date.
     if (
@@ -314,7 +314,7 @@ class InscriptionService extends BaseService {
       );
     }
 
-    // ✅ Le niveau de l'adhérent doit être suffisant pour cette sortie.
+    // Le niveau de l'adhérent doit être suffisant pour cette sortie.
     // Adherent vit dans identite-service : résolu par HTTP. Récupéré avant
     // le contrôle du dossier car un niveau Baptême en allège les exigences.
     const adherentRecord = await identiteClient.getAdherentById(num_adherent, data.authHeader);
@@ -322,7 +322,7 @@ class InscriptionService extends BaseService {
       throw new Error("Niveau insuffisant pour cette sortie");
     }
 
-    // ✅ Règles d'âge (Code du Sport) : profondeur max d'un baptême selon
+    // Règles d'âge (Code du Sport) : profondeur max d'un baptême selon
     // l'âge, et une seule plongée par jour avant 12 ans — voir utils/
     // ageRules.js pour le détail des textes. L'âge inconnu ne bloque jamais
     // (checkBaptemeDepthForAge renvoie null), seule une violation avérée le
@@ -347,7 +347,7 @@ class InscriptionService extends BaseService {
       }
     }
 
-    // ✅ Un adhérent ne peut pas s'inscrire si son adhésion n'est pas
+    // Un adhérent ne peut pas s'inscrire si son adhésion n'est pas
     // valide ou si son certificat médical est expiré/manquant — règle de
     // sécurité, appliquée quel que soit l'auteur de l'inscription (staff ou
     // adhérent lui-même). Adhesion et CertificatMedical vivent dans

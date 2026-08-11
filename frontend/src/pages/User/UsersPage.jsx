@@ -264,19 +264,19 @@ const UsersPage = () => {
             ...(canEditRoles
               ? [
                   {
-                    label: "👑 Présidents",
+                    label: "Présidents",
                     value: stats.byRole.president,
                     color: "text-purple-600 dark:text-purple-400",
                   },
                   {
-                    label: "🏊 Moniteurs",
+                    label: "Moniteurs",
                     value: stats.byRole.moniteur,
                     color: "text-blue-600 dark:text-blue-400",
                   },
                 ]
               : []),
             {
-              label: "🤿 Adhérents",
+              label: "Adhérents",
               value: stats.byRole.adherent,
               color: "text-gray-600 dark:text-gray-400",
             },
@@ -354,10 +354,10 @@ const UsersPage = () => {
                       className="input-field"
                     >
                       <option value="all">Tous les rôles</option>
-                      <option value="president">👑 Président</option>
-                      <option value="moniteur">🏊 Moniteur</option>
-                      <option value="tresorier">💰 Trésorier</option>
-                      <option value="adherent">🤿 Adhérent</option>
+                      <option value="president">Président</option>
+                      <option value="moniteur">Moniteur</option>
+                      <option value="tresorier">Trésorier</option>
+                      <option value="adherent">Adhérent</option>
                     </select>
                   </div>
                   <div>
@@ -370,8 +370,8 @@ const UsersPage = () => {
                       className="input-field"
                     >
                       <option value="all">Tous les statuts</option>
-                      <option value="active">✅ Actifs</option>
-                      <option value="inactive">❌ Inactifs</option>
+                      <option value="active">Actifs</option>
+                      <option value="inactive">Inactifs</option>
                     </select>
                   </div>
                 </div>
@@ -679,10 +679,10 @@ const UsersPage = () => {
                         disabled={actionLoading === selectedUser.id}
                         className="input-field text-sm"
                       >
-                        <option value="adherent">🤿 Adhérent</option>
-                        <option value="moniteur">🏊 Moniteur</option>
-                        <option value="tresorier">💰 Trésorier</option>
-                        <option value="president">👑 Président</option>
+                        <option value="adherent">Adhérent</option>
+                        <option value="moniteur">Moniteur</option>
+                        <option value="tresorier">Trésorier</option>
+                        <option value="president">Président</option>
                       </select>
                     </div>
                   )}

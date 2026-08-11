@@ -31,12 +31,12 @@ const STATUT_ALERTE_WEIGHTS = [["Envoyé", 0.7], ["Lu", 0.25], ["Erreur", 0.05]]
 
 async function seed() {
   await sequelize.authenticate();
-  console.log("✅ [vie-associative] connexion établie");
+  console.log("[vie-associative] connexion établie");
 
   await sequelize.query(
     "TRUNCATE TABLE vie_associative.adhesions, vie_associative.certificats_medicaux, vie_associative.alertes RESTART IDENTITY CASCADE",
   );
-  console.log("✅ [vie-associative] tables vidées");
+  console.log("[vie-associative] tables vidées");
 
   const identite = readSeedData("identite");
   const currentYear = new Date().getFullYear();
@@ -67,7 +67,7 @@ async function seed() {
     });
   }
   await Adhesion.bulkCreate(adhesions);
-  console.log(`✅ [vie-associative] ${adhesions.length} adhésions créées`);
+  console.log(`[vie-associative] ${adhesions.length} adhésions créées`);
 
   // ==================== CERTIFICATS MEDICAUX ====================
   const certificats = [];
@@ -84,7 +84,7 @@ async function seed() {
     });
   }
   await CertificatMedical.bulkCreate(certificats);
-  console.log(`✅ [vie-associative] ${certificats.length} certificats créés`);
+  console.log(`[vie-associative] ${certificats.length} certificats créés`);
 
   // ==================== ALERTES ====================
   const alertes = [];
@@ -99,13 +99,13 @@ async function seed() {
     });
   }
   await Alerte.bulkCreate(alertes);
-  console.log(`✅ [vie-associative] ${alertes.length} alertes créées`);
+  console.log(`[vie-associative] ${alertes.length} alertes créées`);
 
-  console.log("🎉 [vie-associative] seed terminé");
+  console.log("[vie-associative] seed terminé");
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error("❌ [vie-associative] erreur de seed :", err);
+  console.error("[vie-associative] erreur de seed :", err);
   process.exit(1);
 });

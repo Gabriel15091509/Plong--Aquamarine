@@ -21,7 +21,7 @@ import { useUsers } from "../../hooks/User/useUsers";
 import { photoUrl } from "../../utils/photoUrl";
 
 const TresorierList = () => {
-  // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
+  // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { useGetAll, useRemove } = useTresoriers();
   const { useGetAll: useGetAllUsers } = useUsers();
 
@@ -79,7 +79,7 @@ const TresorierList = () => {
     }
   };
 
-  // ✅ RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
+  // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
   if (isLoading || loadingUsers) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 

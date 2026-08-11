@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 export const useUsers = () => {
   const queryClient = useQueryClient();
 
-  // ✅ Récupérer tous les utilisateurs (réservé au président côté backend —
+  // Récupérer tous les utilisateurs (réservé au président côté backend —
   // `options.enabled` permet à l'appelant de désactiver la requête pour les
   // autres rôles plutôt que de subir un 403 systématique)
   const useGetAll = (params = {}, options = {}) => {
@@ -17,7 +17,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Récupérer un utilisateur
+  // Récupérer un utilisateur
   const useGetById = (id) => {
     return useQuery({
       queryKey: ['users', id],
@@ -27,7 +27,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Récupérer les utilisateurs créés par moi
+  // Récupérer les utilisateurs créés par moi
   const useGetCreatedByMe = () => {
     return useQuery({
       queryKey: ['users', 'created-by-me'],
@@ -36,7 +36,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Créer un utilisateur
+  // Créer un utilisateur
   const useCreate = () => {
     return useMutation({
       mutationFn: (data) => userService.create(data),
@@ -55,7 +55,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Mettre à jour son profil
+  // Mettre à jour son profil
   const useUpdateProfile = () => {
     return useMutation({
       mutationFn: (data) => userService.updateProfile(data),
@@ -74,7 +74,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Changer le mot de passe
+  // Changer le mot de passe
   const useChangePassword = () => {
     return useMutation({
       mutationFn: ({ oldPassword, newPassword }) => 
@@ -88,7 +88,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Réinitialiser le mot de passe
+  // Réinitialiser le mot de passe
   const useResetPassword = () => {
     return useMutation({
       mutationFn: (id) => userService.resetPassword(id),
@@ -107,7 +107,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Changer le niveau
+  // Changer le niveau
   const useChangeNiveau = () => {
     return useMutation({
       mutationFn: ({ id, niveau }) => userService.changeNiveau(id, niveau),
@@ -121,7 +121,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Mettre à jour la photo (par un président, pour un autre utilisateur)
+  // Mettre à jour la photo (par un président, pour un autre utilisateur)
   const useUpdatePhoto = () => {
     return useMutation({
       mutationFn: ({ id, formData }) => userService.updatePhoto(id, formData),
@@ -136,7 +136,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Changer le rôle
+  // Changer le rôle
   const useChangeRole = () => {
     return useMutation({
       mutationFn: ({ id, role }) => userService.changeRole(id, role),
@@ -150,7 +150,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Désactiver un compte
+  // Désactiver un compte
   const useDisableAccount = () => {
     return useMutation({
       mutationFn: (id) => userService.disableAccount(id),
@@ -164,7 +164,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Réactiver un compte
+  // Réactiver un compte
   const useEnableAccount = () => {
     return useMutation({
       mutationFn: (id) => userService.enableAccount(id),
@@ -178,7 +178,7 @@ export const useUsers = () => {
     });
   };
 
-  // ✅ Supprimer un compte
+  // Supprimer un compte
   const useDeleteAccount = () => {
     return useMutation({
       mutationFn: (id) => userService.deleteAccount(id),

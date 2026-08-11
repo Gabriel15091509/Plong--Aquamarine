@@ -123,7 +123,7 @@ const ProfilePage = () => {
     };
   }, [photoPreview]);
 
-  // ✅ Récupération des données API
+  // Récupération des données API
   const { useGetAll: useGetAllAdherents } = useAdherents();
   const { useGetAll: useGetAllPlongees } = usePlongees();
   const { useGetAll: useGetAllSorties } = useSorties();
@@ -134,7 +134,7 @@ const ProfilePage = () => {
   const updateProfile = useUpdateProfile();
   const { useGetByAdherent: useGetAttributionsByAdherent } = useAttributions();
 
-  // ✅ Appels API
+  // Appels API
   const { data: adherentsData, isLoading: loadingAdherents } =
     useGetAllAdherents();
   const { data: plongeesData, isLoading: loadingPlongees } =
@@ -160,19 +160,19 @@ const ProfilePage = () => {
     loadingInscriptions ||
     loadingUsers;
 
-  // ✅ Trouver l'adhérent correspondant à l'utilisateur connecté
+  // Trouver l'adhérent correspondant à l'utilisateur connecté
   const currentAdherent = useMemo(() => {
     if (!adherentsData?.data || !user) return null;
     return adherentsData.data.find((adherent) => adherent.email === user.email);
   }, [adherentsData, user]);
 
-  // ✅ Matériel actuellement attribué à l'adhérent connecté
+  // Matériel actuellement attribué à l'adhérent connecté
   const { data: attributionsData } = useGetAttributionsByAdherent(
     currentAdherent?.num_adherent,
   );
   const monMateriel = attributionsData?.data || [];
 
-  // ✅ Statistiques en fonction du rôle
+  // Statistiques en fonction du rôle
   const stats = useMemo(() => {
     const allPlongees = plongeesData?.data || [];
     const allSorties = sortiesData?.data || [];
@@ -289,7 +289,7 @@ const ProfilePage = () => {
     user?.role,
   ]);
 
-  // ✅ Dernières plongées (limité à 3)
+  // Dernières plongées (limité à 3)
   const recentDives = useMemo(() => {
     if (!currentAdherent) return [];
     const userPlongees = (plongeesData?.data || [])
@@ -369,7 +369,7 @@ const ProfilePage = () => {
 
   const roleInfo = getRoleInfo();
 
-  // ✅ Statistiques en fonction du rôle
+  // Statistiques en fonction du rôle
   const getDiveStats = () => {
     const role = user?.role || "adherent";
 

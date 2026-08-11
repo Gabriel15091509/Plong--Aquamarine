@@ -1,7 +1,7 @@
 import api from "../api";
 
 class SortieService {
-  // 📌 Sorties CRUD
+  // Sorties CRUD
   async getAll(params = {}) {
     const response = await api.get("/sorties", { params });
     return response.data;
@@ -52,7 +52,7 @@ class SortieService {
     return response.data;
   }
 
-  // ✅ NOUVEAU - Pointage de présence
+  // NOUVEAU - Pointage de présence
   async getPointage(id) {
     const response = await api.get(`/sorties/${id}/pointage`);
     return response.data;

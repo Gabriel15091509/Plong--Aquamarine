@@ -925,14 +925,12 @@ function App() {
             padding: "16px",
           },
           success: {
-            icon: "✅",
             style: {
               background: "#10B981",
               color: "#fff",
             },
           },
           error: {
-            icon: "❌",
             style: {
               background: "#EF4444",
               color: "#fff",

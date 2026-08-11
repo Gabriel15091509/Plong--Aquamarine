@@ -1,6 +1,6 @@
 import api from "../services/api";
 
-// ✅ À appeler juste après la création réussie d'un compte (adhérent, moniteur,
+// À appeler juste après la création réussie d'un compte (adhérent, moniteur,
 // trésorier, président) lorsque la réponse contient `_welcomeEmail` (nouveau
 // compte créé, avec son mot de passe temporaire en clair). N'échoue jamais
 // bruyamment : le compte existe déjà à ce stade, un email raté ne doit pas

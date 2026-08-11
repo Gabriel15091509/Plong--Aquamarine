@@ -3,12 +3,12 @@ const { sequelize, Alerte, Adherent } = require('../src/models');
 const createTestAlertes = async () => {
   try {
     await sequelize.authenticate();
-    console.log('✅ Database connection established');
+    console.log('Database connection established');
 
     // Récupérer les adhérents
     const adherents = await Adherent.findAll({ limit: 5 });
     if (adherents.length === 0) {
-      console.log('❌ Aucun adhérent trouvé');
+      console.log('Aucun adhérent trouvé');
       process.exit(1);
     }
 
@@ -56,10 +56,10 @@ const createTestAlertes = async () => {
     ];
 
     await Alerte.bulkCreate(alertes);
-    console.log(`✅ ${alertes.length} alertes de test créées`);
+    console.log(`${alertes.length} alertes de test créées`);
     process.exit(0);
   } catch (error) {
-    console.error('❌ Erreur:', error);
+    console.error('Erreur:', error);
     process.exit(1);
   }
 };

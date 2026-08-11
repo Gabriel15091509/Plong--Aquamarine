@@ -14,7 +14,7 @@ import { useTheme } from "../../context/ThemeContext";
 const CalendrierPage = () => {
   const { theme } = useTheme();
 
-  // ✅ Animations d'entrée
+  // Animations d'entrée
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -57,7 +57,7 @@ const CalendrierPage = () => {
       animate={{ opacity: 1 }}
       className="space-y-8"
     >
-      {/* ✅ En-tête avec animation et décoration */}
+      {/* En-tête avec animation et décoration */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -151,7 +151,7 @@ const CalendrierPage = () => {
             </div>
           </div>
 
-          {/* ✅ Badge d'information */}
+          {/* Badge d'information */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -171,7 +171,7 @@ const CalendrierPage = () => {
 
       
 
-      {/* ✅ Le calendrier avec animation d'entrée */}
+      {/* Le calendrier avec animation d'entrée */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -180,7 +180,7 @@ const CalendrierPage = () => {
         <SortieCalendar />
       </motion.div>
 
-      {/* ✅ Footer informatif avec animation */}
+      {/* Footer informatif avec animation */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

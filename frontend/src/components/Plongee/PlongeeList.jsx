@@ -32,7 +32,7 @@ import { TYPE_PLONGEE_OPTIONS } from "../../utils/constants";
 const isBrouillon = (p) => p.profondeur_max == null || p.duree == null;
 
 const PlongeeList = () => {
-  // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
+  // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { hasRole } = useAuth();
   const canManagePlongee = hasRole(["president", "moniteur"]);
   const { useGetAll, useRemove, useValidate } = usePlongees();
@@ -53,7 +53,7 @@ const PlongeeList = () => {
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 10;
 
-  // ✅ Map des adhérents avec leurs infos (useMemo)
+  // Map des adhérents avec leurs infos (useMemo)
   const adherentMap = useMemo(() => {
     const map = {};
     if (adherentsData?.data) {
@@ -70,7 +70,7 @@ const PlongeeList = () => {
 
   const allPlongees = data?.data || [];
 
-  // ✅ Filtrage (useMemo)
+  // Filtrage (useMemo)
   const filteredPlongees = useMemo(() => {
     return allPlongees.filter((p) => {
       const adherentInfo = adherentMap[p.num_adherent] || {
@@ -104,7 +104,7 @@ const PlongeeList = () => {
     [allPlongees],
   );
 
-  // ✅ Pagination
+  // Pagination
   const totalPages = Math.ceil(filteredPlongees.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedPlongees = filteredPlongees.slice(
@@ -112,7 +112,7 @@ const PlongeeList = () => {
     startIndex + itemsPerPage,
   );
 
-  // ✅ Fonctions
+  // Fonctions
   const handleDelete = async (id) => {
     try {
       setLoading(true);
@@ -138,7 +138,7 @@ const PlongeeList = () => {
     }
   };
 
-  // ✅ RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
+  // RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
   if (isLoading || loadingAdherents) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
@@ -174,7 +174,7 @@ const PlongeeList = () => {
     );
   }
 
-  // ✅ RENDU DU COMPOSANT
+  // RENDU DU COMPOSANT
   return (
     <div className="space-y-4">
       {/* Barre de recherche et filtres */}

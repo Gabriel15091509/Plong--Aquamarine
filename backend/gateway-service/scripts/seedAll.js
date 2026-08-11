@@ -362,12 +362,12 @@ function randomDisponibilites() {
 
 async function seedAll() {
   try {
-    console.log("🔄 Connexion à la base de données...");
+    console.log("Connexion à la base de données...");
     await sequelize.authenticate();
-    console.log("✅ Connexion établie");
+    console.log("Connexion établie");
 
     // Vider les tables
-    console.log("🔄 Vidage des tables...");
+    console.log("Vidage des tables...");
     await sequelize.query('TRUNCATE TABLE "incidents" RESTART IDENTITY CASCADE');
     await sequelize.query('TRUNCATE TABLE "attributions" RESTART IDENTITY CASCADE');
     await sequelize.query('TRUNCATE TABLE "composer" RESTART IDENTITY CASCADE');
@@ -388,12 +388,12 @@ async function seedAll() {
     await sequelize.query('TRUNCATE TABLE "president" RESTART IDENTITY CASCADE');
     await sequelize.query('TRUNCATE TABLE "moniteurs" RESTART IDENTITY CASCADE');
     await sequelize.query('TRUNCATE TABLE "users" RESTART IDENTITY CASCADE');
-    console.log("✅ Tables vidées");
+    console.log("Tables vidées");
 
     const currentYear = new Date().getFullYear();
 
     // ==================== PRESIDENT (user + moniteur + president) ====================
-    console.log("🔄 Création du président...");
+    console.log("Création du président...");
     const presidentUser = await User.create({
       email: "president@plongee.com",
       password: "president123",
@@ -415,10 +415,10 @@ async function seedAll() {
       annee_en_poste: currentYear,
       acces: ["all"],
     });
-    console.log("✅ Président créé (president@plongee.com / president123)");
+    console.log("Président créé (president@plongee.com / president123)");
 
     // ==================== MONITEURS ====================
-    console.log("🔄 Création des moniteurs...");
+    console.log("Création des moniteurs...");
     const moniteurIds = [presidentMoniteur.id_moniteur];
     for (let i = 0; i < CONFIG.MONITEURS; i++) {
       const nom = faker.person.lastName();
@@ -441,10 +441,10 @@ async function seedAll() {
       });
       moniteurIds.push(moniteur.id_moniteur);
     }
-    console.log(`✅ ${moniteurIds.length} moniteurs créés (dont le président ; moniteur@plongee.com / moniteur123)`);
+    console.log(`${moniteurIds.length} moniteurs créés (dont le président ; moniteur@plongee.com / moniteur123)`);
 
     // ==================== TRESORIER ====================
-    console.log("🔄 Création du trésorier...");
+    console.log("Création du trésorier...");
     const tresorierUser = await User.create({
       email: "tresorier@plongee.com",
       password: "tresorier123",
@@ -458,10 +458,10 @@ async function seedAll() {
       user_id: tresorierUser.id,
       annee_en_poste: currentYear,
     });
-    console.log("✅ Trésorier créé (tresorier@plongee.com / tresorier123)");
+    console.log("Trésorier créé (tresorier@plongee.com / tresorier123)");
 
     // ==================== ADHERENTS (user + adherent) ====================
-    console.log("🔄 Création des adhérents...");
+    console.log("Création des adhérents...");
     const civilites = ["M.", "Mme", "Mlle"];
     const adherentIdList = [];
     const adherentNiveauMap = {};
@@ -510,10 +510,10 @@ async function seedAll() {
       adherentIdList.push(numAdherent);
       adherentNiveauMap[numAdherent] = niveau;
     }
-    console.log(`✅ ${adherentIdList.length} adhérents créés (adherent@plongee.com / adherent123)`);
+    console.log(`${adherentIdList.length} adhérents créés (adherent@plongee.com / adherent123)`);
 
     // ==================== ADHESIONS ====================
-    console.log("🔄 Création des adhésions...");
+    console.log("Création des adhésions...");
     const adhesions = [];
     for (let i = 0; i < CONFIG.ADHESIONS; i++) {
       const numAdherent =
@@ -551,10 +551,10 @@ async function seedAll() {
       });
     }
     await Adhesion.bulkCreate(adhesions);
-    console.log(`✅ ${adhesions.length} adhésions créées`);
+    console.log(`${adhesions.length} adhésions créées`);
 
     // ==================== CERTIFICATS MEDICAUX ====================
-    console.log("🔄 Création des certificats médicaux...");
+    console.log("Création des certificats médicaux...");
     const certificats = [];
     const medecins = [
       "Dr. Bernard",
@@ -586,10 +586,10 @@ async function seedAll() {
       });
     }
     await CertificatMedical.bulkCreate(certificats);
-    console.log(`✅ ${certificats.length} certificats créés`);
+    console.log(`${certificats.length} certificats créés`);
 
     // ==================== SORTIES ====================
-    console.log("🔄 Création des sorties...");
+    console.log("Création des sorties...");
     const lieux = [
       "Marseille",
       "Toulon",
@@ -658,7 +658,7 @@ async function seedAll() {
       });
     }
     await Sortie.bulkCreate(sorties);
-    console.log(`✅ ${sorties.length} sorties créées`);
+    console.log(`${sorties.length} sorties créées`);
 
     const sortieRows = await Sortie.findAll({
       attributes: ["id_sortie", "statut", "date_heure"],
@@ -674,7 +674,7 @@ async function seedAll() {
       .map((s) => s.id_sortie);
 
     // ==================== INSCRIPTIONS ====================
-    console.log("🔄 Création des inscriptions...");
+    console.log("Création des inscriptions...");
     const inscriptions = [];
     const statutsInscription = [
       "En attente",
@@ -706,10 +706,10 @@ async function seedAll() {
       });
     }
     await Inscription.bulkCreate(inscriptions);
-    console.log(`✅ ${inscriptions.length} inscriptions créées`);
+    console.log(`${inscriptions.length} inscriptions créées`);
 
     // ==================== PLONGEES ====================
-    console.log("🔄 Création des plongées...");
+    console.log("Création des plongées...");
     const plongees = [];
     for (let i = 0; i < CONFIG.PLONGEES; i++) {
       const numAdherent =
@@ -737,14 +737,14 @@ async function seedAll() {
       });
     }
     await Plongee.bulkCreate(plongees);
-    console.log(`✅ ${plongees.length} plongées créées`);
+    console.log(`${plongees.length} plongées créées`);
 
     const plongeeRows = await Plongee.findAll({
       attributes: ["id_plongee", "id_sortie"],
     });
 
     // ==================== PALANQUEES ====================
-    console.log("🔄 Création des palanquées...");
+    console.log("Création des palanquées...");
     const palanquees = [];
     for (let i = 0; i < CONFIG.PALANQUEES; i++) {
       const plongee =
@@ -760,7 +760,7 @@ async function seedAll() {
       });
     }
     await Palanquee.bulkCreate(palanquees);
-    console.log(`✅ ${palanquees.length} palanquées créées`);
+    console.log(`${palanquees.length} palanquées créées`);
 
     const palanqueeIds = await Palanquee.findAll({
       attributes: ["id_palanquee"],
@@ -768,7 +768,7 @@ async function seedAll() {
     const palanqueeIdList = palanqueeIds.map((p) => p.id_palanquee);
 
     // ==================== COMPOSER ====================
-    console.log("🔄 Création des compositions...");
+    console.log("Création des compositions...");
     const composerSeen = new Set();
     const composer = [];
     let attempts = 0;
@@ -784,10 +784,10 @@ async function seedAll() {
       composer.push({ id_palanquee: idPalanquee, num_adherent: numAdherent });
     }
     await Composer.bulkCreate(composer);
-    console.log(`✅ ${composer.length} compositions créées`);
+    console.log(`${composer.length} compositions créées`);
 
     // ==================== MATERIELS ====================
-    console.log("🔄 Création du matériel...");
+    console.log("Création du matériel...");
     const marques = [
       "Scubapro",
       "Mares",
@@ -861,7 +861,7 @@ async function seedAll() {
       });
     }
     await Materiel.bulkCreate(materiels);
-    console.log(`✅ ${materiels.length} matériels créés`);
+    console.log(`${materiels.length} matériels créés`);
 
     const materielIds = await Materiel.findAll({
       attributes: ["num_inventaire"],
@@ -869,7 +869,7 @@ async function seedAll() {
     const materielIdList = materielIds.map((m) => m.num_inventaire);
 
     // ==================== REPARATIONS ====================
-    console.log("🔄 Création des réparations...");
+    console.log("Création des réparations...");
     const prestataires = [
       "ProDive",
       "AquaTech",
@@ -895,10 +895,10 @@ async function seedAll() {
       });
     }
     await Reparation.bulkCreate(reparations);
-    console.log(`✅ ${reparations.length} réparations créées`);
+    console.log(`${reparations.length} réparations créées`);
 
     // ==================== ATTRIBUTIONS ====================
-    console.log("🔄 Création des attributions...");
+    console.log("Création des attributions...");
     const attributions = [];
     for (let i = 0; i < CONFIG.ATTRIBUTIONS; i++) {
       const numInventaire =
@@ -930,10 +930,10 @@ async function seedAll() {
       });
     }
     await Attribution.bulkCreate(attributions);
-    console.log(`✅ ${attributions.length} attributions créées`);
+    console.log(`${attributions.length} attributions créées`);
 
     // ==================== FORMATIONS ====================
-    console.log("🔄 Création des formations...");
+    console.log("Création des formations...");
     const formations = [];
     for (let i = 0; i < CONFIG.FORMATIONS; i++) {
       const numAdherent =
@@ -963,7 +963,7 @@ async function seedAll() {
       });
     }
     await Formation.bulkCreate(formations);
-    console.log(`✅ ${formations.length} formations créées`);
+    console.log(`${formations.length} formations créées`);
 
     const formationIds = await Formation.findAll({
       attributes: ["id_formation"],
@@ -971,7 +971,7 @@ async function seedAll() {
     const formationIdList = formationIds.map((f) => f.id_formation);
 
     // ==================== COMPETENCES ====================
-    console.log("🔄 Création des compétences...");
+    console.log("Création des compétences...");
     const libellesCompetences = [
       "Maîtrise apnée",
       "Gestion lestage",
@@ -1004,10 +1004,10 @@ async function seedAll() {
       });
     }
     await Competence.bulkCreate(competences);
-    console.log(`✅ ${competences.length} compétences créées`);
+    console.log(`${competences.length} compétences créées`);
 
     // ==================== PAIEMENTS ====================
-    console.log("🔄 Création des paiements...");
+    console.log("Création des paiements...");
     const paiements = [];
     for (let i = 0; i < CONFIG.PAIEMENTS; i++) {
       const numAdherent =
@@ -1027,10 +1027,10 @@ async function seedAll() {
       });
     }
     await Paiement.bulkCreate(paiements);
-    console.log(`✅ ${paiements.length} paiements créés`);
+    console.log(`${paiements.length} paiements créés`);
 
     // ==================== ALERTES ====================
-    console.log("🔄 Création des alertes...");
+    console.log("Création des alertes...");
     const alertes = [];
     for (let i = 0; i < CONFIG.ALERTES; i++) {
       const numAdherent =
@@ -1044,10 +1044,10 @@ async function seedAll() {
       });
     }
     await Alerte.bulkCreate(alertes);
-    console.log(`✅ ${alertes.length} alertes créées`);
+    console.log(`${alertes.length} alertes créées`);
 
     // ==================== INCIDENTS ====================
-    console.log("🔄 Création des incidents...");
+    console.log("Création des incidents...");
     const incidents = [];
     for (let i = 0; i < CONFIG.INCIDENTS; i++) {
       const idSortie =
@@ -1070,33 +1070,33 @@ async function seedAll() {
       });
     }
     await Incident.bulkCreate(incidents);
-    console.log(`✅ ${incidents.length} incidents créés`);
+    console.log(`${incidents.length} incidents créés`);
 
-    console.log("\n🎉 SEEDING TERMINÉ AVEC SUCCÈS !");
-    console.log("📊 Récapitulatif des données créées :");
-    console.log(`   👑 Président : 1 (president@plongee.com / president123)`);
-    console.log(`   🏊 Moniteurs : ${moniteurIds.length} (moniteur@plongee.com / moniteur123)`);
-    console.log(`   💰 Trésorier : 1 (tresorier@plongee.com / tresorier123)`);
-    console.log(`   👥 Adhérents : ${adherentIdList.length} (adherent@plongee.com / adherent123)`);
-    console.log(`   📋 Adhésions : ${CONFIG.ADHESIONS}`);
-    console.log(`   📄 Certificats : ${CONFIG.CERTIFICATS}`);
-    console.log(`   💰 Paiements : ${CONFIG.PAIEMENTS}`);
-    console.log(`   🏊 Sorties : ${CONFIG.SORTIES}`);
-    console.log(`   📝 Inscriptions : ${CONFIG.INSCRIPTIONS}`);
-    console.log(`   🤿 Plongées : ${CONFIG.PLONGEES}`);
-    console.log(`   📊 Palanquées : ${CONFIG.PALANQUEES}`);
-    console.log(`   🔗 Compositions : ${composer.length}`);
-    console.log(`   🔧 Matériels : ${CONFIG.MATERIELS}`);
-    console.log(`   🔨 Réparations : ${CONFIG.REPARATIONS}`);
-    console.log(`   📦 Attributions : ${CONFIG.ATTRIBUTIONS}`);
-    console.log(`   🎓 Formations : ${CONFIG.FORMATIONS}`);
-    console.log(`   🏆 Compétences : ${CONFIG.COMPETENCES}`);
-    console.log(`   🔔 Alertes : ${CONFIG.ALERTES}`);
-    console.log(`   🚨 Incidents : ${CONFIG.INCIDENTS}`);
+    console.log("\nSEEDING TERMINÉ AVEC SUCCÈS !");
+    console.log("Récapitulatif des données créées :");
+    console.log(`   Président : 1 (president@plongee.com / president123)`);
+    console.log(`   Moniteurs : ${moniteurIds.length} (moniteur@plongee.com / moniteur123)`);
+    console.log(`   Trésorier : 1 (tresorier@plongee.com / tresorier123)`);
+    console.log(`   Adhérents : ${adherentIdList.length} (adherent@plongee.com / adherent123)`);
+    console.log(`   Adhésions : ${CONFIG.ADHESIONS}`);
+    console.log(`   Certificats : ${CONFIG.CERTIFICATS}`);
+    console.log(`   Paiements : ${CONFIG.PAIEMENTS}`);
+    console.log(`   Sorties : ${CONFIG.SORTIES}`);
+    console.log(`   Inscriptions : ${CONFIG.INSCRIPTIONS}`);
+    console.log(`   Plongées : ${CONFIG.PLONGEES}`);
+    console.log(`   Palanquées : ${CONFIG.PALANQUEES}`);
+    console.log(`   Compositions : ${composer.length}`);
+    console.log(`   Matériels : ${CONFIG.MATERIELS}`);
+    console.log(`   Réparations : ${CONFIG.REPARATIONS}`);
+    console.log(`   Attributions : ${CONFIG.ATTRIBUTIONS}`);
+    console.log(`   Formations : ${CONFIG.FORMATIONS}`);
+    console.log(`   Compétences : ${CONFIG.COMPETENCES}`);
+    console.log(`   Alertes : ${CONFIG.ALERTES}`);
+    console.log(`   Incidents : ${CONFIG.INCIDENTS}`);
 
     process.exit(0);
   } catch (error) {
-    console.error("❌ Erreur lors du seeding :", error);
+    console.error("Erreur lors du seeding :", error);
     process.exit(1);
   }
 }

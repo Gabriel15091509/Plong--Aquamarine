@@ -33,7 +33,7 @@ const toArray = (value) => {
 };
 
 const PresidentList = () => {
-  // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
+  // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { useGetAll, useRemove } = usePresidents();
   const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
   const { useGetAll: useGetAllUsers } = useUsers();
@@ -107,7 +107,7 @@ const PresidentList = () => {
     }
   };
 
-  // ✅ RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
+  // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
   if (isLoading || loadingMoniteurs || loadingUsers) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 

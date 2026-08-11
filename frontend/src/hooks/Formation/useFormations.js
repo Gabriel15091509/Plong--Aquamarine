@@ -40,7 +40,7 @@ export const useFormations = () => {
     });
   };
 
-  // ✅ CORRECTION: useGetStats existe bien
+  // CORRECTION: useGetStats existe bien
   const useGetStats = () => {
     return useQuery({
       queryKey: ["formations", "stats"],
@@ -153,7 +153,7 @@ export const useFormations = () => {
     useGetById,
     useGetByAdherent,
     useGetActive,
-    useGetStats, // ✅ Bien retourné
+    useGetStats, // Bien retourné
     useCreate,
     useUpdate,
     useRemove,
