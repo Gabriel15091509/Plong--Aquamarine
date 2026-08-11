@@ -12,13 +12,11 @@ class InscriptionService {
   }
 
   async create(data) {
-    console.log("📝 InscriptionService.create - Data:", data);
     const response = await api.post("/inscriptions", data);
     return response.data;
   }
 
   async update(id, data) {
-    console.log("📝 inscriptionService.update - ID:", id, "Data:", data);
     const response = await api.put(`/inscriptions/${id}`, data);
     return response.data;
   }

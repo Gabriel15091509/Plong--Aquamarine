@@ -311,7 +311,7 @@ const CertificatForm = () => {
       }
       navigate("/certificats");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement du certificat médical :", error);
     } finally {
       setLoading(false);
     }

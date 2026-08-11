@@ -126,7 +126,7 @@ const FormationList = () => {
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression de la formation :", error);
     } finally {
       setActionLoading(null);
     }
@@ -147,7 +147,7 @@ const FormationList = () => {
       setCompleteBrevet("");
       setCompleteFfesm("");
     } catch (error) {
-      console.error("Complete error:", error);
+      console.error("Échec de la clôture de la formation :", error);
     } finally {
       setActionLoading(null);
     }
@@ -162,7 +162,7 @@ const FormationList = () => {
       setAjournerModal(null);
       setMotifAjournement("");
     } catch (error) {
-      console.error("Ajourner error:", error);
+      console.error("Échec de l'ajournement de la formation :", error);
     } finally {
       setActionLoading(null);
     }

@@ -179,7 +179,7 @@ const MoniteurForm = () => {
       }
       navigate("/moniteurs");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement du moniteur :", error);
     } finally {
       setLoading(false);
     }

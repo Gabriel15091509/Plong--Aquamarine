@@ -103,7 +103,7 @@ const PresidentList = () => {
       refetch();
       setDeleteModal(null);
     } catch (err) {
-      console.error("Delete error:", err);
+      console.error("Échec de la suppression du président :", err);
     }
   };
 

@@ -164,7 +164,7 @@ const PresidentForm = () => {
       }
       navigate("/presidents");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement du président :", error);
     } finally {
       setLoading(false);
     }

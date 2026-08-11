@@ -71,7 +71,7 @@ const SpecialiteFormationList = () => {
       await remove.mutateAsync(id);
       setDeleteModal(null);
     } catch (err) {
-      console.error("Delete error:", err);
+      console.error("Échec de la suppression de la spécialité :", err);
     } finally {
       setActionLoading(null);
     }

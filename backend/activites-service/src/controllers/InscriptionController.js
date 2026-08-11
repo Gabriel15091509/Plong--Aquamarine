@@ -21,7 +21,7 @@ class InscriptionController extends BaseController {
         count: results?.length || 0,
       });
     } catch (error) {
-      console.error("Erreur getAll:", error);
+      console.error("Erreur lors de la récupération des inscriptions :", error);
       res.status(500).json({
         success: false,
         message: error.message,
@@ -50,7 +50,7 @@ class InscriptionController extends BaseController {
         data: result,
       });
     } catch (error) {
-      console.error("Erreur getById:", error);
+      console.error(`Erreur lors de la récupération de l'inscription ${req.params.id} :`, error);
       next(withStatus(error, 500));
     }
   }
@@ -143,7 +143,7 @@ class InscriptionController extends BaseController {
         message: "Inscription supprimée avec succès",
       });
     } catch (error) {
-      console.error("Erreur delete:", error);
+      console.error(`Erreur lors de la suppression de l'inscription ${req.params.id} :`, error);
       next(withStatus(error, 400));
     }
   }

@@ -126,7 +126,7 @@ const CertificatList = () => {
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression du certificat médical :", error);
     }
   };
 
@@ -135,7 +135,7 @@ const CertificatList = () => {
       await valider.mutateAsync({ id, decision: "Validé" });
       refetch();
     } catch (error) {
-      console.error("Validation error:", error);
+      console.error("Échec de la validation du certificat médical :", error);
     }
   };
 
@@ -147,7 +147,7 @@ const CertificatList = () => {
       setRejectModal(null);
       setRejectMotif("");
     } catch (error) {
-      console.error("Rejection error:", error);
+      console.error("Échec du rejet du certificat médical :", error);
     }
   };
 

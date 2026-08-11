@@ -110,7 +110,7 @@ const SpecialiteFormationForm = () => {
       }
       navigate("/specialites-formation");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement de la spécialité :", error);
     } finally {
       submittingRef.current = false;
       setLoading(false);

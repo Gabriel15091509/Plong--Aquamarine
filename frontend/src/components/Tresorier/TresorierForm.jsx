@@ -124,7 +124,7 @@ const TresorierForm = () => {
       }
       navigate("/tresoriers");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement du trésorier :", error);
     } finally {
       setLoading(false);
     }

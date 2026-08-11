@@ -164,7 +164,7 @@ const MaterielForm = () => {
       }
       navigate("/materiels");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement du matériel :", error);
       toast.error(
         error.response?.data?.message || "Erreur lors de l'enregistrement",
       );

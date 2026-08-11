@@ -176,7 +176,7 @@ const AdherentDetails = () => {
       await remove.mutateAsync(id);
       navigate("/adherents");
     } catch (error) {
-      console.error("Delete error:", error); // J'ai ajouté le log pour debug
+      console.error("Échec de la suppression de l'adhérent :", error);
     }
   };
 

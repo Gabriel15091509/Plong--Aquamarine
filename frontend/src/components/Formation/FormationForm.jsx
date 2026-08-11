@@ -135,7 +135,7 @@ const FormationForm = () => {
       }
       navigate("/formations");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement de la formation :", error);
     } finally {
       submittingRef.current = false;
       setLoading(false);

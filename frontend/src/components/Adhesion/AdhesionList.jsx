@@ -121,7 +121,7 @@ const AdhesionList = () => {
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression de l'adhésion :", error);
     }
   };
 
@@ -130,7 +130,7 @@ const AdhesionList = () => {
       await valider.mutateAsync({ id, decision: "Validé" });
       refetch();
     } catch (error) {
-      console.error("Validation error:", error);
+      console.error("Échec de la validation de l'adhésion :", error);
     }
   };
 
@@ -142,7 +142,7 @@ const AdhesionList = () => {
       setRejectModal(null);
       setRejectMotif("");
     } catch (error) {
-      console.error("Rejection error:", error);
+      console.error("Échec du rejet de l'adhésion :", error);
     }
   };
 

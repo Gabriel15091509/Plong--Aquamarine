@@ -95,7 +95,7 @@ const IncidentForm = () => {
       }
       navigate("/incidents");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement de l'incident :", error);
     } finally {
       setLoading(false);
     }

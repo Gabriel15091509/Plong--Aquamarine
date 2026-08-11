@@ -234,15 +234,27 @@ const AdhesionForm = () => {
             const autoFilled = autoFilledFieldsRef.current;
             setFormData((prev) => {
               const next = { ...prev };
-              if (!prev.num_licence_ffesm && !touched.num_licence_ffesm && resultat.extraction.num_licence_ffesm) {
+              if (
+                !prev.num_licence_ffesm &&
+                !touched.num_licence_ffesm &&
+                resultat.extraction.num_licence_ffesm
+              ) {
                 next.num_licence_ffesm = resultat.extraction.num_licence_ffesm;
                 autoFilled.num_licence_ffesm = true;
               }
-              if (!prev.date_debut && !touched.date_debut && resultat.extraction.date_debut) {
+              if (
+                !prev.date_debut &&
+                !touched.date_debut &&
+                resultat.extraction.date_debut
+              ) {
                 next.date_debut = resultat.extraction.date_debut;
                 autoFilled.date_debut = true;
               }
-              if (!prev.date_fin && !touched.date_fin && resultat.extraction.date_fin) {
+              if (
+                !prev.date_fin &&
+                !touched.date_fin &&
+                resultat.extraction.date_fin
+              ) {
                 next.date_fin = resultat.extraction.date_fin;
                 autoFilled.date_fin = true;
               }
@@ -305,7 +317,7 @@ const AdhesionForm = () => {
       }
       navigate("/adhesions");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement de l'adhésion :", error);
     } finally {
       submittingRef.current = false;
       setLoading(false);
@@ -369,11 +381,8 @@ const AdhesionForm = () => {
           >
             <FiAlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-amber-700 dark:text-amber-400">
-              Votre document sera visible par le bureau avec le statut
-              <span className="font-medium"> « En attente »</span>. Il ne
-              sera pris en compte par le système (dossier complet, éligibilité
-              aux sorties, etc.) qu'une fois validé par le président ou le
-              trésorier.
+              Votre document sera traité de manière automatique en quelques
+              minutes.
             </p>
           </motion.div>
         )}
@@ -502,9 +511,7 @@ const AdhesionForm = () => {
                 placeholder="0.00"
               />
               {errors.montant && (
-                <p className="mt-1.5 text-sm text-red-500">
-                  {errors.montant}
-                </p>
+                <p className="mt-1.5 text-sm text-red-500">{errors.montant}</p>
               )}
             </motion.div>
           )}
@@ -554,8 +561,9 @@ const AdhesionForm = () => {
                   placeholder={formData.montant || "0.00"}
                 />
                 <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                  Laisser vide pour un paiement intégral. Si inférieur au montant, le solde restera
-                  à régler ultérieurement (statut "Partiel").
+                  Laisser vide pour un paiement intégral. Si inférieur au
+                  montant, le solde restera à régler ultérieurement (statut
+                  "Partiel").
                 </p>
               </motion.div>
 
@@ -586,8 +594,9 @@ const AdhesionForm = () => {
           {!isClub && (
             <motion.div {...fadeInUp} className="md:col-span-2">
               <p className="text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 rounded-lg px-4 py-2.5 border border-gray-200 dark:border-gray-700">
-                Ce type d'adhésion n'a pas de tarif ni de paiement à saisir : seule
-                l'adhésion Club fait l'objet d'un règlement dans l'application.
+                Ce type d'adhésion n'a pas de tarif ni de paiement à saisir :
+                seule l'adhésion Club fait l'objet d'un règlement dans
+                l'application.
               </p>
             </motion.div>
           )}
@@ -714,8 +723,8 @@ const AdhesionForm = () => {
                     ) : (
                       <div>
                         <p className="flex items-center gap-1.5 font-medium">
-                          <FiAlertTriangle className="w-4 h-4 flex-shrink-0" />
-                          À vérifier avant d&apos;enregistrer :
+                          <FiAlertTriangle className="w-4 h-4 flex-shrink-0" />À
+                          vérifier avant d&apos;enregistrer :
                         </p>
                         <ul className="mt-1 ml-5 list-disc space-y-0.5">
                           {photoAnalysis.avertissements.map((message) => (
@@ -723,7 +732,9 @@ const AdhesionForm = () => {
                           ))}
                         </ul>
                         <p className="mt-1.5 text-xs opacity-80">
-                          Vérification automatique indicative (lecture par OCR) — vous pouvez enregistrer quand même si le document est correct.
+                          Vérification automatique indicative (lecture par OCR)
+                          — vous pouvez enregistrer quand même si le document
+                          est correct.
                         </p>
                       </div>
                     )}

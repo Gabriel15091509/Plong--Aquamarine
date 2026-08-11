@@ -258,7 +258,7 @@ const PaiementForm = () => {
       }
       navigate("/paiements");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement du paiement :", error);
     } finally {
       submittingRef.current = false;
       setLoading(false);
