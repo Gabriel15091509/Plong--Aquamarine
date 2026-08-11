@@ -39,8 +39,8 @@ const staggerContainer = {
   animate: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.08,
-      delayChildren: 0.2,
+      staggerChildren: 0.04,
+      delayChildren: 0.05,
     },
   },
 };
@@ -146,7 +146,7 @@ const CertificatDetails = () => {
   if (!certificat) {
     return (
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         className="text-center py-16"
       >
@@ -192,7 +192,7 @@ const CertificatDetails = () => {
     >
       {/* En-tête */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
@@ -279,7 +279,7 @@ const CertificatDetails = () => {
 
       {/* Carte récapitulative - Statut */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${
           isExpired
@@ -481,7 +481,7 @@ const CertificatDetails = () => {
       {showRejectModal && (
         <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
           >

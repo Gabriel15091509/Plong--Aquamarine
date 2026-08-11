@@ -42,9 +42,9 @@ import { STATUT_SORTIE } from "../../utils/constants";
 
 // Animations
 const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
+  initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4, ease: "easeOut" },
+  transition: { duration: 0.25, ease: "easeOut" },
 };
 
 const staggerContainer = {
@@ -52,16 +52,16 @@ const staggerContainer = {
   animate: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.06,
-      delayChildren: 0.2,
+      staggerChildren: 0.03,
+      delayChildren: 0.05,
     },
   },
 };
 
 const scaleIn = {
-  initial: { opacity: 0, scale: 0.95 },
+  initial: { opacity: 0, scale: 0.98 },
   animate: { opacity: 1, scale: 1 },
-  transition: { duration: 0.4, ease: "easeOut" },
+  transition: { duration: 0.25, ease: "easeOut" },
 };
 
 const SortieDetails = () => {
@@ -204,7 +204,7 @@ const SortieDetails = () => {
     >
       {/* En-tête */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
@@ -293,7 +293,7 @@ const SortieDetails = () => {
       {/* Alerte : la date est passée mais le statut n'a pas été mis à jour */}
       {needsStatusUpdate && canManageSortie && (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4"
         >
@@ -326,7 +326,7 @@ const SortieDetails = () => {
 
       {/* Carte récapitulative */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${getStatutColor(sortie.statut)}`}
       >
