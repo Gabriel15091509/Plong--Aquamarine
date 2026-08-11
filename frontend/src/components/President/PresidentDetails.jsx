@@ -69,7 +69,7 @@ const PresidentDetails = () => {
       await remove.mutateAsync(id);
       navigate("/presidents");
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression du président :", error);
     }
   };
 

@@ -151,7 +151,7 @@ const PlongeeForm = () => {
       }
       navigate("/plongees");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement de la plongée :", error);
     } finally {
       setLoading(false);
     }

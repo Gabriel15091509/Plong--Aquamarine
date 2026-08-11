@@ -73,7 +73,7 @@ const PaiementDetails = () => {
       await remove.mutateAsync(id);
       navigate("/paiements");
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression du paiement :", error);
     }
   };
 

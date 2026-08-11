@@ -73,7 +73,7 @@ class InscriptionService extends BaseService {
         : await this.inscriptionRepository.findAll();
       return await withAdherent(results, { authHeader });
     } catch (error) {
-      console.error("Erreur getAll:", error);
+      console.error("Erreur lors de la récupération des inscriptions :", error);
       return [];
     }
   }
@@ -86,7 +86,7 @@ class InscriptionService extends BaseService {
       }
       return inscription;
     } catch (error) {
-      console.error("Erreur getById:", error);
+      console.error(`Erreur lors de la récupération de l'inscription ${id} :`, error);
       return null;
     }
   }
@@ -111,7 +111,7 @@ class InscriptionService extends BaseService {
 
       return true;
     } catch (error) {
-      console.error("Erreur delete:", error);
+      console.error(`Erreur lors de la suppression de l'inscription ${id} :`, error);
       throw error;
     }
   }
@@ -250,7 +250,7 @@ class InscriptionService extends BaseService {
       }
       return await this.inscriptionRepository.getInscriptionStats();
     } catch (error) {
-      console.error("Erreur getInscriptionStats:", error);
+      console.error("Erreur lors du calcul des statistiques d'inscription :", error);
       return {
         total: 0,
         enAttente: 0,

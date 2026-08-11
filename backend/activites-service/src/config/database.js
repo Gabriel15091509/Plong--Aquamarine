@@ -37,10 +37,10 @@ const sequelize = new Sequelize(
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
-    console.log("✅ [activites-service] Database connection established.");
+    console.log("✅ [activites-service] Connexion à la base de données établie.");
     return true;
   } catch (error) {
-    console.error("❌ [activites-service] Unable to connect to the database:", error);
+    console.error("❌ [activites-service] Impossible de se connecter à la base de données :", error);
     return false;
   }
 };

@@ -73,7 +73,7 @@ const AdherentList = () => {
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression de l'adhérent :", error);
     }
   };
 

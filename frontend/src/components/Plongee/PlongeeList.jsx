@@ -120,7 +120,7 @@ const PlongeeList = () => {
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression de la plongée :", error);
     } finally {
       setLoading(false);
     }
@@ -132,7 +132,7 @@ const PlongeeList = () => {
       await validate.mutateAsync(id);
       refetch();
     } catch (error) {
-      console.error("Validate error:", error);
+      console.error("Échec de la validation de la plongée :", error);
     } finally {
       setLoading(false);
     }

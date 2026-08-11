@@ -124,7 +124,7 @@ class AuthController {
       await user.update({ last_login: new Date() });
       res.json({ success: true, data: buildAuthResponse(user) });
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Erreur lors de la connexion :", error);
       res
         .status(500)
         .json({ success: false, message: "Erreur lors de la connexion" });
@@ -186,7 +186,7 @@ class AuthController {
 
       res.json({ success: true, data: buildAuthResponse(user) });
     } catch (error) {
-      console.error("Verify OTP error:", error);
+      console.error("Erreur lors de la vérification du code OTP :", error);
       res
         .status(500)
         .json({ success: false, message: "Erreur lors de la vérification" });
@@ -259,7 +259,7 @@ class AuthController {
         message: "Mot de passe changé avec succès",
       });
     } catch (error) {
-      console.error("Change password error:", error);
+      console.error("Erreur lors du changement de mot de passe :", error);
       res
         .status(500)
         .json({

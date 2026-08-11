@@ -97,7 +97,7 @@ const ReparationForm = () => {
       }
       navigate("/reparations");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement de la réparation :", error);
     } finally {
       setLoading(false);
     }

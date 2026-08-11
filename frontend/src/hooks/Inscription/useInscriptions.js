@@ -64,16 +64,13 @@ export const useInscriptions = () => {
     });
   };
 
-  // ✅ useUpdate avec logs
   const useUpdate = () => {
     return useMutation({
       mutationFn: async ({ id, data }) => {
-        console.log("📝 useUpdate - ID:", id, "Data:", data);
         const response = await inscriptionService.update(id, data);
         return response;
       },
       onSuccess: (data) => {
-        console.log("✅ Update success:", data);
         queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
         queryClient.invalidateQueries({
           queryKey: ["inscription", data?.data?.id_inscription],
@@ -82,7 +79,7 @@ export const useInscriptions = () => {
         queryClient.invalidateQueries({ queryKey: ["inscriptions", "capacity"] });
       },
       onError: (error) => {
-        console.error("❌ Update error:", error);
+        console.error("Échec de la mise à jour de l'inscription :", error);
       },
     });
   };

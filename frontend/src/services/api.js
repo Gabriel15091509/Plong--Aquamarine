@@ -33,15 +33,15 @@ export const connectWebSocket = () => {
   socket = new WebSocket(`ws://${window.location.host}?token=${token}`);
 
   socket.onopen = () => {
-    console.log("WebSocket connected");
+    console.log("Notifications temps réel : connexion WebSocket établie.");
   };
 
   socket.onerror = (error) => {
-    console.error("WebSocket error:", error);
+    console.error("Notifications temps réel : erreur de connexion WebSocket.", error);
   };
 
   socket.onclose = () => {
-    console.log("WebSocket disconnected");
+    console.log("Notifications temps réel : connexion WebSocket fermée.");
   };
 
   return socket;

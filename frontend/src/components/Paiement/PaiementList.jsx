@@ -102,7 +102,7 @@ const PaiementList = () => {
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression du paiement :", error);
     } finally {
       setLoading(false);
     }
@@ -114,7 +114,7 @@ const PaiementList = () => {
       await process.mutateAsync(id);
       refetch();
     } catch (error) {
-      console.error("Process error:", error);
+      console.error("Échec du traitement du paiement :", error);
     } finally {
       setLoading(false);
     }
@@ -128,7 +128,7 @@ const PaiementList = () => {
       await cancel.mutateAsync(id);
       refetch();
     } catch (error) {
-      console.error("Cancel error:", error);
+      console.error("Échec de l'annulation du paiement :", error);
     } finally {
       setLoading(false);
     }

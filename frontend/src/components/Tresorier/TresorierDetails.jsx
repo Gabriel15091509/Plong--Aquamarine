@@ -48,7 +48,7 @@ const TresorierDetails = () => {
       await remove.mutateAsync(id);
       navigate("/tresoriers");
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression du trésorier :", error);
     }
   };
 

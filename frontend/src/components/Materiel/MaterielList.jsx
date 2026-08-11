@@ -77,7 +77,7 @@ const MaterielList = () => {
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression du matériel :", error);
     } finally {
       setLoading(false);
     }

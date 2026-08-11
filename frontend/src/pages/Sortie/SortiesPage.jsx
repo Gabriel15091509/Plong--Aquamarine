@@ -139,7 +139,7 @@ const SortiesPage = () => {
       refetch();
       setDeleteModal(null);
     } catch (error) {
-      console.error("Delete error:", error);
+      console.error("Échec de la suppression de la sortie :", error);
     } finally {
       setLoading(false);
     }
@@ -167,7 +167,7 @@ const SortiesPage = () => {
       toast.error(
         error.response?.data?.message || "Erreur lors de l'inscription",
       );
-      console.error("Inscription error:", error);
+      console.error("Échec de l'inscription à la sortie :", error);
     } finally {
       setLoading(false);
     }

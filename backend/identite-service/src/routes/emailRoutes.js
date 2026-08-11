@@ -50,7 +50,7 @@ router.post("/send-welcome", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("❌ Erreur:", error.message);
+    console.error("❌ Erreur lors de l'envoi de l'email de bienvenue :", error.message);
     res.status(500).json({
       success: false,
       message: "❌ " + error.message,

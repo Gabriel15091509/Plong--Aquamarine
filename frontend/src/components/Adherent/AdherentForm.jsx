@@ -184,7 +184,7 @@ const AdherentForm = () => {
       }
       navigate("/adherents");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement de l'adhérent :", error);
       toast.error(
         error.response?.data?.message || "Erreur lors de l'enregistrement",
       );

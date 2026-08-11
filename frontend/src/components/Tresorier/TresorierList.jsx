@@ -75,7 +75,7 @@ const TresorierList = () => {
       refetch();
       setDeleteModal(null);
     } catch (err) {
-      console.error("Delete error:", err);
+      console.error("Échec de la suppression du trésorier :", err);
     }
   };
 

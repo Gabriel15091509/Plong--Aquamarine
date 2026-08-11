@@ -185,7 +185,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
       }
       navigate("/inscriptions");
     } catch (error) {
-      console.error("❌ Erreur complète:", error);
+      console.error("Échec de l'enregistrement de l'inscription :", error);
       toast.error(
         error.response?.data?.message || "Erreur lors de l'enregistrement",
       );

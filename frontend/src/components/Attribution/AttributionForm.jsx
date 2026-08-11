@@ -115,7 +115,7 @@ const AttributionForm = () => {
       }
       navigate("/attributions");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement de l'attribution :", error);
     } finally {
       setLoading(false);
     }

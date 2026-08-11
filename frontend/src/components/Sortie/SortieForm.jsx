@@ -143,7 +143,7 @@ const SortieForm = () => {
       }
       navigate("/sorties");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Échec de l'enregistrement de la sortie :", error);
     } finally {
       setLoading(false);
     }
