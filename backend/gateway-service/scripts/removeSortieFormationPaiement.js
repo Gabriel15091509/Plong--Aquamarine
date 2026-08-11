@@ -7,7 +7,7 @@ const { sequelize } = require('../src/config/database');
 const removeSortieFormationPaiement = async () => {
   try {
     await sequelize.authenticate();
-    console.log('✅ Connexion établie');
+    console.log('Connexion établie');
 
     const drops = [
       { table: 'sorties', column: 'tarif_adherent' },
@@ -24,13 +24,13 @@ const removeSortieFormationPaiement = async () => {
       await sequelize.query(`
         ALTER TABLE "${table}" DROP COLUMN IF EXISTS "${column}";
       `);
-      console.log(`✅ ${table}.${column} supprimée`);
+      console.log(`${table}.${column} supprimée`);
     }
 
-    console.log('\n✅ Colonnes de tarif/paiement Sortie & Formation supprimées !');
+    console.log('\nColonnes de tarif/paiement Sortie & Formation supprimées !');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Erreur:', error);
+    console.error('Erreur:', error);
     process.exit(1);
   }
 };

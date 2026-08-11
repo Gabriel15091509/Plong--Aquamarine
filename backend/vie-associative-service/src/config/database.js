@@ -38,10 +38,10 @@ const sequelize = new Sequelize(
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
-    console.log("✅ [vie-associative-service] Connexion à la base de données établie.");
+    console.log("[vie-associative-service] Connexion à la base de données établie.");
     return true;
   } catch (error) {
-    console.error("❌ [vie-associative-service] Impossible de se connecter à la base de données :", error);
+    console.error("[vie-associative-service] Impossible de se connecter à la base de données :", error);
     return false;
   }
 };

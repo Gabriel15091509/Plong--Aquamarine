@@ -106,7 +106,7 @@ const AdhesionForm = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSelfSubmission, adherentsData]);
 
-  // ✅ En création, dès qu'on sélectionne l'adhérent, on reprend son n° de
+  // En création, dès qu'on sélectionne l'adhérent, on reprend son n° de
   // licence FFESM depuis sa fiche Adherent (source de vérité, plutôt que la
   // dernière adhésion FFESM en date qui n'est pas toujours fiable/à jour).
   // En édition, la valeur vient déjà de l'adhésion en cours de modification.

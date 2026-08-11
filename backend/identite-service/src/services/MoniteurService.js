@@ -13,7 +13,7 @@ class MoniteurService extends BaseService {
     this.userService = new UserService();
   }
 
-  // ✅ Si aucun user_id n'est fourni, réutilise un compte existant pour cet
+  // Si aucun user_id n'est fourni, réutilise un compte existant pour cet
   // email (ex: créé au préalable via "Gestion des utilisateurs") plutôt que
   // d'échouer avec "email déjà utilisé", sinon crée le compte.
   async create(data) {

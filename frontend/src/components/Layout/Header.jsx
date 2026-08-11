@@ -168,12 +168,12 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
   // Obtenir le label du rôle
   const getRoleLabel = (role) => {
     const roles = {
-      president: "👑 Président",
-      moniteur: "🏊 Moniteur",
-      tresorier: "💰 Trésorier",
-      adherent: "🤿 Adhérent",
+      president: "Président",
+      moniteur: "Moniteur",
+      tresorier: "Trésorier",
+      adherent: "Adhérent",
     };
-    return roles[role] || "👤 Utilisateur";
+    return roles[role] || "Utilisateur";
   };
 
   const today = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
@@ -419,7 +419,7 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                     </div>
                   </div>
 
-                  {/* ✅ Menu profil avec tous les liens */}
+                  {/* Menu profil avec tous les liens */}
                   <div className="p-2">
                     <Link
                       to="/profile"
@@ -441,7 +441,7 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                       </span>
                     </Link>
 
-                    {/* ✅ Lien Créer un utilisateur (visible uniquement pour le DT) */}
+                    {/* Lien Créer un utilisateur (visible uniquement pour le DT) */}
                     {hasPermission("manage_users") && (
                       <Link
                         to="/users/create"

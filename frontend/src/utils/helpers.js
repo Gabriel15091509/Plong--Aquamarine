@@ -56,7 +56,7 @@ export const formatDateTime = (date) => {
   }
 };
 
-// ✅ NOUVEAU - Formatage de l'heure uniquement
+// NOUVEAU - Formatage de l'heure uniquement
 export const formatTime = (date) => {
   if (!date) return "-";
   try {
@@ -68,7 +68,7 @@ export const formatTime = (date) => {
   }
 };
 
-// ✅ NOUVEAU - Formatage pour les inputs date (YYYY-MM-DD)
+// NOUVEAU - Formatage pour les inputs date (YYYY-MM-DD)
 export const formatDateForInput = (date) => {
   if (!date) return "";
   try {
@@ -82,7 +82,7 @@ export const formatDateForInput = (date) => {
   }
 };
 
-// ✅ NOUVEAU - Formatage pour les inputs datetime-local
+// NOUVEAU - Formatage pour les inputs datetime-local
 export const formatDateTimeForInput = (date) => {
   if (!date) return "";
   try {
@@ -129,7 +129,7 @@ export const generateColor = (str) => {
   return `hsl(${hue}, 70%, 50%)`;
 };
 
-// ✅ NOUVEAU - Vérifier si une date est aujourd'hui
+// NOUVEAU - Vérifier si une date est aujourd'hui
 export const isToday = (date) => {
   if (!date) return false;
   try {
@@ -145,7 +145,7 @@ export const isToday = (date) => {
   }
 };
 
-// ✅ NOUVEAU - Vérifier si une date est passée
+// NOUVEAU - Vérifier si une date est passée
 export const isPast = (date) => {
   if (!date) return false;
   try {
@@ -156,7 +156,7 @@ export const isPast = (date) => {
   }
 };
 
-// ✅ NOUVEAU - Vérifier si une date est future
+// NOUVEAU - Vérifier si une date est future
 export const isFuture = (date) => {
   if (!date) return false;
   try {
@@ -167,7 +167,7 @@ export const isFuture = (date) => {
   }
 };
 
-// ✅ NOUVEAU - Formater une durée en minutes/secondes
+// NOUVEAU - Formater une durée en minutes/secondes
 export const formatDuration = (minutes) => {
   if (!minutes && minutes !== 0) return "-";
   const hours = Math.floor(minutes / 60);
@@ -178,7 +178,7 @@ export const formatDuration = (minutes) => {
   return `${mins}min`;
 };
 
-// ✅ NOUVEAU - Formater un numéro de téléphone
+// NOUVEAU - Formater un numéro de téléphone
 export const formatPhoneNumber = (phone) => {
   if (!phone) return "-";
   const cleaned = phone.replace(/\s/g, "");

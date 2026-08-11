@@ -235,7 +235,7 @@ class PalanqueeService extends BaseService {
     });
   }
 
-  // ✅ Calcule le nombre max de plongeurs pour un groupe encadré par 1 moniteur :
+  // Calcule le nombre max de plongeurs pour un groupe encadré par 1 moniteur :
   // 1/4 si un membre est Débutant ou Niveau 1, 1/6 sinon (règle FFESSM simplifiée)
   computeMaxRatio(niveaux) {
     const aUnNiveauLimitant = niveaux.some((n) => NIVEAUX_LIMITANTS.includes(n));
@@ -338,7 +338,7 @@ class PalanqueeService extends BaseService {
     return palanquee;
   }
 
-  // ✅ Étapes 3-4 : saisie des données de plongée + génération/màj du carnet
+  // Étapes 3-4 : saisie des données de plongée + génération/màj du carnet
   // individuel de chaque membre de la palanquée (idempotent)
   async enregistrerDonneesPlongee(id_palanquee, data, user = null) {
     this.assertStaff(user);
@@ -409,7 +409,7 @@ class PalanqueeService extends BaseService {
     return { palanquee, plongees };
   }
 
-  // ✅ Étape 5 : retour du matériel attribué à la palanquée (création auto
+  // Étape 5 : retour du matériel attribué à la palanquée (création auto
   // d'une demande de réparation si détérioration signalée)
   async retournerMateriel(id_palanquee, retours = [], user = null, authHeader = null) {
     this.assertStaff(user);

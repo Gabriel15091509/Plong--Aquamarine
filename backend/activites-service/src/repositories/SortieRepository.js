@@ -30,7 +30,7 @@ class SortieRepository extends BaseRepository {
     });
   }
 
-  // ✅ Légère (pas d'infos adhérent) : utilisée pour calculer le nombre de
+  // Légère (pas d'infos adhérent) : utilisée pour calculer le nombre de
   // places restantes sans exposer les coordonnées des inscrits à toute
   // personne consultant la liste des sorties.
   async findAllWithInscriptionCounts() {

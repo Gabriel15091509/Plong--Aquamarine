@@ -38,7 +38,7 @@ export const useInscriptions = () => {
     });
   };
 
-  // ✅ AJOUTER useGetStats
+  // AJOUTER useGetStats
   const useGetStats = () => {
     return useQuery({
       queryKey: ["inscriptions", "stats"],
@@ -195,7 +195,7 @@ export const useInscriptions = () => {
     useGetAll,
     useGetById,
     useGetByAdherent,
-    useGetStats, // ✅ AJOUTÉ
+    useGetStats, // AJOUTÉ
     useCreate,
     useUpdate,
     useRemove,

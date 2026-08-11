@@ -2,7 +2,7 @@ const { app, initializeApp } = require("./src/app");
 const logger = require("./src/utils/logger");
 const os = require("os");
 
-// ✅ Port par défaut pour le backend
+// Port par défaut pour le backend
 const DEFAULT_PORT = 5000;
 
 // Fonction pour trouver un port disponible
@@ -46,25 +46,23 @@ const startServer = async () => {
     const PORT = await findAvailablePort(DEFAULT_PORT);
 
     const server = app.listen(PORT, "0.0.0.0", () => {
-      logger.info(`🚀 Gateway running on http://0.0.0.0:${PORT}`);
-      logger.info(`📱 Mobile access: http://${localIP}:${PORT}`);
-      
-      logger.info(`📊 Health check: http://localhost:${PORT}/health`);
-      logger.info(`📝 API Base: http://localhost:${PORT}/api`);
-      logger.info(`🌍 Environment: ${process.env.NODE_ENV}`);
-      logger.info(``);
-      logger.info(
-        `📱 Sur ton téléphone, utilise : http://${localIP}:${PORT}/api`,
-      );
+      logger.info(`Gateway running on http://0.0.0.0:${PORT}`);
+      logger.info(`Mobile access: http://${localIP}:${PORT}`);
 
-      // ✅ Important pour React : le frontend utilise le port 3000
-      logger.info(`🌐 Frontend React: http://localhost:3000`);
+      logger.info(`Health check: http://localhost:${PORT}/health`);
+      logger.info(`API Base: http://localhost:${PORT}/api`);
+      logger.info(`Environment: ${process.env.NODE_ENV}`);
+      logger.info(``);
+      logger.info(`Sur téléphone : http://${localIP}:${PORT}/api`);
+
+      // Important pour React : le frontend utilise le port 3000
+      logger.info(`Frontend React: http://localhost:3000`);
     });
 
     const shutdown = () => {
-      logger.info("🛑 Shutting down gracefully...");
+      logger.info("Shutting down gracefully...");
       server.close(() => {
-        logger.info("💤 Server closed");
+        logger.info("Server closed");
         process.exit(0);
       });
     };
@@ -72,7 +70,7 @@ const startServer = async () => {
     process.on("SIGTERM", shutdown);
     process.on("SIGINT", shutdown);
   } catch (error) {
-    logger.error("❌ Failed to start server:", error);
+    logger.error("Failed to start server:", error);
     process.exit(1);
   }
 };

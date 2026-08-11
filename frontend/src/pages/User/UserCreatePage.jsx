@@ -12,7 +12,7 @@ import {
 } from "react-icons/fi";
 import ProtectedRoute from "../../components/Common/ProtectedRoute";
 
-// ✅ Chaque rôle a sa propre fiche métier (Adherent, Moniteur, Trésorier,
+// Chaque rôle a sa propre fiche métier (Adherent, Moniteur, Trésorier,
 // Président) avec des champs obligatoires que ce choix ne collecte pas.
 // Chaque page dédiée crée elle-même le compte de connexion en même temps
 // que la fiche, il n'existe donc pas de formulaire générique "nouveau

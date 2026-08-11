@@ -116,7 +116,7 @@ app.use(ErrorHandler.handle);
 const initializeApp = async () => {
   const connected = await testConnection();
   if (!connected) {
-    logger.error("❌ [identite-service] Database connection failed");
+    logger.error("[identite-service] Database connection failed");
     process.exit(1);
   }
 };

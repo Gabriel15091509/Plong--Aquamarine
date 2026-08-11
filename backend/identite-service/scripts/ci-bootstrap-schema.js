@@ -38,11 +38,11 @@ async function bootstrap() {
       `ON DELETE SET NULL ON UPDATE CASCADE`,
   );
 
-  console.log(`✅ [identite-service] schéma "${schema}" recréé pour les tests`);
+  console.log(`[identite-service] schéma "${schema}" recréé pour les tests`);
   await sequelize.close();
 }
 
 bootstrap().catch((err) => {
-  console.error("❌ [identite-service] échec du bootstrap schéma :", err);
+  console.error("[identite-service] échec du bootstrap schéma :", err);
   process.exit(1);
 });

@@ -8,7 +8,7 @@ const { analyserPhotoAdhesion } = require('../utils/adhesionPhotoAnalysis');
 const { readAdhesionDocument } = require('../middlewares/upload');
 const { judgeDocumentCoherence } = require('../utils/groqClient');
 
-// ✅ Les 3 éléments obligatoires de l'adhésion (l'Assurance RC est incluse
+// Les 3 éléments obligatoires de l'adhésion (l'Assurance RC est incluse
 // dans la Licence FFESM mais tracée comme une ligne distincte, comme dans
 // le seed réel). L'Assurance IA est facultative et n'entre pas dans le calcul.
 const TYPES_OBLIGATOIRES = ["Club", "FFESM", "Assurance RC"];
@@ -358,7 +358,7 @@ class AdhesionService extends BaseService {
     return await this.adhesionRepository.getAdhesionStats();
   }
 
-  // ✅ Vérifie que l'adhérent a bien, pour la date donnée, les éléments
+  // Vérifie que l'adhérent a bien, pour la date donnée, les éléments
   // obligatoires payés et couvrant cette date (par défaut : Club, FFESM,
   // Assurance RC). `requiredTypes` permet un dossier allégé pour un niveau
   // Baptême, qui n'est pas encore licencié FFESM ni assuré à l'année.

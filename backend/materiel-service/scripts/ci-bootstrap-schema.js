@@ -8,11 +8,11 @@ async function bootstrap() {
   const schema = process.env.DB_SCHEMA || "materiel";
   await sequelize.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
   await sequelize.sync({ force: true });
-  console.log(`✅ [materiel-service] schéma "${schema}" recréé pour les tests`);
+  console.log(`[materiel-service] schéma "${schema}" recréé pour les tests`);
   await sequelize.close();
 }
 
 bootstrap().catch((err) => {
-  console.error("❌ [materiel-service] échec du bootstrap schéma :", err);
+  console.error("[materiel-service] échec du bootstrap schéma :", err);
   process.exit(1);
 });

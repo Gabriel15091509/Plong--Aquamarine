@@ -8,7 +8,7 @@ const emailCache = new Map();
 
 const createTransporter = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-    console.warn("⚠️ Variables email non configurées");
+    console.warn("Variables email non configurées");
     return null;
   }
 
@@ -28,7 +28,7 @@ const sendEmail = async (params = {}) => {
 
   const cacheKey = `${to}-${subject}`;
   if (emailCache.has(cacheKey)) {
-    console.log(`⛔ EMAIL DÉJÀ ENVOYÉ À ${to} - IGNORÉ !`);
+    console.log(`EMAIL DÉJÀ ENVOYÉ À ${to} - IGNORÉ !`);
     return {
       success: true,
       messageId: `blocked-${Date.now()}`,
@@ -38,14 +38,14 @@ const sendEmail = async (params = {}) => {
     };
   }
 
-  if (!to) throw new Error("❌ Destinataire requis");
-  if (!subject) throw new Error("❌ Sujet requis");
-  if (!html) throw new Error("❌ Contenu HTML requis");
+  if (!to) throw new Error("Destinataire requis");
+  if (!subject) throw new Error("Sujet requis");
+  if (!html) throw new Error("Contenu HTML requis");
 
   emailCache.set(cacheKey, Date.now());
 
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-    console.log("📧 [SIMULATION] Email envoyé à", to);
+    console.log("[SIMULATION] Email envoyé à", to);
     return {
       success: true,
       messageId: `sim-${Date.now()}`,
@@ -83,7 +83,7 @@ const sendEmail = async (params = {}) => {
 
       await transporter.sendMail(mailOptions);
     } catch (error) {
-      console.error("❌ Erreur envoi:", error.message);
+      console.error("Erreur envoi:", error.message);
       emailCache.delete(cacheKey);
     }
   })();
@@ -113,7 +113,7 @@ const buildSimpleEmailHtml = (title, introHtml, rows = []) => `
 </head>
 <body>
   <div class="container">
-    <div class="header"><h1>🌊 Aquanature Plongée</h1></div>
+    <div class="header"><h1>Aquanature Plongée</h1></div>
     <div class="content">
       ${introHtml}
       ${rows

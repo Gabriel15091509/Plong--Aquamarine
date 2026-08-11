@@ -112,7 +112,7 @@ app.use(ErrorHandler.handle);
 const initializeApp = async () => {
   const connected = await testConnection();
   if (!connected) {
-    logger.error("❌ [formation-service] Database connection failed");
+    logger.error("[formation-service] Database connection failed");
     process.exit(1);
   }
 };

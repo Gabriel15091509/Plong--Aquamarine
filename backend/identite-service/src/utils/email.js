@@ -7,7 +7,7 @@ const emailCache = new Map();
 
 const createTransporter = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-    console.warn("⚠️ Variables email non configurées");
+    console.warn("Variables email non configurées");
     return null;
   }
 
@@ -27,7 +27,7 @@ const sendEmail = async (params = {}) => {
 
   const cacheKey = `${to}-${subject}`;
   if (emailCache.has(cacheKey)) {
-    console.log(`⛔ EMAIL DÉJÀ ENVOYÉ À ${to} - IGNORÉ !`);
+    console.log(`EMAIL DÉJÀ ENVOYÉ À ${to} - IGNORÉ !`);
     return {
       success: true,
       messageId: `blocked-${Date.now()}`,
@@ -37,14 +37,14 @@ const sendEmail = async (params = {}) => {
     };
   }
 
-  if (!to) throw new Error("❌ Destinataire requis");
-  if (!subject) throw new Error("❌ Sujet requis");
-  if (!html) throw new Error("❌ Contenu HTML requis");
+  if (!to) throw new Error("Destinataire requis");
+  if (!subject) throw new Error("Sujet requis");
+  if (!html) throw new Error("Contenu HTML requis");
 
   emailCache.set(cacheKey, Date.now());
 
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-    console.log("📧 [SIMULATION] Email envoyé à", to);
+    console.log("[SIMULATION] Email envoyé à", to);
     return {
       success: true,
       messageId: `sim-${Date.now()}`,
@@ -82,7 +82,7 @@ const sendEmail = async (params = {}) => {
 
       await transporter.sendMail(mailOptions);
     } catch (error) {
-      console.error("❌ Erreur envoi:", error.message);
+      console.error("Erreur envoi:", error.message);
       emailCache.delete(cacheKey);
     }
   })();
@@ -135,36 +135,36 @@ const sendWelcomeEmail = async ({ to, user, temporaryPassword, loginUrl }) => {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🌊 Club de Plongée</h1>
+      <h1>Club de Plongée</h1>
       <p>Bienvenue dans l'aventure sous-marine</p>
-      <span class="badge">🌟 Nouveau membre</span>
+      <span class="badge">Nouveau membre</span>
     </div>
     <div class="content">
       <div class="greeting">Bonjour <span>${name}</span>,</div>
       <p class="sub-greeting">Votre compte a été créé avec succès. Voici vos identifiants :</p>
 
       <div class="info-card">
-        <div class="label">📧 Email de connexion</div>
+        <div class="label">Email de connexion</div>
         <div class="value">${email}</div>
       </div>
 
       <div class="info-card">
-        <div class="label">👤 Rôle</div>
+        <div class="label">Rôle</div>
         <div class="value">${role}</div>
       </div>
 
       <div class="password-box">
-        <div style="font-size:14px;color:#92400e;font-weight:600;">🔑 Mot de passe temporaire</div>
+        <div style="font-size:14px;color:#92400e;font-weight:600;">Mot de passe temporaire</div>
         <div class="pwd">${temporaryPassword}</div>
-        <div style="font-size:12px;color:#92400e;opacity:0.7;margin-top:8px;">📋 Copiez ce mot de passe pour vous connecter</div>
+        <div style="font-size:12px;color:#92400e;opacity:0.7;margin-top:8px;">Copiez ce mot de passe pour vous connecter</div>
       </div>
 
       <div class="warning">
-        <p>⚠️ <strong>Important :</strong> Changez votre mot de passe lors de votre première connexion.</p>
+        <p><strong>Important :</strong> Changez votre mot de passe lors de votre première connexion.</p>
       </div>
 
       <div style="text-align:center;margin:24px 0;">
-        <a href="${loginLink}" class="btn">🔐 Se connecter</a>
+        <a href="${loginLink}" class="btn">Se connecter</a>
       </div>
     </div>
     <div class="footer">
@@ -180,20 +180,20 @@ Bonjour ${name},
 
 Bienvenue au Club de Plongée ! Votre compte a été créé avec succès.
 
-📧 Email: ${email}
-👤 Rôle: ${role}
-🔑 Mot de passe temporaire: ${temporaryPassword}
+Email: ${email}
+Rôle: ${role}
+Mot de passe temporaire: ${temporaryPassword}
 
-⚠️ Important: Changez votre mot de passe à la première connexion.
+Important: Changez votre mot de passe à la première connexion.
 
-🔐 Connectez-vous: ${loginLink}
+Connectez-vous: ${loginLink}
 
-À bientôt ! 🌊
+À bientôt !
   `;
 
   const result = await sendEmail({
     to,
-    subject: "🌊 Bienvenue au Club de Plongée !",
+    subject: "Bienvenue au Club de Plongée !",
     html: htmlContent,
     text: textContent,
   });
@@ -227,7 +227,7 @@ const sendCommunicationEmail = async ({ to, adherentName, subject, message }) =>
 </head>
 <body>
   <div class="container">
-    <div class="header"><h1>🌊 Club de Plongée</h1></div>
+    <div class="header"><h1>Club de Plongée</h1></div>
     <div class="content">
       <p>Bonjour ${adherentName},</p>
       <p>${message}</p>
@@ -269,13 +269,13 @@ const sendOtpEmail = async ({ to, name, code }) => {
 </head>
 <body>
   <div class="container">
-    <div class="header"><h1>🔐 Code de connexion</h1></div>
+    <div class="header"><h1>Code de connexion</h1></div>
     <div class="content">
       <p>Bonjour ${name},</p>
       <p style="margin-top:8px;">Voici votre code à usage unique pour finaliser votre connexion :</p>
       <div class="code">${code}</div>
       <p style="color:#718096;font-size:13px;">Valable 5 minutes — demandé le ${now}</p>
-      <p class="warning">⚠️ Si vous n'êtes pas à l'origine de cette connexion, changez votre mot de passe immédiatement.</p>
+      <p class="warning">Si vous n'êtes pas à l'origine de cette connexion, changez votre mot de passe immédiatement.</p>
     </div>
     <div class="footer"><p>© ${new Date().getFullYear()} Club de Plongée</p></div>
   </div>

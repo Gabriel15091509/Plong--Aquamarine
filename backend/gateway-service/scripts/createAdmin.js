@@ -2,9 +2,9 @@ const { sequelize, User } = require("../src/models");
 
 const createAdmin = async () => {
   try {
-    // ✅ Utiliser sequelize directement depuis le modèle
+    // Utiliser sequelize directement depuis le modèle
     await sequelize.authenticate();
-    console.log("✅ Database connection established");
+    console.log("Database connection established");
 
     // Vérifier si l'admin existe déjà
     const existingAdmin = await User.findOne({
@@ -12,9 +12,9 @@ const createAdmin = async () => {
     });
 
     if (existingAdmin) {
-      console.log("✅ Admin user already exists");
-      console.log("📧 Email: admin@plongee.com");
-      console.log("🔑 Password: admin123");
+      console.log("Admin user already exists");
+      console.log("Email: admin@plongee.com");
+      console.log("Password: admin123");
       process.exit(0);
     }
 
@@ -27,12 +27,12 @@ const createAdmin = async () => {
       active: true,
     });
 
-    console.log("✅ Admin user created successfully");
-    console.log("📧 Email: admin@plongee.com");
-    console.log("🔑 Password: admin123");
+    console.log("Admin user created successfully");
+    console.log("Email: admin@plongee.com");
+    console.log("Password: admin123");
     process.exit(0);
   } catch (error) {
-    console.error("❌ Failed to create admin:", error);
+    console.error("Failed to create admin:", error);
     process.exit(1);
   }
 };

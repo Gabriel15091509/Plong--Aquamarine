@@ -11,7 +11,7 @@ const Brevet = require("./Brevet");
 // Sequelize/Postgres, contrairement aux domaines externes (voir
 // serviceClients pour ceux-ci).
 
-// 📌 User - Adherent
+// User - Adherent
 User.hasOne(Adherent, {
   foreignKey: "user_id",
   as: "adherent",
@@ -21,7 +21,7 @@ Adherent.belongsTo(User, {
   as: "user",
 });
 
-// 📌 User - Moniteur
+// User - Moniteur
 User.hasOne(Moniteur, {
   foreignKey: "user_id",
   as: "moniteur",
@@ -31,7 +31,7 @@ Moniteur.belongsTo(User, {
   as: "user",
 });
 
-// 📌 Moniteur - President (héritage)
+// Moniteur - President (héritage)
 Moniteur.hasOne(President, {
   foreignKey: "id_moniteur",
   as: "president",
@@ -42,7 +42,7 @@ President.belongsTo(Moniteur, {
   as: "moniteur",
 });
 
-// 📌 User - Tresorier
+// User - Tresorier
 User.hasOne(Tresorier, {
   foreignKey: "user_id",
   as: "tresorier",
@@ -52,14 +52,14 @@ Tresorier.belongsTo(User, {
   as: "user",
 });
 
-// 📌 President - actions (created_by / archived_by)
+// President - actions (created_by / archived_by)
 President.hasMany(User, { foreignKey: "created_by", as: "usersCrees" });
 User.belongsTo(President, { foreignKey: "created_by", as: "createur" });
 
 President.hasMany(Adherent, { foreignKey: "archived_by", as: "adherentsArchives" });
 Adherent.belongsTo(President, { foreignKey: "archived_by", as: "archivePar" });
 
-// 📌 Adherent - Brevet (historique des niveaux, voir Brevet.js)
+// Adherent - Brevet (historique des niveaux, voir Brevet.js)
 Adherent.hasMany(Brevet, { foreignKey: "num_adherent", as: "brevets" });
 Brevet.belongsTo(Adherent, { foreignKey: "num_adherent", as: "adherent" });
 

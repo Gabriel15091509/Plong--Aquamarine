@@ -24,7 +24,7 @@ import { photoUrl } from "../../utils/photoUrl";
 import { TYPE_ADHESION_OPTIONS } from "../../utils/constants";
 
 const AdhesionList = () => {
-  // ✅ TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
+  // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { hasRole } = useAuth();
   const canManageAdhesion = hasRole(["president", "tresorier"]);
   // Un adhérent ne gère pas les adhésions des autres, mais peut soumettre
@@ -146,7 +146,7 @@ const AdhesionList = () => {
     }
   };
 
-  // ✅ RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
+  // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
   if (isLoading || loadingAdherents) return <LoadingSpinner />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 

@@ -18,6 +18,7 @@ import {
   FiRefreshCw,
   FiTool,
   FiUserX,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
@@ -35,19 +36,19 @@ import AdherentRecapCard from "../../components/Dashboard/AdherentRecapCard";
 import DashboardHero from "../../components/Dashboard/DashboardHero";
 import { useAuth } from "../../context/AuthContext";
 
-// ✅ Formattage des nombres
+// Formattage des nombres
 const formatNumber = (num) => {
   if (num === undefined || num === null || isNaN(num)) return "0";
   return num.toLocaleString("fr-FR");
 };
 
-// ✅ Formattage des montants
+// Formattage des montants
 const formatCurrency = (amount) => {
   if (amount === undefined || amount === null || isNaN(amount)) return "0 €";
   return amount.toLocaleString("fr-FR") + " €";
 };
 
-// ✅ Animations
+// Animations
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
@@ -73,7 +74,7 @@ const DashboardPage = () => {
   // Tailscale) — voir components/Common/ProtectedRoute.jsx.
   useEffect(() => {
     if (location.state?.notice) {
-      toast(location.state.notice, { icon: "🔒" });
+      toast(location.state.notice);
     }
   }, [location.state]);
 
@@ -91,7 +92,7 @@ const DashboardPage = () => {
 };
 
 const StaffDashboardContent = () => {
-  // ✅ Hooks
+  // Hooks
   const { useGetStats: useGetAdherentStats } = useAdherents();
   const { useGetStats: useGetSortieStats } = useSorties();
   const { useGetStats: useGetPaiementStats } = usePaiements();
@@ -100,7 +101,7 @@ const StaffDashboardContent = () => {
   const { useGetStats: useGetMaterielStats } = useMateriels();
   const { useGetTrends, useGetIndicateurs } = useDashboard();
 
-  // ✅ Données
+  // Données
   const { data: trendsResponse } = useGetTrends();
   const trends = trendsResponse?.data;
   const { data: indicateursResponse } = useGetIndicateurs();
@@ -153,7 +154,7 @@ const StaffDashboardContent = () => {
     materielError;
 
   if (hasError) {
-    console.warn("⚠️ Erreur de chargement des données du dashboard:", {
+    console.warn("Erreur de chargement des données du dashboard :", {
       adherentError,
       sortieError,
       paiementError,
@@ -163,7 +164,7 @@ const StaffDashboardContent = () => {
     });
   }
 
-  // ✅ Calcul des statistiques
+  // Calcul des statistiques
   const statsData = useMemo(() => {
     // Adhérents
     const totalAdherents = adherentStats?.data?.total || 0;
@@ -402,7 +403,7 @@ const StaffDashboardContent = () => {
     materielStats,
   ]);
 
-  // ✅ Statistiques principales
+  // Statistiques principales
   const mainStats = useMemo(
     () => [
       {
@@ -449,7 +450,7 @@ const StaffDashboardContent = () => {
     [statsData, trends],
   );
 
-  // ✅ Statistiques secondaires
+  // Statistiques secondaires
   const secondaryStats = useMemo(
     () => [
       {
@@ -482,7 +483,7 @@ const StaffDashboardContent = () => {
     [statsData, trends],
   );
 
-  // ✅ Indicateurs CDC 3.6.2 non couverts par mainStats/secondaryStats — soit
+  // Indicateurs CDC 3.6.2 non couverts par mainStats/secondaryStats — soit
   // calculés côté back (taux/comptes agrégés cross-service), soit dérivés ici
   // des stats déjà chargées (moyenne plongées/adhérent).
   const tertiaryStats = useMemo(() => {
@@ -551,7 +552,7 @@ const StaffDashboardContent = () => {
     ];
   }, [statsData, indicateurs]);
 
-  // ✅ Données graphiques
+  // Données graphiques
   const monthlyActivityData = useMemo(() => {
     const months = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun"];
     return months.map((month, index) => ({
@@ -596,7 +597,7 @@ const StaffDashboardContent = () => {
         >
           <div className="flex items-center gap-3">
             <span className="text-amber-600 dark:text-amber-400 text-xl">
-              ⚠️
+              <FiAlertTriangle className="w-5 h-5" />
             </span>
             <div>
               <p className="text-sm font-medium text-amber-800 dark:text-amber-300">

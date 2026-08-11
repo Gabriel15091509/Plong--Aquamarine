@@ -57,7 +57,7 @@ export const useSorties = () => {
     });
   };
 
-  // ✅ NOUVEAU - Récupérer les détails d'une sortie avec inscriptions
+  // NOUVEAU - Récupérer les détails d'une sortie avec inscriptions
   const useGetDetails = (id) => {
     return useQuery({
       queryKey: ["sorties", id, "details"],
@@ -69,7 +69,7 @@ export const useSorties = () => {
     });
   };
 
-  // ✅ NOUVEAU - Récupérer le pointage d'une sortie
+  // NOUVEAU - Récupérer le pointage d'une sortie
   const useGetPointage = (id) => {
     return useQuery({
       queryKey: ["sorties", id, "pointage"],
@@ -126,7 +126,7 @@ export const useSorties = () => {
     });
   };
 
-  // ✅ NOUVEAU - Enregistrer le pointage
+  // NOUVEAU - Enregistrer le pointage
   const useEnregistrerPointage = () => {
     return useMutation({
       mutationFn: ({ id_sortie, inscriptions }) =>
@@ -145,7 +145,7 @@ export const useSorties = () => {
     });
   };
 
-  // ✅ NOUVEAU - Modifier un pointage
+  // NOUVEAU - Modifier un pointage
   const useModifierPointage = () => {
     return useMutation({
       mutationFn: ({ id_inscription, data }) =>
@@ -164,7 +164,7 @@ export const useSorties = () => {
     });
   };
 
-  // ✅ NOUVEAU - Annuler un pointage
+  // NOUVEAU - Annuler un pointage
   const useAnnulerPointage = () => {
     return useMutation({
       mutationFn: (id_inscription) =>
@@ -189,13 +189,13 @@ export const useSorties = () => {
     useGetUpcoming,
     useGetStats,
     useGetAvailablePlaces,
-    useGetDetails, // ✅ Nouveau
-    useGetPointage, // ✅ Nouveau
+    useGetDetails, // Nouveau
+    useGetPointage, // Nouveau
     useCreate,
     useUpdate,
     useRemove,
-    useEnregistrerPointage, // ✅ Nouveau
-    useModifierPointage, // ✅ Nouveau
-    useAnnulerPointage, // ✅ Nouveau
+    useEnregistrerPointage, // Nouveau
+    useModifierPointage, // Nouveau
+    useAnnulerPointage, // Nouveau
   };
 };

@@ -6,21 +6,21 @@ const seed = async () => {
     // Test connection
     const connected = await testConnection();
     if (!connected) {
-      console.error('❌ Database connection failed');
+      console.error('Database connection failed');
       process.exit(1);
     }
 
-    console.log('✅ Database connection established');
+    console.log('Database connection established');
 
     // Vérifier si des données existent déjà
     const count = await Adherent.count();
     if (count > 0) {
-      console.log('✅ Les données existent déjà, suppression...');
+      console.log('Les données existent déjà, suppression...');
       await sequelize.truncate({ cascade: true, restartIdentity: true });
     }
 
     // Créer des données de test
-    console.log('📝 Création des adhérents...');
+    console.log('Création des adhérents...');
     const adherents = await Adherent.bulkCreate([
       {
         civilite: 'M.',
@@ -57,10 +57,10 @@ const seed = async () => {
       }
     ]);
 
-    console.log(`✅ ${adherents.length} adhérents créés`);
+    console.log(`${adherents.length} adhérents créés`);
 
     // Créer des adhésions
-    console.log('📝 Création des adhésions...');
+    console.log('Création des adhésions...');
     await Adhesion.bulkCreate([
       {
         num_adherent: adherents[0].num_adherent,
@@ -91,10 +91,10 @@ const seed = async () => {
       }
     ]);
 
-    console.log('✅ Adhésions créées');
+    console.log('Adhésions créées');
 
     // Créer des certificats médicaux
-    console.log('📝 Création des certificats médicaux...');
+    console.log('Création des certificats médicaux...');
     await CertificatMedical.bulkCreate([
       {
         num_adherent: adherents[0].num_adherent,
@@ -122,11 +122,11 @@ const seed = async () => {
       }
     ]);
 
-    console.log('✅ Certificats médicaux créés');
-    console.log('✅ Seed data créé avec succès !');
+    console.log('Certificats médicaux créés');
+    console.log('Seed data créé avec succès !');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Seed failed:', error);
+    console.error('Seed failed:', error);
     process.exit(1);
   }
 };

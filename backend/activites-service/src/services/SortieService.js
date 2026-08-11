@@ -29,7 +29,7 @@ class SortieService extends BaseService {
     );
   }
 
-  // ✅ Places réellement disponibles = nb_places - inscriptions Confirmée.
+  // Places réellement disponibles = nb_places - inscriptions Confirmée.
   // On retire le détail des inscriptions de la réponse : seul le compte
   // importe ici, pas les coordonnées des inscrits.
   attachCapacity(sortieInstance) {
@@ -98,7 +98,7 @@ class SortieService extends BaseService {
     };
   }
 
-  // ✅ Détails d'une sortie avec ses inscriptions (adhérent recomposé par HTTP)
+  // Détails d'une sortie avec ses inscriptions (adhérent recomposé par HTTP)
   async getSortieDetails(id, authHeader) {
     const sortie = await this.sortieRepository.findByIdWithInscriptions(id);
     if (!sortie) return null;
@@ -107,7 +107,7 @@ class SortieService extends BaseService {
     return plain;
   }
 
-  // ✅ Pour le pointage : adhérent + "checker" (qui a pointé) recomposés par HTTP
+  // Pour le pointage : adhérent + "checker" (qui a pointé) recomposés par HTTP
   async getPointageBySortie(id_sortie, authHeader) {
     const sortie = await this.sortieRepository.findByIdWithPointage(id_sortie);
     if (!sortie) throw new Error("Sortie non trouvée");

@@ -97,12 +97,12 @@ function randomDureeEstimee() {
 
 async function seed() {
   await sequelize.authenticate();
-  console.log("✅ [activites] connexion établie");
+  console.log("[activites] connexion établie");
 
   await sequelize.query(
     "TRUNCATE TABLE activites.sorties, activites.inscriptions, activites.plongees, activites.palanquees, activites.composer, activites.attributions, activites.incidents RESTART IDENTITY CASCADE",
   );
-  console.log("✅ [activites] tables vidées");
+  console.log("[activites] tables vidées");
 
   const identite = readSeedData("identite");
   const materiel = readSeedData("materiel");
@@ -148,7 +148,7 @@ async function seed() {
     });
   }
   await Sortie.bulkCreate(sorties);
-  console.log(`✅ [activites] ${sorties.length} sorties créées`);
+  console.log(`[activites] ${sorties.length} sorties créées`);
 
   const sortieRows = await Sortie.findAll({
     attributes: ["id_sortie", "statut", "date_heure", "niveau_requis", "profondeur_max"],
@@ -182,7 +182,7 @@ async function seed() {
     });
   }
   await Inscription.bulkCreate(inscriptions);
-  console.log(`✅ [activites] ${inscriptions.length} inscriptions créées`);
+  console.log(`[activites] ${inscriptions.length} inscriptions créées`);
 
   // ==================== PALANQUEES (sorties déjà réalisées uniquement) ====================
   const palanquees = [];
@@ -202,7 +202,7 @@ async function seed() {
     });
   }
   await Palanquee.bulkCreate(palanquees);
-  console.log(`✅ [activites] ${palanquees.length} palanquées créées`);
+  console.log(`[activites] ${palanquees.length} palanquées créées`);
 
   const palanqueeRows = await Palanquee.findAll({ attributes: ["id_palanquee", "id_sortie"] });
   const palanqueeIdList = palanqueeRows.map((p) => p.id_palanquee);
@@ -233,7 +233,7 @@ async function seed() {
     });
   }
   await Plongee.bulkCreate(plongees);
-  console.log(`✅ [activites] ${plongees.length} plongées créées`);
+  console.log(`[activites] ${plongees.length} plongées créées`);
 
   // ==================== COMPOSER ====================
   const seen = new Set();
@@ -250,7 +250,7 @@ async function seed() {
     composer.push({ id_palanquee: idPalanquee, num_adherent: numAdherent });
   }
   await Composer.bulkCreate(composer);
-  console.log(`✅ [activites] ${composer.length} compositions de palanquées créées`);
+  console.log(`[activites] ${composer.length} compositions de palanquées créées`);
 
   // ==================== ATTRIBUTIONS (matériel, sorties déjà réalisées) ====================
   const attributions = [];
@@ -273,7 +273,7 @@ async function seed() {
     });
   }
   await Attribution.bulkCreate(attributions);
-  console.log(`✅ [activites] ${attributions.length} attributions créées`);
+  console.log(`[activites] ${attributions.length} attributions créées`);
 
   // ==================== INCIDENTS ====================
   const incidents = [];
@@ -292,7 +292,7 @@ async function seed() {
     });
   }
   await Incident.bulkCreate(incidents);
-  console.log(`✅ [activites] ${incidents.length} incidents créés`);
+  console.log(`[activites] ${incidents.length} incidents créés`);
 
   writeSeedData("activites", {
     sortieIdList,
@@ -300,11 +300,11 @@ async function seed() {
     sortieDateMap,
   });
 
-  console.log("🎉 [activites] seed terminé");
+  console.log("[activites] seed terminé");
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error("❌ [activites] erreur de seed :", err);
+  console.error("[activites] erreur de seed :", err);
   process.exit(1);
 });

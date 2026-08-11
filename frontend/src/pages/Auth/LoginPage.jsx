@@ -12,6 +12,7 @@ import {
   FiDroplet,
   FiAnchor,
   FiCompass,
+  FiCreditCard,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
@@ -492,23 +493,23 @@ const LoginPage = () => {
               transition={{ delay: 0.8 }}
             >
               {[
-                { icon: "🔒", text: "Connexion sécurisée" },
-                { icon: "💳", text: "Paiement sécurisé" },
-                { icon: "🛡️", text: "Protection des données" },
+                { Icon: FiLock, text: "Connexion sécurisée" },
+                { Icon: FiCreditCard, text: "Paiement sécurisé" },
+                { Icon: FiShield, text: "Protection des données" },
               ].map((item, index) => (
                 <motion.span
                   key={index}
                   className="flex items-center gap-1"
                   whileHover={{ scale: 1.05, color: "#2563eb" }}
                 >
-                  {item.icon} {item.text}
+                  <item.Icon className="w-3.5 h-3.5" /> {item.text}
                 </motion.span>
               ))}
             </motion.div>
           </motion.div>
         </motion.div>
 
-        {/* ✅ Partie droite - Logo sans fond */}
+        {/* Partie droite - Logo sans fond */}
         <motion.div
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
@@ -543,7 +544,7 @@ const LoginPage = () => {
             </svg>
           </div>
 
-          {/* ✅ Logo sans fond au centre */}
+          {/* Logo sans fond au centre */}
           <div className="relative z-10 flex flex-col items-center justify-center h-full">
             <motion.div
               initial={{ scale: 0.6, opacity: 0, rotate: -10 }}
@@ -571,7 +572,7 @@ const LoginPage = () => {
                 style={{ width: "300px", height: "300px", margin: "0 auto" }}
               />
 
-              {/* ✅ Logo sans fond - flottant */}
+              {/* Logo sans fond - flottant */}
               <motion.div
                 animate={{
                   y: [0, -15, 0],

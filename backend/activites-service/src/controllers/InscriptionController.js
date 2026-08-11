@@ -85,7 +85,7 @@ class InscriptionController extends BaseController {
         message: "Inscription créée avec succès",
       });
     } catch (error) {
-      console.error("❌ Erreur createInscription:", error);
+      console.error("Erreur createInscription:", error);
       next(withStatus(error, 400));
     }
   }
@@ -110,7 +110,7 @@ class InscriptionController extends BaseController {
         message: "Inscription mise à jour avec succès",
       });
     } catch (error) {
-      console.error("❌ Erreur update inscription:", error);
+      console.error("Erreur update inscription:", error);
       next(withStatus(error, 400));
     }
   }

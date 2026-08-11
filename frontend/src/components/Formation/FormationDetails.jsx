@@ -522,7 +522,6 @@ const FormationDetails = () => {
             ?
           </>
         }
-        warningText="⚠️ Cette action est irréversible."
         confirmLabel="Confirmer la suppression"
         onCancel={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}

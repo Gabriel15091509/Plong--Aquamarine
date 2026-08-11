@@ -6,16 +6,16 @@ const { sequelize } = require('../src/config/database');
 const addUserPhoto = async () => {
   try {
     await sequelize.authenticate();
-    console.log('✅ Connexion établie');
+    console.log('Connexion établie');
 
     await sequelize.query(`
       ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "photo" VARCHAR(255);
     `);
-    console.log('✅ users.photo ajoutée');
+    console.log('users.photo ajoutée');
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Erreur:', error);
+    console.error('Erreur:', error);
     process.exit(1);
   }
 };

@@ -20,12 +20,12 @@ const PRESTATAIRES = ["ProDive Réunion", "AquaTech Saint-Leu", "Ocean Repair Se
 
 async function seed() {
   await sequelize.authenticate();
-  console.log("✅ [materiel] connexion établie");
+  console.log("[materiel] connexion établie");
 
   await sequelize.query(
     "TRUNCATE TABLE materiel.materiels, materiel.reparations RESTART IDENTITY CASCADE",
   );
-  console.log("✅ [materiel] tables vidées");
+  console.log("[materiel] tables vidées");
 
   const identite = readSeedData("identite");
 
@@ -53,7 +53,7 @@ async function seed() {
     });
     materielIds.push(numInventaire);
   }
-  console.log(`✅ [materiel] ${materielIds.length} matériels créés`);
+  console.log(`[materiel] ${materielIds.length} matériels créés`);
 
   const reparations = [];
   for (let i = 0; i < CONFIG.REPARATIONS; i++) {
@@ -77,15 +77,15 @@ async function seed() {
     });
   }
   await Reparation.bulkCreate(reparations);
-  console.log(`✅ [materiel] ${reparations.length} réparations créées`);
+  console.log(`[materiel] ${reparations.length} réparations créées`);
 
   writeSeedData("materiel", { materielIds });
 
-  console.log("🎉 [materiel] seed terminé");
+  console.log("[materiel] seed terminé");
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error("❌ [materiel] erreur de seed :", err);
+  console.error("[materiel] erreur de seed :", err);
   process.exit(1);
 });

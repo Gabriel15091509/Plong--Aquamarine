@@ -38,7 +38,7 @@ import ModalOverlay from "../Common/ModalOverlay";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 
-// ✅ Animations
+// Animations
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -158,7 +158,7 @@ const SortieCalendar = () => {
     return colors[status] || "bg-gray-300";
   };
 
-  // ✅ Statistiques
+  // Statistiques
   const stats = {
     total: sorties.length,
     planifiees: sorties.filter((s) => s.statut === "Planifiée").length,

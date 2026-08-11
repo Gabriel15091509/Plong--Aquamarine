@@ -56,7 +56,7 @@ app.use(
   }),
 );
 
-// ✅ CORS - Configuration SIMPLIFIÉE pour accepter TOUTES les origines
+// CORS - Configuration SIMPLIFIÉE pour accepter TOUTES les origines
 app.use(
   cors({
     origin: "*", // Accepte toutes les origines
@@ -172,14 +172,14 @@ const initializeApp = async () => {
     // Test database connection
     const connected = await testConnection();
     if (!connected) {
-      logger.error("❌ Database connection failed");
+      logger.error("Database connection failed");
       process.exit(1);
     }
 
     // Sync database in development
     if (process.env.NODE_ENV === "development") {
       await syncDatabase({ alter: true });
-      logger.info("✅ Database synchronized");
+      logger.info("Database synchronized");
     }
 
     // Alertes d'expiration (adhésion / certificat médical) : ce domaine a
@@ -199,28 +199,28 @@ const initializeApp = async () => {
       });
     });
 
-    logger.info(`✅ Server running on port ${PORT}`);
-    logger.info(`📱 Connect mobile app to:`);
+    logger.info(`Server running on port ${PORT}`);
+    logger.info(`Connect mobile app to:`);
     ipAddresses.forEach((ip) => {
-      logger.info(`   📱 http://${ip}:${PORT}/api`);
+      logger.info(`   http://${ip}:${PORT}/api`);
     });
-    logger.info(`   🤖 Android Emulator: http://10.0.2.2:${PORT}/api`);
-    logger.info(`   🍎 iOS Simulator: http://localhost:${PORT}/api`);
-    logger.info(`   🌐 Local: http://localhost:${PORT}/api`);
+    logger.info(`   Android Emulator: http://10.0.2.2:${PORT}/api`);
+    logger.info(`   iOS Simulator: http://localhost:${PORT}/api`);
+    logger.info(`   Local: http://localhost:${PORT}/api`);
     logger.info(``);
-    logger.info(`✅ Health check: http://localhost:${PORT}/health`);
+    logger.info(`Health check: http://localhost:${PORT}/health`);
 
-    // ✅ DÉMARRER LE SERVEUR SUR TOUTES LES INTERFACES
+    // DÉMARRER LE SERVEUR SUR TOUTES LES INTERFACES
     app.listen(PORT, "0.0.0.0", () => {
-      logger.info(`🚀 Server is listening on all interfaces (0.0.0.0:${PORT})`);
+      logger.info(`Server is listening on all interfaces (0.0.0.0:${PORT})`);
       logger.info(
-        `📱 Your mobile can connect using: http://${ipAddresses[0] || "your-ip"}:${PORT}/api`,
+        `Your mobile can connect using: http://${ipAddresses[0] || "your-ip"}:${PORT}/api`,
       );
     });
 
-    logger.info("✅ Application initialized successfully");
+    logger.info("Application initialized successfully");
   } catch (error) {
-    logger.error("❌ Application initialization failed:", error);
+    logger.error("Application initialization failed:", error);
     process.exit(1);
   }
 };

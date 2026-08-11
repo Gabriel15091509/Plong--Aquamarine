@@ -74,9 +74,7 @@ export const AuthProvider = ({ children }) => {
     prefetchForOffline();
 
     if (user.must_change_password) {
-      toast("Veuillez changer votre mot de passe avant de continuer", {
-        icon: "🔑",
-      });
+      toast("Veuillez changer votre mot de passe avant de continuer");
       return { user, mustChangePassword: true };
     }
 
@@ -167,7 +165,7 @@ export const AuthProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
-  // ✅ Ajout : pour mettre à jour user + token après changement de mot de passe
+  // Ajout : pour mettre à jour user + token après changement de mot de passe
   const updateUser = (newData) => {
     const updatedUser = { ...user, ...newData };
     setUser(updatedUser);
@@ -198,7 +196,7 @@ export const AuthProvider = ({ children }) => {
         permissions,
         hasPermission,
         hasRole,
-        updateUser, // ✅ Ajout
+        updateUser,
       }}
     >
       {children}

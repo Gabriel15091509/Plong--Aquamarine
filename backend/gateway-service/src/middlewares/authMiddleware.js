@@ -23,13 +23,13 @@ class AuthMiddleware {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // ✅ Ajouter l'utilisateur avec la méthode hasPermission
+      // Ajouter l'utilisateur avec la méthode hasPermission
       req.user = {
         id: decoded.id,
         email: decoded.email,
         role: decoded.role,
         name: decoded.name,
-        // ✅ Ajouter la méthode hasPermission
+        // Ajouter la méthode hasPermission
         hasPermission: function (permission) {
           const permissions = {
             president: [

@@ -218,7 +218,7 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const isPublicAccess =
     typeof window !== "undefined" && window.location.hostname.endsWith(".ts.net");
 
-  // ✅ Menu général - visible par tous
+  // Menu général - visible par tous
   const mainMenu = [
     { path: "/dashboard", icon: FiHome, label: "Tableau de bord" },
     canSeeAdherentsList && {
@@ -346,13 +346,13 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
         style={{ transitionProperty: "color, background-color, border-color, transform" }}
       >
       <div className="flex flex-col h-full">
-        {/* ✅ Logo avec taille fixe - bien aligné */}
+        {/* Logo avec taille fixe - bien aligné */}
         <div
           className={`h-16 flex items-center border-b flex-shrink-0 transition-colors duration-300 ${
             isOpen ? "px-4" : "px-1.5"
           } ${theme === "dark" ? "border-cyan-800/30" : "border-cyan-100/50"}`}
         >
-          {/* ✅ Logo toujours visible avec taille fixe */}
+          {/* Logo toujours visible avec taille fixe */}
           <div className="flex items-center gap-2 overflow-hidden flex-shrink-0">
             <div
               className={`flex-shrink-0 ${isOpen ? "w-10 h-10" : "w-8 h-8"}`}

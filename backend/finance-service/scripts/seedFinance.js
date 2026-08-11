@@ -23,12 +23,12 @@ const STATUT_ECHEANCIER_WEIGHTS = [["En cours", 0.5], ["Soldé", 0.4], ["Annulé
 
 async function seed() {
   await sequelize.authenticate();
-  console.log("✅ [finance] connexion établie");
+  console.log("[finance] connexion établie");
 
   await sequelize.query(
     "TRUNCATE TABLE finance.paiements, finance.echeanciers, finance.echeances RESTART IDENTITY CASCADE",
   );
-  console.log("✅ [finance] tables vidées");
+  console.log("[finance] tables vidées");
 
   const identite = readSeedData("identite");
   const formation = readSeedData("formation");
@@ -58,7 +58,7 @@ async function seed() {
     });
   }
   await Paiement.bulkCreate(paiements);
-  console.log(`✅ [finance] ${paiements.length} paiements créés`);
+  console.log(`[finance] ${paiements.length} paiements créés`);
 
   const paiementRows = await Paiement.findAll({ attributes: ["id_paiement"] });
   const paiementIdList = paiementRows.map((p) => p.id_paiement);
@@ -106,13 +106,13 @@ async function seed() {
     }
   }
   await Echeance.bulkCreate(echeances);
-  console.log(`✅ [finance] ${CONFIG.ECHEANCIERS} échéanciers et ${echeancesCreated} échéances créés`);
+  console.log(`[finance] ${CONFIG.ECHEANCIERS} échéanciers et ${echeancesCreated} échéances créés`);
 
-  console.log("🎉 [finance] seed terminé");
+  console.log("[finance] seed terminé");
   process.exit(0);
 }
 
 seed().catch((err) => {
-  console.error("❌ [finance] erreur de seed :", err);
+  console.error("[finance] erreur de seed :", err);
   process.exit(1);
 });

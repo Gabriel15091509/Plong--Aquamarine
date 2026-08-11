@@ -52,7 +52,7 @@ const users = [
 const createUsers = async () => {
   try {
     await client.connect();
-    console.log("✅ Connexion à la base de données établie");
+    console.log("Connexion à la base de données établie");
 
     // Vérifier si la table users existe
     const tableCheck = await client.query(`
@@ -63,7 +63,7 @@ const createUsers = async () => {
     `);
 
     if (!tableCheck.rows[0].exists) {
-      console.log("⚠️ La table users n'existe pas, création...");
+      console.log("La table users n'existe pas, création...");
       await client.query(`
         CREATE TABLE users (
           id SERIAL PRIMARY KEY,
@@ -78,7 +78,7 @@ const createUsers = async () => {
           updated_at TIMESTAMP DEFAULT NOW()
         );
       `);
-      console.log("✅ Table users créée");
+      console.log("Table users créée");
     }
 
     // Créer les utilisateurs
@@ -99,25 +99,25 @@ const createUsers = async () => {
           [user.email, hashedPassword, user.name, user.role, user.phone],
         );
 
-        console.log(`✅ Utilisateur créé: ${user.email} (${user.role})`);
+        console.log(`Utilisateur créé: ${user.email} (${user.role})`);
       } else {
-        console.log(`⚠️ Utilisateur déjà existant: ${user.email}`);
+        console.log(`Utilisateur déjà existant: ${user.email}`);
       }
     }
 
-    console.log("\n📋 Comptes disponibles :");
+    console.log("\nComptes disponibles :");
     console.log("================================");
-    console.log("👑 President: president@plongee.com / president123");
-    console.log("🏊 Moniteur: moniteur@plongee.com / moniteur123");
-    console.log("💰 Trésorier: tresorier@plongee.com / tresorier123");
-    console.log("🤿 Adhérent: adherent@plongee.com / adherent123");
-    console.log("🔑 Admin: admin@plongee.com / admin123");
+    console.log("President: president@plongee.com / president123");
+    console.log("Moniteur: moniteur@plongee.com / moniteur123");
+    console.log("Trésorier: tresorier@plongee.com / tresorier123");
+    console.log("Adhérent: adherent@plongee.com / adherent123");
+    console.log("Admin: admin@plongee.com / admin123");
     console.log("================================");
 
     await client.end();
     process.exit(0);
   } catch (error) {
-    console.error("❌ Erreur:", error);
+    console.error("Erreur:", error);
     await client.end();
     process.exit(1);
   }
