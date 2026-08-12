@@ -131,9 +131,9 @@ const RecentActivity = () => {
         {recentActivities.map((activity, index) => (
           <motion.div
             key={activity.id}
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
+            transition={{ delay: index * 0.04, duration: 0.2 }}
             className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer group"
           >
             <div

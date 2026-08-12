@@ -285,8 +285,9 @@ const AdherentRecapCard = () => {
     <div className="space-y-6">
       {alerteActive && (
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
           className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl p-4 flex items-center gap-3 backdrop-blur-sm"
         >
           <FiAlertTriangle className="text-amber-600 dark:text-amber-400 text-xl flex-shrink-0" />
