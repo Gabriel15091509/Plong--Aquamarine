@@ -303,7 +303,7 @@ const CertificatDetails = () => {
               ) : (
                 <>
                   <FiCheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-                  <span className="text-xl font-bold text-gray-900 dark:text-white">Valide</span>
+                  <span className="text-xl font-bold text-gray-900 dark:text-white">À jour</span>
                 </>
               )}
             </div>
@@ -439,7 +439,7 @@ const CertificatDetails = () => {
                     : "text-green-600 dark:text-green-400"
                 }`}
               >
-                {isExpired ? "Expiré" : "Valide"}
+                {isExpired ? "Expiré" : "À jour"}
               </span>
             }
           />

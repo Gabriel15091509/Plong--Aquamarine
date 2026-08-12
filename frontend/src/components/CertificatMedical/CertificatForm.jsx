@@ -29,7 +29,19 @@ import WebcamCaptureModal from "../Common/WebcamCaptureModal";
 import { CERTIFICAT_TYPE_OPTIONS } from "../../utils/constants";
 import api from "../../services/api";
 
-const CERTIFICAT_STATUS = ["Valide", "Expiré", "En attente"];
+// `statut` ne porte QUE l'expiration (date_validite vs aujourd'hui) — le
+// circuit de validation du dossier (soumission adhérent, "En attente"/
+// "Rejeté") est un champ séparé (`statut_validation`, jamais modifiable
+// depuis ce formulaire). "En attente" figurait ici par erreur : rien ne le
+// lisait côté serveur pour `statut`, mais un membre du staff pouvait quand
+// même le sélectionner, laissant un certificat dans un état inexistant
+// pour la logique d'expiration. Le libellé "À jour" (plutôt que "Valide")
+// évite par ailleurs la quasi-homophonie avec "Validé" du circuit de
+// validation — voir StatusBadge.jsx.
+const CERTIFICAT_STATUS = [
+  { value: "Valide", label: "À jour" },
+  { value: "Expiré", label: "Expiré" },
+];
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -527,8 +539,8 @@ const CertificatForm = () => {
                 className={inputClasses("statut")}
               >
                 {CERTIFICAT_STATUS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
