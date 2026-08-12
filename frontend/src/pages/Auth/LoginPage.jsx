@@ -152,8 +152,16 @@ const LoginPage = () => {
 
       <motion.div
         initial={{ opacity: 0, y: 8, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
+        animate={
+          transitioning
+            ? { opacity: 0, scale: 1.02 }
+            : { opacity: 1, y: 0, scale: 1 }
+        }
+        transition={
+          transitioning
+            ? { duration: 0.25, delay: 0.2, ease: "easeOut" }
+            : { duration: 0.3, ease: "easeOut" }
+        }
         className="w-full max-w-6xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
       >
         {/* Partie gauche - Formulaire */}
