@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import LoadingSpinner from './LoadingSpinner';
 
 // Pages dont l'API sous-jacente n'existe QUE sur l'Ingress local du club
 // (voir k8s/overlays/production/17-ingress-public.yaml) — le contrôleur
@@ -35,8 +36,10 @@ const ProtectedRoute = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent" />
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <div className="w-full max-w-3xl">
+          <LoadingSpinner />
+        </div>
       </div>
     );
   }
