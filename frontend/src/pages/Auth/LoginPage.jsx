@@ -29,11 +29,12 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({});
   const [otpEmail, setOtpEmail] = useState(null);
   const [otpCode, setOtpCode] = useState("");
-  // Après connexion, toute la carte s'efface en un seul mouvement (fondu +
-  // léger zoom arrière) avant de naviguer vers le tableau de bord, qui
-  // s'ouvre ensuite avec sa propre animation d'entrée habituelle.
+  // Après connexion, les deux parties de la carte s'écartent comme des
+  // battants qui s'ouvrent (gauche vers la gauche, droite vers la droite)
+  // pour faire place au tableau de bord, qui s'ouvre ensuite avec sa
+  // propre animation d'entrée habituelle.
   const [transitioning, setTransitioning] = useState(false);
-  const LOGIN_TRANSITION_MS = 250;
+  const LOGIN_TRANSITION_MS = 450;
 
   const goToDashboardWithTransition = () => {
     setTransitioning(true);
@@ -151,23 +152,16 @@ const LoginPage = () => {
 
       <motion.div
         initial={{ opacity: 0, y: 8, scale: 0.98 }}
-        animate={
-          transitioning
-            ? { opacity: 0, y: -8, scale: 0.99 }
-            : { opacity: 1, y: 0, scale: 1 }
-        }
-        transition={
-          transitioning
-            ? { duration: 0.2, ease: "easeIn" }
-            : { duration: 0.3, ease: "easeOut" }
-        }
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
         className="w-full max-w-6xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
       >
         {/* Partie gauche - Formulaire */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
-          animate="visible"
+          animate={transitioning ? { opacity: 0, x: "-100%" } : "visible"}
+          transition={transitioning ? { duration: 0.4, ease: "easeIn" } : undefined}
           className="w-full md:w-1/2 p-8 md:p-12 lg:p-16 dark:bg-gray-800/50"
         >
           {/* Logo */}
@@ -412,8 +406,14 @@ const LoginPage = () => {
         {/* Partie droite - Logo sur fond de marque */}
         <motion.div
           initial={{ opacity: 0, x: 12 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
+          animate={
+            transitioning ? { opacity: 0, x: "100%" } : { opacity: 1, x: 0 }
+          }
+          transition={
+            transitioning
+              ? { duration: 0.4, ease: "easeIn" }
+              : { duration: 0.3, delay: 0.1, ease: "easeOut" }
+          }
           className="hidden md:flex w-1/2 relative bg-gradient-to-br from-primary-600 via-primary-700 to-ocean-800 p-8 overflow-hidden items-center justify-center"
         >
           {/* Vague décorative (statique) */}
