@@ -35,6 +35,16 @@ const AlerteDetailsModal = ({ alerte, onClose }) => {
 
   const handleVoirFiche = () => {
     onClose();
+    if (alerte.type === "Materiel en retard") {
+      // Direct vers la section "matériel attribué" plutôt que le haut de
+      // la fiche : c'est le prêt en retard qu'on veut voir, pas la fiche
+      // dans sa globalité. Un adhérent ouvrant sa propre alerte n'a pas de
+      // fiche /adherents/:id (réservée au staff) — direction "Mon profil".
+      const target =
+        user?.role === "adherent" ? "/profile" : `/adherents/${alerte.num_adherent}`;
+      navigate(`${target}#materiel-attribue`);
+      return;
+    }
     navigate(`/adherents/${alerte.num_adherent}`);
   };
 

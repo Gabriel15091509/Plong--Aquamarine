@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
+import { useScrollToHash } from "../../hooks/useScrollToHash";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useSorties } from "../../hooks/Sortie/useSorties";
@@ -159,6 +160,11 @@ const ProfilePage = () => {
     loadingFormations ||
     loadingInscriptions ||
     loadingUsers;
+
+  // Permet au modal d'alerte "Materiel en retard" (ouvert par l'adhérent
+  // concerné) de renvoyer directement sur la section "Mon matériel
+  // attribué" ci-dessous (#materiel-attribue).
+  useScrollToHash(!isLoading);
 
   // Trouver l'adhérent correspondant à l'utilisateur connecté
   const currentAdherent = useMemo(() => {
@@ -732,10 +738,11 @@ const ProfilePage = () => {
       {/* Matériel attribué */}
       {currentAdherent && (
         <motion.div
+          id="materiel-attribue"
           variants={fadeInUp}
           initial="initial"
           animate="animate"
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100/80 dark:border-gray-800/80"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100/80 dark:border-gray-800/80 scroll-mt-24 transition-shadow"
         >
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
             <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
