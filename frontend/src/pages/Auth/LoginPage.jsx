@@ -34,7 +34,7 @@ const LoginPage = () => {
   // pour faire place au tableau de bord, qui s'ouvre ensuite avec sa
   // propre animation d'entrée habituelle.
   const [transitioning, setTransitioning] = useState(false);
-  const LOGIN_TRANSITION_MS = 450;
+  const LOGIN_TRANSITION_MS = 500;
 
   const goToDashboardWithTransition = () => {
     setTransitioning(true);
@@ -195,7 +195,7 @@ const LoginPage = () => {
         }
         transition={
           transitioning
-            ? { duration: 0.25, delay: 0.2, ease: "easeOut" }
+            ? { duration: 0.4, ease: "easeOut" }
             : { duration: 0.3, ease: "easeOut" }
         }
         className="relative z-20 w-full max-w-6xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
