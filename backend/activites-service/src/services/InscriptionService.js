@@ -322,6 +322,16 @@ class InscriptionService extends BaseService {
       throw new Error("Niveau insuffisant pour cette sortie");
     }
 
+    // RG7 : un Niveau 1 ne peut pas plonger au-delà de 20m (réglementation).
+    // niveau_requis garantit un niveau minimum, pas un plafond — une sortie
+    // ouverte au Niveau 1 peut très bien afficher une profondeur_max > 20m
+    // pour les plongeurs plus expérimentés du même groupe.
+    if (adherentRecord?.niveau === "Niveau 1" && Number(sortie.profondeur_max) > 20) {
+      throw new Error(
+        "Un plongeur Niveau 1 ne peut pas s'inscrire à une sortie prévue au-delà de 20m (réglementation)",
+      );
+    }
+
     // Règles d'âge (Code du Sport) : profondeur max d'un baptême selon
     // l'âge, et une seule plongée par jour avant 12 ans — voir utils/
     // ageRules.js pour le détail des textes. L'âge inconnu ne bloque jamais

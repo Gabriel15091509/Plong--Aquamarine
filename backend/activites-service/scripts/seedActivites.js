@@ -132,7 +132,7 @@ async function seed() {
       site: spot.site,
       type: pick(TYPES_SORTIE),
       niveau_requis: pick(NIVEAUX),
-      nb_places: randomInt(4, 16),
+      nb_places: randomInt(4, 12), // RG4 : 12 plongeurs max par sortie (réglementation)
       profondeur_max: randomInt(6, 40),
       duree_estimee: randomDureeEstimee(),
       statut,

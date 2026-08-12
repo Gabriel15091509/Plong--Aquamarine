@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -61,6 +61,12 @@ const SortieForm = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [focused, setFocused] = useState(null);
+  // RG6 : les inscriptions s'ouvrent 7 jours avant la sortie — pré-rempli
+  // automatiquement à partir de la date/heure tant que le staff n'a pas
+  // lui-même modifié ce champ (cas particulier : ouverture anticipée/tardive
+  // volontaire), pour que la règle soit respectée par défaut plutôt que de
+  // dépendre d'un calcul manuel à chaque création.
+  const dateOuvertureTouchedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     date_heure: "",
@@ -84,6 +90,10 @@ const SortieForm = () => {
   useEffect(() => {
     if (editMode && id && data?.data) {
       const s = data.data;
+      // Une sortie existante a déjà sa propre date d'ouverture (voulue par
+      // le staff à l'époque) : ne jamais l'écraser via l'auto-calcul si la
+      // date/heure est retouchée en édition.
+      dateOuvertureTouchedRef.current = true;
       setFormData({
         date_heure: formatDateTimeForInput(s.date_heure),
         lieu: s.lieu || "",
@@ -109,7 +119,24 @@ const SortieForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "date_ouverture_inscriptions") {
+      // Modification manuelle explicite : ne plus jamais auto-recalculer
+      // ce champ pour ce formulaire, même si date_heure change ensuite.
+      dateOuvertureTouchedRef.current = true;
+    }
+
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "date_heure" && value && !dateOuvertureTouchedRef.current) {
+        const ouverture = new Date(value);
+        if (!Number.isNaN(ouverture.getTime())) {
+          ouverture.setDate(ouverture.getDate() - 7);
+          next.date_ouverture_inscriptions = formatDateForInput(ouverture);
+        }
+      }
+      return next;
+    });
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -134,6 +161,9 @@ const SortieForm = () => {
     if (!formData.type) newErrors.type = "Le type est requis";
     if (!formData.nb_places || formData.nb_places < 1)
       newErrors.nb_places = "Minimum 1 place";
+    // RG4 : 12 plongeurs max par sortie (réglementation).
+    else if (formData.nb_places > 12)
+      newErrors.nb_places = "Maximum 12 plongeurs par sortie (réglementation)";
     if (!formData.profondeur_max || formData.profondeur_max < 0)
       newErrors.profondeur_max = "La profondeur est requise";
     if (!formData.date_ouverture_inscriptions)
@@ -343,6 +373,7 @@ const SortieForm = () => {
               onBlur={handleBlur}
               className={inputClasses("nb_places")}
               min="1"
+              max="12"
             />
             {errors.nb_places && (
               <p className="mt-1.5 text-sm text-red-500">{errors.nb_places}</p>
@@ -452,6 +483,11 @@ const SortieForm = () => {
               onBlur={handleBlur}
               className={inputClasses("date_ouverture_inscriptions")}
             />
+            {!errors.date_ouverture_inscriptions && (
+              <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+                Pré-rempli à 7 jours avant la sortie, modifiable si besoin.
+              </p>
+            )}
             {errors.date_ouverture_inscriptions && (
               <p className="mt-1.5 text-sm text-red-500">
                 {errors.date_ouverture_inscriptions}
