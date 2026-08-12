@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { FiPlus, FiFileText } from "react-icons/fi";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
 import AdhesionList from "../../components/Adhesion/AdhesionList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 /**
  * Page principale de gestion des adhésions
@@ -16,8 +15,8 @@ const AdhesionsPage = () => {
 
   const adhesions = data?.data || [];
 
-  // Gestion des états de chargement et d'erreur
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Gestion de l'état d'erreur — le chargement est géré par AdhesionList
+  // elle-même (son propre squelette liste), pour éviter un double reflet.
   if (error)
     return <div className="text-red-500">Erreur : {error.message}</div>;
 
@@ -35,7 +34,7 @@ const AdhesionsPage = () => {
             Gestion des adhésions
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {adhesions.length} adhésions enregistrées
+            {isLoading ? "…" : adhesions.length} adhésions enregistrées
           </p>
         </div>
 
@@ -49,7 +48,7 @@ const AdhesionsPage = () => {
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-        {adhesions.length} adhésions • Dernière mise à jour :{" "}
+        {isLoading ? "…" : adhesions.length} adhésions • Dernière mise à jour :{" "}
         {new Date().toLocaleString("fr-FR", {
           day: "numeric",
           month: "long",

@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { FiAward } from "react-icons/fi";
 import { useSpecialitesFormation } from "../../hooks/Formation/useSpecialitesFormation";
 import SpecialiteFormationList from "../../components/Formation/SpecialiteFormationList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 const SpecialitesFormationPage = () => {
   const { useGetAll } = useSpecialitesFormation();
@@ -11,7 +10,8 @@ const SpecialitesFormationPage = () => {
 
   const specialites = data?.data || [];
 
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Le chargement est géré par SpecialiteFormationList elle-même (son
+  // propre squelette liste), pour éviter un double reflet.
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   return (
@@ -28,7 +28,7 @@ const SpecialitesFormationPage = () => {
             <FiAward className="w-5 h-5 text-indigo-500" />
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {specialites.length} spécialités enregistrées
+            {isLoading ? "…" : specialites.length} spécialités enregistrées
           </p>
         </div>
       </div>

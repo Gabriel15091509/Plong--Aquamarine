@@ -2,7 +2,6 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import AttributionList from "../../components/Attribution/AttributionList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 const AttributionsPage = () => {
   const { useGetAll } = useAttributions();
@@ -10,7 +9,8 @@ const AttributionsPage = () => {
 
   const attributions = data?.data || [];
 
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Le chargement est géré par AttributionList elle-même (son propre
+  // squelette liste), pour éviter un double reflet.
   if (error)
     return <div className="text-red-500">Erreur : {error.message}</div>;
 
@@ -27,7 +27,7 @@ const AttributionsPage = () => {
             Gestion des attributions de matériel
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {attributions.length} attributions enregistrées
+            {isLoading ? "…" : attributions.length} attributions enregistrées
           </p>
         </div>
       </div>

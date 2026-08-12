@@ -2,7 +2,6 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useReparations } from "../../hooks/Reparation/useReparations";
 import ReparationList from "../../components/Reparation/ReparationList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 const ReparationsPage = () => {
   const { useGetAll } = useReparations();
@@ -10,7 +9,8 @@ const ReparationsPage = () => {
 
   const reparations = data?.data || [];
 
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Le chargement est géré par ReparationList elle-même (son propre
+  // squelette liste), pour éviter un double reflet.
   if (error)
     return <div className="text-red-500">Erreur : {error.message}</div>;
 
@@ -27,7 +27,7 @@ const ReparationsPage = () => {
             Gestion des réparations de matériel
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {reparations.length} réparations enregistrées
+            {isLoading ? "…" : reparations.length} réparations enregistrées
           </p>
         </div>
       </div>

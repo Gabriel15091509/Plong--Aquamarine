@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { FiTool, FiPlus } from "react-icons/fi";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import MaterielList from "../../components/Materiel/MaterielList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 const MaterielsPage = () => {
   const { useGetAll } = useMateriels();
@@ -13,7 +12,8 @@ const MaterielsPage = () => {
 
   const materiels = data?.data || [];
 
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Le chargement est géré par MaterielList elle-même (son propre
+  // squelette liste), pour éviter un double reflet.
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   return (
@@ -31,7 +31,7 @@ const MaterielsPage = () => {
             <FiTool className="w-5 h-5 text-indigo-500" />
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {materiels.length} équipements enregistrés
+            {isLoading ? "…" : materiels.length} équipements enregistrés
           </p>
         </div>
       </div>
@@ -43,7 +43,7 @@ const MaterielsPage = () => {
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-        {materiels.length} équipements • Dernière mise à jour :{" "}
+        {isLoading ? "…" : materiels.length} équipements • Dernière mise à jour :{" "}
         {new Date().toLocaleString("fr-FR", {
           day: "numeric",
           month: "long",

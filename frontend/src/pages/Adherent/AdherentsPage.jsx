@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { FiPlus } from "react-icons/fi";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import AdherentList from "../../components/Adherent/AdherentList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 /**
  * Page principale de gestion des adhérents
@@ -16,8 +15,8 @@ const AdherentsPage = () => {
 
   const adherents = data?.data || [];
 
-  // Gestion des états de chargement et d'erreur
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Gestion de l'état d'erreur — le chargement est géré par AdherentList
+  // elle-même (son propre squelette liste), pour éviter un double reflet.
   if (error)
     return <div className="text-red-500">Erreur : {error.message}</div>;
 
@@ -35,7 +34,7 @@ const AdherentsPage = () => {
             Gestion des adhérents
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {adherents.length} membres dans la communauté
+            {isLoading ? "…" : adherents.length} membres dans la communauté
           </p>
         </div>
 
@@ -49,7 +48,7 @@ const AdherentsPage = () => {
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-        {adherents.length} adhérents • Dernière mise à jour :{" "}
+        {isLoading ? "…" : adherents.length} adhérents • Dernière mise à jour :{" "}
         {new Date().toLocaleString("fr-FR", {
           day: "numeric",
           month: "long",
