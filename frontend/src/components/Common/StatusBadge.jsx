@@ -116,17 +116,24 @@ const statusConfig = {
     label: "Rejeté",
   },
 
-  // Statuts des certificats
+  // Statuts d'expiration (certificats médicaux + adhésions, dérivé de la
+  // date de fin/validité — voir CertificatMedical.statut / Adhesion.statut).
+  // Étiqueté "À jour" plutôt que "Valide" : sur les mêmes fiches s'affiche
+  // aussi le statut de validation du dossier ("Validé"/"En attente"/
+  // "Rejeté", voir plus bas) — "Valide" et "Validé" ne se distinguent qu'à
+  // l'accent près et se sont révélés source de confusion pour les
+  // utilisateurs quand les deux apparaissent sur le même écran. Couleur
+  // volontairement différente de "Validé" (cyan vs vert) pour que la
+  // distinction se voie aussi sans lire le texte.
   Expiré: {
     color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     border: "border-red-200 dark:border-red-800/30",
     label: "Expiré",
   },
   Valide: {
-    color:
-      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    border: "border-green-200 dark:border-green-800/30",
-    label: "Valide",
+    color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400",
+    border: "border-cyan-200 dark:border-cyan-800/30",
+    label: "À jour",
   },
 
   // Statuts de l'échéancier ("En attente"/"En cours"/"Annulée" déjà
