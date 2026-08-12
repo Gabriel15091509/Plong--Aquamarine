@@ -9,6 +9,9 @@ import {
   FiLogIn,
   FiShield,
   FiCreditCard,
+  FiDroplet,
+  FiAnchor,
+  FiCompass,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import Logo from "../../components/Common/Logo";
@@ -446,6 +449,36 @@ const LoginPage = () => {
                 className="relative"
               >
                 <Logo size="xl" className="w-56 h-56" />
+              </motion.div>
+
+              {/* Icônes décoratives, flottement discret */}
+              <motion.div
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -top-1 -right-1 bg-white/20 backdrop-blur-sm p-2 rounded-full border border-white/20"
+              >
+                <FiDroplet className="w-4 h-4 text-white" />
+              </motion.div>
+              <motion.div
+                animate={{ y: [0, 6, 0] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                className="absolute -bottom-1 -left-1 bg-white/20 backdrop-blur-sm p-2 rounded-full border border-white/20"
+              >
+                <FiAnchor className="w-4 h-4 text-white" />
+              </motion.div>
+              <motion.div
+                animate={{ y: [0, -5, 0] }}
+                transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                className="absolute top-1/2 -left-3 bg-white/20 backdrop-blur-sm p-2 rounded-full border border-white/20"
+              >
+                <FiCompass className="w-4 h-4 text-white" />
+              </motion.div>
+              <motion.div
+                animate={{ y: [0, -5, 0] }}
+                transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+                className="absolute top-1/2 -right-3 bg-white/20 backdrop-blur-sm p-2 rounded-full border border-white/20"
+              >
+                <FiShield className="w-4 h-4 text-white" />
               </motion.div>
             </motion.div>
 
