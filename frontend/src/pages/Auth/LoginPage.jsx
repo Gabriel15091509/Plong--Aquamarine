@@ -436,7 +436,7 @@ const LoginPage = () => {
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
-              className="relative w-72 h-72 mx-auto flex items-center justify-center"
+              className="relative w-80 h-80 mx-auto -mt-8 flex items-center justify-center"
             >
               <motion.div
                 animate={{ scale: [1, 1.08, 1], opacity: [0.2, 0.4, 0.2] }}
@@ -448,7 +448,7 @@ const LoginPage = () => {
                 transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
                 className="relative"
               >
-                <Logo size="xl" className="w-56 h-56" />
+                <Logo size="xl" className="w-64 h-64" />
               </motion.div>
 
               {/* Icônes décoratives, flottement discret */}
@@ -484,7 +484,7 @@ const LoginPage = () => {
 
             {/* Texte de bienvenue */}
             <motion.div
-              className="text-center mt-8"
+              className="text-center mt-6"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: 0.25, ease: "easeOut" }}
