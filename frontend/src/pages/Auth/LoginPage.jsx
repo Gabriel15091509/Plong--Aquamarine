@@ -169,20 +169,7 @@ const LoginPage = () => {
         >
           {/* Logo */}
           <motion.div variants={itemVariants} className="flex items-center gap-3 mb-8">
-            <div className="relative flex-shrink-0">
-              <motion.div
-                animate={{ scale: [1, 1.08, 1], opacity: [0.2, 0.4, 0.2] }}
-                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute inset-0 bg-primary-300/30 dark:bg-primary-500/20 rounded-full blur-lg"
-              />
-              <motion.div
-                animate={{ y: [0, -3, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                className="relative"
-              >
-                <Logo size="xl" />
-              </motion.div>
-            </div>
+            <Logo size="lg" />
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-ocean-600 bg-clip-text text-transparent dark:from-primary-400 dark:to-ocean-400">
                 Plongée Club
@@ -446,9 +433,20 @@ const LoginPage = () => {
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
-              className="w-64 h-64 mx-auto flex items-center justify-center"
+              className="relative w-72 h-72 mx-auto flex items-center justify-center"
             >
-              <Logo size="xl" className="w-48 h-48" />
+              <motion.div
+                animate={{ scale: [1, 1.08, 1], opacity: [0.2, 0.4, 0.2] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-4 bg-white/20 rounded-full blur-2xl"
+              />
+              <motion.div
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+                className="relative"
+              >
+                <Logo size="xl" className="w-56 h-56" />
+              </motion.div>
             </motion.div>
 
             {/* Texte de bienvenue */}
