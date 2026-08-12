@@ -142,8 +142,8 @@ const FormationForm = () => {
     }
   };
 
-  if (editMode && loadingData) return <LoadingSpinner />;
-  if (loadingAdherents || loadingMoniteurs) return <LoadingSpinner />;
+  if (editMode && loadingData) return <LoadingSpinner variant="form" />;
+  if (loadingAdherents || loadingMoniteurs) return <LoadingSpinner variant="form" />;
 
   const moniteurOptions = (moniteursData?.data || []).map((m) => ({
     ...m,

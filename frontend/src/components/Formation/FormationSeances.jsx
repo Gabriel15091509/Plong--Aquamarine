@@ -224,7 +224,7 @@ const FormationSeances = ({ formation, canManage = false }) => {
       )}
 
       {loadingSeances ? (
-        <LoadingSpinner />
+        <LoadingSpinner variant="list" />
       ) : seances.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Aucune séance planifiée pour cette formation.

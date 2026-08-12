@@ -110,7 +110,7 @@ const SortieList = ({ sorties: sortiesProp }) => {
     }
   };
 
-  if (loadingAdherents) return <LoadingSpinner />;
+  if (loadingAdherents) return <LoadingSpinner variant="list" />;
 
   if (filteredSorties.length === 0) {
     return (

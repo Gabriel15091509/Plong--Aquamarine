@@ -211,7 +211,7 @@ const SortiesPage = () => {
     );
   };
 
-  if (loadingSorties || loadingAdherents) return <LoadingSpinner />;
+  if (loadingSorties || loadingAdherents) return <LoadingSpinner variant="list" />;
 
   if (sortiesError) {
     return (

@@ -68,7 +68,7 @@ const IncidentList = () => {
     }
   };
 
-  if (isLoading || loadingSorties) return <LoadingSpinner />;
+  if (isLoading || loadingSorties) return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   if (filteredIncidents.length === 0) {

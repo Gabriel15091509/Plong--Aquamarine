@@ -103,7 +103,7 @@ const MaterielDetails = () => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <LoadingSpinner />
+        <LoadingSpinner variant="details" />
       </div>
     );
   }
@@ -457,7 +457,7 @@ const MaterielDetails = () => {
           </Link>
         </div>
         {loadingAttributions ? (
-          <LoadingSpinner />
+          <LoadingSpinner variant="list" />
         ) : attributions.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Aucune attribution enregistrée pour ce matériel.
@@ -518,7 +518,7 @@ const MaterielDetails = () => {
           </Link>
         </div>
         {loadingReparations ? (
-          <LoadingSpinner />
+          <LoadingSpinner variant="list" />
         ) : reparations.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Aucune réparation enregistrée pour ce matériel.

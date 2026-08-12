@@ -194,8 +194,8 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
     }
   };
 
-  if (editMode && loadingData) return <LoadingSpinner />;
-  if (loadingAdherents || loadingSorties) return <LoadingSpinner />;
+  if (editMode && loadingData) return <LoadingSpinner variant="form" />;
+  if (loadingAdherents || loadingSorties) return <LoadingSpinner variant="form" />;
 
   const availableStatus = isAdherent ? ["En attente"] : INSCRIPTION_STATUS;
 

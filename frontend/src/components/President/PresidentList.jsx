@@ -108,7 +108,7 @@ const PresidentList = () => {
   };
 
   // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
-  if (isLoading || loadingMoniteurs || loadingUsers) return <LoadingSpinner />;
+  if (isLoading || loadingMoniteurs || loadingUsers) return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   if (filteredPresidents.length === 0) {

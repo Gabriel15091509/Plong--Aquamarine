@@ -84,7 +84,7 @@ const AttributionList = () => {
   };
 
   if (isLoading || loadingMateriels || loadingAdherents)
-    return <LoadingSpinner />;
+    return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   if (filteredAttributions.length === 0) {

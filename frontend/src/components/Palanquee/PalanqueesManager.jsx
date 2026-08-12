@@ -123,7 +123,7 @@ const PalanqueesManager = ({ sortie }) => {
       )}
 
       {isLoading ? (
-        <LoadingSpinner />
+        <LoadingSpinner variant="list" />
       ) : palanquees.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Aucune palanquée constituée pour cette sortie.
