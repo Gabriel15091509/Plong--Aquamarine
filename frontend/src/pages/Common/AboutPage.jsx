@@ -89,6 +89,24 @@ const AboutPage = () => {
     { name: "Bénévoles actifs", role: "Équipe", count: 5, delay: 0.2 },
   ];
 
+  const practicalInfo = [
+    {
+      icon: FiClock,
+      label: "Local ouvert",
+      value: "Mercredi-Vendredi 14h-18h, Samedi 9h-12h",
+    },
+    {
+      icon: FiCompass,
+      label: "Sorties",
+      value: "Mercredi, Samedi, Dimanche (selon météo)",
+    },
+    {
+      icon: FiSun,
+      label: "Saison forte",
+      value: "Juin-Septembre (baleines)",
+    },
+  ];
+
   const features = [
     {
       icon: FiDroplet,
@@ -375,6 +393,48 @@ const AboutPage = () => {
               par an, entre exploration, formation et baptêmes.
             </motion.p>
           </div>
+        </div>
+      </motion.div>
+
+      {/* Infos pratiques */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        viewport={{ once: true }}
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-card p-6 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-shadow duration-300"
+      >
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <motion.div
+            animate={{ rotate: [0, 15, -15, 0] }}
+            transition={{ duration: 2.5, repeat: Infinity }}
+          >
+            <FiClock className="w-5 h-5 text-primary-500" />
+          </motion.div>
+          Infos pratiques
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {practicalInfo.map((info, index) => (
+            <motion.div
+              key={info.label}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              viewport={{ once: true }}
+              whileHover={{ scale: 1.03, y: -2 }}
+              className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <info.icon className="w-4 h-4 text-primary-500 dark:text-primary-400 flex-shrink-0" />
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {info.label}
+                </p>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                {info.value}
+              </p>
+            </motion.div>
+          ))}
         </div>
       </motion.div>
 
