@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import LoadingSpinner from './LoadingSpinner';
+import Logo from './Logo';
 
 // Pages dont l'API sous-jacente n'existe QUE sur l'Ingress local du club
 // (voir k8s/overlays/production/17-ingress-public.yaml) — le contrôleur
@@ -35,11 +35,17 @@ const ProtectedRoute = ({
   const location = useLocation();
 
   if (loading) {
+    // Écran de vérification de session : à ce stade on ne sait pas
+    // encore quelle page va s'afficher (liste, formulaire, fiche...),
+    // donc pas de squelette qui imiterait la mauvaise forme — juste le
+    // logo en pulsation, neutre pour n'importe quelle destination.
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900 p-6">
-        <div className="w-full max-w-3xl">
-          <LoadingSpinner />
-        </div>
+      <div
+        className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900"
+        role="status"
+        aria-label="Vérification de la session en cours"
+      >
+        <Logo size="lg" className="animate-pulse" />
       </div>
     );
   }
