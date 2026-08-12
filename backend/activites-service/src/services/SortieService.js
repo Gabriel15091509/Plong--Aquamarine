@@ -337,6 +337,14 @@ class SortieService extends BaseService {
         field: "nb_places",
         message: "Le nombre de places doit être supérieur à 0",
       });
+    // RG4 : 12 plongeurs max par sortie (réglementation) — revalidé
+    // côté serveur, la contrainte du champ côté frontend n'empêche pas un
+    // appel API direct.
+    else if (data.nb_places > 12)
+      errors.push({
+        field: "nb_places",
+        message: "Le nombre de places ne peut pas dépasser 12 (réglementation)",
+      });
 
     const hasLat =
       data.latitude !== undefined && data.latitude !== null && data.latitude !== "";
