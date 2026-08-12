@@ -169,7 +169,20 @@ const LoginPage = () => {
         >
           {/* Logo */}
           <motion.div variants={itemVariants} className="flex items-center gap-3 mb-8">
-            <Logo size="lg" />
+            <div className="relative flex-shrink-0">
+              <motion.div
+                animate={{ scale: [1, 1.08, 1], opacity: [0.2, 0.4, 0.2] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute inset-0 bg-primary-300/30 dark:bg-primary-500/20 rounded-full blur-lg"
+              />
+              <motion.div
+                animate={{ y: [0, -3, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="relative"
+              >
+                <Logo size="xl" />
+              </motion.div>
+            </div>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-ocean-600 bg-clip-text text-transparent dark:from-primary-400 dark:to-ocean-400">
                 Plongée Club
