@@ -37,6 +37,7 @@ import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import { usePaiements } from "../../hooks/Paiement/usePaiements";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useAuth } from "../../context/AuthContext";
+import { useScrollToHash } from "../../hooks/useScrollToHash";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
 import PdfPreviewModal from "../Common/PdfPreviewModal";
@@ -88,6 +89,10 @@ const AdherentDetails = () => {
   const [pdfPreview, setPdfPreview] = useState(null);
 
   const adherent = data?.data;
+
+  // Permet au modal d'alerte "Materiel en retard" de renvoyer directement
+  // sur la section "Matériel attribué" ci-dessous (#materiel-attribue).
+  useScrollToHash(!isLoading && !!adherent);
 
   const closePdfPreview = () => {
     if (pdfPreview?.blobUrl) window.URL.revokeObjectURL(pdfPreview.blobUrl);
@@ -632,7 +637,7 @@ const AdherentDetails = () => {
           </SectionCard>
 
           {/* Matériel attribué */}
-          <SectionCard title="Matériel attribué" icon={FiPackage}>
+          <SectionCard id="materiel-attribue" title="Matériel attribué" icon={FiPackage}>
             {attributionsEnCours.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2">
                 Aucun matériel actuellement attribué.
