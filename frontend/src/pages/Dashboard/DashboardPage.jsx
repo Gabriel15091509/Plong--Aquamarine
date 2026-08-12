@@ -50,8 +50,8 @@ const formatCurrency = (amount) => {
 
 // Animations
 const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
 };
 
 const staggerContainer = {
@@ -59,8 +59,8 @@ const staggerContainer = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.08,
-      delayChildren: 0.2,
+      staggerChildren: 0.04,
+      delayChildren: 0.05,
     },
   },
 };
@@ -591,8 +591,9 @@ const StaffDashboardContent = () => {
       {/* Bannière d'erreur */}
       {hasError && (
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
           className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl p-4 flex items-center justify-between backdrop-blur-sm"
         >
           <div className="flex items-center gap-3">
@@ -628,7 +629,7 @@ const StaffDashboardContent = () => {
           <motion.div
             key={stat.title}
             variants={fadeInUp}
-            whileHover={{ y: -4, transition: { duration: 0.3 } }}
+            whileHover={{ y: -2, transition: { duration: 0.15 } }}
           >
             <StatsCard {...stat} />
           </motion.div>
@@ -646,7 +647,7 @@ const StaffDashboardContent = () => {
           <motion.div
             key={stat.title}
             variants={fadeInUp}
-            whileHover={{ y: -4, transition: { duration: 0.3 } }}
+            whileHover={{ y: -2, transition: { duration: 0.15 } }}
           >
             <StatsCard {...stat} />
           </motion.div>
@@ -664,7 +665,7 @@ const StaffDashboardContent = () => {
           <motion.div
             key={stat.title}
             variants={fadeInUp}
-            whileHover={{ y: -4, transition: { duration: 0.3 } }}
+            whileHover={{ y: -2, transition: { duration: 0.15 } }}
           >
             <StatsCard {...stat} />
           </motion.div>
@@ -674,9 +675,9 @@ const StaffDashboardContent = () => {
       {/* Graphiques */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          transition={{ duration: 0.25, delay: 0.1 }}
           className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 p-6 hover:shadow-2xl transition-shadow duration-300"
         >
           <div className="flex items-center justify-between mb-6">
@@ -701,9 +702,9 @@ const StaffDashboardContent = () => {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
+          transition={{ duration: 0.25, delay: 0.15 }}
           className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 p-6 hover:shadow-2xl transition-shadow duration-300"
         >
           <div className="flex items-center gap-3 mb-6">
@@ -725,9 +726,9 @@ const StaffDashboardContent = () => {
 
       {/* Activité récente */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
+        transition={{ duration: 0.25, delay: 0.2 }}
         className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 p-6 hover:shadow-2xl transition-shadow duration-300"
       >
         <div className="flex items-center justify-between mb-6">

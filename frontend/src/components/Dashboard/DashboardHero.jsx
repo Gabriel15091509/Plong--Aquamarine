@@ -36,9 +36,9 @@ const DashboardHero = ({ title, subtitle, quickStats = [] }) => {
 
       <div className="relative z-20 h-full flex flex-col justify-center px-6 md:px-10 lg:px-14">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
           className="flex items-center gap-4 md:gap-6"
         >
           <div className="hidden sm:flex items-center justify-center w-14 h-14 md:w-[72px] md:h-[72px] bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl flex-shrink-0 hover:scale-105 hover:bg-white/20 transition-all duration-300">
@@ -88,9 +88,9 @@ const DashboardHero = ({ title, subtitle, quickStats = [] }) => {
 
         {quickStats.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.5 }}
+            transition={{ delay: 0.08, duration: 0.25 }}
             className="flex flex-wrap items-center gap-2 md:gap-3 mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10"
           >
             {quickStats.map(({ icon: Icon, label, colorClass }, i) => (

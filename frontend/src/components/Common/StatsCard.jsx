@@ -16,8 +16,8 @@ const StatsCard = ({
 }) => {
   return (
     <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.3 }}
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.15 }}
       className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow duration-300 p-5"
     >
       <div className="flex items-center gap-3">
