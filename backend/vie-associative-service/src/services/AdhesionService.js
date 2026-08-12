@@ -46,6 +46,8 @@ class AdhesionService extends BaseService {
       data = { ...data, num_adherent: adherent.num_adherent };
     }
 
+    await this.assertNoOverlap(data.num_adherent, data.type, data.date_debut, data.date_fin);
+
     if (data.type !== "Club") {
       // Plus de validation manuelle du président pour une soumission
       // adhérent : Ollama tranche seul (Validé/Rejeté), voir
@@ -276,7 +278,38 @@ class AdhesionService extends BaseService {
         "Adhésion validée : non modifiable. Créez une nouvelle entrée si besoin d'une correction.",
       );
     }
+    await this.assertNoOverlap(
+      adhesion.num_adherent,
+      data.type ?? adhesion.type,
+      data.date_debut ?? adhesion.date_debut,
+      data.date_fin ?? adhesion.date_fin,
+      id,
+    );
     return await this.adhesionRepository.update(id, data);
+  }
+
+  // Empêche deux adhésions du même type, pour le même adhérent, dont les
+  // périodes se chevauchent (ex. deux "Club" couvrant en partie la même
+  // année) — source de doublons/double facturation, cf. discussion produit.
+  // Un renouvellement anticipé (dates futures, ne chevauchant pas la
+  // période en cours) reste autorisé ; seule une vraie intersection de
+  // dates est bloquée. `excludeId` (mise à jour) ignore l'entrée elle-même.
+  async assertNoOverlap(num_adherent, type, date_debut, date_fin, excludeId = null) {
+    if (!num_adherent || !type || !date_debut || !date_fin) return;
+    const existing = await this.adhesionRepository.findOverlapping(
+      num_adherent,
+      type,
+      date_debut,
+      date_fin,
+      excludeId,
+    );
+    if (existing) {
+      const debut = new Date(existing.date_debut).toLocaleDateString("fr-FR");
+      const fin = new Date(existing.date_fin).toLocaleDateString("fr-FR");
+      throw new Error(
+        `Cet adhérent a déjà une adhésion "${type}" du ${debut} au ${fin} qui chevauche ces dates. Corrigez les dates ou modifiez l'entrée existante.`,
+      );
+    }
   }
 
   async delete(id) {
