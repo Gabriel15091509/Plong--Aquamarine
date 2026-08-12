@@ -384,7 +384,7 @@ const UsersPage = () => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card overflow-hidden border border-gray-100 dark:border-gray-700">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <LoadingSpinner />
+              <LoadingSpinner variant="list" />
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-12">

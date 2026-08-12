@@ -62,7 +62,7 @@ const SpecialiteFormationList = () => {
     });
   }, [data, adherentMap, searchTerm]);
 
-  if (isLoading || loadingAdherents || loadingMoniteurs) return <LoadingSpinner />;
+  if (isLoading || loadingAdherents || loadingMoniteurs) return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   const handleDelete = async (id) => {

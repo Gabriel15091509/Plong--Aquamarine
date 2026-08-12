@@ -137,7 +137,7 @@ const FormationCompetences = ({ formation, user, canManage = false }) => {
       )}
 
       {loadingCompetences ? (
-        <LoadingSpinner />
+        <LoadingSpinner variant="list" />
       ) : competences.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Aucune compétence enregistrée pour cette formation.

@@ -170,8 +170,8 @@ const PresidentForm = () => {
     }
   };
 
-  if (editMode && loadingData) return <LoadingSpinner />;
-  if (loadingMoniteurs || loadingUsers) return <LoadingSpinner />;
+  if (editMode && loadingData) return <LoadingSpinner variant="form" />;
+  if (loadingMoniteurs || loadingUsers) return <LoadingSpinner variant="form" />;
 
   const inputClasses = (fieldName) =>
     `w-full pl-4 pr-4 py-2.5 text-sm border rounded-lg focus:outline-none transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${

@@ -17,7 +17,7 @@ const MoniteursPage = () => {
   const moniteurs = data?.data || [];
 
   // Gestion des états de chargement et d'erreur
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="list" />;
   if (error)
     return <div className="text-red-500">Erreur : {error.message}</div>;
 

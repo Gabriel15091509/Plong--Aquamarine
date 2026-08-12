@@ -94,7 +94,7 @@ const MoniteurList = () => {
   };
 
   // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
-  if (isLoading || loadingUsers) return <LoadingSpinner />;
+  if (isLoading || loadingUsers) return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   if (filteredMoniteurs.length === 0) {

@@ -167,7 +167,7 @@ const SortiePointage = () => {
     }
   };
 
-  if (loadingSortie || loadingInscriptions) return <LoadingSpinner />;
+  if (loadingSortie || loadingInscriptions) return <LoadingSpinner variant="list" />;
 
   const formatDate = (date) => {
     if (!date) return "";

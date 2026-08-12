@@ -139,7 +139,7 @@ const PlongeeList = () => {
   };
 
   // RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
-  if (isLoading || loadingAdherents) return <LoadingSpinner />;
+  if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   if (filteredPlongees.length === 0) {

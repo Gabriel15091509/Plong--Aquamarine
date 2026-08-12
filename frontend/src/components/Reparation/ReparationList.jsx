@@ -69,7 +69,7 @@ const ReparationList = () => {
     }
   };
 
-  if (isLoading || loadingMateriels) return <LoadingSpinner />;
+  if (isLoading || loadingMateriels) return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   if (filteredReparations.length === 0) {

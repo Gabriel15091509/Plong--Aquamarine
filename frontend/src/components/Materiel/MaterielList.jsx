@@ -60,7 +60,7 @@ const MaterielList = () => {
     });
   }, [allMateriels, filter, categorieFilter, searchTerm]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   const totalPages = Math.ceil(filteredMateriels.length / itemsPerPage);

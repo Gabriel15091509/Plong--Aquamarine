@@ -147,7 +147,7 @@ const AdhesionList = () => {
   };
 
   // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
-  if (isLoading || loadingAdherents) return <LoadingSpinner />;
+  if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   if (filteredAdhesions.length === 0) {

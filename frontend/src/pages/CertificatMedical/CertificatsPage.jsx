@@ -13,7 +13,7 @@ const CertificatsPage = () => {
 
   const certificats = data?.data || [];
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   return (

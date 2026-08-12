@@ -176,7 +176,7 @@ const InscriptionList = () => {
   }, [filteredInscriptions, startIndex, itemsPerPage]);
 
   if (isLoading || loadingAdherents || loadingSorties)
-    return <LoadingSpinner />;
+    return <LoadingSpinner variant="list" />;
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   // Actions
