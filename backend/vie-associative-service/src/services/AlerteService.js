@@ -27,6 +27,15 @@ const ALERT_TYPES = {
   },
 };
 
+// Périmètre des alertes visibles par rôle de gestion (CDC : chaque
+// responsable ne doit voir que ce qui relève de son domaine). Le
+// président n'a pas d'entrée ici : canManageAlertes() + l'absence de
+// clé dans cette table équivaut à "aucun filtre de type" (voit tout).
+const ROLE_ALERT_TYPES = {
+  tresorier: ["Paiement en retard"],
+  moniteur: ["Formation", "Inactivite plongee"],
+};
+
 const ALERT_DESCRIPTIONS = {
   "Certificat expiré": "Le certificat médical a expiré",
   "Certificat expire bientot": "Le certificat médical expire dans moins de 30 jours",
@@ -72,7 +81,13 @@ class AlerteService extends BaseService {
 
   async getScopeForUser(user) {
     const adherent = await this.getAdherentForUser(user);
-    return adherent ? { num_adherent: adherent.num_adherent } : {};
+    if (adherent) return { num_adherent: adherent.num_adherent };
+
+    // Adhérent non trouvé (canManageAlertes === true) : filtrer par
+    // domaine de responsabilité. Le président (absent de ROLE_ALERT_TYPES)
+    // n'a aucune restriction et voit toutes les alertes.
+    const allowedTypes = ROLE_ALERT_TYPES[this.normalizeRole(user?.role)];
+    return allowedTypes ? { type: { [Op.in]: allowedTypes } } : {};
   }
 
   async getAll(options = {}, user = null, authHeader = null) {
@@ -99,11 +114,25 @@ class AlerteService extends BaseService {
     return await withAdherentNames(results, authHeader);
   }
 
+  // Vérifie qu'une alerte tombe dans le périmètre (num_adherent pour un
+  // adhérent, type pour un rôle métier restreint) — utilisé partout où on
+  // accède à une alerte précise par id, pour ne pas se fier uniquement au
+  // filtrage en amont des listes.
+  alerteMatchesScope(alerte, scope) {
+    if (scope.num_adherent && scope.num_adherent !== alerte.num_adherent) {
+      return false;
+    }
+    if (scope.type && !scope.type[Op.in].includes(alerte.type)) {
+      return false;
+    }
+    return true;
+  }
+
   async getByIdForUser(id, user = null, authHeader = null) {
     const alerte = await this.alerteRepository.findById(id);
     if (!alerte) throw new NotFoundError("Alerte non trouvée");
     const scope = await this.getScopeForUser(user);
-    if (scope.num_adherent && scope.num_adherent !== alerte.num_adherent) {
+    if (!this.alerteMatchesScope(alerte, scope)) {
       throw new ForbiddenError("Accès refusé à cette alerte");
     }
     return await withAdherentNames(alerte, authHeader);
@@ -116,6 +145,11 @@ class AlerteService extends BaseService {
 
     const alerte = await this.alerteRepository.findById(id);
     if (!alerte) throw new NotFoundError("Alerte non trouvée");
+
+    const scope = await this.getScopeForUser(user);
+    if (!this.alerteMatchesScope(alerte, scope)) {
+      throw new ForbiddenError("Cette alerte ne relève pas de votre périmètre");
+    }
 
     const adherent = await identiteClient.getAdherentById(alerte.num_adherent, authHeader);
     if (!adherent?.email) {
