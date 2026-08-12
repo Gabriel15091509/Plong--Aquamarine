@@ -7,6 +7,31 @@
     <meta name="theme-color" content="#0ea5e9" />
     <meta name="description" content="Application de gestion de club de plongée" />
     <title>Plongée Club</title>
+    <!--
+      Applique la classe .dark sur <html> AVANT le premier rendu (synchrone,
+      bloquant, avant même le parsing du CSS) — sans ça, ThemeContext ne
+      l'ajoute que dans un useEffect qui ne s'exécute qu'après le premier
+      paint, donc chaque actualisation en mode sombre affiche un flash de
+      fond clair (bg-gray-50, cf. src/styles/index.css) avant de basculer.
+      Doit rester strictement synchronisé avec la logique de ThemeContext.jsx.
+    -->
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("theme");
+          if (!theme) {
+            theme =
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          }
+          if (theme === "dark") {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
