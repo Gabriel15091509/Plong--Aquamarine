@@ -45,7 +45,7 @@ const ProtectedRoute = ({
         role="status"
         aria-label="Vérification de la session en cours"
       >
-        <Logo size="lg" className="animate-pulse" />
+        <Logo size="xl" className="!w-28 !h-28 animate-pulse" />
       </div>
     );
   }
