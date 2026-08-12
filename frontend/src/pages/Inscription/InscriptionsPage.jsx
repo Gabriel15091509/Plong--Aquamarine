@@ -5,7 +5,6 @@ import { FiClipboard, FiPlus, FiChevronRight } from "react-icons/fi";
 import InscriptionList from "../../components/Inscription/InscriptionList";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { useAuth } from "../../context/AuthContext";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 const InscriptionsPage = () => {
   const { user } = useAuth();
@@ -15,7 +14,8 @@ const InscriptionsPage = () => {
   const isAdherent = user?.role === "adherent";
   const inscriptions = data?.data || [];
 
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Le chargement est géré par InscriptionList elle-même (son propre
+  // squelette liste), pour éviter un double reflet.
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   return (
@@ -35,7 +35,7 @@ const InscriptionsPage = () => {
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {isAdherent
               ? "Vos inscriptions aux sorties de plongée"
-              : `${inscriptions.length} inscriptions enregistrées`}
+              : `${isLoading ? "…" : inscriptions.length} inscriptions enregistrées`}
           </p>
         </div>
       </div>
@@ -47,7 +47,7 @@ const InscriptionsPage = () => {
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-        {inscriptions.length} inscriptions • Dernière mise à jour :{" "}
+        {isLoading ? "…" : inscriptions.length} inscriptions • Dernière mise à jour :{" "}
         {new Date().toLocaleString("fr-FR", {
           day: "numeric",
           month: "long",

@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { FiPlus, FiDollarSign } from "react-icons/fi";
 import { useTresoriers } from "../../hooks/Tresorier/useTresoriers";
 import TresorierList from "../../components/Tresorier/TresorierList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 /**
  * Page principale de gestion des trésoriers
@@ -16,8 +15,8 @@ const TresoriersPage = () => {
 
   const tresoriers = data?.data || [];
 
-  // Gestion des états de chargement et d'erreur
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Gestion de l'état d'erreur — le chargement est géré par TresorierList
+  // elle-même (son propre squelette liste), pour éviter un double reflet.
   if (error)
     return <div className="text-red-500">Erreur : {error.message}</div>;
 
@@ -35,7 +34,7 @@ const TresoriersPage = () => {
             Gestion des trésoriers
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {tresoriers.length} trésoriers enregistrés
+            {isLoading ? "…" : tresoriers.length} trésoriers enregistrés
           </p>
         </div>
       </div>
@@ -47,7 +46,7 @@ const TresoriersPage = () => {
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-        {tresoriers.length} trésoriers • Dernière mise à jour :{" "}
+        {isLoading ? "…" : tresoriers.length} trésoriers • Dernière mise à jour :{" "}
         {new Date().toLocaleString("fr-FR", {
           day: "numeric",
           month: "long",

@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { FiDroplet, FiPlus } from "react-icons/fi";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import PlongeeList from "../../components/Plongee/PlongeeList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 const PlongeesPage = () => {
   const { useGetAll } = usePlongees();
@@ -13,7 +12,8 @@ const PlongeesPage = () => {
 
   const plongees = data?.data || [];
 
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Le chargement est géré par PlongeeList elle-même (son propre
+  // squelette liste), pour éviter un double reflet.
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   return (
@@ -31,7 +31,7 @@ const PlongeesPage = () => {
             <FiDroplet className="w-5 h-5 text-indigo-500" />
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {plongees.length} plongées enregistrées
+            {isLoading ? "…" : plongees.length} plongées enregistrées
           </p>
         </div>
       </div>
@@ -43,7 +43,7 @@ const PlongeesPage = () => {
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-        {plongees.length} plongées • Dernière mise à jour :{" "}
+        {isLoading ? "…" : plongees.length} plongées • Dernière mise à jour :{" "}
         {new Date().toLocaleString("fr-FR", {
           day: "numeric",
           month: "long",

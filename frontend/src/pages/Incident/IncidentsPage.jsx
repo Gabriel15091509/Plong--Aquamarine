@@ -2,7 +2,6 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useIncidents } from "../../hooks/Incident/useIncidents";
 import IncidentList from "../../components/Incident/IncidentList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 const IncidentsPage = () => {
   const { useGetAll } = useIncidents();
@@ -10,7 +9,8 @@ const IncidentsPage = () => {
 
   const incidents = data?.data || [];
 
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Le chargement est géré par IncidentList elle-même (son propre
+  // squelette liste), pour éviter un double reflet.
   if (error)
     return <div className="text-red-500">Erreur : {error.message}</div>;
 
@@ -27,7 +27,7 @@ const IncidentsPage = () => {
             Gestion des incidents
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {incidents.length} incidents enregistrés
+            {isLoading ? "…" : incidents.length} incidents enregistrés
           </p>
         </div>
       </div>

@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { FiPlus, FiAward } from "react-icons/fi";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import MoniteurList from "../../components/Moniteur/MoniteurList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 /**
  * Page principale de gestion des moniteurs
@@ -16,8 +15,8 @@ const MoniteursPage = () => {
 
   const moniteurs = data?.data || [];
 
-  // Gestion des états de chargement et d'erreur
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Gestion de l'état d'erreur — le chargement est géré par MoniteurList
+  // elle-même (son propre squelette liste), pour éviter un double reflet.
   if (error)
     return <div className="text-red-500">Erreur : {error.message}</div>;
 
@@ -35,7 +34,7 @@ const MoniteursPage = () => {
             Gestion des moniteurs
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {moniteurs.length} moniteurs enregistrés
+            {isLoading ? "…" : moniteurs.length} moniteurs enregistrés
           </p>
         </div>
       </div>
@@ -47,7 +46,7 @@ const MoniteursPage = () => {
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-        {moniteurs.length} moniteurs • Dernière mise à jour :{" "}
+        {isLoading ? "…" : moniteurs.length} moniteurs • Dernière mise à jour :{" "}
         {new Date().toLocaleString("fr-FR", {
           day: "numeric",
           month: "long",

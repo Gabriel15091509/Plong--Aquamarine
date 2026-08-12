@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { FiPlus, FiShield } from "react-icons/fi";
 import { usePresidents } from "../../hooks/President/usePresidents";
 import PresidentList from "../../components/President/PresidentList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 /**
  * Page principale de gestion des présidents
@@ -16,8 +15,8 @@ const PresidentsPage = () => {
 
   const presidents = data?.data || [];
 
-  // Gestion des états de chargement et d'erreur
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Gestion de l'état d'erreur — le chargement est géré par PresidentList
+  // elle-même (son propre squelette liste), pour éviter un double reflet.
   if (error)
     return <div className="text-red-500">Erreur : {error.message}</div>;
 
@@ -35,7 +34,7 @@ const PresidentsPage = () => {
             Gestion des présidents
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {presidents.length} présidents enregistrés
+            {isLoading ? "…" : presidents.length} présidents enregistrés
           </p>
         </div>
       </div>
@@ -47,7 +46,7 @@ const PresidentsPage = () => {
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-        {presidents.length} présidents • Dernière mise à jour :{" "}
+        {isLoading ? "…" : presidents.length} présidents • Dernière mise à jour :{" "}
         {new Date().toLocaleString("fr-FR", {
           day: "numeric",
           month: "long",

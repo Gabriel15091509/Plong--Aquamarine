@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { FiDollarSign, FiPlus } from "react-icons/fi";
 import { usePaiements } from "../../hooks/Paiement/usePaiements";
 import PaiementList from "../../components/Paiement/PaiementList";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 
 const PaiementsPage = () => {
   const { useGetAll } = usePaiements();
@@ -13,7 +12,8 @@ const PaiementsPage = () => {
 
   const paiements = data?.data || [];
 
-  if (isLoading) return <LoadingSpinner variant="list" />;
+  // Le chargement est géré par PaiementList elle-même (son propre
+  // squelette liste), pour éviter un double reflet.
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
 
   return (
@@ -31,7 +31,7 @@ const PaiementsPage = () => {
             <FiDollarSign className="w-5 h-5 text-indigo-500" />
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {paiements.length} paiements enregistrés
+            {isLoading ? "…" : paiements.length} paiements enregistrés
           </p>
         </div>
       </div>
@@ -43,7 +43,7 @@ const PaiementsPage = () => {
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 mt-3 border-t border-gray-200 dark:border-gray-700">
-        {paiements.length} paiements • Dernière mise à jour :{" "}
+        {isLoading ? "…" : paiements.length} paiements • Dernière mise à jour :{" "}
         {new Date().toLocaleString("fr-FR", {
           day: "numeric",
           month: "long",
