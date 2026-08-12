@@ -22,11 +22,13 @@ class AlerteRepository extends BaseRepository {
   }
 
   async markAsRead(id, where = {}) {
-    const alerte = await this.findById(id);
+    // Passe par une vraie clause Sequelize (findOne) plutôt qu'une
+    // comparaison manuelle champ-à-champ : `where` peut désormais contenir
+    // un opérateur (ex. `{ type: { [Op.in]: [...] } }` pour le périmètre
+    // trésorier/moniteur), qu'une simple égalité `alerte[key] !== value`
+    // ne sait pas évaluer.
+    const alerte = await this.model.findOne({ where: { id_alerte: id, ...where } });
     if (!alerte) throw new NotFoundError('Alerte not found');
-    for (const [key, value] of Object.entries(where)) {
-      if (alerte[key] !== value) throw new NotFoundError('Alerte not found');
-    }
     alerte.read = true;
     alerte.statut = 'Lu';
     await alerte.save();

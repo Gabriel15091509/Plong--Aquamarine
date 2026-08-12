@@ -1,9 +1,11 @@
 import React from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiX, FiMail, FiUser, FiClock, FiSend } from "react-icons/fi";
+import { FiX, FiMail, FiUser, FiClock, FiSend, FiExternalLink } from "react-icons/fi";
 import { formatDateTime } from "../../utils/helpers";
 import { useAlertes } from "../../hooks/Alerte/useAlertes";
+import { useAuth } from "../../context/AuthContext";
 
 const ALERT_DESCRIPTIONS = {
   "Certificat expiré": "Le certificat médical a expiré",
@@ -19,11 +21,22 @@ const ALERT_DESCRIPTIONS = {
 const AlerteDetailsModal = ({ alerte, onClose }) => {
   const { useRelancer } = useAlertes();
   const relancer = useRelancer();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   if (!alerte) return null;
 
   const nom = alerte.adherent_nom || alerte.num_adherent;
   const description = ALERT_DESCRIPTIONS[alerte.type] || alerte.type;
+  // La relance par email est une action de gestion (président/moniteur/
+  // trésorier) : un adhérent qui ouvre sa propre alerte n'a pas à se
+  // relancer lui-même.
+  const canRelancer = user?.role !== "adherent";
+
+  const handleVoirFiche = () => {
+    onClose();
+    navigate(`/adherents/${alerte.num_adherent}`);
+  };
 
   return createPortal(
     <AnimatePresence>
@@ -96,24 +109,34 @@ const AlerteDetailsModal = ({ alerte, onClose }) => {
             </div>
           </div>
 
-          <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+          <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center gap-2">
             <button
-              onClick={() => relancer.mutate(alerte.id_alerte)}
-              disabled={relancer.isPending || !alerte.adherent_email}
-              title={
-                !alerte.adherent_email
-                  ? "Adresse email de l'adhérent introuvable"
-                  : undefined
-              }
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
+              onClick={handleVoirFiche}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-xl transition-colors"
             >
-              {relancer.isPending ? (
-                <FiSend className="w-4 h-4 animate-pulse" />
-              ) : (
-                <FiMail className="w-4 h-4" />
-              )}
-              Relancer par email
+              <FiExternalLink className="w-4 h-4" />
+              Voir plus de détails
             </button>
+
+            {canRelancer && (
+              <button
+                onClick={() => relancer.mutate(alerte.id_alerte)}
+                disabled={relancer.isPending || !alerte.adherent_email}
+                title={
+                  !alerte.adherent_email
+                    ? "Adresse email de l'adhérent introuvable"
+                    : undefined
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
+              >
+                {relancer.isPending ? (
+                  <FiSend className="w-4 h-4 animate-pulse" />
+                ) : (
+                  <FiMail className="w-4 h-4" />
+                )}
+                Relancer par email
+              </button>
+            )}
           </div>
         </motion.div>
       </motion.div>
