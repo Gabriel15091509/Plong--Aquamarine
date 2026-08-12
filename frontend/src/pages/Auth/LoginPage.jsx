@@ -150,6 +150,42 @@ const LoginPage = () => {
       <div className="absolute top-10 left-10 w-32 h-32 bg-primary-200/20 rounded-full blur-2xl dark:bg-primary-900/20 pointer-events-none" />
       <div className="absolute bottom-20 right-10 w-40 h-40 bg-ocean-200/20 rounded-full blur-2xl dark:bg-ocean-900/20 pointer-events-none" />
 
+      {/* Aperçu du tableau de bord : apparaît en fondu dès que les battants
+          commencent à s'écarter, pour que le dashboard se révèle
+          progressivement derrière la carte plutôt que de rester caché
+          derrière le fond de la page de connexion jusqu'à la navigation. */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: transitioning ? 1 : 0 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="absolute inset-0 z-10 flex overflow-hidden bg-gray-50 dark:bg-gray-900 pointer-events-none"
+      >
+        <div className="hidden md:block w-56 shrink-0 h-full bg-white dark:bg-gray-800 border-r border-cyan-100/50 dark:border-cyan-800/30 p-4 space-y-3">
+          <div className="h-9 w-28 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse" />
+          <div className="h-8 rounded-xl bg-cyan-50 dark:bg-cyan-900/30 animate-pulse" />
+          <div className="h-8 rounded-xl bg-gray-100 dark:bg-gray-700/60 animate-pulse" />
+          <div className="h-8 rounded-xl bg-gray-100 dark:bg-gray-700/60 animate-pulse" />
+          <div className="h-8 rounded-xl bg-gray-100 dark:bg-gray-700/60 animate-pulse" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="h-14 flex items-center justify-between px-6 bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+            <div className="h-4 w-32 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
+            <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 animate-pulse" />
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-24 rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 animate-pulse"
+                />
+              ))}
+            </div>
+            <div className="h-40 rounded-2xl bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 animate-pulse" />
+          </div>
+        </div>
+      </motion.div>
+
       <motion.div
         initial={{ opacity: 0, y: 8, scale: 0.98 }}
         animate={
@@ -162,7 +198,7 @@ const LoginPage = () => {
             ? { duration: 0.25, delay: 0.2, ease: "easeOut" }
             : { duration: 0.3, ease: "easeOut" }
         }
-        className="w-full max-w-6xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
+        className="relative z-20 w-full max-w-6xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
       >
         {/* Partie gauche - Formulaire */}
         <motion.div
