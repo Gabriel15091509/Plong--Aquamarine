@@ -172,6 +172,7 @@ const CertificatDetails = () => {
 
   const isExpired =
     certificat.date_validite && new Date(certificat.date_validite) < new Date();
+  const isRejected = certificat.statut_validation === "Rejeté";
 
   const daysUntilExpiry = () => {
     if (!certificat.date_validite) return null;
@@ -282,7 +283,7 @@ const CertificatDetails = () => {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${
-          isExpired
+          isRejected || isExpired
             ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
             : daysLeft && daysLeft <= 30
               ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
@@ -295,7 +296,15 @@ const CertificatDetails = () => {
               Statut du certificat
             </p>
             <div className="flex items-center gap-3 mt-2">
-              {isExpired ? (
+              {/* Un document rejeté n'a jamais été accepté : "À jour"/
+                  "Expiré" n'a pas de sens ici, seul le rejet compte (motif
+                  détaillé plus bas dans "Validation"). */}
+              {isRejected ? (
+                <>
+                  <FiXCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                  <span className="text-xl font-bold text-gray-900 dark:text-white">Rejeté</span>
+                </>
+              ) : isExpired ? (
                 <>
                   <FiXCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                   <span className="text-xl font-bold text-gray-900 dark:text-white">Expiré</span>
@@ -309,15 +318,19 @@ const CertificatDetails = () => {
             </div>
           </div>
           <div className="flex items-center gap-8 flex-wrap">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {daysLeft !== null ? (isExpired ? "0" : daysLeft) : "-"}
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                {isExpired ? "Expiré" : "Jours restants"}
-              </p>
-            </div>
-            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
+            {!isRejected && (
+              <>
+                <div className="text-center">
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                    {daysLeft !== null ? (isExpired ? "0" : daysLeft) : "-"}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    {isExpired ? "Expiré" : "Jours restants"}
+                  </p>
+                </div>
+                <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
+              </>
+            )}
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {formatDate(certificat.date_validite)}
@@ -326,10 +339,14 @@ const CertificatDetails = () => {
                 Date d'expiration
               </p>
             </div>
-            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
-            <div className="text-center">
-              <StatusBadge status={certificat.statut} />
-            </div>
+            {!isRejected && (
+              <>
+                <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
+                <div className="text-center">
+                  <StatusBadge status={certificat.statut} />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </motion.div>
@@ -407,11 +424,16 @@ const CertificatDetails = () => {
             label="Médecin traitant"
             value={certificat.medecin || "Non renseigné"}
           />
-          <InfoItem
-            icon={FiAward}
-            label="Statut"
-            value={<StatusBadge status={certificat.statut} />}
-          />
+          {/* Rejeté : "À jour"/"Expiré" ne veut rien dire pour un document
+              jamais accepté — seule la section "Validation" (rejet + motif)
+              compte, pas la peine de la répéter deux fois avec un autre mot. */}
+          {!isRejected && (
+            <InfoItem
+              icon={FiAward}
+              label="Statut"
+              value={<StatusBadge status={certificat.statut} />}
+            />
+          )}
           {certificat.statut_validation !== "Validé" && (
             <InfoItem
               icon={FiAlertCircle}
@@ -419,7 +441,7 @@ const CertificatDetails = () => {
               value={
                 <div>
                   <StatusBadge status={certificat.statut_validation} />
-                  {certificat.statut_validation === "Rejeté" && certificat.motif_rejet && (
+                  {isRejected && certificat.motif_rejet && (
                     <p className="text-sm text-red-600 dark:text-red-400 mt-1 italic">
                       Motif : {certificat.motif_rejet}
                     </p>
@@ -428,22 +450,24 @@ const CertificatDetails = () => {
               }
             />
           )}
-          <InfoItem
-            icon={isExpired ? FiXCircle : FiCheckCircle}
-            label="Validité"
-            value={
-              <span
-                className={`font-semibold ${
-                  isExpired
-                    ? "text-red-600 dark:text-red-400"
-                    : "text-green-600 dark:text-green-400"
-                }`}
-              >
-                {isExpired ? "Expiré" : "À jour"}
-              </span>
-            }
-          />
-          {daysLeft !== null && !isExpired && (
+          {!isRejected && (
+            <InfoItem
+              icon={isExpired ? FiXCircle : FiCheckCircle}
+              label="Validité"
+              value={
+                <span
+                  className={`font-semibold ${
+                    isExpired
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-green-600 dark:text-green-400"
+                  }`}
+                >
+                  {isExpired ? "Expiré" : "À jour"}
+                </span>
+              }
+            />
+          )}
+          {!isRejected && daysLeft !== null && !isExpired && (
             <InfoItem
               icon={FiClock}
               label="Jours restants"

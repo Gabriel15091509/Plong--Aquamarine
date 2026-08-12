@@ -217,6 +217,7 @@ const AdhesionDetails = () => {
   }
 
   const isClub = adhesion.type === "Club";
+  const isRejected = adhesion.statut_validation === "Rejeté";
 
   const getStatutColor = (statut) => {
     const colors = {
@@ -392,18 +393,21 @@ const AdhesionDetails = () => {
                 </p>
               )}
             </div>
-            {/* Validité (Valide/Expiré) dérivée de date_fin — distincte du
+            {/* Validité (À jour/Expiré) dérivée de date_fin — distincte du
                 circuit de validation/paiement ci-dessus, dans son propre
-                bloc étiqueté pour ne pas se lire comme un doublon accolé
-                (ex. "Validé" + "Validé"/"Expiré" sans contexte). */}
-            <div>
-              <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                Validité
-              </p>
-              <div className="mt-2">
-                <StatusBadge status={adhesion.statut} />
+                bloc étiqueté pour ne pas se lire comme un doublon accolé.
+                Rejetée : n'a jamais été acceptée, "À jour"/"Expiré" n'a pas
+                de sens — seul le rejet (bloc de gauche + motif) compte. */}
+            {!isRejected && (
+              <div>
+                <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  Validité
+                </p>
+                <div className="mt-2">
+                  <StatusBadge status={adhesion.statut} />
+                </div>
               </div>
-            </div>
+            )}
           </div>
           <div className="flex items-center gap-8 flex-wrap">
             {isClub && (

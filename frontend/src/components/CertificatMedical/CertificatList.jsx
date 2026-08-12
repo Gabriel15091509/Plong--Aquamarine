@@ -330,8 +330,17 @@ const CertificatList = () => {
                                 </span>
                               </>
                             )}
-                            <span>•</span>
-                            <StatusBadge status={certificat.statut} />
+                            {/* Rejeté : l'expiration (À jour/Expiré) n'a pas
+                                de sens pour un document jamais accepté —
+                                seul le motif de rejet compte. Validé :
+                                inutile de le répéter, l'expiration seule
+                                suffit à l'affichage. */}
+                            {certificat.statut_validation !== "Rejeté" && (
+                              <>
+                                <span>•</span>
+                                <StatusBadge status={certificat.statut} />
+                              </>
+                            )}
                             {certificat.statut_validation !== "Validé" && (
                               <>
                                 <span>•</span>
