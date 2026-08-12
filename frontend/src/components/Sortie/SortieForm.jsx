@@ -16,6 +16,7 @@ import {
   FiClipboard,
   FiInfo,
   FiDollarSign,
+  FiAlertTriangle,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
@@ -34,6 +35,18 @@ const fadeInUp = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.3 },
+};
+
+// Jours de sortie habituels du club (voir page À propos "Infos
+// pratiques") : dimanche(0), mercredi(3), samedi(6) — getDay(). Un autre
+// jour reste possible (météo, sortie exceptionnelle...), donc un simple
+// avertissement non bloquant plutôt qu'une erreur de validation.
+const JOURS_SORTIE_HABITUELS = [0, 3, 6];
+
+const isJourSortieInhabituel = (dateHeure) => {
+  if (!dateHeure) return false;
+  const jour = new Date(dateHeure).getDay();
+  return !Number.isNaN(jour) && !JOURS_SORTIE_HABITUELS.includes(jour);
 };
 
 const SortieForm = () => {
@@ -211,6 +224,13 @@ const SortieForm = () => {
             />
             {errors.date_heure && (
               <p className="mt-1.5 text-sm text-red-500">{errors.date_heure}</p>
+            )}
+            {!errors.date_heure && isJourSortieInhabituel(formData.date_heure) && (
+              <p className="mt-1.5 text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                <FiAlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                Les sorties ont habituellement lieu le mercredi, samedi ou
+                dimanche.
+              </p>
             )}
           </motion.div>
 
