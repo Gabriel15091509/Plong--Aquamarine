@@ -50,6 +50,10 @@ const FormSkeleton = () => (
   </div>
 );
 
+// Sections reprenant les classes exactes de SectionCard.jsx / InfoItem.jsx
+// (mêmes paddings, marges, tailles d'icône) pour que la hauteur du
+// squelette corresponde précisément à celle du vrai contenu, pas à une
+// approximation.
 const DetailsSkeleton = () => (
   <div className="w-full space-y-6">
     <div className="flex items-center gap-4">
@@ -63,16 +67,23 @@ const DetailsSkeleton = () => (
     {[0, 1].map((s) => (
       <div
         key={s}
-        className="rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 space-y-5"
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
       >
-        <div className="h-4 w-36 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+        <div className="flex items-center gap-3 mb-5">
+          <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
+            <span className="block w-5 h-5 rounded bg-cyan-200/60 dark:bg-cyan-800/40 animate-pulse" />
+          </span>
+          <div className="h-5 w-40 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-2">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="flex items-start gap-3 py-1">
-              <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse flex-shrink-0" />
-              <div className="flex-1 min-w-0 space-y-2">
-                <div className="h-2.5 w-1/3 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
-                <div className="h-3.5 w-2/3 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
+            <div key={i} className="flex items-start gap-4 p-4">
+              <div className="mt-0.5 p-2 rounded-lg bg-gray-100 dark:bg-gray-800">
+                <span className="block w-5 h-5 rounded bg-gray-200 dark:bg-gray-600 animate-pulse" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="h-3 w-1/3 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
+                <div className="h-4 w-2/3 rounded bg-gray-100 dark:bg-gray-700 animate-pulse mt-1.5" />
               </div>
             </div>
           ))}
@@ -82,42 +93,80 @@ const DetailsSkeleton = () => (
   </div>
 );
 
+// Reprend les classes exactes de StatsCard.jsx (mêmes p-5 / mt-4 / mt-2 /
+// mt-1) et de la mise en page de DashboardPage.jsx (mêmes cartes p-6,
+// mêmes hauteurs de ResponsiveContainer 300/260 pour Bar/PieChart), pour
+// que le squelette occupe précisément la même place que le vrai contenu.
 const DashboardSkeleton = () => (
   <div className="w-full space-y-6">
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
-          className="h-[168px] rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-5 space-y-4"
+          className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm p-5"
         >
-          <div className="w-11 h-11 rounded-full bg-gray-100 dark:bg-gray-700 animate-pulse" />
-          <div className="h-7 w-2/3 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
-          <div className="h-3 w-1/2 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-gray-100 dark:bg-slate-700 animate-pulse flex-shrink-0" />
+            <div className="h-3.5 flex-1 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+          </div>
+          <div className="h-7 w-2/3 rounded bg-gray-100 dark:bg-slate-700 animate-pulse mt-4" />
+          <div className="h-3.5 w-1/3 rounded bg-gray-100 dark:bg-slate-700 animate-pulse mt-2" />
+          <div className="h-3 w-1/2 rounded bg-gray-100 dark:bg-slate-700 animate-pulse mt-1" />
         </div>
       ))}
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 h-[420px] rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 space-y-4">
-        <div className="h-5 w-48 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
-        <div className="h-[320px] rounded-2xl bg-gray-50 dark:bg-gray-900/40 animate-pulse" />
+      <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-slate-700 animate-pulse" />
+          <div className="space-y-1.5">
+            <div className="h-4 w-32 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+            <div className="h-3 w-40 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+          </div>
+        </div>
+        <div className="flex gap-4 mb-4">
+          <div className="h-3 w-16 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+          <div className="h-3 w-14 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+          <div className="h-3 w-16 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+        </div>
+        <div className="h-[300px] rounded-2xl bg-gray-50 dark:bg-slate-900/40 animate-pulse" />
       </div>
-      <div className="h-[420px] rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 space-y-4">
-        <div className="h-5 w-40 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
-        <div className="h-[300px] rounded-full w-[300px] max-w-full mx-auto bg-gray-50 dark:bg-gray-900/40 animate-pulse" />
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-slate-700 animate-pulse" />
+          <div className="space-y-1.5">
+            <div className="h-4 w-32 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+            <div className="h-3 w-28 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+          </div>
+        </div>
+        <div className="h-[260px] w-[260px] max-w-full mx-auto rounded-full bg-gray-50 dark:bg-slate-900/40 animate-pulse" />
+        <div className="flex justify-center gap-4 mt-4">
+          <div className="h-3 w-14 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+          <div className="h-3 w-16 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+          <div className="h-3 w-14 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+        </div>
       </div>
     </div>
-    <div className="rounded-3xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-6 space-y-3">
-      <div className="h-5 w-44 rounded bg-gray-100 dark:bg-gray-700 animate-pulse mb-2" />
-      {[0, 1, 2, 3, 4].map((i) => (
-        <div key={i} className="flex items-center gap-4 p-3">
-          <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 animate-pulse flex-shrink-0" />
-          <div className="flex-1 min-w-0 space-y-2">
-            <div className="h-3.5 w-1/3 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
-            <div className="h-3 w-1/2 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
-          </div>
-          <div className="h-2.5 w-12 rounded bg-gray-100 dark:bg-gray-700 animate-pulse flex-shrink-0" />
+    <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 p-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-slate-700 animate-pulse" />
+        <div className="space-y-1.5">
+          <div className="h-4 w-36 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
+          <div className="h-3 w-48 rounded bg-gray-100 dark:bg-slate-700 animate-pulse" />
         </div>
-      ))}
+      </div>
+      <div className="space-y-3">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-slate-700/30 rounded-xl">
+            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-slate-600 animate-pulse flex-shrink-0" />
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="h-3.5 w-1/3 rounded bg-gray-200 dark:bg-slate-600 animate-pulse" />
+              <div className="h-3 w-1/2 rounded bg-gray-200 dark:bg-slate-600 animate-pulse" />
+            </div>
+            <div className="h-3 w-10 rounded bg-gray-200 dark:bg-slate-600 animate-pulse flex-shrink-0" />
+          </div>
+        ))}
+      </div>
     </div>
   </div>
 );
