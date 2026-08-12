@@ -88,13 +88,19 @@ class SortieService extends BaseService {
     const now = new Date();
     return {
       total: sorties.length,
+      // Comptes par statut réel (Sortie.statut) — ce que le tableau de
+      // bord affiche ("X planifiées • Y en cours • Z terminées").
+      planifiees: sorties.filter((s) => s.statut === "Planifiée").length,
+      enCours: sorties.filter((s) => s.statut === "En cours").length,
+      terminees: sorties.filter((s) => s.statut === "Terminée").length,
+      annulees: sorties.filter((s) => s.statut === "Annulée").length,
+      // Comptes par date (conservés pour compatibilité éventuelle).
       aVenir: sorties.filter(
         (s) => new Date(s.date_heure) > now && s.statut !== "Annulée",
       ).length,
       passees: sorties.filter(
         (s) => new Date(s.date_heure) < now && s.statut !== "Annulée",
       ).length,
-      annulees: sorties.filter((s) => s.statut === "Annulée").length,
     };
   }
 
