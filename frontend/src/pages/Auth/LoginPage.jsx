@@ -7,15 +7,10 @@ import {
   FiEye,
   FiEyeOff,
   FiLogIn,
-  FiUser,
   FiShield,
-  FiDroplet,
-  FiAnchor,
-  FiCompass,
   FiCreditCard,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
-import toast from "react-hot-toast";
 import Logo from "../../components/Common/Logo";
 
 const LoginPage = () => {
@@ -35,7 +30,7 @@ const LoginPage = () => {
   // léger zoom arrière) avant de naviguer vers le tableau de bord, qui
   // s'ouvre ensuite avec sa propre animation d'entrée habituelle.
   const [transitioning, setTransitioning] = useState(false);
-  const LOGIN_TRANSITION_MS = 350;
+  const LOGIN_TRANSITION_MS = 250;
 
   const goToDashboardWithTransition = () => {
     setTransitioning(true);
@@ -50,35 +45,18 @@ const LoginPage = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
+        staggerChildren: 0.04,
+        delayChildren: 0.05,
       },
     },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 8 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 24,
-      },
-    },
-  };
-
-  const bubbleVariants = {
-    animate: {
-      y: [0, -20, 0],
-      x: [0, 10, -10, 0],
-      scale: [1, 1.1, 1],
-      transition: {
-        duration: 8,
-        repeat: Infinity,
-        ease: "easeInOut",
-      },
+      transition: { duration: 0.25, ease: "easeOut" },
     },
   };
 
@@ -164,36 +142,21 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-ocean-50 flex items-center justify-center p-4 overflow-hidden relative dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {/* Bulles d'arrière-plan animées */}
-      <motion.div
-        variants={bubbleVariants}
-        animate="animate"
-        className="absolute top-10 left-10 w-32 h-32 bg-primary-200/20 rounded-full blur-2xl dark:bg-primary-900/20"
-      />
-      <motion.div
-        variants={bubbleVariants}
-        animate="animate"
-        className="absolute bottom-20 right-10 w-40 h-40 bg-ocean-200/20 rounded-full blur-2xl dark:bg-ocean-900/20"
-        style={{ animationDelay: "2s" }}
-      />
-      <motion.div
-        variants={bubbleVariants}
-        animate="animate"
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary-300/5 rounded-full blur-3xl dark:bg-primary-900/10"
-        style={{ animationDelay: "4s" }}
-      />
+      {/* Formes d'arrière-plan (statiques, discrètes) */}
+      <div className="absolute top-10 left-10 w-32 h-32 bg-primary-200/20 rounded-full blur-2xl dark:bg-primary-900/20 pointer-events-none" />
+      <div className="absolute bottom-20 right-10 w-40 h-40 bg-ocean-200/20 rounded-full blur-2xl dark:bg-ocean-900/20 pointer-events-none" />
 
       <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        initial={{ opacity: 0, y: 8, scale: 0.98 }}
         animate={
           transitioning
-            ? { opacity: 0, y: -16, scale: 0.97 }
+            ? { opacity: 0, y: -8, scale: 0.99 }
             : { opacity: 1, y: 0, scale: 1 }
         }
         transition={
           transitioning
-            ? { duration: 0.35, ease: "easeIn" }
-            : { duration: 0.8, ease: "easeOut" }
+            ? { duration: 0.2, ease: "easeIn" }
+            : { duration: 0.3, ease: "easeOut" }
         }
         className="w-full max-w-6xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
       >
@@ -204,51 +167,29 @@ const LoginPage = () => {
           animate="visible"
           className="w-full md:w-1/2 p-8 md:p-12 lg:p-16 dark:bg-gray-800/50"
         >
-          {/* Logo avec animation flottante */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex items-center gap-3 mb-8"
-          >
-            <motion.div
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <Logo size="lg" />
-            </motion.div>
+          {/* Logo */}
+          <motion.div variants={itemVariants} className="flex items-center gap-3 mb-8">
+            <Logo size="lg" />
             <div>
-              <motion.h1
-                className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-ocean-600 bg-clip-text text-transparent dark:from-primary-400 dark:to-ocean-400"
-                whileHover={{ scale: 1.02 }}
-              >
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-ocean-600 bg-clip-text text-transparent dark:from-primary-400 dark:to-ocean-400">
                 Plongée Club
-              </motion.h1>
+              </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Gestion de club de plongée
               </p>
             </div>
           </motion.div>
 
-          {/* Titre avec animation */}
+          {/* Titre */}
           <motion.div variants={itemVariants} className="mb-8">
-            <motion.h2
-              className="text-3xl font-bold text-gray-800 dark:text-white"
-              whileHover={{ x: 5 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
               {otpEmail ? "Vérification" : "Connexion"}
-            </motion.h2>
-            <motion.p
-              className="text-gray-500 dark:text-gray-400 mt-2"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">
               {otpEmail
                 ? `Saisissez le code envoyé à ${otpEmail}`
                 : "Connectez-vous pour accéder à votre espace de gestion"}
-            </motion.p>
+            </p>
           </motion.div>
 
           {otpEmail ? (
@@ -261,13 +202,10 @@ const LoginPage = () => {
               className="space-y-6"
             >
               <motion.div variants={itemVariants}>
-                <motion.label
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  whileHover={{ x: 3 }}
-                >
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Code à usage unique
-                </motion.label>
-                <motion.div className="relative" whileFocus={{ scale: 1.01 }}>
+                </label>
+                <div className="relative">
                   <FiShield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
                   <input
                     type="text"
@@ -282,13 +220,13 @@ const LoginPage = () => {
                     autoFocus
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 tracking-[0.5em] text-center text-xl font-mono"
                   />
-                </motion.div>
+                </div>
               </motion.div>
 
               <motion.div variants={itemVariants}>
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
                   type="submit"
                   disabled={loading || otpCode.length !== 6}
                   className="w-full py-3 bg-gradient-to-r from-primary-500 to-ocean-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
@@ -318,13 +256,10 @@ const LoginPage = () => {
           >
             {/* Email */}
             <motion.div variants={itemVariants}>
-              <motion.label
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                whileHover={{ x: 3 }}
-              >
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Adresse email
-              </motion.label>
-              <motion.div className="relative" whileFocus={{ scale: 1.01 }}>
+              </label>
+              <div className="relative">
                 <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
                 <input
                   type="email"
@@ -338,17 +273,12 @@ const LoginPage = () => {
                       : "border-gray-300 dark:border-gray-600"
                   } rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400`}
                 />
-                <motion.div
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: formData.email ? 1 : 0 }}
-                  className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-primary-500 to-ocean-500 rounded-full"
-                  style={{ width: "100%", transformOrigin: "left" }}
-                />
-              </motion.div>
+              </div>
               {errors.email && (
                 <motion.p
-                  initial={{ opacity: 0, y: -10 }}
+                  initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
                   className="mt-1 text-sm text-red-600 dark:text-red-400"
                 >
                   {errors.email}
@@ -358,13 +288,10 @@ const LoginPage = () => {
 
             {/* Mot de passe */}
             <motion.div variants={itemVariants}>
-              <motion.label
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                whileHover={{ x: 3 }}
-              >
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Mot de passe
-              </motion.label>
-              <motion.div className="relative" whileFocus={{ scale: 1.01 }}>
+              </label>
+              <div className="relative">
                 <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
                 <input
                   type={showPassword ? "text" : "password"}
@@ -378,30 +305,23 @@ const LoginPage = () => {
                       : "border-gray-300 dark:border-gray-600"
                   } rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400`}
                 />
-                <motion.button
+                <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
                 >
                   {showPassword ? (
                     <FiEyeOff className="w-5 h-5" />
                   ) : (
                     <FiEye className="w-5 h-5" />
                   )}
-                </motion.button>
-                <motion.div
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: formData.password ? 1 : 0 }}
-                  className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-primary-500 to-ocean-500 rounded-full"
-                  style={{ width: "100%", transformOrigin: "left" }}
-                />
-              </motion.div>
+                </button>
+              </div>
               {errors.password && (
                 <motion.p
-                  initial={{ opacity: 0, y: -10 }}
+                  initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
                   className="mt-1 text-sm text-red-600 dark:text-red-400"
                 >
                   {errors.password}
@@ -414,10 +334,7 @@ const LoginPage = () => {
               variants={itemVariants}
               className="flex items-center justify-between"
             >
-              <motion.label
-                className="flex items-center gap-2 cursor-pointer"
-                whileHover={{ scale: 1.02 }}
-              >
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   name="remember"
@@ -428,51 +345,43 @@ const LoginPage = () => {
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   Se souvenir de moi
                 </span>
-              </motion.label>
-              <motion.a
+              </label>
+              <a
                 href="#"
                 className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
               >
                 Mot de passe oublié ?
-              </motion.a>
+              </a>
             </motion.div>
 
             {/* Bouton de connexion */}
             <motion.div variants={itemVariants}>
               <motion.button
-                whileHover={{
-                  scale: 1.02,
-                  boxShadow: "0 20px 60px rgba(37, 99, 235, 0.3)",
-                }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-primary-500 to-ocean-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed relative overflow-hidden group"
+                className="w-full py-3 bg-gradient-to-r from-primary-500 to-ocean-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <motion.div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-ocean-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <span className="relative z-10 flex items-center gap-2">
-                  {loading ? (
-                    <>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 1,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
-                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                      />
-                      Connexion en cours...
-                    </>
-                  ) : (
-                    <>
-                      <FiLogIn className="w-5 h-5" />
-                      Se connecter
-                    </>
-                  )}
-                </span>
+                {loading ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 0.8,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                    />
+                    Connexion en cours...
+                  </>
+                ) : (
+                  <>
+                    <FiLogIn className="w-5 h-5" />
+                    Se connecter
+                  </>
+                )}
               </motion.button>
             </motion.div>
           </motion.form>
@@ -480,187 +389,61 @@ const LoginPage = () => {
 
           {/* Footer */}
           <motion.div variants={itemVariants} className="mt-8 text-center">
-            <motion.p
-              className="text-sm text-gray-500 dark:text-gray-400"
-              whileHover={{ scale: 1.02 }}
-            >
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               © 2024 Plongée Club. Tous droits réservés.
-            </motion.p>
-            <motion.div
-              className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-400 dark:text-gray-500"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-            >
+            </p>
+            <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-400 dark:text-gray-500">
               {[
                 { Icon: FiLock, text: "Connexion sécurisée" },
                 { Icon: FiCreditCard, text: "Paiement sécurisé" },
                 { Icon: FiShield, text: "Protection des données" },
               ].map((item, index) => (
-                <motion.span
-                  key={index}
-                  className="flex items-center gap-1"
-                  whileHover={{ scale: 1.05, color: "#2563eb" }}
-                >
+                <span key={index} className="flex items-center gap-1">
                   <item.Icon className="w-3.5 h-3.5" /> {item.text}
-                </motion.span>
+                </span>
               ))}
-            </motion.div>
+            </div>
           </motion.div>
         </motion.div>
 
-        {/* Partie droite - Logo sans fond */}
+        {/* Partie droite - Logo sur fond de marque */}
         <motion.div
-          initial={{ opacity: 0, x: 50 }}
+          initial={{ opacity: 0, x: 12 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+          transition={{ duration: 0.3, delay: 0.1, ease: "easeOut" }}
           className="hidden md:flex w-1/2 relative bg-gradient-to-br from-primary-600 via-primary-700 to-ocean-800 p-8 overflow-hidden items-center justify-center"
         >
-          {/* Effets de fond */}
+          {/* Vague décorative (statique) */}
           <div className="absolute inset-0">
             <svg
               className="absolute bottom-0 w-full"
               viewBox="0 0 1440 320"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <motion.path
-                initial={{
-                  d: "M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z",
-                }}
-                animate={{
-                  d: [
-                    "M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z",
-                    "M0,64L48,80C96,96,192,128,288,144C384,160,480,160,576,144C672,128,768,96,864,96C960,96,1056,128,1152,144C1248,160,1344,160,1392,160L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z",
-                    "M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z",
-                  ],
-                }}
-                transition={{
-                  duration: 8,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
+              <path
+                d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
                 fill="rgba(255,255,255,0.05)"
               />
             </svg>
           </div>
 
-          {/* Logo sans fond au centre */}
+          {/* Logo au centre */}
           <div className="relative z-10 flex flex-col items-center justify-center h-full">
             <motion.div
-              initial={{ scale: 0.6, opacity: 0, rotate: -10 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              transition={{
-                delay: 0.5,
-                type: "spring",
-                stiffness: 260,
-                damping: 20,
-              }}
-              className="relative"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
+              className="w-64 h-64 mx-auto flex items-center justify-center"
             >
-              {/* Effet de lueur */}
-              <motion.div
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.3, 0.6, 0.3],
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="absolute inset-0 bg-white/20 rounded-full blur-xl"
-                style={{ width: "300px", height: "300px", margin: "0 auto" }}
-              />
-
-              {/* Logo sans fond - flottant */}
-              <motion.div
-                animate={{
-                  y: [0, -15, 0],
-                  rotate: [0, 3, -3, 0],
-                }}
-                transition={{
-                  duration: 6,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="relative"
-              >
-                <div className="w-64 h-64 mx-auto flex items-center justify-center">
-                  <Logo size="xl" className="w-48 h-48" />
-                </div>
-              </motion.div>
-
-              {/* Icônes décoratives animées */}
-              <motion.div
-                animate={{
-                  y: [0, -15, 0],
-                  x: [0, 10, 0],
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="absolute -top-2 -right-2 bg-white/20 backdrop-blur-sm p-3 rounded-full border border-white/20"
-              >
-                <FiDroplet className="w-6 h-6 text-white" />
-              </motion.div>
-
-              <motion.div
-                animate={{
-                  y: [0, 15, 0],
-                  x: [0, -10, 0],
-                }}
-                transition={{
-                  duration: 5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 1,
-                }}
-                className="absolute -bottom-2 -left-2 bg-white/20 backdrop-blur-sm p-3 rounded-full border border-white/20"
-              >
-                <FiAnchor className="w-6 h-6 text-white" />
-              </motion.div>
-
-              <motion.div
-                animate={{
-                  y: [0, -10, 0],
-                  x: [0, -15, 0],
-                }}
-                transition={{
-                  duration: 3.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 0.5,
-                }}
-                className="absolute top-1/2 -left-6 bg-white/20 backdrop-blur-sm p-3 rounded-full border border-white/20"
-              >
-                <FiCompass className="w-5 h-5 text-white" />
-              </motion.div>
-
-              <motion.div
-                animate={{
-                  y: [0, -12, 0],
-                  x: [0, 15, 0],
-                }}
-                transition={{
-                  duration: 4.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 1.5,
-                }}
-                className="absolute top-1/2 -right-6 bg-white/20 backdrop-blur-sm p-3 rounded-full border border-white/20"
-              >
-                <FiShield className="w-5 h-5 text-white" />
-              </motion.div>
+              <Logo size="xl" className="w-48 h-48" />
             </motion.div>
 
             {/* Texte de bienvenue */}
             <motion.div
               className="text-center mt-8"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
+              transition={{ duration: 0.25, delay: 0.25, ease: "easeOut" }}
             >
               <h2 className="text-3xl font-bold text-white mb-2">
                 Bienvenue dans le club
@@ -669,76 +452,6 @@ const LoginPage = () => {
                 Gérez vos adhérents, sorties et plongées facilement
               </p>
             </motion.div>
-
-            {/* Statistiques */}
-            <motion.div
-              className="grid grid-cols-3 gap-4 mt-6 text-white w-full max-w-md"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9 }}
-            >
-              {[
-                { value: "150+", label: "Adhérents" },
-                { value: "50+", label: "Sorties/an" },
-                { value: "98%", label: "Satisfaction" },
-              ].map((stat, index) => (
-                <motion.div
-                  key={index}
-                  className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/20 transition-all duration-300 cursor-default"
-                  whileHover={{ scale: 1.05, y: -5 }}
-                >
-                  <motion.p
-                    className="text-2xl font-bold"
-                    whileHover={{ scale: 1.1 }}
-                  >
-                    {stat.value}
-                  </motion.p>
-                  <p className="text-xs text-primary-100">{stat.label}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-
-          {/* Effets de fond supplémentaires */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <motion.div
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.3, 0.5, 0.3],
-              }}
-              transition={{
-                duration: 8,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"
-            />
-            <motion.div
-              animate={{
-                scale: [1, 1.1, 1],
-                opacity: [0.2, 0.4, 0.2],
-              }}
-              transition={{
-                duration: 6,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 2,
-              }}
-              className="absolute -bottom-20 -left-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"
-            />
-            <motion.div
-              animate={{
-                scale: [1, 1.3, 1],
-                opacity: [0.1, 0.3, 0.1],
-              }}
-              transition={{
-                duration: 10,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 1,
-              }}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl"
-            />
           </div>
         </motion.div>
       </motion.div>
