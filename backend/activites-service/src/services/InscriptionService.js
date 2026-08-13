@@ -481,7 +481,7 @@ class InscriptionService extends BaseService {
     return inscription;
   }
 
-  async confirmInscription(id, user = null, authHeader = null) {
+  async confirmInscription(id, user = null) {
     if (!this.canManageInscriptions(user?.role)) {
       throw new Error("Seul un gestionnaire peut confirmer une inscription");
     }
