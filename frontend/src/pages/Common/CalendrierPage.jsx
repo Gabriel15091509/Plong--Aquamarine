@@ -62,7 +62,7 @@ const CalendrierPage = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 p-8 text-white shadow-2xl"
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 p-5 sm:p-8 text-white shadow-2xl"
       >
         {/* Décoration de fond */}
         <div className="absolute inset-0 opacity-10">
@@ -136,7 +136,7 @@ const CalendrierPage = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-3xl md:text-4xl font-bold tracking-tight"
+                className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight"
               >
                 Calendrier des sorties
               </motion.h1>
