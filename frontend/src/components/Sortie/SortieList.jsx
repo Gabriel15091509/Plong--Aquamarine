@@ -172,7 +172,7 @@ const SortieList = ({ sorties: sortiesProp }) => {
             className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={filter}
             onChange={(e) => {
@@ -236,7 +236,7 @@ const SortieList = ({ sorties: sortiesProp }) => {
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-start gap-4">
                     {/* Image / Icône de la sortie */}
                     <div className="flex-shrink-0">
                       {sortie.image ? (
@@ -272,38 +272,35 @@ const SortieList = ({ sorties: sortiesProp }) => {
                               {sortie.site || ""}
                             </span>
                           </div>
-                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
                             <span className="flex items-center gap-1">
-                              <FiCalendar className="w-3.5 h-3.5" />
+                              <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
                               {formatDateTime(sortie.date_heure)}
                             </span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <FiUsers className="w-3.5 h-3.5" />
-                              {sortie.nb_inscrits || 0}/{sortie.nb_places || 0}
-                              {isFull && (
-                                <span className="text-orange-600 dark:text-orange-400 font-medium ml-1">
-                                  (Complet)
-                                </span>
-                              )}
-                            </span>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              Niveau {sortie.niveau_requis || "—"}
-                            </span>
-                            <span>•</span>
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                sortie.statut === "Planifiée"
-                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                  : sortie.statut === "En cours"
-                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                    : sortie.statut === "Terminée"
-                                      ? "bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400"
-                                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                              }`}
-                            >
-                              {sortie.statut || "Planifiée"}
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="flex items-center gap-1">
+                                <FiUsers className="w-3.5 h-3.5 flex-shrink-0" />
+                                {sortie.nb_inscrits || 0}/{sortie.nb_places || 0}
+                                {isFull && (
+                                  <span className="text-orange-600 dark:text-orange-400 font-medium ml-1">
+                                    (Complet)
+                                  </span>
+                                )}
+                              </span>
+                              <span>Niveau {sortie.niveau_requis || "—"}</span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  sortie.statut === "Planifiée"
+                                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                    : sortie.statut === "En cours"
+                                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                      : sortie.statut === "Terminée"
+                                        ? "bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-400"
+                                        : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                }`}
+                              >
+                                {sortie.statut || "Planifiée"}
+                              </span>
                             </span>
                           </div>
                         </div>

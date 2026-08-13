@@ -215,7 +215,7 @@ const CertificatList = () => {
             className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={filter}
             onChange={(e) => {
@@ -279,7 +279,7 @@ const CertificatList = () => {
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-start gap-4">
                     {/* Photo en évidence */}
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
@@ -315,58 +315,50 @@ const CertificatList = () => {
                               {certificat.type_certificat}
                             </span>
                           </div>
-                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
                             <span className="flex items-center gap-1">
-                              <FiCalendar className="w-3.5 h-3.5" />
+                              <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
                               {formatDate(certificat.date_validite)}
                             </span>
 
-                            {/* Afficher uniquement si moins de 30 jours restants */}
-                            {daysRemaining <= 30 && daysRemaining > 0 && (
-                              <>
-                                <span>•</span>
+                            {certificat.medecin && (
+                              <span className="flex items-center gap-1">
+                                <span className="text-gray-400">
+                                  Médecin:
+                                </span>
+                                {certificat.medecin}
+                              </span>
+                            )}
+
+                            {/* Badges et infos secondaires regroupés sur
+                                leur propre ligne sur mobile. */}
+                            <span className="flex flex-wrap items-center gap-2">
+                              {/* Afficher uniquement si moins de 30 jours restants */}
+                              {daysRemaining <= 30 && daysRemaining > 0 && (
                                 <span className="flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
-                                  <FiClock className="w-3.5 h-3.5" />
+                                  <FiClock className="w-3.5 h-3.5 flex-shrink-0" />
                                   {daysRemaining}{" "}
                                   {daysRemaining === 1 ? "jour" : "jours"}
                                 </span>
-                              </>
-                            )}
-
-                            {certificat.medecin && (
-                              <>
-                                <span>•</span>
-                                <span className="flex items-center gap-1">
-                                  <span className="text-gray-400">
-                                    Médecin:
-                                  </span>
-                                  {certificat.medecin}
-                                </span>
-                              </>
-                            )}
-                            {/* Rejeté : l'expiration (À jour/Expiré) n'a pas
-                                de sens pour un document jamais accepté —
-                                seul le motif de rejet compte. Validé :
-                                inutile de le répéter, l'expiration seule
-                                suffit à l'affichage. */}
-                            {certificat.statut_validation !== "Rejeté" && (
-                              <>
-                                <span>•</span>
-                                <StatusBadge status={certificat.statut} />
-                              </>
-                            )}
-                            {certificat.statut_validation !== "Validé" && (
-                              <>
-                                <span>•</span>
-                                <StatusBadge status={certificat.statut_validation} />
-                              </>
-                            )}
-                            {certificat.statut_validation === "Rejeté" &&
-                              certificat.motif_rejet && (
-                                <span className="text-xs text-red-500 dark:text-red-400 italic">
-                                  ({certificat.motif_rejet})
-                                </span>
                               )}
+                              {/* Rejeté : l'expiration (À jour/Expiré) n'a pas
+                                  de sens pour un document jamais accepté —
+                                  seul le motif de rejet compte. Validé :
+                                  inutile de le répéter, l'expiration seule
+                                  suffit à l'affichage. */}
+                              {certificat.statut_validation !== "Rejeté" && (
+                                <StatusBadge status={certificat.statut} />
+                              )}
+                              {certificat.statut_validation !== "Validé" && (
+                                <StatusBadge status={certificat.statut_validation} />
+                              )}
+                              {certificat.statut_validation === "Rejeté" &&
+                                certificat.motif_rejet && (
+                                  <span className="text-xs text-red-500 dark:text-red-400 italic">
+                                    ({certificat.motif_rejet})
+                                  </span>
+                                )}
+                            </span>
                           </div>
                         </div>
 
