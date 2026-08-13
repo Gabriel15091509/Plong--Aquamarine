@@ -103,7 +103,14 @@ class AuthController {
       // Authentification renforcée (exigence 4.4) : le président doit en
       // plus saisir un code à usage unique envoyé par email avant que le
       // JWT ne soit délivré.
-      if (user.role === "president") {
+      // Coupure temporaire (2026-08-13, demande explicite du président) :
+      // PRESIDENT_2FA_DISABLED="true" saute cette étape sans toucher au
+      // code ci-dessous. Par défaut (variable absente), le 2FA reste actif
+      // — désactiver est un choix explicite, pas un oubli silencieux.
+      // À retirer de k8s/base/01-configmap.yaml dès que possible pour
+      // réactiver.
+      const president2faDisabled = process.env.PRESIDENT_2FA_DISABLED === "true";
+      if (user.role === "president" && !president2faDisabled) {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const salt = await bcrypt.genSalt(10);
         user.otp_code_hash = await bcrypt.hash(code, salt);

@@ -25,3 +25,9 @@ data:
   PAIEMENT_SERVICE_URL: http://finance-service:5012/api
   ADHESION_SERVICE_URL: http://vie-associative-service:5013
   INSCRIPTION_SERVICE_URL: http://activites-service:5015
+  # Coupure temporaire du 2FA du président (2026-08-13, demande explicite du
+  # président lui-même) — voir le commentaire dans AuthController.login().
+  # À repasser à "false" (ou retirer la ligne) dès que possible : tant que
+  # c'est "true", le compte le plus privilégié du site (accessible sur
+  # internet) n'a plus que le mot de passe comme protection.
+  PRESIDENT_2FA_DISABLED: "true"
