@@ -14,6 +14,7 @@ import {
   FiGrid,
   FiMail,
   FiX,
+  FiSearch,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
@@ -155,8 +156,9 @@ const PresidentList = () => {
   return (
     <div className="space-y-4">
       {/* Barre de recherche */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <FiSearch className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Rechercher par nom, email ou année..."
@@ -165,18 +167,18 @@ const PresidentList = () => {
               setSearchTerm(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-4 text-gray-900 focus:border-transparent focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-2">
           <Link
             to="/presidents/create"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700 sm:flex-none"
           >
             <FiPlus className="w-4 h-4" />
             Nouveau
           </Link>
-          <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 bg-gray-100 p-1 dark:border-gray-700 dark:bg-gray-800">
             <button
               type="button"
               onClick={() => setViewMode("list")}
