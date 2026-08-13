@@ -172,6 +172,20 @@ const CertificatList = () => {
             ? "Aucun résultat pour vos critères"
             : "Commencez par créer un nouveau certificat"}
         </p>
+        {(searchTerm || filter !== "all" || showValidationOnly) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm("");
+              setFilter("all");
+              setShowValidationOnly(false);
+              setCurrentPage(1);
+            }}
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <FiX className="w-4 h-4" /> Réinitialiser la recherche
+          </button>
+        )}
         {(canManageCertificat || canSubmitOwn) && (
           <Link
             to="/certificats/create"

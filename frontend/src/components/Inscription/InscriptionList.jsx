@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import { FiPlus, FiClipboard } from "react-icons/fi";
+import { FiPlus, FiClipboard, FiX } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
 import InscriptionRow from "./InscriptionRow";
@@ -282,6 +282,20 @@ const InscriptionList = () => {
               ? "Inscrivez-vous à une sortie de plongée"
               : "Commencez par créer une nouvelle inscription"}
         </p>
+        {(searchTerm || filter !== "all" || filterSortie !== "all") && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm("");
+              setFilter("all");
+              setFilterSortie("all");
+              setCurrentPage(1);
+            }}
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <FiX className="w-4 h-4" /> Réinitialiser la recherche
+          </button>
+        )}
         <Link
           to="/inscriptions/create"
           className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
