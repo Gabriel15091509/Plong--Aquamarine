@@ -102,6 +102,9 @@ const SortieDetails = () => {
     new Date(sortie.date_heure) < new Date() &&
     [STATUT_SORTIE.PLANIFIEE, STATUT_SORTIE.EN_COURS].includes(sortie.statut);
   const isTerminee = sortie?.statut === STATUT_SORTIE.TERMINEE;
+  // Verrouillé côté serveur (SortieService.update/delete) dès que la sortie
+  // a quitté "Planifiée" — pas seulement une fois "Terminée".
+  const isVerrouillee = !!sortie && sortie.statut !== STATUT_SORTIE.PLANIFIEE;
 
   const handleChangeStatut = async (statut) => {
     try {
@@ -260,10 +263,10 @@ const SortieDetails = () => {
                 Déclarer un incident
               </Link>
             )}
-            {isTerminee ? (
+            {isVerrouillee ? (
               <span
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed"
-                title="Sortie terminée : modification impossible"
+                title='Cette sortie a quitté le statut "Planifiée" : modification impossible'
               >
                 <FiEdit className="w-4 h-4" />
                 Modifier
@@ -279,8 +282,8 @@ const SortieDetails = () => {
             )}
             <button
               onClick={() => setShowDeleteModal(true)}
-              disabled={isTerminee}
-              title={isTerminee ? "Sortie terminée : suppression impossible" : undefined}
+              disabled={isVerrouillee}
+              title={isVerrouillee ? 'Cette sortie a quitté le statut "Planifiée" : suppression impossible' : undefined}
               className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FiTrash2 className="w-4 h-4" />

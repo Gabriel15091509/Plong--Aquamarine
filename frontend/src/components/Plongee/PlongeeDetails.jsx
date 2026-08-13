@@ -172,16 +172,30 @@ const PlongeeDetails = () => {
         </div>
         {canManagePlongee && (
         <div className="flex gap-2">
-          <Link
-            to={`/plongees/edit/${plongee.id_plongee}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-          >
-            <FiEdit className="w-4 h-4" />
-            Modifier
-          </Link>
+          {/* Verrouillé côté serveur (PlongeeService.update/delete) : une
+              plongée validée par un moniteur n'est plus modifiable. */}
+          {isValide ? (
+            <span
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed"
+              title="Plongée validée : modification impossible"
+            >
+              <FiEdit className="w-4 h-4" />
+              Modifier
+            </span>
+          ) : (
+            <Link
+              to={`/plongees/edit/${plongee.id_plongee}`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
+            >
+              <FiEdit className="w-4 h-4" />
+              Modifier
+            </Link>
+          )}
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
+            disabled={isValide}
+            title={isValide ? "Plongée validée : suppression impossible" : undefined}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FiTrash2 className="w-4 h-4" />
             Supprimer

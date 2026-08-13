@@ -177,9 +177,27 @@ class SortieService extends BaseService {
     return await this.sortieRepository.create(data);
   }
 
+  // Une fois qu'une sortie a quitté le statut "Planifiée" (passage manuel à
+  // "En cours"), ses informations (lieu, horaires, tarifs...) ne doivent
+  // plus être modifiables : les adhérents se sont déjà inscrits/organisés
+  // sur cette base. Seul le champ `statut` lui-même reste modifiable, pour
+  // permettre la suite du cycle de vie (En cours -> Terminée / Annulée) —
+  // même principe que PalanqueeService.assertPalanqueeModifiable et
+  // AdhesionService.update (verrou une fois validé).
+  assertSortieModifiable(sortie, data = {}) {
+    if (sortie.statut === "Planifiée") return;
+    const champsModifies = Object.keys(data).filter((key) => key !== "statut");
+    if (champsModifies.length > 0) {
+      throw new Error(
+        'Cette sortie a quitté le statut "Planifiée" : seul son statut peut encore être modifié.',
+      );
+    }
+  }
+
   async update(id, data) {
     const sortie = await this.sortieRepository.findById(id);
     if (!sortie) throw new Error("Sortie non trouvée");
+    this.assertSortieModifiable(sortie, data);
     await sortie.update(data);
     return sortie;
   }
@@ -187,6 +205,11 @@ class SortieService extends BaseService {
   async delete(id) {
     const sortie = await this.sortieRepository.findById(id);
     if (!sortie) throw new Error("Sortie non trouvée");
+    if (sortie.statut !== "Planifiée") {
+      throw new Error(
+        'Cette sortie a quitté le statut "Planifiée" : suppression impossible.',
+      );
+    }
     await sortie.destroy();
     return true;
   }
