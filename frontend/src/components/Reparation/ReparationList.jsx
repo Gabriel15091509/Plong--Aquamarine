@@ -125,7 +125,7 @@ const ReparationList = () => {
             className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -157,7 +157,7 @@ const ReparationList = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-start gap-4">
                   <div className="flex-shrink-0">
                     <div
                       className={`w-12 h-12 rounded-full flex items-center justify-center ${
@@ -190,22 +190,20 @@ const ReparationList = () => {
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
                           {reparation.description_panne}
                         </p>
-                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
                           <span className="flex items-center gap-1">
-                            <FiCalendar className="w-3.5 h-3.5" />
+                            <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
                             {formatDate(reparation.date_constat)}
                           </span>
-                          {reparation.cout && (
-                            <>
-                              <span>•</span>
+                          <span className="flex flex-wrap items-center gap-2">
+                            {reparation.cout && (
                               <span className="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
-                                <FiDollarSign className="w-3.5 h-3.5 text-indigo-500" />
+                                <FiDollarSign className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
                                 {formatCurrency(reparation.cout)}
                               </span>
-                            </>
-                          )}
-                          <span>•</span>
-                          <span>{isEnCours ? "En cours" : "Terminée"}</span>
+                            )}
+                            <span>{isEnCours ? "En cours" : "Terminée"}</span>
+                          </span>
                         </div>
                       </div>
 

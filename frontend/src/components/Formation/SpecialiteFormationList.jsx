@@ -151,7 +151,7 @@ const SpecialiteFormationList = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm flex-shrink-0">
                     <FiUser className="w-6 h-6 text-indigo-500 dark:text-indigo-400" />
                   </div>
@@ -169,15 +169,15 @@ const SpecialiteFormationList = () => {
                             {specialite.type_specialite}
                           </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
                           <span className="flex items-center gap-1">
-                            <FiCalendar className="w-3.5 h-3.5" />
+                            <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
                             {formatDate(specialite.date_debut)}
                           </span>
-                          <span>•</span>
-                          <span>Moniteur : {moniteurName}</span>
-                          <span>•</span>
-                          <StatusBadge status={specialite.statut} />
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span>Moniteur : {moniteurName}</span>
+                            <StatusBadge status={specialite.statut} />
+                          </span>
                         </div>
                       </div>
 

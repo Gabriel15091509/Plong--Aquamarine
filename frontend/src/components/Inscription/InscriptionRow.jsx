@@ -53,7 +53,7 @@ const InscriptionRow = ({
       exit={{ opacity: 0, scale: 0.95 }}
       className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-4">
         {/* Photo en évidence */}
         <div className="flex-shrink-0">
           {adherentInfo.photo ? (
@@ -92,29 +92,29 @@ const InscriptionRow = ({
                   {sortieInfo.label}
                 </span>
               </div>
-              <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1">
-                  <FiCalendar className="w-3.5 h-3.5" />
+                  <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
                   {formatDate(inscription.date_inscription)}
                 </span>
-                <span>•</span>
-                {inscription.presence_checked ? (
-                  inscription.presence ? (
-                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                      <FiCheck className="w-3.5 h-3.5" /> Présent
-                    </span>
+                <span className="flex flex-wrap items-center gap-2">
+                  {inscription.presence_checked ? (
+                    inscription.presence ? (
+                      <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                        <FiCheck className="w-3.5 h-3.5" /> Présent
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                        <FiX className="w-3.5 h-3.5" /> Absent
+                      </span>
+                    )
                   ) : (
-                    <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
-                      <FiX className="w-3.5 h-3.5" /> Absent
+                    <span className="flex items-center gap-1 text-gray-400">
+                      <FiClock className="w-3.5 h-3.5" /> Non pointé
                     </span>
-                  )
-                ) : (
-                  <span className="flex items-center gap-1 text-gray-400">
-                    <FiClock className="w-3.5 h-3.5" /> Non pointé
-                  </span>
-                )}
-                <span>•</span>
-                <StatusBadge status={inscription.statut} />
+                  )}
+                  <StatusBadge status={inscription.statut} />
+                </span>
               </div>
             </div>
 
