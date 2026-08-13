@@ -58,6 +58,10 @@ const SortieCalendar = () => {
   const [selectedSortie, setSelectedSortie] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [hoveredDay, setHoveredDay] = useState(null);
+  // Sur mobile, une grille 7 colonnes n'a pas la place d'afficher le détail
+  // de chaque sortie dans la cellule (texte illisible en dessous de ~55px
+  // de large) — on tape la cellule pour ouvrir l'agenda du jour à la place.
+  const [dayAgenda, setDayAgenda] = useState(null);
 
   const { useGetAll } = useSorties();
   const { data, isLoading, error } = useGetAll();
@@ -91,6 +95,11 @@ const SortieCalendar = () => {
   const handleSortieClick = (sortie) => {
     setSelectedSortie(sortie);
     setIsModalOpen(true);
+  };
+
+  const handleDayCellClick = (day, daySorties) => {
+    if (daySorties.length === 0) return;
+    setDayAgenda({ date: day, sorties: daySorties });
   };
 
   const getStatusColor = (statut) => {
@@ -191,9 +200,9 @@ const SortieCalendar = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-100/80 dark:border-gray-800/80"
+        className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 bg-white dark:bg-gray-900 p-3 sm:p-4 rounded-2xl border border-gray-100/80 dark:border-gray-800/80"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button
             onClick={handlePrevMonth}
             className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-150"
@@ -201,8 +210,8 @@ const SortieCalendar = () => {
             <FiChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
 
-          <div className="min-w-[200px] text-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="min-w-[140px] sm:min-w-[200px] text-center">
+            <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white capitalize">
               {format(currentDate, "MMMM yyyy", { locale: fr })}
             </h2>
           </div>
@@ -217,7 +226,7 @@ const SortieCalendar = () => {
 
         <button
           onClick={handleToday}
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
+          className="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
         >
           <FiCalendar className="w-4 h-4" />
           Aujourd'hui
@@ -229,7 +238,7 @@ const SortieCalendar = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 sm:grid-cols-5 gap-3"
+        className="grid grid-cols-3 sm:grid-cols-5 gap-3"
       >
         {[
           {
@@ -334,9 +343,10 @@ const SortieCalendar = () => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800"
+                className="py-2 sm:py-3 text-center text-[11px] sm:text-sm font-semibold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800"
               >
-                {day}
+                <span className="sm:hidden">{day.slice(0, 2)}</span>
+                <span className="hidden sm:inline">{day}</span>
               </motion.div>
             ),
           )}
@@ -361,20 +371,21 @@ const SortieCalendar = () => {
                 whileHover={{ scale: 1.02 }}
                 onHoverStart={() => setHoveredDay(dateKey)}
                 onHoverEnd={() => setHoveredDay(null)}
-                className={`relative min-h-[110px] p-2 bg-white dark:bg-gray-800 transition-all duration-200 ${
-                  !isCurrentMonth ? "opacity-40" : ""
-                } ${isTodayDate ? "bg-cyan-50 dark:bg-cyan-900/10" : ""} ${
-                  isHovered ? "shadow-inner" : ""
-                }`}
+                onClick={() => handleDayCellClick(day, daySorties)}
+                className={`relative min-h-[52px] sm:min-h-[110px] p-1 sm:p-2 bg-white dark:bg-gray-800 transition-all duration-200 ${
+                  daySorties.length > 0 ? "cursor-pointer" : ""
+                } ${!isCurrentMonth ? "opacity-40" : ""} ${
+                  isTodayDate ? "bg-cyan-50 dark:bg-cyan-900/10" : ""
+                } ${isHovered ? "shadow-inner" : ""}`}
               >
                 <div className="flex flex-col h-full">
                   {/* Numéro du jour */}
                   <div className="flex items-center justify-between mb-1">
                     <motion.span
                       whileHover={{ scale: 1.1 }}
-                      className={`text-sm font-medium ${
+                      className={`text-xs sm:text-sm font-medium ${
                         isTodayDate
-                          ? "w-8 h-8 rounded-full bg-cyan-600 text-white flex items-center justify-center"
+                          ? "w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-cyan-600 text-white flex items-center justify-center"
                           : "text-gray-700 dark:text-gray-300"
                       }`}
                     >
@@ -384,13 +395,24 @@ const SortieCalendar = () => {
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className={`w-2.5 h-2.5 rounded-full ${getDayDotColor(dayStatus)} shadow-sm`}
-                      />
+                        className="flex items-center gap-1"
+                      >
+                        <span className="sm:hidden text-[10px] font-semibold leading-none text-gray-500 dark:text-gray-400">
+                          {daySorties.length}
+                        </span>
+                        <div
+                          className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${getDayDotColor(dayStatus)} shadow-sm`}
+                        />
+                      </motion.div>
                     )}
                   </div>
 
-                  {/* Sorties du jour */}
-                  <div className="flex-1 space-y-0.5 mt-0.5 overflow-hidden">
+                  {/* Sorties du jour — assez de place seulement à partir de
+                      sm : sur mobile la cellule ne fait qu'~52px de large sur
+                      7 colonnes, le nom de la sortie y serait illisible.
+                      Un tap sur la cellule ouvre l'agenda du jour à la
+                      place (voir dayAgenda plus bas). */}
+                  <div className="hidden sm:block flex-1 space-y-0.5 mt-0.5 overflow-hidden">
                     {daySorties.slice(0, 3).map((sortie, idx) => (
                       <motion.button
                         key={sortie.id_sortie}
@@ -399,7 +421,10 @@ const SortieCalendar = () => {
                         transition={{ delay: idx * 0.05 }}
                         whileHover={{ scale: 1.03, x: 3 }}
                         whileTap={{ scale: 0.97 }}
-                        onClick={() => handleSortieClick(sortie)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSortieClick(sortie);
+                        }}
                         className={`w-full text-left text-[10px] px-1.5 py-0.5 rounded border-l-2 ${getStatusColor(
                           sortie.statut,
                         )} hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 truncate group`}
@@ -417,6 +442,10 @@ const SortieCalendar = () => {
                     {daySorties.length > 3 && (
                       <motion.button
                         whileHover={{ scale: 1.05 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDayCellClick(day, daySorties);
+                        }}
                         className="w-full text-left text-[10px] px-1.5 py-0.5 text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-medium"
                       >
                         +{daySorties.length - 3} autres
@@ -425,12 +454,12 @@ const SortieCalendar = () => {
                   </div>
                 </div>
 
-                {/* Tooltip au survol */}
+                {/* Tooltip au survol (desktop uniquement, pas de hover tactile) */}
                 {isHovered && daySorties.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap z-10"
+                    className="hidden sm:block absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap z-10"
                   >
                     {daySorties.length} sortie{daySorties.length > 1 ? "s" : ""}
                     <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45" />
@@ -587,6 +616,79 @@ const SortieCalendar = () => {
                     <FiArrowRight className="w-4 h-4" />
                   </button>
                 </motion.div>
+              </div>
+            </motion.div>
+          </ModalOverlay>
+        )}
+      </AnimatePresence>
+
+      {/* Agenda du jour (mobile) — ouvert en tapant une cellule du
+          calendrier qui contient des sorties, puisque la grille 7 colonnes
+          n'a pas la place d'afficher le détail de chaque sortie sur
+          téléphone. Reste utilisable au clavier/souris sur desktop
+          (tap sur une case vide de la cellule). */}
+      <AnimatePresence>
+        {dayAgenda && (
+          <ModalOverlay
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-md"
+            onClick={() => setDayAgenda(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 60 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 60 }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-cyan-600 p-4 flex items-center justify-between">
+                <div className="text-white">
+                  <p className="text-xs text-white/80 capitalize">
+                    {format(dayAgenda.date, "EEEE d MMMM yyyy", { locale: fr })}
+                  </p>
+                  <h3 className="text-lg font-semibold">
+                    {dayAgenda.sorties.length} sortie
+                    {dayAgenda.sorties.length > 1 ? "s" : ""}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setDayAgenda(null)}
+                  className="p-2 hover:bg-white/20 rounded-xl transition-colors text-white"
+                >
+                  <FiX className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-3 space-y-2">
+                {dayAgenda.sorties.map((sortie) => {
+                  const StatusIcon = getStatusIcon(sortie.statut);
+                  return (
+                    <button
+                      key={sortie.id_sortie}
+                      type="button"
+                      onClick={() => {
+                        setDayAgenda(null);
+                        handleSortieClick(sortie);
+                      }}
+                      className={`w-full flex items-center gap-3 text-left p-3 rounded-xl border-l-4 ${getStatusColor(
+                        sortie.statut,
+                      )} bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors`}
+                    >
+                      <div className="p-2 rounded-lg bg-white dark:bg-gray-800 shadow-sm flex-shrink-0">
+                        <StatusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white truncate">
+                          {sortie.type}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {sortie.lieu} · {format(new Date(sortie.date_heure), "HH:mm")} ·{" "}
+                          {getStatusLabel(sortie.statut)}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </motion.div>
           </ModalOverlay>
