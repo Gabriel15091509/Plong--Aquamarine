@@ -137,7 +137,7 @@ const AdherentList = () => {
             className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={filter}
             onChange={(e) => {
@@ -324,33 +324,33 @@ const AdherentList = () => {
                         <h3 className="font-semibold text-gray-900 dark:text-white">
                           {adherent.civilite} {adherent.nom} {adherent.prenom}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          <span className="flex items-center gap-1">
-                            <FiMail className="w-3.5 h-3.5" />
-                            {adherent.email}
+                        <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          <span className="flex items-center gap-1 truncate">
+                            <FiMail className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="truncate">{adherent.email}</span>
                           </span>
-                          <span>•</span>
+                          <span className="hidden sm:inline">•</span>
                           <span className="flex items-center gap-1">
-                            <FiPhone className="w-3.5 h-3.5" />
+                            <FiPhone className="w-3.5 h-3.5 flex-shrink-0" />
                             {adherent.telephone || "Non renseigné"}
                           </span>
-                          <span>•</span>
+                          <span className="hidden sm:inline">•</span>
                           <span className="flex items-center gap-1">
-                            <FiCalendar className="w-3.5 h-3.5" />
+                            <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
                             {new Date(
                               adherent.date_inscription,
                             ).toLocaleDateString("fr-FR")}
                           </span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <FiAward className="w-3.5 h-3.5" />
-                            {adherent.niveau || "Non défini"}
-                          </span>
-                          <span>•</span>
-                          <StatusBadge status={adherent.statut} />
-                          <span>•</span>
-                          <span>
-                            {adherent.nb_plongees_total || 0} plongées
+                          <span className="hidden sm:inline">•</span>
+                          <span className="flex items-center gap-2 flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <FiAward className="w-3.5 h-3.5 flex-shrink-0" />
+                              {adherent.niveau || "Non défini"}
+                            </span>
+                            <StatusBadge status={adherent.statut} />
+                            <span>
+                              {adherent.nb_plongees_total || 0} plongées
+                            </span>
                           </span>
                         </div>
                       </div>

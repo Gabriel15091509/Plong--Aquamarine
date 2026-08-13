@@ -212,7 +212,7 @@ const AdhesionList = () => {
             className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={typeFilter}
             onChange={(e) => {
@@ -292,7 +292,7 @@ const AdhesionList = () => {
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-start gap-4">
                     {/* Photo en évidence */}
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
@@ -328,60 +328,49 @@ const AdhesionList = () => {
                               {adhesion.type}
                             </span>
                           </div>
-                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
                             <span className="flex items-center gap-1">
-                              <FiCalendar className="w-3.5 h-3.5" />
+                              <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
                               {formatDate(adhesion.date_debut)}
-                            </span>
-                            <span>→</span>
-                            <span className="flex items-center gap-1">
-                              <FiCalendar className="w-3.5 h-3.5" />
+                              <span>→</span>
                               {formatDate(adhesion.date_fin)}
                             </span>
-                            {/* Rejetée : "À jour"/"Expirée" n'a pas de sens
-                                pour un dossier jamais accepté — seul le
-                                rejet (badge + motif ci-dessous) compte. */}
-                            {adhesion.statut_validation !== "Rejeté" && (
-                              <>
-                                <span>•</span>
+                            <span className="hidden sm:inline">•</span>
+                            {/* Badges et infos secondaires regroupés sur leur
+                                propre ligne sur mobile — évite les puces "•"
+                                qui se retrouvent seules en début de ligne
+                                quand ça déborde. */}
+                            <span className="flex flex-wrap items-center gap-2">
+                              {/* Rejetée : "À jour"/"Expirée" n'a pas de sens
+                                  pour un dossier jamais accepté — seul le
+                                  rejet (badge + motif ci-dessous) compte. */}
+                              {adhesion.statut_validation !== "Rejeté" && (
                                 <StatusBadge status={adhesion.statut} />
-                              </>
-                            )}
-                            {adhesion.type === "Club" && (
-                              <>
-                                <span>•</span>
+                              )}
+                              {adhesion.type === "Club" && (
                                 <span className="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
-                                  <FiDollarSign className="w-3.5 h-3.5 text-indigo-500" />
+                                  <FiDollarSign className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
                                   {formatCurrency(adhesion.montant)}
                                 </span>
-                              </>
-                            )}
-                            {adhesion.type === "Club" && (
-                              <>
-                                <span>•</span>
-                                <StatusBadge status={adhesion.statut_paiement} />
-                              </>
-                            )}
-                            {adhesion.statut_validation !== "Validé" && (
-                              <>
-                                <span>•</span>
-                                <StatusBadge status={adhesion.statut_validation} />
-                              </>
-                            )}
-                            {adhesion.statut_validation === "Rejeté" &&
-                              adhesion.motif_rejet && (
-                                <span className="text-xs text-red-500 dark:text-red-400 italic">
-                                  ({adhesion.motif_rejet})
-                                </span>
                               )}
-                            {adhesion.num_licence_ffesm && (
-                              <>
-                                <span>•</span>
+                              {adhesion.type === "Club" && (
+                                <StatusBadge status={adhesion.statut_paiement} />
+                              )}
+                              {adhesion.statut_validation !== "Validé" && (
+                                <StatusBadge status={adhesion.statut_validation} />
+                              )}
+                              {adhesion.statut_validation === "Rejeté" &&
+                                adhesion.motif_rejet && (
+                                  <span className="text-xs text-red-500 dark:text-red-400 italic">
+                                    ({adhesion.motif_rejet})
+                                  </span>
+                                )}
+                              {adhesion.num_licence_ffesm && (
                                 <span className="text-xs text-gray-400 dark:text-gray-500">
                                   Licence: {adhesion.num_licence_ffesm}
                                 </span>
-                              </>
-                            )}
+                              )}
+                            </span>
                           </div>
                         </div>
 
