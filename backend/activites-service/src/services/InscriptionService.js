@@ -14,6 +14,7 @@ const {
   isSameCalendarDay,
   AGE_LIMITE_UNE_PLONGEE_PAR_JOUR,
 } = require("../utils/ageRules");
+const { sortiesSeChevauchent } = require("../utils/sortieOverlap");
 const {
   sendInscriptionConfirmationEmail,
   sendInscriptionPaymentEmail,
@@ -182,6 +183,7 @@ class InscriptionService extends BaseService {
         if (placesDisponibles <= 0) {
           throw new Error("Plus de places disponibles");
         }
+        await this.assertNoConfirmedOverlap(inscription.num_adherent, inscription.sortie, id);
         updateData.rang_liste_attente = null;
         updateData.date_confirmation = updateData.date_confirmation || new Date();
         return await this.inscriptionRepository.update(id, updateData, { transaction });
@@ -258,6 +260,29 @@ class InscriptionService extends BaseService {
         annulees: 0,
         listeAttente: 0,
       };
+    }
+  }
+
+  // Un adhérent ne peut pas avoir deux inscriptions "Confirmée" dont les
+  // sorties se chevauchent dans le temps (impossible d'être sur deux
+  // plongées en même temps). Volontairement limité aux inscriptions
+  // Confirmée : "En attente"/"Liste d'attente" ne réservent rien de réel,
+  // donc ne bloquent pas. excludeInscriptionId sert quand on (re)confirme
+  // une inscription déjà existante, pour ne pas se comparer à elle-même.
+  async assertNoConfirmedOverlap(num_adherent, sortie, excludeInscriptionId = null) {
+    const autresInscriptions = await this.inscriptionRepository.findByAdherent(num_adherent);
+    const conflit = autresInscriptions.find(
+      (i) =>
+        i.statut === "Confirmée" &&
+        i.id_inscription !== excludeInscriptionId &&
+        i.sortie &&
+        i.sortie.id_sortie !== sortie.id_sortie &&
+        sortiesSeChevauchent(i.sortie, sortie),
+    );
+    if (conflit) {
+      throw new Error(
+        `Cet adhérent a déjà une inscription confirmée qui chevauche cette sortie (${formatSortieLabel(conflit.sortie)})`,
+      );
     }
   }
 
@@ -426,6 +451,9 @@ class InscriptionService extends BaseService {
         if (statut === "Liste d'attente") {
           rangListeAttente = await this.waitlistService.getNextWaitlistRank(id_sortie);
         }
+        if (statut === "Confirmée") {
+          await this.assertNoConfirmedOverlap(num_adherent, sortie);
+        }
 
         return await this.inscriptionRepository.create(
           {
@@ -476,6 +504,7 @@ class InscriptionService extends BaseService {
       if (placesDisponibles <= 0) {
         throw new Error("Plus de places disponibles");
       }
+      await this.assertNoConfirmedOverlap(inscription.num_adherent, inscription.sortie, id);
 
       inscription.statut = "Confirmée";
       inscription.rang_liste_attente = null;
