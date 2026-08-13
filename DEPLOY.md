@@ -218,13 +218,16 @@ Cloudflare nommé. Tailscale Funnel résout les deux problèmes : connexion
 sortante uniquement (fonctionne derrière n'importe quel NAT/CGNAT) et
 hostname stable (`*.ts.net`) sans posséder de domaine.
 
-**Seules les routes adhérent sont exposées** (voir
-`k8s/overlays/production/17-ingress-public.yaml`) — jamais les routes
-finance/matériel/gestion des comptes, qui restent accessibles uniquement
-depuis le réseau local du club via `08-ingress.yaml`. L'isolation est
-garantie par un DEUXIÈME contrôleur ingress-nginx dédié (`nginx-public`),
-qui n'a tout simplement pas connaissance des routes admin, plutôt que par
-un filtrage qui pourrait se tromper.
+**Toutes les routes sont exposées, tous rôles confondus** (voir
+`k8s/overlays/production/17-ingress-public.yaml`, en parité complète avec
+`08-ingress.yaml` depuis le 2026-08-13, à la demande explicite du club) —
+y compris finance/matériel/gestion des comptes. La protection de ces
+routes repose désormais uniquement sur l'authentification/RBAC
+applicative (JWT + contrôle de rôle par endpoint côté chaque service),
+plus sur une isolation réseau : un DEUXIÈME contrôleur ingress-nginx
+dédié (`nginx-public`) sert toujours de frontière (jamais de
+LoadBalancer/NodePort, seul l'opérateur Tailscale l'atteint), mais il
+connaît maintenant toutes les routes, admin comprises.
 
 ### 10.1 Compte et policy Tailscale (une fois, dans la console web)
 
