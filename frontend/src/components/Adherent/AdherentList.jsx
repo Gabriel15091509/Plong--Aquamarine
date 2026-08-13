@@ -14,6 +14,7 @@ import {
   FiSend,
   FiList,
   FiGrid,
+  FiX,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
@@ -95,6 +96,19 @@ const AdherentList = () => {
             ? "Aucun résultat pour vos critères"
             : "Commencez par ajouter votre premier adhérent"}
         </p>
+        {(searchTerm || filter !== "all") && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm("");
+              setFilter("all");
+              setCurrentPage(1);
+            }}
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <FiX className="w-4 h-4" /> Réinitialiser la recherche
+          </button>
+        )}
         {canManageAdherent && (
           <Link
             to="/adherents/create"

@@ -10,6 +10,7 @@ import {
   FiCalendar,
   FiCheckCircle,
   FiClock,
+  FiX,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
@@ -89,6 +90,18 @@ const IncidentList = () => {
             ? "Aucun résultat pour vos critères"
             : "Aucun incident déclaré pour le moment"}
         </p>
+        {(searchTerm || filter !== "all") && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm("");
+              setFilter("all");
+            }}
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <FiX className="w-4 h-4" /> Réinitialiser la recherche
+          </button>
+        )}
         <Link
           to="/incidents/create"
           className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
