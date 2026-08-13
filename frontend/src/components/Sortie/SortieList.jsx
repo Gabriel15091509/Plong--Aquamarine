@@ -328,7 +328,11 @@ const SortieList = ({ sorties: sortiesProp }) => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          {canManageSortie && (
+                          {/* Verrouillé côté serveur (SortieService.update/delete) :
+                              une sortie qui a quitté le statut "Planifiée" n'est
+                              plus modifiable ni supprimable — seul son statut
+                              peut encore évoluer. */}
+                          {canManageSortie && sortie.statut === "Planifiée" && (
                             <>
                               <Link
                                 to={`/sorties/edit/${sortieId}`}

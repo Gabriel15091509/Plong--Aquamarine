@@ -71,3 +71,29 @@ describe("SortieService.assertSortiePlanifiee", () => {
     expect(() => service.assertSortiePlanifiee({ statut: "Terminée" })).toThrow(/encore planifiée/);
   });
 });
+
+describe("SortieService.assertSortieModifiable", () => {
+  test("ne lève pas pour une sortie Planifiée, quels que soient les champs modifiés", () => {
+    expect(() =>
+      service.assertSortieModifiable({ statut: "Planifiée" }, { lieu: "Autre lieu" }),
+    ).not.toThrow();
+  });
+
+  test("ne lève pas pour une sortie En cours si seul le statut change", () => {
+    expect(() =>
+      service.assertSortieModifiable({ statut: "En cours" }, { statut: "Terminée" }),
+    ).not.toThrow();
+  });
+
+  test("lève pour une sortie En cours dès qu'un autre champ change", () => {
+    expect(() =>
+      service.assertSortieModifiable({ statut: "En cours" }, { lieu: "Autre lieu" }),
+    ).toThrow(/quitté le statut/);
+  });
+
+  test("lève pour une sortie Terminée même sans changement de statut demandé", () => {
+    expect(() =>
+      service.assertSortieModifiable({ statut: "Terminée" }, { tarif_adherent: 20 }),
+    ).toThrow(/quitté le statut/);
+  });
+});

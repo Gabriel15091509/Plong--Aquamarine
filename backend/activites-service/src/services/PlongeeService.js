@@ -82,6 +82,33 @@ class PlongeeService extends BaseService {
     return errors;
   }
 
+  // Une plongée validée par un moniteur (id_moniteur_validateur renseigné) ne
+  // doit plus pouvoir être modifiée ni supprimée : le compteur de plongées
+  // de l'adhérent a déjà été incrémenté et, le cas échéant, la séance de
+  // formation liée déjà marquée réalisée (voir validatePlongee) — une
+  // correction a posteriori désynchroniserait ces effets de bord déjà
+  // appliqués ailleurs. Même principe que AdhesionService.update/delete
+  // (verrou une fois validé).
+  assertPlongeeModifiable(plongee) {
+    if (plongee.id_moniteur_validateur) {
+      throw new Error("Cette plongée est validée : elle n'est plus modifiable.");
+    }
+  }
+
+  async update(id, data) {
+    const plongee = await this.plongeeRepository.findById(id);
+    if (!plongee) throw new Error('Plongée non trouvée');
+    this.assertPlongeeModifiable(plongee);
+    return await this.plongeeRepository.update(id, data);
+  }
+
+  async delete(id) {
+    const plongee = await this.plongeeRepository.findById(id);
+    if (!plongee) throw new Error('Plongée non trouvée');
+    this.assertPlongeeModifiable(plongee);
+    return await this.plongeeRepository.delete(id);
+  }
+
   // AdherentService (identite-service) : incrémentation du compte de
   // plongées de l'adhérent via HTTP au lieu d'un appel en-process.
   async validatePlongee(id, id_moniteur, authHeader = null) {

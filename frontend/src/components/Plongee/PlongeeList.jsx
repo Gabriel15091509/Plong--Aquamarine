@@ -384,7 +384,10 @@ const PlongeeList = () => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          {canManagePlongee && (
+                          {/* Verrouillé côté serveur (PlongeeService.update/delete) :
+                              une plongée validée par un moniteur n'est plus
+                              modifiable ni supprimable. */}
+                          {canManagePlongee && !plongee.id_moniteur_validateur && (
                             <>
                               <Link
                                 to={`/plongees/edit/${plongee.id_plongee}`}
