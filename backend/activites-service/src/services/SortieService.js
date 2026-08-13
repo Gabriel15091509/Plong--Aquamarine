@@ -83,6 +83,12 @@ class SortieService extends BaseService {
     }));
   }
 
+  // Contrat attendu par DashboardPage.jsx (carte "Sorties") : total,
+  // planifiees, enCours, terminees, annulees sont lus tels quels (voir le
+  // useMemo statsData, branche `typeof sortieStats.data === "object"`) — ne
+  // pas retirer un de ces champs sans mettre à jour le frontend en même
+  // temps, sous peine de voir resurgir le bug "stats à 0" déjà corrigé une
+  // fois (planifiees/enCours manquaient initialement).
   async getSortieStats() {
     const sorties = await this.sortieRepository.findAll();
     const now = new Date();
