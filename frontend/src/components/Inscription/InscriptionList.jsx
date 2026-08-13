@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { FiPlus, FiClipboard, FiX } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
+import SearchableSelect from "../Common/SearchableSelect";
 import InscriptionRow from "./InscriptionRow";
 import InscriptionActionModals from "./InscriptionActionModals";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
@@ -343,20 +344,21 @@ const InscriptionList = () => {
             <option value="Liste d'attente">Liste d'attente</option>
           </select>
 
-          <select
+          {/* Sur mobile, un <select> natif avec une option par sortie
+              (parfois des dizaines) oblige à faire défiler toute la liste
+              dans le picker du téléphone — remplacé par un menu avec
+              recherche, comme pour les champs Adhérent/Sortie du
+              formulaire d'inscription. */}
+          <SearchableSelect
+            options={sortieOptions}
             value={filterSortie}
-            onChange={(e) => {
-              setFilterSortie(e.target.value);
+            onChange={(value) => {
+              setFilterSortie(value);
               setCurrentPage(1);
             }}
-            className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-          >
-            {sortieOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            placeholder="Rechercher une sortie..."
+            className="w-full sm:w-72"
+          />
 
           <Link
             to="/inscriptions/create"
