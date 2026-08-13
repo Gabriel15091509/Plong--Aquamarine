@@ -26,6 +26,25 @@
     overflow-x: hidden;
   }
 
+  /* Taille des champs de saisie sur mobile : Safari iOS zoome
+     automatiquement toute la page dès qu'on touche un input/select/
+     textarea affichant moins de 16px — quelle que soit sa taille visuelle
+     voulue par ailleurs (beaucoup de champs de recherche/filtre utilisent
+     text-sm = 14px). !important volontaire : ça doit s'appliquer à TOUS
+     les champs, y compris ceux qui ont déjà une classe Tailwind
+     text-sm/text-xs plus spécifique — impossible à garantir autrement
+     sans repasser sur chaque formulaire un par un. Ne touche que la
+     police des champs sous 640px ; rien d'autre (labels, boutons,
+     badges...) n'est affecté, et la hauteur/le padding des champs
+     restent ceux définis par chaque composant. */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
   body {
     @apply bg-gray-50 text-gray-900 font-sans antialiased;
   }
