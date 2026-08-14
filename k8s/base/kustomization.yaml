@@ -7,7 +7,6 @@ namespace: plongee-app
 # spécifiques à chaque environnement et vivent dans leur overlay respectif,
 # pas ici.
 resources:
-- 01-configmap.yaml
 - 02-postgres.yaml
 - 03-gateway-service.yaml
 - 04-formation-service.yaml
@@ -23,6 +22,23 @@ resources:
   # main (kubectl apply -f k8s/secret.yaml -n <namespace>, gitignoré) et
   # hors de portée d'ArgoCD (jamais tracké, donc jamais pruné/recréé par
   # lui) — dans chaque environnement.
+
+# `plongee-config` généré (au lieu d'un ConfigMap statique dans resources:,
+# voir git blame) : constaté le 2026-08-14, un changement de contenu seul
+# (ex. PRESIDENT_2FA_DISABLED) laissait les pods déjà démarrés avec leurs
+# anciennes variables d'env — un ConfigMap appliqué "en place" ne redéclenche
+# aucun rollout, les 7 services le consomment via `envFrom.configMapRef` lu
+# une seule fois au démarrage du conteneur. Un générateur suffixe le nom
+# avec un hash du contenu (plongee-config-<hash>) ; kustomize réécrit
+# automatiquement toutes les références (configMapRef/configMapKeyRef, base
+# et overlays) vers ce nouveau nom à chaque `build` — le nom qui change fait
+# partie du pod template, donc CHAQUE modification de plongee-config.env
+# déclenche désormais un rolling restart normal des services concernés,
+# sans étape manuelle à se souvenir de faire.
+configMapGenerator:
+- name: plongee-config
+  envs:
+  - plongee-config.env
 
 # IMPORTANT : `name:` doit être le chemin COMPLET de l'image tel qu'écrit
 # dans le littéral `image:` de chaque manifest (ghcr.io/.../<service>), pas

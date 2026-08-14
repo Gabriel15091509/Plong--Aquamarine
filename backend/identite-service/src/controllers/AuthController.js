@@ -107,7 +107,7 @@ class AuthController {
       // PRESIDENT_2FA_DISABLED="true" saute cette étape sans toucher au
       // code ci-dessous. Par défaut (variable absente), le 2FA reste actif
       // — désactiver est un choix explicite, pas un oubli silencieux.
-      // À retirer de k8s/base/01-configmap.yaml dès que possible pour
+      // À retirer de k8s/base/plongee-config.env dès que possible pour
       // réactiver.
       const president2faDisabled = process.env.PRESIDENT_2FA_DISABLED === "true";
       if (user.role === "president" && !president2faDisabled) {
