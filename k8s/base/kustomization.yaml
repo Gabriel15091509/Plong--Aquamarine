@@ -36,9 +36,9 @@ resources:
 # déclenche désormais un rolling restart normal des services concernés,
 # sans étape manuelle à se souvenir de faire.
 configMapGenerator:
-- name: plongee-config
-  envs:
+- envs:
   - plongee-config.env
+  name: plongee-config
 
 # IMPORTANT : `name:` doit être le chemin COMPLET de l'image tel qu'écrit
 # dans le littéral `image:` de chaque manifest (ghcr.io/.../<service>), pas
@@ -67,7 +67,7 @@ images:
   newTag: sha-95d9019
 - name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
-  newTag: sha-03c43e8
+  newTag: sha-f7a022f
 - name: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
   newTag: sha-95d9019
