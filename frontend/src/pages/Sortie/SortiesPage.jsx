@@ -253,6 +253,18 @@ const SortiesPage = () => {
             ? "Aucun résultat pour vos critères"
             : "Organisez une nouvelle sortie de plongée"}
         </p>
+        {/* Cet état vide remplace toute la vue, y compris la barre de
+            recherche : sans ce bouton, rien ne permettait de revenir à la
+            liste complète une fois une recherche/filtre sans résultat. */}
+        {(searchTerm || filter !== "all") && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <FiX className="w-4 h-4" /> Réinitialiser la recherche
+          </button>
+        )}
         {canManageSortie && (
           <Link
             to="/sorties/create"
@@ -400,7 +412,9 @@ const SortiesPage = () => {
                 (sortie.nb_places || 0) <= (sortie.nb_inscrits || 0);
               const canInscribe =
                 !isPastSortie && !isFull && sortie.statut === "Planifiée";
-              const isTerminee = sortie.statut === "Terminée";
+              // Verrouillé côté serveur (SortieService.update/delete) dès que
+              // la sortie a quitté "Planifiée" — pas seulement "Terminée".
+              const isVerrouillee = sortie.statut !== "Planifiée";
 
               if (viewMode === "grid") {
                 return (
@@ -529,10 +543,10 @@ const SortiesPage = () => {
                               >
                                 <FiCheckSquare className="w-4 h-4" />
                               </Link>
-                              {isTerminee ? (
+                              {isVerrouillee ? (
                                 <span
                                   className="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                                  title="Sortie terminée : modification impossible"
+                                  title='Cette sortie a quitté le statut "Planifiée" : modification impossible'
                                 >
                                   <FiEdit className="w-4 h-4" />
                                 </span>
@@ -547,11 +561,11 @@ const SortiesPage = () => {
                               )}
                               <button
                                 onClick={() => setDeleteModal(sortieId)}
-                                disabled={loading || isTerminee}
+                                disabled={loading || isVerrouillee}
                                 className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title={
-                                  isTerminee
-                                    ? "Sortie terminée : suppression impossible"
+                                  isVerrouillee
+                                    ? 'Cette sortie a quitté le statut "Planifiée" : suppression impossible'
                                     : "Supprimer"
                                 }
                               >
@@ -685,10 +699,10 @@ const SortiesPage = () => {
                               >
                                 <FiCheckSquare className="w-4 h-4" />
                               </Link>
-                              {isTerminee ? (
+                              {isVerrouillee ? (
                                 <span
                                   className="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                                  title="Sortie terminée : modification impossible"
+                                  title='Cette sortie a quitté le statut "Planifiée" : modification impossible'
                                 >
                                   <FiEdit className="w-4 h-4" />
                                 </span>
@@ -703,11 +717,11 @@ const SortiesPage = () => {
                               )}
                               <button
                                 onClick={() => setDeleteModal(sortieId)}
-                                disabled={loading || isTerminee}
+                                disabled={loading || isVerrouillee}
                                 className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title={
-                                  isTerminee
-                                    ? "Sortie terminée : suppression impossible"
+                                  isVerrouillee
+                                    ? 'Cette sortie a quitté le statut "Planifiée" : suppression impossible'
                                     : "Supprimer"
                                 }
                               >
