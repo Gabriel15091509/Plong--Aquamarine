@@ -96,6 +96,12 @@ const AdhesionList = () => {
       if (filter !== "all" && a.statut_paiement !== filter) return false;
       if (typeFilter !== "all" && a.type !== typeFilter) return false;
       if (showValidationOnly && !a.soumis_par_adherent) return false;
+      // "Toutes les adhésions" et "Validation" sont deux files distinctes,
+      // sans doublon : une auto-soumission (soumis_par_adherent) ne vit que
+      // dans "Validation", quel que soit son statut — même une fois
+      // validée, elle n'apparaît pas ici (elle reste consultable via
+      // "Validation").
+      if (!showValidationOnly && a.soumis_par_adherent) return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();

@@ -101,6 +101,10 @@ const CertificatList = () => {
 
       if (filter !== "all" && c.statut !== filter) return false;
       if (showValidationOnly && !c.soumis_par_adherent) return false;
+      // "Tous les certificats" et "Validation" sont deux files distinctes,
+      // sans doublon : une auto-soumission (soumis_par_adherent) ne vit que
+      // dans "Validation", quel que soit son statut.
+      if (!showValidationOnly && c.soumis_par_adherent) return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
