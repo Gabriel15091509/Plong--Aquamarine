@@ -193,16 +193,20 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const canSeeMyFormations = hasRole(["president", "moniteur", "adherent"]);
   const canSeeIncidents = hasRole(["president", "moniteur"]);
   const canSeeRoles = hasRole(["president"]);
-  // Validateurs des auto-soumissions (licence FFESM/assurances, certificat
-  // médical) — voir AdhesionService.validerAdhesion /
-  // CertificatMedicalService.validerCertificat. Un adhérent n'a rien à
-  // valider, donc pas de sous-menu pour lui, juste le lien direct. Le lien
-  // "Validation" pointe vers ?validation=soumis, qui affiche toutes les
-  // auto-soumissions (soumis_par_adherent) quel que soit leur statut — pas
-  // seulement celles en attente — vu que la page ne propose plus de filtre
-  // dédié pour distinguer en attente/validées/rejetées.
-  const canValidateAdhesions = hasRole(["president", "tresorier"]);
-  const canValidateCertificats = hasRole(["president"]);
+  // Sous-menu "Validation" (lien vers ?validation=soumis, qui affiche
+  // toutes les auto-soumissions — soumis_par_adherent — quel que soit leur
+  // statut) : voir AdhesionService.validerAdhesion /
+  // CertificatMedicalService.validerCertificat pour qui peut réellement
+  // valider (président/trésorier pour les adhésions, président seul pour
+  // les certificats — géré séparément par canManageAdhesion/
+  // canManageCertificat dans AdhesionList/CertificatList, pas ici). Un
+  // adhérent ne valide rien, mais voit le même sous-menu pour suivre le
+  // statut de ses propres soumissions — la liste est déjà scopée à
+  // lui-même côté backend (AdhesionService/CertificatMedicalService.getAll)
+  // — sans ça, "ma licence a-t-elle été acceptée ?" n'était accessible
+  // qu'au staff.
+  const canSeeAdhesionValidationMenu = hasRole(["president", "tresorier", "adherent"]);
+  const canSeeCertificatValidationMenu = hasRole(["president", "adherent"]);
 
   // Accès public (Tailscale Funnel, voir k8s/overlays/production/
   // 17-ingress-public.yaml) : seules les routes adhérent sont exposées
@@ -230,7 +234,7 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       path: "/adhesions",
       icon: FiFileText,
       label: "Adhésions",
-      children: canValidateAdhesions
+      children: canSeeAdhesionValidationMenu
         ? [
             { path: "/adhesions", label: "Toutes les adhésions" },
             {
@@ -244,7 +248,7 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       path: "/certificats",
       icon: FiClipboard,
       label: "Certificats",
-      children: canValidateCertificats
+      children: canSeeCertificatValidationMenu
         ? [
             { path: "/certificats", label: "Tous les certificats" },
             {
