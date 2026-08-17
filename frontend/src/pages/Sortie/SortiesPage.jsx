@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link, useNavigate } from "react-router-dom"; // Ajouter useNavigate ici
+import { Link, useNavigate, useSearchParams } from "react-router-dom"; // Ajouter useNavigate ici
 import toast from "react-hot-toast";
 import {
   FiPlus,
@@ -47,9 +47,11 @@ const SORTIE_STATUS = [
 const SortiesPage = () => {
   // useNavigate doit être appelé à l'intérieur du composant
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const { useGetAll, useRemove } = useSorties();
-  const { useCreate: useCreateInscription } = useInscriptions();
+  const { useGetAll: useGetAllInscriptions, useCreate: useCreateInscription } =
+    useInscriptions();
   const { useGetAll: useGetAllAdherents } = useAdherents();
   const { user, hasRole } = useAuth();
   const canManageSortie = hasRole(["president", "moniteur"]);
@@ -60,6 +62,15 @@ const SortiesPage = () => {
   const [deleteModal, setDeleteModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState("list");
+  // Sous-menu sidebar "Mes sorties" (?filtre=mes-sorties, voir Sidebar.jsx) —
+  // même pattern que showValidationOnly dans AdhesionList/CertificatList.
+  const [mesSortiesOnly, setMesSortiesOnly] = useState(
+    searchParams.get("filtre") === "mes-sorties",
+  );
+  useEffect(() => {
+    setMesSortiesOnly(searchParams.get("filtre") === "mes-sorties");
+    setCurrentPage(1);
+  }, [searchParams]);
   const itemsPerPage = 10;
 
   const {
@@ -71,8 +82,22 @@ const SortiesPage = () => {
 
   const { data: adherentsData, isLoading: loadingAdherents } =
     useGetAllAdherents();
+  // Scopée à l'adhérent connecté côté backend (InscriptionService.getAll) —
+  // sert à déterminer "mes sorties" : celles où il a une inscription active
+  // (inscrit ou demande envoyée), peu importe le statut précis, sauf
+  // Annulée.
+  const { data: mesInscriptionsData } = useGetAllInscriptions();
   const remove = useRemove();
   const createInscription = useCreateInscription();
+
+  const mesSortiesIds = useMemo(() => {
+    const inscriptions = mesInscriptionsData?.data || [];
+    return new Set(
+      inscriptions
+        .filter((i) => i.statut !== "Annulée")
+        .map((i) => i.id_sortie),
+    );
+  }, [mesInscriptionsData]);
 
   const sortiesList = useMemo(() => {
     if (!sortiesData?.data) return [];
@@ -114,14 +139,17 @@ const SortiesPage = () => {
 
       const matchFilter = filter === "all" || sortie.statut === filter;
 
-      return matchSearch && matchFilter;
+      const matchMesSorties =
+        !mesSortiesOnly || mesSortiesIds.has(sortie.id_sortie || sortie.id);
+
+      return matchSearch && matchFilter && matchMesSorties;
     }).sort((a, b) => {
       const now = Date.now();
       const diffA = Math.abs(new Date(a.date_heure) - now);
       const diffB = Math.abs(new Date(b.date_heure) - now);
       return diffA - diffB;
     });
-  }, [sortiesList, searchTerm, filter]);
+  }, [sortiesList, searchTerm, filter, mesSortiesOnly, mesSortiesIds]);
 
   // Pagination
   const totalPages = Math.ceil(filteredSorties.length / itemsPerPage);
@@ -192,6 +220,7 @@ const SortiesPage = () => {
   const clearFilters = () => {
     setSearchTerm("");
     setFilter("all");
+    setMesSortiesOnly(false);
     setCurrentPage(1);
   };
 
@@ -244,19 +273,23 @@ const SortiesPage = () => {
           <FiAnchor className="w-10 h-10 text-gray-400" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {searchTerm || filter !== "all"
-            ? "Aucune sortie trouvée"
-            : "Commencez par créer votre première sortie"}
+          {mesSortiesOnly
+            ? "Vous n'êtes inscrit à aucune sortie"
+            : searchTerm || filter !== "all"
+              ? "Aucune sortie trouvée"
+              : "Commencez par créer votre première sortie"}
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {searchTerm || filter !== "all"
-            ? "Aucun résultat pour vos critères"
-            : "Organisez une nouvelle sortie de plongée"}
+          {mesSortiesOnly
+            ? "Aucune sortie où vous êtes inscrit(e) ou avez envoyé une demande"
+            : searchTerm || filter !== "all"
+              ? "Aucun résultat pour vos critères"
+              : "Organisez une nouvelle sortie de plongée"}
         </p>
         {/* Cet état vide remplace toute la vue, y compris la barre de
             recherche : sans ce bouton, rien ne permettait de revenir à la
             liste complète une fois une recherche/filtre sans résultat. */}
-        {(searchTerm || filter !== "all") && (
+        {(searchTerm || filter !== "all" || mesSortiesOnly) && (
           <button
             type="button"
             onClick={clearFilters}
@@ -288,11 +321,13 @@ const SortiesPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-3">
-            Gestion des sorties
+            {mesSortiesOnly ? "Mes sorties" : "Gestion des sorties"}
             <FiMapPin className="w-5 h-5 text-indigo-500" />
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {filteredSorties.length} sorties trouvées
+            {mesSortiesOnly
+              ? `${filteredSorties.length} sortie${filteredSorties.length > 1 ? "s" : ""} où vous êtes inscrit(e) ou avez envoyé une demande`
+              : `${filteredSorties.length} sorties trouvées`}
           </p>
         </div>
         {canManageSortie && (
@@ -340,7 +375,7 @@ const SortiesPage = () => {
             ))}
           </select>
 
-          {(searchTerm || filter !== "all") && (
+          {(searchTerm || filter !== "all" || mesSortiesOnly) && (
             <button
               onClick={clearFilters}
               className="px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center gap-1"

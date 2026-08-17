@@ -371,8 +371,27 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
     { path: "/confidentialite", icon: FiShield, label: "Confidentialité" },
   ];
 
+  // Sous-menu "Mes sorties" (lien vers ?filtre=mes-sorties, voir
+  // SortiesPage.jsx) : réservé à l'adhérent — le staff voit déjà toutes les
+  // sorties par défaut, "les miennes" n'a de sens que pour quelqu'un qui
+  // s'inscrit lui-même.
+  const canSeeMesSortiesMenu = hasRole(["adherent"]);
+
   const sortieMenu = [
-    { path: "/sorties", icon: FiCalendar, label: "Sorties" },
+    {
+      path: "/sorties",
+      icon: FiCalendar,
+      label: "Sorties",
+      children: canSeeMesSortiesMenu
+        ? [
+            { path: "/sorties", label: "Toutes les sorties" },
+            {
+              path: "/sorties?filtre=mes-sorties",
+              label: "Mes sorties",
+            },
+          ]
+        : undefined,
+    },
     {
       path: "/inscriptions",
       icon: FiAnchor,
