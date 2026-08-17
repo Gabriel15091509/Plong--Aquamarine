@@ -69,6 +69,22 @@ export const useSorties = () => {
     });
   };
 
+  // Prévision météo (vent, houle, orage...) de la sortie — voir
+  // SortieService.getPrevisionMeteo côté backend. staleTime plus court que
+  // les autres requêtes de cette sortie : une prévision se rafraîchit plus
+  // vite qu'une donnée métier stable.
+  const useGetMeteo = (id) => {
+    return useQuery({
+      queryKey: ["sorties", id, "meteo"],
+      queryFn: () => sortieService.getMeteo(id),
+      enabled: !!id,
+      staleTime: 1000 * 60 * 10,
+      gcTime: 1000 * 60 * 20,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    });
+  };
+
   // NOUVEAU - Récupérer le pointage d'une sortie
   const useGetPointage = (id) => {
     return useQuery({
@@ -190,6 +206,7 @@ export const useSorties = () => {
     useGetStats,
     useGetAvailablePlaces,
     useGetDetails, // Nouveau
+    useGetMeteo,
     useGetPointage, // Nouveau
     useCreate,
     useUpdate,

@@ -111,6 +111,27 @@ class SortieController extends BaseController {
     }
   }
 
+  async getPrevisionMeteo(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await this.sortieService.getPrevisionMeteo(parseInt(id));
+
+      if (!result) {
+        return res.status(404).json({
+          success: false,
+          message: "Sortie non trouvée",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async getPointage(req, res, next) {
     try {
       const { id } = req.params;
