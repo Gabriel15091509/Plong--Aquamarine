@@ -5,11 +5,12 @@ import toast from 'react-hot-toast';
 export const usePlongees = () => {
   const queryClient = useQueryClient();
 
-  const useGetAll = (params = {}) => {
+  const useGetAll = (params = {}, options = {}) => {
     return useQuery({
       queryKey: ['plongees', params],
       queryFn: () => plongeeService.getAll(params),
       staleTime: 5 * 60 * 1000,
+      ...options,
     });
   };
 

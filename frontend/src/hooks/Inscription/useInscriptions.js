@@ -5,13 +5,14 @@ import toast from "react-hot-toast";
 export const useInscriptions = () => {
   const queryClient = useQueryClient();
 
-  const useGetAll = () => {
+  const useGetAll = (options = {}) => {
     return useQuery({
       queryKey: ["inscriptions"],
       queryFn: async () => {
         const response = await inscriptionService.getAll();
         return response;
       },
+      ...options,
     });
   };
 

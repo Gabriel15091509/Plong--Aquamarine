@@ -5,11 +5,12 @@ import toast from 'react-hot-toast';
 export const useCertificats = () => {
   const queryClient = useQueryClient();
 
-  const useGetAll = (params = {}) => {
+  const useGetAll = (params = {}, options = {}) => {
     return useQuery({
       queryKey: ['certificats', params],
       queryFn: () => certificatService.getAll(params),
       staleTime: 5 * 60 * 1000,
+      ...options,
     });
   };
 
