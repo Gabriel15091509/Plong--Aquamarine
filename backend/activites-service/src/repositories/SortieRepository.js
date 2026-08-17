@@ -123,6 +123,45 @@ class SortieRepository extends BaseRepository {
     });
   }
 
+  // Sorties "Planifiée" localisées (latitude/longitude renseignées — voir le
+  // commentaire du modèle Sortie sur pourquoi le lieu texte seul ne suffit
+  // pas) dans les `withinDays` prochains jours — base de la vérification
+  // météo automatique (SortieService.verifierMeteoEtAnnulerSiDangereux).
+  async findPlanifieesAVenirAvecCoordonnees(withinDays) {
+    const now = new Date();
+    const limite = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+    return await this.model.findAll({
+      where: {
+        statut: "Planifiée",
+        date_heure: { [Op.gte]: now, [Op.lte]: limite },
+        latitude: { [Op.ne]: null },
+        longitude: { [Op.ne]: null },
+      },
+      include: [
+        {
+          model: Inscription,
+          as: "inscriptions",
+        },
+      ],
+      order: [["date_heure", "ASC"]],
+    });
+  }
+
+  // Toutes les sorties non annulées autres que `id_sortie_exclue`, allégé
+  // aux seuls champs nécessaires au test de chevauchement horaire
+  // (sortieOverlap.sortiesSeChevauchent) — utilisé pour proposer des dates
+  // de remplacement à une sortie annulée qui ne chevauchent aucune autre
+  // sortie existante.
+  async findAutresPourChevauchement(id_sortie_exclue) {
+    return await this.model.findAll({
+      where: {
+        id_sortie: { [Op.ne]: id_sortie_exclue },
+        statut: { [Op.ne]: "Annulée" },
+      },
+      attributes: ["id_sortie", "date_heure", "duree_estimee"],
+    });
+  }
+
   async countInPeriod(dateField, start, end) {
     return await this.model.count({
       where: { [dateField]: { [Op.gte]: start, [Op.lte]: end } },

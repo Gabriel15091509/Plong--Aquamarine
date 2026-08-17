@@ -83,6 +83,14 @@ const Sortie = sequelize.define(
       type: DataTypes.JSON,
       allowNull: true,
     },
+    // Renseigné automatiquement par SortieService.
+    // verifierMeteoEtAnnulerSiDangereux quand une sortie "Planifiée" est
+    // annulée pour cause de météo dangereuse (voir migrate-sortie-motif-
+    // annulation.sql) — reste vide pour une annulation manuelle.
+    motif_annulation: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     // Plus de FK Postgres vers `president` (identite-service, autre
     // schéma) : reste une colonne applicative, non validée en base.
     created_by: {

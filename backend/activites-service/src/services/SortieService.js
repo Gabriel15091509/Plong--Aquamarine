@@ -4,13 +4,61 @@ const InscriptionRepository = require("../repositories/InscriptionRepository");
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const { isNiveauCompatible } = require("../utils/roleScope");
 const { withAdherent } = require("../utils/enrichAdherents");
-const { sendSortieReminderEmail } = require("../utils/email");
+const {
+  sendSortieReminderEmail,
+  sendSortieAnnuleeMeteoEmail,
+  sendPropositionsReprogrammationEmail,
+} = require("../utils/email");
+const { getForecastForDate, evaluerDanger } = require("../utils/meteoClient");
+const { sortiesSeChevauchent } = require("../utils/sortieOverlap");
+
+// Fenêtre de prévision météo exploitée (jours) : au-delà, une prévision
+// n'est plus fiable (voir meteoClient) — inutile d'interroger l'API pour des
+// sorties plus lointaines, elles seront revérifiées aux passages suivants du
+// cron à mesure qu'elles entrent dans la fenêtre.
+const FENETRE_METEO_JOURS = 7;
+// Dates alternatives proposées à l'organisateur d'une sortie annulée pour
+// météo : jusqu'à PROPOSITIONS_MAX dates, cherchées jour par jour (même
+// heure que la sortie annulée) sur une fenêtre de PROPOSITIONS_FENETRE_JOURS.
+const PROPOSITIONS_MAX = 3;
+const PROPOSITIONS_FENETRE_JOURS = 21;
 
 function formatSortieLabel(sortie) {
   const date = sortie?.date_heure
     ? new Date(sortie.date_heure).toLocaleDateString("fr-FR")
     : "";
   return `${sortie?.site || sortie?.lieu || "Sortie"} du ${date}`;
+}
+
+// Cherche, jour par jour à partir du lendemain de la sortie annulée et à la
+// même heure, des créneaux qui ne chevauchent aucune autre sortie existante
+// (sortieOverlap.sortiesSeChevauchent, cf. son en-tête pour la définition du
+// chevauchement) — s'arrête dès PROPOSITIONS_MAX trouvées. Ne vérifie pas la
+// météo des dates proposées : celles au-delà de FENETRE_METEO_JOURS ne sont
+// de toute façon pas encore prévisibles, et une date choisie sera de toute
+// façon revérifiée par ce même cron une fois dans sa fenêtre.
+async function proposerNouvellesDates(sortieAnnulee, sortieRepository) {
+  const autres = await sortieRepository.findAutresPourChevauchement(
+    sortieAnnulee.id_sortie,
+  );
+  const propositions = [];
+  for (
+    let i = 1;
+    i <= PROPOSITIONS_FENETRE_JOURS && propositions.length < PROPOSITIONS_MAX;
+    i++
+  ) {
+    const candidate = new Date(sortieAnnulee.date_heure);
+    candidate.setDate(candidate.getDate() + i);
+    const candidateSortie = {
+      date_heure: candidate,
+      duree_estimee: sortieAnnulee.duree_estimee,
+    };
+    const chevauche = autres.some((autre) =>
+      sortiesSeChevauchent(candidateSortie, autre),
+    );
+    if (!chevauche) propositions.push(candidate);
+  }
+  return propositions;
 }
 
 class SortieService extends BaseService {
@@ -480,6 +528,103 @@ class SortieService extends BaseService {
       }
     }
     return envoyes;
+  }
+
+  // Vérifie la météo prévue des sorties "Planifiée" localisées (latitude/
+  // longitude renseignées) dans les FENETRE_METEO_JOURS prochains jours et
+  // annule automatiquement celles dont les conditions sont jugées
+  // dangereuses (vent, houle, orage, fortes précipitations — voir
+  // meteoClient.evaluerDanger). Notifie chaque inscrit non annulé et propose
+  // à l'organisateur (created_by) des dates de remplacement sans
+  // chevauchement avec une autre sortie — jamais de recréation automatique,
+  // c'est à un humain de valider la nouvelle date (tarifs, encadrants,
+  // capacité...).
+  //
+  // Appelé par un cron quotidien (voir app.js) — best-effort par sortie :
+  // une erreur (API météo indisponible, email en échec...) sur une sortie
+  // n'interrompt pas le traitement des autres.
+  async verifierMeteoEtAnnulerSiDangereux(authHeader) {
+    const sorties = await this.sortieRepository.findPlanifieesAVenirAvecCoordonnees(
+      FENETRE_METEO_JOURS,
+    );
+    let annulees = 0;
+
+    for (const sortie of sorties) {
+      try {
+        const forecast = await getForecastForDate({
+          latitude: sortie.latitude,
+          longitude: sortie.longitude,
+          date: sortie.date_heure,
+        });
+        const { dangereux, motifs } = evaluerDanger(forecast);
+        if (!dangereux) continue;
+
+        await this.sortieRepository.update(sortie.id_sortie, {
+          statut: "Annulée",
+          motif_annulation: `Annulation automatique (météo défavorable) : ${motifs.join(", ")}.`,
+        });
+        annulees += 1;
+
+        const label = formatSortieLabel(sortie);
+        const propositions = await proposerNouvellesDates(
+          sortie,
+          this.sortieRepository,
+        );
+
+        const inscrits = (sortie.inscriptions || []).filter(
+          (i) => i.statut !== "Annulée",
+        );
+        for (const inscription of inscrits) {
+          try {
+            const adherent = await identiteClient.getAdherentById(
+              inscription.num_adherent,
+              authHeader,
+            );
+            if (!adherent?.email) continue;
+            await sendSortieAnnuleeMeteoEmail({
+              to: adherent.email,
+              adherentName: `${adherent.prenom} ${adherent.nom}`,
+              sortieLabel: label,
+              motifs,
+              propositions,
+            });
+          } catch (error) {
+            console.error(
+              `Erreur notification annulation météo (inscription ${inscription.id_inscription}):`,
+              error.message,
+            );
+          }
+        }
+
+        if (sortie.created_by) {
+          try {
+            const organisateur = await identiteClient.getUserBasicById(
+              sortie.created_by,
+            );
+            if (organisateur?.email) {
+              await sendPropositionsReprogrammationEmail({
+                to: organisateur.email,
+                organisateurName: organisateur.name,
+                sortieLabel: label,
+                motifs,
+                propositions,
+              });
+            }
+          } catch (error) {
+            console.error(
+              `Erreur notification organisateur (sortie ${sortie.id_sortie}):`,
+              error.message,
+            );
+          }
+        }
+      } catch (error) {
+        console.error(
+          `Erreur vérification météo (sortie ${sortie.id_sortie}):`,
+          error.message,
+        );
+      }
+    }
+    return annulees;
   }
 }
 
