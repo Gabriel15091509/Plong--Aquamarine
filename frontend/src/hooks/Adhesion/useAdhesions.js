@@ -5,11 +5,12 @@ import toast from 'react-hot-toast';
 export const useAdhesions = () => {
   const queryClient = useQueryClient();
 
-  const useGetAll = (params = {}) => {
+  const useGetAll = (params = {}, options = {}) => {
     return useQuery({
       queryKey: ['adhesions', params],
       queryFn: () => adhesionService.getAll(params),
       staleTime: 5 * 60 * 1000,
+      ...options,
     });
   };
 

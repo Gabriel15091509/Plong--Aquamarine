@@ -33,6 +33,11 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { photoUrl } from "../../utils/photoUrl";
 import Logo from "../Common/Logo";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { usePlongees } from "../../hooks/Plongee/usePlongees";
+import { useFormations } from "../../hooks/Formation/useFormations";
+import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
+import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 
 // Élément de menu simple, ou avec un sous-menu pliable (`item.children`) —
 // utilisé par Adhésions/Certificats pour donner un accès direct à la file
@@ -57,6 +62,8 @@ const MenuItem = ({ item, isOpen, onNavigate }) => {
     group
   `;
 
+  const badgeCount = item.badge > 0 ? (item.badge > 99 ? "99+" : item.badge) : null;
+
   const linkContent = ({ isActive }) => (
     <>
       <span
@@ -65,17 +72,29 @@ const MenuItem = ({ item, isOpen, onNavigate }) => {
         }`}
       />
 
-      <item.icon
-        className={`relative z-10 w-5 h-5 flex-shrink-0 transition-colors duration-150 ${
-          isActive
-            ? "text-cyan-600 dark:text-cyan-400"
-            : "text-gray-500 group-hover:text-cyan-600 dark:text-gray-500 dark:group-hover:text-cyan-400"
-        }`}
-      />
+      <span className="relative flex-shrink-0">
+        <item.icon
+          className={`relative z-10 w-5 h-5 flex-shrink-0 transition-colors duration-150 ${
+            isActive
+              ? "text-cyan-600 dark:text-cyan-400"
+              : "text-gray-500 group-hover:text-cyan-600 dark:text-gray-500 dark:group-hover:text-cyan-400"
+          }`}
+        />
+        {/* Replié : un point rouge suffit sur l'icône, pas la place pour un chiffre */}
+        {!isOpen && badgeCount && (
+          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-gray-900" />
+        )}
+      </span>
 
       {isOpen && (
         <span className="relative z-10 text-sm font-medium truncate">
           {item.label}
+        </span>
+      )}
+
+      {isOpen && badgeCount && (
+        <span className="relative z-10 ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full flex-shrink-0">
+          {badgeCount}
         </span>
       )}
     </>
@@ -116,23 +135,32 @@ const MenuItem = ({ item, isOpen, onNavigate }) => {
 
       {isOpen && expanded && (
         <div className="ml-6 pl-2.5 border-l border-gray-200 dark:border-gray-700 mt-0.5 mb-1 space-y-0.5">
-          {item.children.map((child) => (
-            <NavLink
-              key={child.path}
-              to={child.path}
-              onClick={onNavigate}
-              className={() => `
-                block px-3 py-2 rounded-lg text-sm truncate transition-colors duration-150
-                ${
-                  currentUrl === child.path
-                    ? "text-cyan-700 bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/30 font-medium"
-                    : "text-gray-500 hover:text-cyan-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400"
-                }
-              `}
-            >
-              {child.label}
-            </NavLink>
-          ))}
+          {item.children.map((child) => {
+            const childBadge =
+              child.badge > 0 ? (child.badge > 99 ? "99+" : child.badge) : null;
+            return (
+              <NavLink
+                key={child.path}
+                to={child.path}
+                onClick={onNavigate}
+                className={() => `
+                  flex items-center gap-2 px-3 py-2 rounded-lg text-sm truncate transition-colors duration-150
+                  ${
+                    currentUrl === child.path
+                      ? "text-cyan-700 bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/30 font-medium"
+                      : "text-gray-500 hover:text-cyan-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400"
+                  }
+                `}
+              >
+                <span className="truncate">{child.label}</span>
+                {childBadge && (
+                  <span className="ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full flex-shrink-0">
+                    {childBadge}
+                  </span>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
       )}
     </div>
@@ -222,6 +250,77 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const isPublicAccess =
     typeof window !== "undefined" && window.location.hostname.endsWith(".ts.net");
 
+  // Badges (petits compteurs sur le menu) : uniquement pour le staff qui peut
+  // réellement agir sur la file en question — un adhérent n'a aucun bouton
+  // pour "traiter" ces éléments, un chiffre serait juste du bruit pour lui.
+  // Chaque hook partage son queryKey avec celui du composant qui affiche la
+  // vraie liste (InscriptionList/PlongeeList/FormationList/AdhesionList/
+  // CertificatList) : React Query dédoublonne, donc pas d'appel réseau en
+  // plus une fois la page visitée — la Sidebar se contente d'amorcer/lire le
+  // même cache. `enabled` évite même ce premier appel pour les rôles qui ne
+  // verront jamais le badge.
+  const canManageInscriptionsBadge = hasRole(["president", "moniteur"]);
+  const canManagePlongeesBadge = hasRole(["president", "moniteur"]);
+  const canManageFormationsBadge = hasRole(["president", "moniteur"]);
+  const canManageAdhesionValidation = hasRole(["president", "tresorier"]);
+  const canManageCertificatValidation = hasRole(["president"]);
+
+  const { useGetAll: useGetAllInscriptions } = useInscriptions();
+  const { data: inscriptionsData } = useGetAllInscriptions({
+    enabled: canManageInscriptionsBadge,
+  });
+  const nouvellesInscriptions = canManageInscriptionsBadge
+    ? (inscriptionsData?.data || []).filter((i) => i.statut === "En attente").length
+    : 0;
+
+  const { useGetAll: useGetAllPlongees } = usePlongees();
+  const { data: plongeesData } = useGetAllPlongees({}, { enabled: canManagePlongeesBadge });
+  const plongeesAValider = canManagePlongeesBadge
+    ? (plongeesData?.data || []).filter((p) => !p.id_moniteur_validateur).length
+    : 0;
+
+  // "Prêtes à terminer" plutôt que "Terminées" : une formation Terminée le
+  // reste pour toujours (rien à traiter après), le badge ne retomberait
+  // donc jamais à zéro tout seul. Ici on compte celles qui ont atteint leur
+  // nombre de séances prévues mais attendent encore le clic "Terminer" du
+  // moniteur — actionnable, et ça se vide une fois traité, comme les autres
+  // badges.
+  const { useGetAll: useGetAllFormations } = useFormations();
+  const { data: formationsData } = useGetAllFormations(
+    {},
+    { enabled: canManageFormationsBadge },
+  );
+  const formationsPretesATerminer = canManageFormationsBadge
+    ? (formationsData?.data || []).filter(
+        (f) =>
+          f.statut === "En cours" &&
+          f.nb_seances_prevues &&
+          f.nb_seances_realisees >= f.nb_seances_prevues,
+      ).length
+    : 0;
+
+  const { useGetAll: useGetAllAdhesions } = useAdhesions();
+  const { data: adhesionsData } = useGetAllAdhesions(
+    {},
+    { enabled: canManageAdhesionValidation },
+  );
+  const adhesionsEnAttente = canManageAdhesionValidation
+    ? (adhesionsData?.data || []).filter(
+        (a) => a.soumis_par_adherent && a.statut_validation === "En attente",
+      ).length
+    : 0;
+
+  const { useGetAll: useGetAllCertificats } = useCertificats();
+  const { data: certificatsData } = useGetAllCertificats(
+    {},
+    { enabled: canManageCertificatValidation },
+  );
+  const certificatsEnAttente = canManageCertificatValidation
+    ? (certificatsData?.data || []).filter(
+        (c) => c.soumis_par_adherent && c.statut_validation === "En attente",
+      ).length
+    : 0;
+
   // Menu général - visible par tous
   const mainMenu = [
     { path: "/dashboard", icon: FiHome, label: "Tableau de bord" },
@@ -234,12 +333,14 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       path: "/adhesions",
       icon: FiFileText,
       label: "Adhésions",
+      badge: adhesionsEnAttente,
       children: canSeeAdhesionValidationMenu
         ? [
             { path: "/adhesions", label: "Toutes les adhésions" },
             {
               path: "/adhesions?validation=soumis",
               label: "Validation",
+              badge: adhesionsEnAttente,
             },
           ]
         : undefined,
@@ -248,12 +349,14 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       path: "/certificats",
       icon: FiClipboard,
       label: "Certificats",
+      badge: certificatsEnAttente,
       children: canSeeCertificatValidationMenu
         ? [
             { path: "/certificats", label: "Tous les certificats" },
             {
               path: "/certificats?validation=soumis",
               label: "Validation",
+              badge: certificatsEnAttente,
             },
           ]
         : undefined,
@@ -270,12 +373,22 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
 
   const sortieMenu = [
     { path: "/sorties", icon: FiCalendar, label: "Sorties" },
-    { path: "/inscriptions", icon: FiAnchor, label: "Inscriptions" },
-    { path: "/plongees", icon: FiActivity, label: "Plongées" },
+    {
+      path: "/inscriptions",
+      icon: FiAnchor,
+      label: "Inscriptions",
+      badge: nouvellesInscriptions,
+    },
+    { path: "/plongees", icon: FiActivity, label: "Plongées", badge: plongeesAValider },
   ];
 
   const formationMenu = [
-    { path: "/formations", icon: FiAward, label: "Formations" },
+    {
+      path: "/formations",
+      icon: FiAward,
+      label: "Formations",
+      badge: formationsPretesATerminer,
+    },
   ];
 
   const adminMenu = [
