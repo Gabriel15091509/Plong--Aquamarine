@@ -50,7 +50,7 @@ class AdhesionService extends BaseService {
 
     if (data.type !== "Club") {
       // Plus de validation manuelle du président pour une soumission
-      // adhérent : Ollama tranche seul (Validé/Rejeté), voir
+      // adhérent : Groq tranche seul (Validé/Rejeté) quand il répond, voir
       // judgeSubmittedDocument. Une entrée créée par le staff reste
       // "Validé" d'office comme avant, aucune analyse n'est nécessaire.
       let statut_validation = "Validé";
@@ -71,7 +71,10 @@ class AdhesionService extends BaseService {
         });
         statut_validation = decision.decision;
         valide_par = null;
-        valide_le = new Date();
+        // "En attente" (Groq indisponible, voir groqClient.judgeDocumentCoherence)
+        // n'est pas une décision prise : pas de date de validation tant que
+        // le président/trésorier n'a pas réellement tranché.
+        valide_le = decision.decision === "En attente" ? null : new Date();
         motif_rejet = decision.decision === "Rejeté" ? decision.motif : null;
       }
 
@@ -130,15 +133,16 @@ class AdhesionService extends BaseService {
     return adhesion;
   }
 
-  // Décision automatique (plus de validation manuelle du président pour ce
+  // Décision automatique (plus de validation manuelle systématique pour ce
   // circuit) : relit le document tout juste enregistré sur disque, réutilise
   // les mêmes heuristiques OCR que l'aperçu pré-soumission
   // (analyserPhotoAdhesion, déjà utilisée par analyserPhoto ci-dessous),
-  // puis soumet le texte détecté + les champs saisis à Ollama pour un
-  // jugement final. Toute défaillance (pas de document, lecture impossible,
-  // Ollama injoignable) aboutit à un rejet explicite plutôt qu'à une
-  // validation par défaut — voir groqClient.judgeDocumentCoherence pour
-  // cette politique (actée : aucun repli vers une validation humaine).
+  // puis soumet le texte détecté + les champs saisis à Groq pour un jugement
+  // final (voir groqClient.judgeDocumentCoherence : une indisponibilité de
+  // Groq lui-même bascule sur "En attente", pas un rejet — seule une vraie
+  // incohérence détectée aboutit à un rejet). Un document absent ou
+  // illisible côté adhérent (pas un problème Groq) reste en revanche rejeté
+  // immédiatement ci-dessous : resoumettre est la seule action utile.
   async judgeSubmittedDocument({ typeDocument, document_path, adherent, champs }) {
     if (!document_path) {
       return {
@@ -147,10 +151,9 @@ class AdhesionService extends BaseService {
       };
     }
 
-    // Tout accroc dans la lecture/l'OCR (fichier illisible, image
-    // corrompue...) doit aboutir à un rejet explicite comme le reste de
-    // cette politique — pas d'exception non gérée qui ferait échouer toute
-    // la requête de soumission avec une 500 opaque.
+    // Fichier illisible/corrompu : pas un problème Groq (jamais atteint),
+    // donc pas de repli "En attente" ici non plus — resoumettre une photo
+    // lisible est la seule action utile.
     try {
       const buffer = readAdhesionDocument(document_path);
       const champsAttendus = {
