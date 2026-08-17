@@ -139,6 +139,17 @@ const initializeApp = async () => {
   await sortieService.envoyerRappels(systemAuthHeader);
   cron.schedule("0 18 * * *", () => sortieService.envoyerRappels(getSystemAuthHeader()));
   logger.info("Planification des rappels de sortie active (quotidien 18:00)");
+
+  // Annulation automatique si météo dangereuse (vent, houle, orage, fortes
+  // précipitations) sur les sorties Planifiée localisées des 7 prochains
+  // jours : un premier passage immédiat au démarrage, puis tous les jours à
+  // 6h (avant la préparation matérielle habituelle) — voir SortieService.
+  // verifierMeteoEtAnnulerSiDangereux.
+  await sortieService.verifierMeteoEtAnnulerSiDangereux(systemAuthHeader);
+  cron.schedule("0 6 * * *", () =>
+    sortieService.verifierMeteoEtAnnulerSiDangereux(getSystemAuthHeader()),
+  );
+  logger.info("Planification de la vérification météo active (quotidien 06:00)");
 };
 
 process.on("unhandledRejection", (err) => {

@@ -373,6 +373,14 @@ const SortieDetails = () => {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {getStatutText(sortie.statut)}
                 </p>
+                {/* Renseigné automatiquement par SortieService.
+                    verifierMeteoEtAnnulerSiDangereux — vide pour une
+                    annulation manuelle. */}
+                {sortie.statut === STATUT_SORTIE.ANNULEE && sortie.motif_annulation && (
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1 max-w-md">
+                    {sortie.motif_annulation}
+                  </p>
+                )}
               </div>
             </div>
           </div>

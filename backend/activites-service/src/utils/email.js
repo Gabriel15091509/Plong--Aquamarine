@@ -219,10 +219,79 @@ const sendSortieReminderEmail = async ({ to, adherentName, sortieLabel, id_sorti
   });
 };
 
+const formatDateFr = (date) =>
+  new Date(date).toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+// Annulation automatique d'une sortie pour météo dangereuse (voir
+// SortieService.verifierMeteoEtAnnulerSiDangereux) — envoyé à chaque inscrit
+// non annulé. `propositions` (dates Date[], sans chevauchement avec une
+// autre sortie) sont indicatives : c'est l'organisateur, prévenu séparément
+// (sendPropositionsReprogrammationEmail), qui décide et recrée la sortie.
+const sendSortieAnnuleeMeteoEmail = async ({
+  to,
+  adherentName,
+  sortieLabel,
+  motifs = [],
+  propositions = [],
+}) => {
+  const motifsHtml = motifs.length
+    ? `<ul>${motifs.map((m) => `<li>${m}</li>`).join("")}</ul>`
+    : "";
+  const propositionsHtml = propositions.length
+    ? `<p>Le club étudie une reprogrammation, dates envisagées (à confirmer) :</p><ul>${propositions
+        .map((d) => `<li>${formatDateFr(d)}</li>`)
+        .join("")}</ul>`
+    : "<p>Une nouvelle date vous sera communiquée dès que possible.</p>";
+  const introHtml = `<p>Bonjour ${adherentName},</p><p>La sortie "<strong>${sortieLabel}</strong>" est <strong>annulée</strong> : les conditions météo prévues sont jugées dangereuses.</p>${motifsHtml}${propositionsHtml}`;
+  return sendEmail({
+    to,
+    subject: `Sortie annulée (météo) — ${sortieLabel}`,
+    html: buildSimpleEmailHtml("Sortie annulée — météo", introHtml, [
+      { label: "Sortie", value: sortieLabel },
+    ]),
+  });
+};
+
+// Envoyé à l'organisateur (Sortie.created_by) d'une sortie annulée
+// automatiquement pour météo dangereuse, avec des propositions de dates de
+// remplacement ne chevauchant aucune autre sortie existante — à lui de
+// choisir et de recréer la sortie (aucune création automatique : trop de
+// décisions métier engagées, tarifs/encadrants/capacité, pour les prendre
+// sans validation humaine).
+const sendPropositionsReprogrammationEmail = async ({
+  to,
+  organisateurName,
+  sortieLabel,
+  motifs = [],
+  propositions = [],
+}) => {
+  const motifsHtml = motifs.length
+    ? `<ul>${motifs.map((m) => `<li>${m}</li>`).join("")}</ul>`
+    : "";
+  const propositionsHtml = propositions.length
+    ? `<ul>${propositions.map((d) => `<li>${formatDateFr(d)}</li>`).join("")}</ul>`
+    : "<p>Aucun créneau libre trouvé automatiquement dans les 3 prochaines semaines — une reprogrammation manuelle est nécessaire.</p>";
+  const introHtml = `<p>Bonjour ${organisateurName},</p><p>La sortie "<strong>${sortieLabel}</strong>" que vous avez organisée a été <strong>annulée automatiquement</strong> (météo défavorable) :</p>${motifsHtml}<p>Dates alternatives sans chevauchement avec une autre sortie :</p>${propositionsHtml}`;
+  return sendEmail({
+    to,
+    subject: `Sortie annulée (météo) — reprogrammation à valider — ${sortieLabel}`,
+    html: buildSimpleEmailHtml("Reprogrammation à valider", introHtml, [
+      { label: "Sortie annulée", value: sortieLabel },
+    ]),
+  });
+};
+
 module.exports = {
   sendEmail,
   sendInscriptionConfirmationEmail,
   sendInscriptionPaymentEmail,
   sendWaitlistPromotedEmail,
   sendSortieReminderEmail,
+  sendSortieAnnuleeMeteoEmail,
+  sendPropositionsReprogrammationEmail,
 };
