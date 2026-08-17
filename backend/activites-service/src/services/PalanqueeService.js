@@ -8,7 +8,7 @@ const {
 const identiteClient = require('../utils/serviceClients/identiteClient');
 const materielClient = require('../utils/serviceClients/materielClient');
 const { isStaff } = require('../utils/roleScope');
-const { withAdherent } = require('../utils/enrichAdherents');
+const { withAdherent, withMoniteurEncadrant } = require('../utils/enrichAdherents');
 
 const NIVEAUX_LIMITANTS = ['Baptême', 'Niveau 1'];
 
@@ -79,10 +79,19 @@ class PalanqueeService extends BaseService {
     return await this.enrichComposers(filtered, authHeader);
   }
 
+  // Un adhérent n'obtient ici que la ou les palanquées dont il est membre
+  // (filterForAdherent) — c'est ce qui permet à SortieDetails.jsx de lui
+  // afficher "sa" palanquée en lecture seule sans construire d'endpoint
+  // dédié. Le staff (adherent = null) reçoit toutes les palanquées de la
+  // sortie, sans filtre, comme avant (utilisé par PalanqueesManager).
+  // moniteur_encadrant résolu pour les deux publics : utile au staff (qui
+  // le voit déjà via le sélecteur d'affectation, mais pas nommé) comme à
+  // l'adhérent (qui n'a par ailleurs aucun accès à la liste des moniteurs).
   async getBySortie(id_sortie, user = null, authHeader = null) {
     const results = await this.palanqueeRepository.findBySortie(id_sortie);
     const filtered = await this.filterForAdherent(results, user);
-    return await this.enrichComposers(filtered, authHeader);
+    const enriched = await this.enrichComposers(filtered, authHeader);
+    return await withMoniteurEncadrant(enriched);
   }
 
   async getByMoniteur(id_moniteur, authHeader = null) {

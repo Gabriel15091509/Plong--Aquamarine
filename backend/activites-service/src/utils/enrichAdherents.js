@@ -37,4 +37,47 @@ async function withAdherent(rows, { key = "adherent", getNumAdherent = (r) => r.
   return isArray ? plains : plains[0];
 }
 
-module.exports = { withAdherent };
+// Résout `.moniteur_encadrant` ({id_moniteur, name}) depuis
+// `id_moniteur_encadrant` sur une ligne (palanquée) ou un tableau de lignes —
+// même principe à deux sauts que withAdherent (moniteur -> user -> nom, ce
+// dernier seul détenu par identite-service), dédupliqué par id_moniteur
+// distinct. Best-effort par ligne : une résolution en échec (identite-
+// service indisponible, moniteur supprimé...) laisse `.moniteur_encadrant`
+// à `null` plutôt que de faire échouer l'ensemble de l'appel.
+async function withMoniteurEncadrant(rows) {
+  const isArray = Array.isArray(rows);
+  const list = isArray ? rows : [rows].filter(Boolean);
+  const cache = new Map();
+  const systemAuthHeader = getSystemAuthHeader();
+  const identiteClientRef = identiteClient;
+
+  async function resoudre(idMoniteur) {
+    try {
+      const moniteur = await identiteClientRef.getMoniteurById(idMoniteur, systemAuthHeader);
+      const user = moniteur?.user_id
+        ? await identiteClientRef.getUserBasicById(moniteur.user_id)
+        : null;
+      return user ? { id_moniteur: idMoniteur, name: user.name } : null;
+    } catch (error) {
+      console.error(`Erreur résolution moniteur encadrant ${idMoniteur}:`, error.message);
+      return null;
+    }
+  }
+
+  const plains = await Promise.all(
+    list.map(async (row) => {
+      const plain = row?.toJSON ? row.toJSON() : row;
+      if (!plain) return plain;
+      const idMoniteur = plain.id_moniteur_encadrant;
+      if (idMoniteur) {
+        if (!cache.has(idMoniteur)) cache.set(idMoniteur, resoudre(idMoniteur));
+        plain.moniteur_encadrant = await cache.get(idMoniteur);
+      }
+      return plain;
+    }),
+  );
+
+  return isArray ? plains : plains[0];
+}
+
+module.exports = { withAdherent, withMoniteurEncadrant };

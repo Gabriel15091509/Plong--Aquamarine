@@ -40,6 +40,7 @@ import StatusBadge from "../Common/StatusBadge";
 import SectionCard from "../Common/SectionCard";
 import InfoItem from "../Common/InfoItem";
 import PalanqueesManager from "../Palanquee/PalanqueesManager";
+import MaPalanqueeCard from "../Palanquee/MaPalanqueeCard";
 import SortieRouteMap from "./SortieRouteMap";
 import { formatDateTime } from "../../utils/helpers";
 import { STATUT_SORTIE } from "../../utils/constants";
@@ -826,6 +827,15 @@ const SortieDetails = () => {
       {canManageSortie && (
         <motion.div variants={fadeInUp} initial="initial" animate="animate">
           <PalanqueesManager sortie={sortie} />
+        </motion.div>
+      )}
+
+      {/* Vue adhérent, lecture seule, de sa propre palanquée pour cette
+          sortie (voir MaPalanqueeCard) — le staff a déjà mieux via
+          PalanqueesManager ci-dessus, pas besoin de dupliquer. */}
+      {!canManageSortie && (
+        <motion.div variants={fadeInUp} initial="initial" animate="animate">
+          <MaPalanqueeCard idSortie={sortie.id_sortie} />
         </motion.div>
       )}
 
