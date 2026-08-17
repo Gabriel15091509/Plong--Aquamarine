@@ -480,6 +480,53 @@ const PlongeeDetails = () => {
             </span>
             Palanquée : {plongee.palanquee.nom_palanquee}
           </h3>
+
+          {/* Qui est responsable de cette palanquée : le moniteur encadrant
+              (résolu côté backend, voir PlongeeService.getPlongeeWithDetails)
+              et, parmi les membres, le guide de palanquée et le secouriste
+              (id_guide_palanquee/id_secouriste — retrouvés directement dans
+              `composers`, déjà recomposés avec `.adherent`). */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                Moniteur encadrant
+              </p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">
+                {plongee.palanquee.moniteur_encadrant?.name || "Non assigné"}
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                Guide de palanquée
+              </p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">
+                {(() => {
+                  const guide = (plongee.palanquee.composers || []).find(
+                    (c) => c.num_adherent === plongee.palanquee.id_guide_palanquee,
+                  );
+                  return guide?.adherent
+                    ? `${guide.adherent.nom} ${guide.adherent.prenom}`
+                    : "Non désigné";
+                })()}
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+              <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                Secouriste
+              </p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-0.5">
+                {(() => {
+                  const secouriste = (plongee.palanquee.composers || []).find(
+                    (c) => c.num_adherent === plongee.palanquee.id_secouriste,
+                  );
+                  return secouriste?.adherent
+                    ? `${secouriste.adherent.nom} ${secouriste.adherent.prenom}`
+                    : "Non désigné";
+                })()}
+              </p>
+            </div>
+          </div>
+
           <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">
             Co-plongeurs
           </p>
@@ -494,6 +541,8 @@ const PlongeeDetails = () => {
                   {membre.adherent
                     ? `${membre.adherent.nom} ${membre.adherent.prenom}`
                     : `#${membre.num_adherent}`}
+                  {membre.num_adherent === plongee.palanquee.id_guide_palanquee && " · Guide"}
+                  {membre.num_adherent === plongee.palanquee.id_secouriste && " · Secouriste"}
                 </span>
               ))}
             {(plongee.palanquee.composers || []).length <= 1 && (
