@@ -39,12 +39,15 @@ Réponds UNIQUEMENT avec un objet JSON de cette forme exacte, sans aucun texte a
 {"decision": "Validé" ou "Rejeté", "motif": "une phrase courte expliquant la décision"}`;
 }
 
-// Politique actée : Groq est le seul validateur de ce circuit (aucun repli
-// vers une validation humaine). Une incohérence détectée, une réponse mal
-// formée, une clé API manquante, ou Groq injoignable/en timeout aboutissent
-// tous au même résultat : rejet automatique avec un motif explicite, pour
-// que l'adhérent sache qu'il peut resoumettre plutôt que de rester bloqué
-// sans réponse.
+// Politique : Groq est le validateur normal de ce circuit (nom/dates/type
+// de document jugés incohérents => rejet automatique, motif explicite). Mais
+// une INDISPONIBILITÉ de Groq lui-même (clé API manquante, injoignable,
+// timeout, réponse mal formée) n'est pas un jugement sur le document — donc
+// pas un rejet. Elle bascule sur "En attente" : la soumission rejoint la
+// file de validation manuelle du président/trésorier (validerAdhesion/
+// validerCertificat), exactement comme avant l'introduction de ce circuit
+// automatisé. Seule une vraie incohérence détectée par Groq (réponse reçue
+// et exploitable) aboutit à un rejet.
 async function judgeDocumentCoherence({
   typeDocument,
   champsAttendus,
@@ -53,8 +56,8 @@ async function judgeDocumentCoherence({
 }) {
   if (!process.env.GROQ_API_KEY) {
     return {
-      decision: "Rejeté",
-      motif: "Vérification automatique indisponible (clé API manquante) — contactez le club.",
+      decision: "En attente",
+      motif: "Vérification automatique indisponible (clé API manquante) — en attente d'une validation manuelle.",
       source: "groq-no-key",
     };
   }
@@ -101,8 +104,8 @@ async function judgeDocumentCoherence({
     return { decision, motif, source: "groq" };
   } catch (error) {
     return {
-      decision: "Rejeté",
-      motif: `Vérification automatique indisponible (${error.message}) — merci de resoumettre le document.`,
+      decision: "En attente",
+      motif: `Vérification automatique indisponible (${error.message}) — en attente d'une validation manuelle.`,
       source: "groq-unreachable",
     };
   } finally {

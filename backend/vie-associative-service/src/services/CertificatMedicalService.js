@@ -26,11 +26,11 @@ class CertificatMedicalService extends BaseService {
   }
 
   // Un adhérent peut soumettre lui-même son certificat médical. Plus de
-  // validation manuelle du président pour ce circuit : Ollama tranche seul
-  // (Validé/Rejeté), voir judgeSubmittedDocument. Une entrée créée
-  // directement par le staff reste "Validé" d'office comme avant.
-  // `num_adherent` est toujours recalculé depuis le token, jamais pris tel
-  // quel dans le corps de la requête.
+  // validation manuelle systématique du président pour ce circuit : Groq
+  // tranche seul (Validé/Rejeté) quand il répond, voir judgeSubmittedDocument.
+  // Une entrée créée directement par le staff reste "Validé" d'office comme
+  // avant. `num_adherent` est toujours recalculé depuis le token, jamais
+  // pris tel quel dans le corps de la requête.
   async create(data, user = null) {
     const adherent = await identiteClient.getAdherentForUser(user);
     const estSoumissionAdherent = !!adherent;
@@ -56,7 +56,10 @@ class CertificatMedicalService extends BaseService {
       });
       statut_validation = decision.decision;
       valide_par = null;
-      valide_le = new Date();
+      // "En attente" (Groq indisponible, voir groqClient.judgeDocumentCoherence)
+      // n'est pas une décision prise : pas de date de validation tant que
+      // le président n'a pas réellement tranché.
+      valide_le = decision.decision === "En attente" ? null : new Date();
       motif_rejet = decision.decision === "Rejeté" ? decision.motif : null;
     }
 
@@ -74,9 +77,10 @@ class CertificatMedicalService extends BaseService {
   // judgeSubmittedDocument : relit le document (déchiffré, exigence 4.4)
   // tout juste enregistré, réutilise les heuristiques OCR de l'aperçu
   // pré-soumission (analyserPhotoCertificat), puis soumet le texte détecté
-  // + les champs saisis à Ollama. Toute défaillance (pas de document,
-  // lecture/déchiffrement impossible, Ollama injoignable) aboutit à un
-  // rejet explicite plutôt qu'à une validation par défaut.
+  // + les champs saisis à Groq (une indisponibilité de Groq lui-même
+  // bascule sur "En attente", pas un rejet — voir groqClient.
+  // judgeDocumentCoherence). Un document absent ou illisible côté adhérent
+  // (pas un problème Groq) reste rejeté immédiatement ci-dessous.
   async judgeSubmittedDocument({ document_path, adherent, champs }) {
     if (!document_path) {
       return {
@@ -85,10 +89,8 @@ class CertificatMedicalService extends BaseService {
       };
     }
 
-    // Tout accroc dans la lecture/le déchiffrement/l'OCR doit aboutir à un
-    // rejet explicite comme le reste de cette politique — pas d'exception
-    // non gérée qui ferait échouer toute la requête de soumission avec une
-    // 500 opaque.
+    // Fichier illisible/corrompu/indéchiffrable : pas un problème Groq
+    // (jamais atteint), donc pas de repli "En attente" ici non plus.
     try {
       const buffer = readEncryptedDocument("certificats", document_path);
       const champsAttendus = {
