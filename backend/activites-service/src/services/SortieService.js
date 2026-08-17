@@ -626,6 +626,46 @@ class SortieService extends BaseService {
     }
     return annulees;
   }
+
+  // Prévision météo affichée sur la fiche sortie (GET /sorties/:id/meteo) —
+  // même client et mêmes seuils que verifierMeteoEtAnnulerSiDangereux, mais
+  // purement consultatif : ne modifie jamais le statut de la sortie (seul le
+  // cron décide d'une annulation). Renvoie `disponible: false` avec une
+  // raison lisible plutôt qu'une erreur pour les cas normaux (pas de
+  // position renseignée, sortie passée, date trop lointaine pour une
+  // prévision fiable) — seule une sortie introuvable renvoie `null`.
+  async getPrevisionMeteo(id) {
+    const sortie = await this.sortieRepository.findById(id);
+    if (!sortie) return null;
+
+    if (sortie.latitude === null || sortie.longitude === null) {
+      return {
+        disponible: false,
+        raison: "Aucune position (latitude/longitude) renseignée pour cette sortie.",
+      };
+    }
+
+    const now = new Date();
+    const dateSortie = new Date(sortie.date_heure);
+    if (dateSortie < now) {
+      return { disponible: false, raison: "Sortie passée : plus de prévision météo disponible." };
+    }
+
+    const forecast = await getForecastForDate({
+      latitude: sortie.latitude,
+      longitude: sortie.longitude,
+      date: sortie.date_heure,
+    });
+    if (!forecast) {
+      return {
+        disponible: false,
+        raison: "Trop éloignée dans le temps pour une prévision fiable (au-delà de 16 jours).",
+      };
+    }
+
+    const { dangereux, motifs } = evaluerDanger(forecast);
+    return { disponible: true, forecast, dangereux, motifs };
+  }
 }
 
 module.exports = SortieService;

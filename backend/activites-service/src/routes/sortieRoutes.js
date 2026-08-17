@@ -41,6 +41,12 @@ router.get(
 );
 
 router.get(
+  "/:id/meteo",
+  AuthMiddleware.authenticate,
+  sortieController.getPrevisionMeteo.bind(sortieController),
+);
+
+router.get(
   "/:id/pointage",
   AuthMiddleware.authenticate,
   sortieController.getPointage.bind(sortieController),

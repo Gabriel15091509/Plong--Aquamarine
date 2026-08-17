@@ -37,6 +37,11 @@ class SortieService {
     return response.data;
   }
 
+  async getMeteo(id) {
+    const response = await api.get(`/sorties/${id}/meteo`);
+    return response.data;
+  }
+
   async create(data) {
     const response = await api.post("/sorties", data);
     return response.data;

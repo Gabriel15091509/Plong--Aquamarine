@@ -24,6 +24,10 @@ import {
   FiAlertTriangle,
   FiPackage,
   FiMap,
+  FiWind,
+  FiCloudRain,
+  FiZap,
+  FiActivity,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useIncidents } from "../../hooks/Incident/useIncidents";
@@ -64,17 +68,46 @@ const scaleIn = {
   transition: { duration: 0.25, ease: "easeOut" },
 };
 
+// Table WMO simplifiée (codes utilisés par Open-Meteo) — voir
+// meteoClient.js côté backend pour les seuils de dangerosité associés.
+const WEATHER_CODE_LABELS = {
+  0: "Ciel dégagé",
+  1: "Peu nuageux",
+  2: "Partiellement nuageux",
+  3: "Couvert",
+  45: "Brouillard",
+  48: "Brouillard givrant",
+  51: "Bruine légère",
+  53: "Bruine",
+  55: "Bruine forte",
+  61: "Pluie légère",
+  63: "Pluie",
+  65: "Pluie forte",
+  80: "Averses légères",
+  81: "Averses",
+  82: "Averses violentes",
+  95: "Orage",
+  96: "Orage avec grêle",
+  99: "Orage violent avec grêle",
+};
+
+function weatherCodeLabel(code) {
+  if (code === null || code === undefined) return null;
+  return WEATHER_CODE_LABELS[code] || `Code météo ${code}`;
+}
+
 const SortieDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const canManageSortie = hasRole(["president", "moniteur"]);
-  const { useGetById, useRemove, useUpdate } = useSorties();
+  const { useGetById, useGetMeteo, useRemove, useUpdate } = useSorties();
   const { useGetBySortie } = useIncidents();
   const { useGetBySortie: useGetAttributionsBySortie } = useAttributions();
   const { useGetAll: useGetAllMateriels } = useMateriels();
   const { useGetAll: useGetAllAdherents } = useAdherents();
   const { data, isLoading } = useGetById(id);
+  const { data: meteoData, isLoading: loadingMeteo } = useGetMeteo(id);
   const { data: incidentsData } = useGetBySortie(id);
   const { data: attributionsData } = useGetAttributionsBySortie(id);
   const { data: materielsData } = useGetAllMateriels();
@@ -84,6 +117,7 @@ const SortieDetails = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const sortie = data?.data;
+  const meteo = meteoData?.data;
   const incidents = incidentsData?.data || [];
   const attributionsMateriel = attributionsData?.data || [];
   const materielMap = {};
@@ -465,6 +499,93 @@ const SortieDetails = () => {
             />
           )}
         </SectionCard>
+
+        {/* Prévision météo — voir SortieService.getPrevisionMeteo. Card
+            affichée seulement si une position (latitude/longitude) a été
+            renseignée pour cette sortie (sinon rien à prévoir). */}
+        {sortie.latitude != null && sortie.longitude != null && (
+          <SectionCard
+            title="Prévision météo"
+            icon={FiWind}
+            headerExtra={
+              meteo?.disponible ? (
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                    meteo.dangereux
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                      : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                  }`}
+                >
+                  {meteo.dangereux ? (
+                    <FiAlertTriangle className="w-3.5 h-3.5" />
+                  ) : (
+                    <FiCheckCircle className="w-3.5 h-3.5" />
+                  )}
+                  {meteo.dangereux ? "Conditions dangereuses" : "Conditions favorables"}
+                </span>
+              ) : null
+            }
+          >
+            {loadingMeteo ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500 px-4 py-2">
+                Chargement de la prévision…
+              </p>
+            ) : !meteo?.disponible ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2 flex items-start gap-2">
+                <FiInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                {meteo?.raison || "Prévision météo indisponible."}
+              </p>
+            ) : (
+              <>
+                <InfoItem
+                  icon={FiWind}
+                  label="Vent max"
+                  value={
+                    meteo.forecast.windspeed !== null
+                      ? `${Math.round(meteo.forecast.windspeed)} km/h${
+                          meteo.forecast.windgusts !== null
+                            ? ` (rafales ${Math.round(meteo.forecast.windgusts)} km/h)`
+                            : ""
+                        }`
+                      : "Non disponible"
+                  }
+                />
+                <InfoItem
+                  icon={FiActivity}
+                  label="Houle max"
+                  value={
+                    meteo.forecast.waveHeight !== null
+                      ? `${meteo.forecast.waveHeight.toFixed(1)} m`
+                      : "Non disponible (hors zone marine ou fenêtre de prévision)"
+                  }
+                />
+                <InfoItem
+                  icon={FiZap}
+                  label="Ciel prévu"
+                  value={weatherCodeLabel(meteo.forecast.weathercode) || "Non disponible"}
+                />
+                <InfoItem
+                  icon={FiCloudRain}
+                  label="Précipitations"
+                  value={
+                    meteo.forecast.precipitation !== null
+                      ? `${Math.round(meteo.forecast.precipitation)} mm`
+                      : "Non disponible"
+                  }
+                />
+                {meteo.dangereux && meteo.motifs?.length > 0 && (
+                  <div className="mt-2 mx-4 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
+                    <ul className="text-sm text-red-700 dark:text-red-400 list-disc list-inside space-y-0.5">
+                      {meteo.motifs.map((motif) => (
+                        <li key={motif}>{motif}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </SectionCard>
+        )}
 
         {/* Informations inscription */}
         <SectionCard title="Inscription" icon={FiUsers}>
