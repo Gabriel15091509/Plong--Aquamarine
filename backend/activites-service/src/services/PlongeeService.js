@@ -45,7 +45,14 @@ class PlongeeService extends BaseService {
 
   // Adherent (identite-service) a quitté ce schéma : chaque membre de la
   // palanquée (`.palanquee.composers[]`) est recomposé avec `.adherent` via
-  // identiteClient.
+  // identiteClient. Le moniteur encadrant (`.palanquee.moniteur_encadrant`)
+  // est résolu de la même façon (id_moniteur -> user_id -> nom) : un adhérent
+  // consultant sa propre plongée n'a par ailleurs aucun accès à la liste des
+  // moniteurs pour identifier qui encadre sa palanquée (voir la question
+  // "qui sera responsable de chaque palanquée" — moniteur encadrant, guide
+  // et secouriste ; les deux derniers sont déjà déductibles côté frontend
+  // depuis `composers` + `id_guide_palanquee`/`id_secouriste`, pas besoin
+  // d'enrichissement ici).
   async getPlongeeWithDetails(id, user = null, authHeader = null) {
     const plongee = await this.plongeeRepository.findPlongeesWithDetails(id);
     if (!plongee) return plongee;
@@ -54,6 +61,25 @@ class PlongeeService extends BaseService {
     const plain = plongee.toJSON();
     if (plain.palanquee?.composers?.length) {
       plain.palanquee.composers = await withAdherent(plain.palanquee.composers, { authHeader });
+    }
+    if (plain.palanquee?.id_moniteur_encadrant) {
+      // Best-effort : identite-service indisponible ne doit pas faire
+      // échouer l'affichage de la plongée elle-même.
+      try {
+        const moniteur = await identiteClient.getMoniteurById(
+          plain.palanquee.id_moniteur_encadrant,
+          authHeader,
+        );
+        const moniteurUser = moniteur?.user_id
+          ? await identiteClient.getUserBasicById(moniteur.user_id)
+          : null;
+        plain.palanquee.moniteur_encadrant = moniteurUser
+          ? { id_moniteur: plain.palanquee.id_moniteur_encadrant, name: moniteurUser.name }
+          : null;
+      } catch (error) {
+        console.error("Erreur résolution moniteur encadrant:", error.message);
+        plain.palanquee.moniteur_encadrant = null;
+      }
     }
     return plain;
   }
