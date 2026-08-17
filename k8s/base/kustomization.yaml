@@ -52,7 +52,7 @@ configMapGenerator:
 images:
 - name: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
-  newTag: sha-d57f2dc
+  newTag: sha-e0d97fc
 - name: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
   newTag: sha-95d9019
@@ -61,7 +61,7 @@ images:
   newTag: sha-95d9019
 - name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
-  newTag: sha-d57f2dc
+  newTag: sha-e0d97fc
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newTag: sha-95d9019
