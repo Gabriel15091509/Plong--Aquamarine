@@ -25,7 +25,7 @@ resources:
 images:
 - name: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
-  newTag: sha-e0d97fc
+  newTag: sha-3de43f6
 - name: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
   newTag: sha-971be3d
@@ -34,7 +34,7 @@ images:
   newTag: sha-971be3d
 - name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
-  newTag: sha-e0d97fc
+  newTag: sha-3de43f6
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newTag: sha-4381eae
