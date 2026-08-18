@@ -26,6 +26,7 @@ import {
   FiGrid,
   FiTrendingDown,
   FiCheckSquare,
+  FiFileText,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
@@ -90,14 +91,23 @@ const SortiesPage = () => {
   const remove = useRemove();
   const createInscription = useCreateInscription();
 
-  const mesSortiesIds = useMemo(() => {
+  // Map id_sortie -> inscription active de l'adhérent connecté (statut !==
+  // "Annulée") — sert à la fois à "Mes sorties" (mesSortiesIds ci-dessous)
+  // et à remplacer l'action "S'inscrire" par "Voir mon inscription" une fois
+  // qu'une demande a été envoyée pour cette sortie.
+  const mesInscriptionsParSortie = useMemo(() => {
     const inscriptions = mesInscriptionsData?.data || [];
-    return new Set(
-      inscriptions
-        .filter((i) => i.statut !== "Annulée")
-        .map((i) => i.id_sortie),
-    );
+    const map = new Map();
+    inscriptions
+      .filter((i) => i.statut !== "Annulée")
+      .forEach((i) => map.set(i.id_sortie, i));
+    return map;
   }, [mesInscriptionsData]);
+
+  const mesSortiesIds = useMemo(
+    () => new Set(mesInscriptionsParSortie.keys()),
+    [mesInscriptionsParSortie],
+  );
 
   const sortiesList = useMemo(() => {
     if (!sortiesData?.data) return [];
@@ -450,6 +460,12 @@ const SortiesPage = () => {
               // Verrouillé côté serveur (SortieService.update/delete) dès que
               // la sortie a quitté "Planifiée" — pas seulement "Terminée".
               const isVerrouillee = sortie.statut !== "Planifiée";
+              // Une fois une demande envoyée (quel que soit son statut tant
+              // qu'elle n'est pas annulée), l'action "S'inscrire" devient
+              // "Voir mon inscription" — y compris si la sortie est ensuite
+              // devenue complète/verrouillée, puisque la place de l'adhérent
+              // est déjà acquise ou en cours d'examen.
+              const monInscription = mesInscriptionsParSortie.get(sortieId);
 
               if (viewMode === "grid") {
                 return (
@@ -542,17 +558,30 @@ const SortiesPage = () => {
                           Niveau {sortie.niveau_requis || "—"}
                         </span>
                         <div className="flex items-center gap-1">
-                          {canInscribe &&
-                            (isAdherent ? (
-                              <button
-                                onClick={() => handleInscription(sortieId)}
-                                disabled={loading}
-                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                title="S'inscrire à cette sortie"
+                          {isAdherent ? (
+                            monInscription ? (
+                              <Link
+                                to={`/inscriptions/${monInscription.id_inscription}`}
+                                className="p-2 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-lg transition-colors"
+                                title="Voir mon inscription à cette sortie"
                               >
-                                <FiUserPlus className="w-4 h-4" />
-                              </button>
-                            ) : isAdmin ? (
+                                <FiFileText className="w-4 h-4" />
+                              </Link>
+                            ) : (
+                              canInscribe && (
+                                <button
+                                  onClick={() => handleInscription(sortieId)}
+                                  disabled={loading}
+                                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                  title="S'inscrire à cette sortie"
+                                >
+                                  <FiUserPlus className="w-4 h-4" />
+                                </button>
+                              )
+                            )
+                          ) : (
+                            isAdmin &&
+                            canInscribe && (
                               <button
                                 onClick={() => handleAddInscription(sortieId)}
                                 disabled={loading}
@@ -561,7 +590,8 @@ const SortiesPage = () => {
                               >
                                 <FiUserCheck className="w-4 h-4" />
                               </button>
-                            ) : null)}
+                            )
+                          )}
                           <Link
                             to={`/sorties/${sortieId}`}
                             className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
@@ -694,20 +724,34 @@ const SortiesPage = () => {
 
                         {/* Actions */}
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {/* Bouton S'inscrire / Ajouter inscription selon le rôle */}
-                          {canInscribe &&
-                            (isAdherent ? (
-                              // Adhérent : S'inscrire (pour lui-même)
-                              <button
-                                onClick={() => handleInscription(sortieId)}
-                                disabled={loading}
-                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                title="S'inscrire à cette sortie"
+                          {/* Bouton S'inscrire / Voir mon inscription / Ajouter inscription selon le rôle */}
+                          {isAdherent ? (
+                            monInscription ? (
+                              // Adhérent déjà inscrit (ou demande envoyée) : voir son inscription
+                              <Link
+                                to={`/inscriptions/${monInscription.id_inscription}`}
+                                className="p-2 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-lg transition-colors"
+                                title="Voir mon inscription à cette sortie"
                               >
-                                <FiUserPlus className="w-4 h-4" />
-                              </button>
-                            ) : isAdmin ? (
-                              // Admin : Ajouter inscription (pour un autre)
+                                <FiFileText className="w-4 h-4" />
+                              </Link>
+                            ) : (
+                              // Adhérent pas encore inscrit : S'inscrire (pour lui-même)
+                              canInscribe && (
+                                <button
+                                  onClick={() => handleInscription(sortieId)}
+                                  disabled={loading}
+                                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                  title="S'inscrire à cette sortie"
+                                >
+                                  <FiUserPlus className="w-4 h-4" />
+                                </button>
+                              )
+                            )
+                          ) : (
+                            // Admin : Ajouter inscription (pour un autre)
+                            isAdmin &&
+                            canInscribe && (
                               <button
                                 onClick={() => handleAddInscription(sortieId)}
                                 disabled={loading}
@@ -716,7 +760,8 @@ const SortiesPage = () => {
                               >
                                 <FiUserCheck className="w-4 h-4" />
                               </button>
-                            ) : null)}
+                            )
+                          )}
 
                           <Link
                             to={`/sorties/${sortieId}`}
