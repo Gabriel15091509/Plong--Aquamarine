@@ -294,17 +294,19 @@ const CertificatList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
-                    {/* Document (rectangle) + photo de l'adhérent en
-                        dessous, plus petite — même disposition que
-                        AdhesionList.jsx, mais jamais de vraie vignette ici :
-                        le scan est chiffré au repos (exigence 4.4) et ne se
-                        déchiffre que par la route authentifiée à la demande
-                        (voir handleViewDocument dans CertificatDetails.jsx).
-                        Le décrypter pour chaque ligne d'une liste irait
-                        justement à l'encontre de ce pourquoi il est chiffré
-                        — un cadenas signale "document protégé", pas
-                        "absent". */}
-                    <div className="flex-shrink-0 w-20 flex flex-col items-center gap-1.5">
+                    {/* Document (rectangle) et photo de l'adhérent côte à
+                        côte — même disposition que AdhesionList.jsx, pour le
+                        staff comme pour un adhérent qui consulte sa propre
+                        liste (scopée à lui-même côté backend, voir
+                        CertificatMedicalService.getAll). Jamais de vraie
+                        vignette ici : le scan est chiffré au repos (exigence
+                        4.4) et ne se déchiffre que par la route authentifiée
+                        à la demande (voir handleViewDocument dans
+                        CertificatDetails.jsx). Le décrypter pour chaque
+                        ligne d'une liste irait justement à l'encontre de ce
+                        pourquoi il est chiffré — un cadenas signale
+                        "document protégé", pas "absent". */}
+                    <div className="flex-shrink-0 flex items-center gap-2">
                       <div
                         className="w-20 h-14 rounded-lg bg-gray-100 dark:bg-gray-700 flex flex-col items-center justify-center gap-0.5 border-2 border-gray-200 dark:border-gray-600"
                         title={
@@ -325,20 +327,22 @@ const CertificatList = () => {
                         )}
                       </div>
 
-                      {adherentInfo.photo ? (
-                        <img
-                          src={photoUrl(adherentInfo.photo)}
-                          alt={adherentName}
-                          className="w-9 h-9 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
-                          <FiUser className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-                        </div>
-                      )}
-                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                        #{certificat.num_adherent}
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        {adherentInfo.photo ? (
+                          <img
+                            src={photoUrl(adherentInfo.photo)}
+                            alt={adherentName}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
+                            <FiUser className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                          </div>
+                        )}
+                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                          #{certificat.num_adherent}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Informations */}
