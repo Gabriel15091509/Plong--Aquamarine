@@ -148,6 +148,24 @@ class InscriptionService extends BaseService {
       throw new Error("Un adhérent ne peut pas modifier le statut de son inscription");
     }
 
+    // Sortie annulée : plus aucune confirmation/mise en liste d'attente ni
+    // aucun pointage de présence ne doit pouvoir être enregistré via cette
+    // route générique (utilisée par la mise en liste d'attente et, en
+    // dehors du flux dédié SortiePointage/enregistrerPointage, par toute
+    // écriture directe des champs de présence). Annuler reste toujours
+    // permis (idempotent, sans effet nuisible).
+    if (canManage && inscription.sortie?.statut === "Annulée") {
+      const toucheConfirmationOuPresence =
+        (statusWillChange && ["Confirmée", "Liste d'attente"].includes(nextStatus)) ||
+        data.presence !== undefined ||
+        data.presence_checked !== undefined;
+      if (toucheConfirmationOuPresence) {
+        throw new Error(
+          "Cette sortie est annulée : confirmation et pointage de présence impossibles",
+        );
+      }
+    }
+
     const updateData = {};
     for (const field of allowedFields) {
       if (data[field] !== undefined) {
@@ -490,6 +508,16 @@ class InscriptionService extends BaseService {
 
     if (inscription.statut === "Confirmée") {
       return inscription;
+    }
+
+    // Une sortie annulée (manuellement ou par le cron météo) ne doit plus
+    // jamais pouvoir accueillir de nouvelle confirmation — même règle que
+    // createInscription (RG "impossible de s'inscrire à une sortie
+    // annulée"), appliquée ici côté confirmation d'une inscription
+    // existante (ex. une demande restée "En attente" au moment de
+    // l'annulation).
+    if (inscription.sortie?.statut === "Annulée") {
+      throw new Error("Cette sortie est annulée : impossible de confirmer une inscription");
     }
 
     // Capacité lue et écriture faites sous le même verrou sur la sortie —

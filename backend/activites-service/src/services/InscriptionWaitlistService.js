@@ -111,12 +111,20 @@ class InscriptionWaitlistService {
     // manuelle concurrente pour cette même place ne doivent pas pouvoir
     // toutes les deux réussir.
     const next = await sequelize.transaction(async (transaction) => {
-      const { placesDisponibles } = await this.getSortieCapacityLocked(
+      const { sortie, placesDisponibles } = await this.getSortieCapacityLocked(
         id_sortie,
         null,
         transaction,
       );
       if (placesDisponibles <= 0) return null;
+      // Cet appel est un effet de bord d'une annulation/suppression
+      // d'inscription (cancelInscription/update/delete dans
+      // InscriptionService), pas une action directe de l'utilisateur — si la
+      // sortie elle-même a été annulée entre-temps, on ne doit PAS confirmer
+      // automatiquement le suivant de la liste d'attente. Retour silencieux
+      // (pas d'erreur) pour ne pas faire échouer l'annulation qui a déclenché
+      // cet appel.
+      if (sortie.statut === "Annulée") return null;
 
       const waitlist = await this.inscriptionRepository.getWaitlistBySortie(
         id_sortie,
