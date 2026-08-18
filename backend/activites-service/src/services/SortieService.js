@@ -22,6 +22,12 @@ const FENETRE_METEO_JOURS = 7;
 // heure que la sortie annulée) sur une fenêtre de PROPOSITIONS_FENETRE_JOURS.
 const PROPOSITIONS_MAX = 3;
 const PROPOSITIONS_FENETRE_JOURS = 21;
+// Préfixe du motif_annulation posé par verifierMeteoEtAnnulerSiDangereux —
+// réutilisé par getPrevisionMeteo pour reconnaître une annulation météo et
+// ne jamais y ré-afficher un badge "Conditions favorables" contradictoire
+// (la prévision a pu être révisée depuis, ou un relevé observé après coup
+// peut différer de la prévision qui a motivé l'annulation à l'époque).
+const PREFIXE_MOTIF_ANNULATION_METEO = "Annulation automatique (météo défavorable)";
 
 function formatSortieLabel(sortie) {
   const date = sortie?.date_heure
@@ -561,7 +567,7 @@ class SortieService extends BaseService {
 
         await this.sortieRepository.update(sortie.id_sortie, {
           statut: "Annulée",
-          motif_annulation: `Annulation automatique (météo défavorable) : ${motifs.join(", ")}.`,
+          motif_annulation: `${PREFIXE_MOTIF_ANNULATION_METEO} : ${motifs.join(", ")}.`,
         });
         annulees += 1;
 
@@ -658,6 +664,28 @@ class SortieService extends BaseService {
           ? "Aucun relevé météo disponible pour cette date (trop ancienne)."
           : "Trop éloignée dans le temps pour une prévision fiable (au-delà de 16 jours).";
       return { disponible: false, raison };
+    }
+
+    // Sortie déjà annulée pour météo : la prévision a pu être révisée depuis
+    // (le cron l'évalue jusqu'à FENETRE_METEO_JOURS avant la date, elle peut
+    // ensuite s'améliorer), ou le relevé observé après coup peut différer de
+    // ce qui a motivé la décision à l'époque. Dans les deux cas, ne jamais
+    // recalculer un verdict "Conditions favorables" qui contredirait
+    // visuellement le motif_annulation déjà affiché — celui-ci fait foi.
+    if (
+      sortie.statut === "Annulée" &&
+      sortie.motif_annulation?.startsWith(PREFIXE_MOTIF_ANNULATION_METEO)
+    ) {
+      const motifOriginal = sortie.motif_annulation
+        .slice(PREFIXE_MOTIF_ANNULATION_METEO.length + 3) // ` : `
+        .replace(/\.$/, "");
+      return {
+        disponible: true,
+        forecast,
+        dangereux: true,
+        motifs: motifOriginal ? motifOriginal.split(", ") : [],
+        annuleePourMeteo: true,
+      };
     }
 
     const { dangereux, motifs } = evaluerDanger(forecast);

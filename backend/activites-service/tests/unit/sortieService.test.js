@@ -1,4 +1,10 @@
+jest.mock("../../src/utils/meteoClient", () => ({
+  getForecastForDate: jest.fn(),
+  evaluerDanger: jest.requireActual("../../src/utils/meteoClient").evaluerDanger,
+}));
+
 const SortieService = require("../../src/services/SortieService");
+const { getForecastForDate } = require("../../src/utils/meteoClient");
 
 const service = new SortieService();
 
@@ -95,5 +101,80 @@ describe("SortieService.assertSortieModifiable", () => {
     expect(() =>
       service.assertSortieModifiable({ statut: "Terminée" }, { tarif_adherent: 20 }),
     ).toThrow(/quitté le statut/);
+  });
+});
+
+describe("SortieService.getPrevisionMeteo", () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  const forecastFavorable = {
+    date: "2026-09-01",
+    windspeed: 10,
+    windgusts: 15,
+    weathercode: 1,
+    precipitation: 0,
+    waveHeight: 0.5,
+  };
+
+  // CDC : une sortie annulée automatiquement pour météo ne doit jamais
+  // afficher "Conditions favorables" en re-calculant sur une prévision
+  // révisée depuis (ou un relevé observé après coup) — le motif_annulation
+  // enregistré à l'époque de la décision fait foi.
+  test("sortie Annulée pour météo : verdict figé sur le motif_annulation, pas de recalcul favorable", async () => {
+    jest.spyOn(service.sortieRepository, "findById").mockResolvedValue({
+      latitude: -21.17,
+      longitude: 55.28,
+      date_heure: "2026-09-01T08:00:00.000Z",
+      statut: "Annulée",
+      motif_annulation:
+        "Annulation automatique (météo défavorable) : Vent fort prévu (45 km/h), Orage prévu.",
+    });
+    getForecastForDate.mockResolvedValue(forecastFavorable);
+
+    const result = await service.getPrevisionMeteo(1);
+
+    expect(result).toEqual({
+      disponible: true,
+      forecast: forecastFavorable,
+      dangereux: true,
+      motifs: ["Vent fort prévu (45 km/h)", "Orage prévu"],
+      annuleePourMeteo: true,
+    });
+  });
+
+  test("sortie Annulée pour un autre motif : recalcule normalement (peut être favorable)", async () => {
+    jest.spyOn(service.sortieRepository, "findById").mockResolvedValue({
+      latitude: -21.17,
+      longitude: 55.28,
+      date_heure: "2026-09-01T08:00:00.000Z",
+      statut: "Annulée",
+      motif_annulation: "Manque d'encadrants disponibles.",
+    });
+    getForecastForDate.mockResolvedValue(forecastFavorable);
+
+    const result = await service.getPrevisionMeteo(1);
+
+    expect(result).toEqual({
+      disponible: true,
+      forecast: forecastFavorable,
+      dangereux: false,
+      motifs: [],
+    });
+  });
+
+  test("sortie Planifiée : recalcule normalement", async () => {
+    jest.spyOn(service.sortieRepository, "findById").mockResolvedValue({
+      latitude: -21.17,
+      longitude: 55.28,
+      date_heure: "2026-09-01T08:00:00.000Z",
+      statut: "Planifiée",
+      motif_annulation: null,
+    });
+    getForecastForDate.mockResolvedValue(forecastFavorable);
+
+    const result = await service.getPrevisionMeteo(1);
+
+    expect(result.dangereux).toBe(false);
+    expect(result.annuleePourMeteo).toBeUndefined();
   });
 });

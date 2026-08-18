@@ -522,11 +522,13 @@ const SortieDetails = () => {
                   ) : (
                     <FiCheckCircle className="w-3.5 h-3.5" />
                   )}
-                  {meteo.dangereux
-                    ? meteo.forecast?.historique
-                      ? "Conditions dégradées"
-                      : "Conditions dangereuses"
-                    : "Conditions favorables"}
+                  {meteo.annuleePourMeteo
+                    ? "Annulée pour météo"
+                    : meteo.dangereux
+                      ? meteo.forecast?.historique
+                        ? "Conditions dégradées"
+                        : "Conditions dangereuses"
+                      : "Conditions favorables"}
                 </span>
               ) : null
             }
