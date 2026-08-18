@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { FiPlus, FiClipboard, FiX, FiSearch } from "react-icons/fi";
@@ -16,10 +16,20 @@ import { STATUT_INSCRIPTION } from "../../utils/constants";
 
 // TODO: Ajouter un filtre par date de sortie
 const InscriptionList = () => {
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState("all");
-  const [filterSortie, setFilterSortie] = useState("all");
+  // Préfiltre venu de SortiesPage.jsx ("Voir les inscriptions de cette
+  // sortie", ?sortie=<id>) — même pattern que mesSortiesOnly dans
+  // SortiesPage.jsx (état local initialisé depuis l'URL puis synchronisé).
+  const [filterSortie, setFilterSortie] = useState(
+    searchParams.get("sortie") || "all",
+  );
+  useEffect(() => {
+    setFilterSortie(searchParams.get("sortie") || "all");
+    setCurrentPage(1);
+  }, [searchParams]);
   const [loading, setLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);

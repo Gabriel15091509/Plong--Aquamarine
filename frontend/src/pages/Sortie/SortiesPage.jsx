@@ -27,6 +27,7 @@ import {
   FiTrendingDown,
   FiCheckSquare,
   FiFileText,
+  FiClipboard,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
@@ -592,6 +593,15 @@ const SortiesPage = () => {
                               </button>
                             )
                           )}
+                          {isAdmin && (
+                            <Link
+                              to={`/inscriptions?sortie=${sortieId}`}
+                              className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                              title={`Voir les inscriptions de cette sortie (${sortie.nb_inscrits || 0})`}
+                            >
+                              <FiClipboard className="w-4 h-4" />
+                            </Link>
+                          )}
                           <Link
                             to={`/sorties/${sortieId}`}
                             className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
@@ -761,6 +771,15 @@ const SortiesPage = () => {
                                 <FiUserCheck className="w-4 h-4" />
                               </button>
                             )
+                          )}
+                          {isAdmin && (
+                            <Link
+                              to={`/inscriptions?sortie=${sortieId}`}
+                              className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                              title={`Voir les inscriptions de cette sortie (${sortie.nb_inscrits || 0})`}
+                            >
+                              <FiClipboard className="w-4 h-4" />
+                            </Link>
                           )}
 
                           <Link
