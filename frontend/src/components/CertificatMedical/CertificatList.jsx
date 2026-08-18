@@ -48,8 +48,10 @@ const CertificatList = () => {
 
   // "Validation" : activé depuis ?validation=soumis (lien du sous-menu
   // "Validation" dans la Sidebar) — affiche uniquement les auto-soumissions
-  // (soumis_par_adherent), tous statuts confondus (en attente/validé/
-  // rejeté, distingués par le badge sur chaque ligne). Ce n'est plus un
+  // (soumis_par_adherent) qui attendent encore une décision ou viennent
+  // d'être rejetées (En attente/Rejeté, distingués par le badge sur chaque
+  // ligne). Une auto-soumission validée quitte cette file et rejoint "Tous
+  // les certificats" (voir enFileDeValidation ci-dessous). Ce n'est plus un
   // filtre réglable en page : c'est une vue dédiée, il n'y a donc pas de
   // <select> correspondant, seulement ce booléen dérivé de l'URL. `filter`
   // ci-dessous reste distinct : il porte sur `statut` (Valide/Expiré, la
@@ -100,11 +102,16 @@ const CertificatList = () => {
       const adherentName = adherentInfo.nom;
 
       if (filter !== "all" && c.statut !== filter) return false;
-      if (showValidationOnly && !c.soumis_par_adherent) return false;
       // "Tous les certificats" et "Validation" sont deux files distinctes,
-      // sans doublon : une auto-soumission (soumis_par_adherent) ne vit que
-      // dans "Validation", quel que soit son statut.
-      if (!showValidationOnly && c.soumis_par_adherent) return false;
+      // sans doublon : une auto-soumission (soumis_par_adherent) relève de
+      // "Validation" tant qu'elle attend une décision ou vient d'être
+      // rejetée (En attente/Rejeté) — une fois validée, elle n'a plus rien à
+      // y faire et rejoint "Tous les certificats" comme n'importe quel
+      // dossier accepté.
+      const enFileDeValidation =
+        c.soumis_par_adherent && c.statut_validation !== "Validé";
+      if (showValidationOnly && !enFileDeValidation) return false;
+      if (!showValidationOnly && enFileDeValidation) return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
