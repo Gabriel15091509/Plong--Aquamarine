@@ -1,8 +1,10 @@
 const BaseService = require('./BaseService');
 const PlongeeRepository = require('../repositories/PlongeeRepository');
+const AttributionRepository = require('../repositories/AttributionRepository');
 const identiteClient = require('../utils/serviceClients/identiteClient');
 const formationClient = require('../utils/serviceClients/formationClient');
 const vieAssociativeClient = require('../utils/serviceClients/vieAssociativeClient');
+const materielClient = require('../utils/serviceClients/materielClient');
 const { withAdherent, withMoniteurEncadrant } = require('../utils/enrichAdherents');
 
 const SIX_MOIS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
@@ -12,6 +14,55 @@ class PlongeeService extends BaseService {
     const repository = new PlongeeRepository();
     super(repository);
     this.plongeeRepository = repository;
+    this.attributionRepository = new AttributionRepository();
+  }
+
+  // Matériel utilisé par plongée (CDC 3.3.1 : "Matériel utilisé (bloc,
+  // détendeur, combinaison)"). Résolu depuis les Attribution du même
+  // adhérent liées à la même sortie — Attribution vit dans ce même service/
+  // schéma que Plongee (pas d'appel HTTP pour établir le lien), seul le
+  // libellé du matériel lui-même (catégorie/marque/modèle) vient de
+  // materiel-service. Best-effort : une panne de materiel-service ne doit
+  // jamais empêcher l'affichage du carnet, seulement laisser un matériel non
+  // résolu (num_inventaire seul).
+  async attachMaterielUtilise(plongeeOrPlongees) {
+    const isArray = Array.isArray(plongeeOrPlongees);
+    const list = isArray ? plongeeOrPlongees : [plongeeOrPlongees].filter(Boolean);
+    const materielCache = new Map();
+
+    const plains = await Promise.all(
+      list.map(async (plongee) => {
+        const plain = plongee?.toJSON ? plongee.toJSON() : plongee;
+        if (!plain) return plain;
+
+        const attributions = await this.attributionRepository.findByAdherentAndSortie(
+          plain.num_adherent,
+          plain.id_sortie,
+        );
+
+        plain.materiel_utilise = await Promise.all(
+          attributions.map(async (attribution) => {
+            if (!materielCache.has(attribution.num_inventaire)) {
+              materielCache.set(
+                attribution.num_inventaire,
+                materielClient.getByNumInventaire(attribution.num_inventaire).catch(() => null),
+              );
+            }
+            const materiel = await materielCache.get(attribution.num_inventaire);
+            return {
+              num_inventaire: attribution.num_inventaire,
+              categorie: materiel?.categorie || null,
+              marque: materiel?.marque || null,
+              modele: materiel?.modele || null,
+            };
+          }),
+        );
+
+        return plain;
+      }),
+    );
+
+    return isArray ? plains : plains[0];
   }
 
   async getAll(user = null) {
@@ -40,7 +91,8 @@ class PlongeeService extends BaseService {
     if (adherent && num_adherent !== adherent.num_adherent) {
       throw new Error("Accès refusé à ce carnet de plongée");
     }
-    return await this.plongeeRepository.findPlongeesByAdherent(num_adherent);
+    const plongees = await this.plongeeRepository.findPlongeesByAdherent(num_adherent);
+    return await this.attachMaterielUtilise(plongees);
   }
 
   // Adherent (identite-service) a quitté ce schéma : chaque membre de la
@@ -58,7 +110,7 @@ class PlongeeService extends BaseService {
     if (!plongee) return plongee;
     await this.assertCanAccessPlongee(plongee, user);
 
-    const plain = plongee.toJSON();
+    const plain = await this.attachMaterielUtilise(plongee);
     if (plain.palanquee?.composers?.length) {
       plain.palanquee.composers = await withAdherent(plain.palanquee.composers, { authHeader });
     }

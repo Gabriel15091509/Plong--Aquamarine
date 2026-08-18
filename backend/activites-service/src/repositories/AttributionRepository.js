@@ -53,6 +53,19 @@ class AttributionRepository extends BaseRepository {
     });
   }
 
+  // Matériel attribué à cet adhérent pour cette sortie précise — sert à
+  // afficher "matériel utilisé" sur une plongée du carnet (CDC 3.3.1) sans
+  // ajouter de FK id_plongee sur Attribution : num_adherent + id_sortie
+  // identifie déjà sans ambiguïté l'attribution correspondante (Attribution
+  // vit dans ce même service/schéma que Plongee, contrairement à Materiel).
+  async findByAdherentAndSortie(num_adherent, id_sortie) {
+    if (!id_sortie) return [];
+    return await this.model.findAll({
+      where: { num_adherent, id_sortie },
+      order: [['date_attribution', 'ASC']],
+    });
+  }
+
   // Adherent (identite-service) a quitté ce schéma : plus d'include
   // Sequelize possible ici — voir AttributionService.getByPalanquee qui
   // recompose `.adherent` via identiteClient après cet appel.

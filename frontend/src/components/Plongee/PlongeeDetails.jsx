@@ -22,6 +22,7 @@ import {
   FiMapPin,
   FiUsers,
   FiWind,
+  FiTool,
 } from "react-icons/fi";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
@@ -390,6 +391,40 @@ const PlongeeDetails = () => {
         </SectionCard>
       </motion.div>
 
+      {/* Matériel utilisé (CDC 3.3.1) : résolu côté serveur depuis les
+          attributions liées à la même sortie/adhérent — voir
+          PlongeeService.attachMaterielUtilise. Absent (pas de section) pour
+          une plongée sans matériel attribué, ex. un adhérent avec son propre
+          équipement. */}
+      {plongee.materiel_utilise?.length > 0 && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
+        >
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
+              <FiTool className="w-5 h-5" />
+            </span>
+            Matériel utilisé
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {plongee.materiel_utilise.map((materiel) => (
+              <span
+                key={materiel.num_inventaire}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300"
+                title={`N° d'inventaire ${materiel.num_inventaire}`}
+              >
+                {materiel.categorie
+                  ? `${materiel.categorie}${materiel.marque ? ` — ${materiel.marque}${materiel.modele ? " " + materiel.modele : ""}` : ""}`
+                  : `#${materiel.num_inventaire}`}
+              </span>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Observations */}
       {plongee.observations_faune && (
         <motion.div
@@ -532,3 +567,4 @@ const PlongeeDetails = () => {
 };
 
 export default PlongeeDetails;
+
