@@ -5,6 +5,7 @@ const { Adhesion, CertificatMedical } = require("../models");
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const { withAdherentNames } = require("../utils/enrichAdherents");
 const { sendAlerteRelanceEmail } = require("../utils/email");
+const { sendSms } = require("../utils/smsClient");
 const { NotFoundError, ForbiddenError } = require("../utils/errors");
 
 const ALERT_TYPES = {
@@ -165,6 +166,42 @@ class AlerteService extends BaseService {
     });
 
     alerte.canal = "Email";
+    alerte.date_envoi = new Date();
+    alerte.statut = "Envoyé";
+    alerte.read = false;
+    await alerte.save();
+
+    return await withAdherentNames(alerte, authHeader);
+  }
+
+  // Même principe que relancerParEmail, canal SMS (CDC 3.6.1 : "SMS de
+  // dernière minute"). Dégradation gracieuse côté smsClient : sans compte
+  // OVH SMS configuré, l'envoi est simulé plutôt que de faire échouer cette
+  // action.
+  async relancerParSms(id, user = null, authHeader = null) {
+    if (!this.canManageAlertes(user?.role)) {
+      throw new ForbiddenError("Seuls le président, un moniteur ou le trésorier peuvent relancer une alerte");
+    }
+
+    const alerte = await this.alerteRepository.findById(id);
+    if (!alerte) throw new NotFoundError("Alerte non trouvée");
+
+    const scope = await this.getScopeForUser(user);
+    if (!this.alerteMatchesScope(alerte, scope)) {
+      throw new ForbiddenError("Cette alerte ne relève pas de votre périmètre");
+    }
+
+    const adherent = await identiteClient.getAdherentById(alerte.num_adherent, authHeader);
+    if (!adherent?.telephone) {
+      throw new Error("Numéro de téléphone de l'adhérent introuvable");
+    }
+
+    await sendSms({
+      to: adherent.telephone,
+      message: `Aquanature Plongée : ${ALERT_DESCRIPTIONS[alerte.type] || alerte.type}. Consultez votre espace adhérent.`,
+    });
+
+    alerte.canal = "SMS";
     alerte.date_envoi = new Date();
     alerte.statut = "Envoyé";
     alerte.read = false;

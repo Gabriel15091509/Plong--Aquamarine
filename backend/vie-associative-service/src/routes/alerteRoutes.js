@@ -54,6 +54,12 @@ router.post(
   alerteController.relancer.bind(alerteController),
 );
 
+router.post(
+  "/:id/relancer-sms",
+  AuthMiddleware.authenticate,
+  alerteController.relancerSms.bind(alerteController),
+);
+
 router.patch(
   "/mark-all-read",
   AuthMiddleware.authenticate,
