@@ -542,6 +542,28 @@ const SortieDetails = () => {
                 <FiInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 {meteo?.raison || "Prévision météo indisponible."}
               </p>
+            ) : meteo.annuleePourMeteo ? (
+              // Sortie annulée pour météo : on n'affiche plus les valeurs
+              // chiffrées (vent/houle/ciel) recalculées en direct — elles ont
+              // pu évoluer depuis la décision et contrediraient visuellement
+              // le motif d'annulation, qui seul fait foi ici.
+              <div className="px-4 py-2 space-y-3">
+                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-start gap-2">
+                  <FiInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  Motif enregistré au moment de l&apos;annulation automatique.
+                  Les valeurs météo ont pu évoluer depuis : elles ne sont plus
+                  affichées ici pour éviter toute confusion.
+                </p>
+                {meteo.motifs?.length > 0 && (
+                  <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
+                    <ul className="text-sm text-red-700 dark:text-red-400 list-disc list-inside space-y-0.5">
+                      {meteo.motifs.map((motif) => (
+                        <li key={motif}>{motif}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 <InfoItem
