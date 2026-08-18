@@ -35,3 +35,19 @@ describe("PaiementService.validatePaymentData", () => {
     expect(errors.some((e) => /requise/.test(e))).toBe(false);
   });
 });
+
+describe("PaiementService.getPaymentsForExport", () => {
+  test("délègue au repository avec les dates fournies", async () => {
+    const spy = jest
+      .spyOn(service.paiementRepository, "findByPeriod")
+      .mockResolvedValue([{ id_paiement: 1 }]);
+
+    const startDate = new Date("2026-01-01");
+    const endDate = new Date("2026-01-31");
+    const result = await service.getPaymentsForExport(startDate, endDate);
+
+    expect(spy).toHaveBeenCalledWith(startDate, endDate);
+    expect(result).toEqual([{ id_paiement: 1 }]);
+    spy.mockRestore();
+  });
+});
