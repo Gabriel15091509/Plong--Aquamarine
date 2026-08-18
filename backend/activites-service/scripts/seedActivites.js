@@ -166,15 +166,21 @@ async function seed() {
   for (let i = 0; i < CONFIG.INSCRIPTIONS; i++) {
     const idSortie = pick(sortieIdList);
     const statut = pickWeighted(STATUT_INSCRIPTION_WEIGHTS);
-    const estDone = sortieDoneIdList.includes(idSortie);
+    // Un pointage ne peut réellement exister que pour une inscription
+    // "Confirmée" (voir SortieService.enregistrerPointage, qui ignore
+    // silencieusement toute autre statut) : simuler un historique de
+    // présence sur une inscription Annulée/En attente/Liste d'attente
+    // produit une donnée qu'aucune action de moniteur n'a jamais pu créer.
+    const estPointable =
+      sortieDoneIdList.includes(idSortie) && statut === "Confirmée";
     inscriptions.push({
       num_adherent: pick(eligibleByNiveau[sortieNiveauMap[idSortie]]),
       id_sortie: idSortie,
       statut,
       rang_liste_attente: statut === "Liste d'attente" ? randomInt(1, 6) : null,
-      presence: estDone ? Math.random() > 0.15 : false,
-      presence_checked: estDone,
-      presence_check_time: estDone ? sortieDateMap[idSortie] : null,
+      presence: estPointable ? Math.random() > 0.15 : false,
+      presence_checked: estPointable,
+      presence_check_time: estPointable ? sortieDateMap[idSortie] : null,
       date_confirmation: statut === "Confirmée" ? pastDate(1) : null,
       date_inscription: pastDate(1),
       montant_paye: statut === "Confirmée" ? randomFloat(0, 20) : 0,
