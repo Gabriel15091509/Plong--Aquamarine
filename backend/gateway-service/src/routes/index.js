@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const proxyTo = require("../middlewares/proxyTo");
 const dashboardRoutes = require("./dashboardRoutes");
+const assistantRoutes = require("./assistantRoutes");
 
 // Ce service n'héberge plus aucun domaine métier : il ne fait que relayer
 // chaque préfixe vers son microservice via `proxyTo` (motif "strangler fig")
@@ -47,6 +48,7 @@ router.use("/attributions", proxyTo(ACTIVITES_SERVICE_URL));
 router.use("/reparations", proxyTo(MATERIEL_SERVICE_URL));
 router.use("/competences", proxyTo(FORMATION_SERVICE_URL));
 router.use("/dashboard", dashboardRoutes);
+router.use("/assistant", assistantRoutes);
 
 // Route racine API
 router.get("/", (req, res) => {
@@ -78,6 +80,7 @@ router.get("/", (req, res) => {
       attributions: "/api/attributions",
       reparations: "/api/reparations",
       competences: "/api/competences",
+      assistant: "/api/assistant",
     },
   });
 });
