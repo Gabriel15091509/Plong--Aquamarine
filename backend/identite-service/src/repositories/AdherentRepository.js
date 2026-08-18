@@ -122,9 +122,10 @@ class AdherentRepository extends BaseRepository {
   // (optionnel) et ancienneté minimale en années, dérivée de
   // date_inscription (pas de colonne dédiée). Toujours restreint aux
   // adhérents Actifs — un compte Inactif/Suspendu ne doit pas recevoir de
-  // communication du club.
+  // communication du club. Un invité (est_invite) n'est pas non plus
+  // destinataire : ce n'est pas un membre du club.
   async findBySegment({ niveau, ancienneteMinAnnees }) {
-    const where = { statut: "Actif" };
+    const where = { statut: "Actif", est_invite: false };
     if (niveau) where.niveau = niveau;
     if (ancienneteMinAnnees) {
       const seuil = new Date();

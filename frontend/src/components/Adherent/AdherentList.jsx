@@ -262,6 +262,14 @@ const AdherentList = () => {
                         {adherent.niveau || "Non défini"}
                       </span>
                       <StatusBadge status={adherent.statut} />
+                      {adherent.est_invite && (
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                          title="Fiche invité : facturé au tarif non-adhérent, hors communications ciblées"
+                        >
+                          Invité
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                       {adherent.nb_plongees_total || 0} plongées
@@ -350,6 +358,14 @@ const AdherentList = () => {
                               {adherent.niveau || "Non défini"}
                             </span>
                             <StatusBadge status={adherent.statut} />
+                            {adherent.est_invite && (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                title="Fiche invité : facturé au tarif non-adhérent, hors communications ciblées"
+                              >
+                                Invité
+                              </span>
+                            )}
                             <span>
                               {adherent.nb_plongees_total || 0} plongées
                             </span>

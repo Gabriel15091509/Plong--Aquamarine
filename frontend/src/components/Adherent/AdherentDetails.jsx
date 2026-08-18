@@ -322,6 +322,14 @@ const AdherentDetails = () => {
             </p>
             <div className="flex items-center gap-3 mt-1">
               <StatusBadge status={adherent.statut} />
+              {adherent.est_invite && (
+                <span
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                  title="Fiche invité : facturé au tarif non-adhérent, hors communications ciblées"
+                >
+                  Invité (non-adhérent)
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-6">

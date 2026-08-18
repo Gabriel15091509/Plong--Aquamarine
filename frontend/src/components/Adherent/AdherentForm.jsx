@@ -71,6 +71,7 @@ const AdherentForm = () => {
     contact_urgence: "",
     statut: "Actif",
     nb_plongees_total: 0,
+    est_invite: false,
   });
 
   useEffect(() => {
@@ -96,6 +97,7 @@ const AdherentForm = () => {
         contact_urgence: a.contact_urgence || "",
         statut: a.statut || "Actif",
         nb_plongees_total: a.nb_plongees_total ?? 0,
+        est_invite: a.est_invite || false,
       });
     }
   }, [editMode, id, data]);
@@ -270,6 +272,30 @@ const AdherentForm = () => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <motion.div
+            {...fadeInUp}
+            className="md:col-span-2 flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30"
+          >
+            <input
+              type="checkbox"
+              id="est_invite"
+              checked={formData.est_invite}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, est_invite: e.target.checked }))
+              }
+              className="mt-1 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label htmlFor="est_invite" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <span className="font-medium">Invité (non-adhérent)</span>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Fiche créée pour une personne qui n&apos;est pas membre du club (ex. un baptême
+                pour un invité). Ses inscriptions aux sorties seront facturées au tarif
+                non-adhérent au lieu du tarif adhérent, et elle ne recevra pas les communications
+                ciblées du club.
+              </p>
+            </label>
+          </motion.div>
+
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>
               <span className="flex items-center gap-2">

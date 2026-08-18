@@ -210,7 +210,10 @@ class AdherentService extends BaseService {
 
   async getAdherentStats() {
     const total = await this.repository.count();
-    const active = await this.repository.count({ statut: "Actif" });
+    // Un invité (CDC 3.2.1) n'est pas un membre du club : exclu du décompte
+    // "adhérents actifs" (CDC 3.6.2), même s'il est statut "Actif" pour la
+    // durée de sa venue.
+    const active = await this.repository.count({ statut: "Actif", est_invite: false });
     const inactive = await this.repository.count({ statut: "Inactif" });
     const suspended = await this.repository.count({ statut: "Suspendu" });
     const enFormation = await this.repository.count({ statut: "En formation" });

@@ -15,6 +15,7 @@ const {
   AGE_LIMITE_UNE_PLONGEE_PAR_JOUR,
 } = require("../utils/ageRules");
 const { sortiesSeChevauchent } = require("../utils/sortieOverlap");
+const { computeMontantDu } = require("../utils/tarifRules");
 const {
   sendInscriptionConfirmationEmail,
   sendInscriptionPaymentEmail,
@@ -419,10 +420,12 @@ class InscriptionService extends BaseService {
       throw new Error("Le certificat médical est expiré ou manquant");
     }
 
-    // Le tarif adhérent de la sortie est figé au moment de l'inscription :
-    // un changement de tarif ultérieur sur la sortie ne doit pas modifier
+    // Le tarif de la sortie est figé au moment de l'inscription : un
+    // changement de tarif ultérieur sur la sortie ne doit pas modifier
     // rétroactivement ce qui est dû par les inscrits déjà enregistrés.
-    const montantDu = Number(sortie.tarif_adherent) || 0;
+    // adherentRecord (résolu plus haut pour le contrôle de niveau) porte
+    // est_invite : un invité (CDC 3.2.1) paie le tarif non-adhérent.
+    const montantDu = computeMontantDu(sortie, adherentRecord);
     const baseInscriptionData = {
       num_adherent,
       id_sortie,
