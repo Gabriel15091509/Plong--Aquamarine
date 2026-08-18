@@ -14,6 +14,7 @@ import {
   FiAlertCircle,
   FiX,
   FiSearch,
+  FiLock,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
@@ -293,24 +294,51 @@ const CertificatList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
-                    {/* Photo en évidence */}
-                    <div className="flex-shrink-0">
+                    {/* Document (rectangle) + photo de l'adhérent en
+                        dessous, plus petite — même disposition que
+                        AdhesionList.jsx, mais jamais de vraie vignette ici :
+                        le scan est chiffré au repos (exigence 4.4) et ne se
+                        déchiffre que par la route authentifiée à la demande
+                        (voir handleViewDocument dans CertificatDetails.jsx).
+                        Le décrypter pour chaque ligne d'une liste irait
+                        justement à l'encontre de ce pourquoi il est chiffré
+                        — un cadenas signale "document protégé", pas
+                        "absent". */}
+                    <div className="flex-shrink-0 w-20 flex flex-col items-center gap-1.5">
+                      <div
+                        className="w-20 h-14 rounded-lg bg-gray-100 dark:bg-gray-700 flex flex-col items-center justify-center gap-0.5 border-2 border-gray-200 dark:border-gray-600"
+                        title={
+                          certificat.document_path
+                            ? "Document protégé — voir la fiche pour le consulter"
+                            : "Aucun document"
+                        }
+                      >
+                        {certificat.document_path ? (
+                          <>
+                            <FiLock className="w-5 h-5 text-gray-400" />
+                            <span className="text-[9px] font-medium text-gray-400 uppercase tracking-wide">
+                              Protégé
+                            </span>
+                          </>
+                        ) : (
+                          <FiFileText className="w-6 h-6 text-gray-400" />
+                        )}
+                      </div>
+
                       {adherentInfo.photo ? (
                         <img
                           src={photoUrl(adherentInfo.photo)}
                           alt={adherentName}
-                          className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
+                          className="w-9 h-9 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
                         />
                       ) : (
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
-                          <FiUser className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
+                          <FiUser className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                         </div>
                       )}
-                      <div className="text-center mt-1">
-                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                          #{certificat.num_adherent}
-                        </span>
-                      </div>
+                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                        #{certificat.num_adherent}
+                      </span>
                     </div>
 
                     {/* Informations */}

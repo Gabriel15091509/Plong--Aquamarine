@@ -306,24 +306,45 @@ const AdhesionList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
-                    {/* Photo en évidence */}
-                    <div className="flex-shrink-0">
+                    {/* Document (rectangle, mis en avant) + photo de
+                        l'adhérent en dessous, plus petite — le document est
+                        ce qui doit être vérifié en un coup d'œil dans cette
+                        liste, la photo n'est là que pour identifier la
+                        personne. document_path n'est jamais chiffré pour une
+                        adhésion (contrairement au certificat médical, voir
+                        CertificatList.jsx) : servable directement en <img>. */}
+                    <div className="flex-shrink-0 w-20 flex flex-col items-center gap-1.5">
+                      {adhesion.document_path ? (
+                        <img
+                          src={photoUrl(adhesion.document_path)}
+                          alt={`Document de ${adherentName}`}
+                          className="w-20 h-14 rounded-lg object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm bg-gray-50 dark:bg-gray-900"
+                          onError={(e) => {
+                            e.currentTarget.classList.add("hidden");
+                            e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className={`w-20 h-14 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center border-2 border-gray-200 dark:border-gray-600 ${adhesion.document_path ? "hidden" : ""}`}
+                      >
+                        <FiFileText className="w-6 h-6 text-gray-400" />
+                      </div>
+
                       {adherentInfo.photo ? (
                         <img
                           src={photoUrl(adherentInfo.photo)}
                           alt={adherentName}
-                          className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
+                          className="w-9 h-9 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
                         />
                       ) : (
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
-                          <FiUser className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
+                          <FiUser className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                         </div>
                       )}
-                      <div className="text-center mt-1">
-                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                          #{adhesion.num_adherent}
-                        </span>
-                      </div>
+                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                        #{adhesion.num_adherent}
+                      </span>
                     </div>
 
                     {/* Informations */}
