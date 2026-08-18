@@ -60,6 +60,23 @@ class AdhesionRepository extends BaseRepository {
     return await this.model.findOne({ where });
   }
 
+  // Une ligne Adhesion (n'importe quel adhérent) qui porte déjà ce n° de
+  // licence FFESM pour un AUTRE adhérent que celui donné — le n° de licence
+  // est délivré une seule fois par la fédération à une personne, jamais
+  // partagé (voir le même principe sur Adherent.num_licence_ffesm,
+  // identite-service). `excludeId` sert à ne pas se comparer à soi-même
+  // lors d'une modification.
+  async findOtherAdherentWithLicence(num_licence_ffesm, num_adherent, excludeId = null) {
+    const where = {
+      num_licence_ffesm,
+      num_adherent: { [Op.ne]: num_adherent },
+    };
+    if (excludeId) {
+      where.id_adhesion = { [Op.ne]: excludeId };
+    }
+    return await this.model.findOne({ where });
+  }
+
   // Adhérents Club distincts pour une année donnée — base du calcul du taux
   // de renouvellement (CDC 3.6.2).
   async findNumAdherentsClubByAnnee(annee) {

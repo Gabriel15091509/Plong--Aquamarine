@@ -61,7 +61,11 @@ async function seed() {
       date_fin: dateFin,
       montant,
       montant_paye: statutPaiement === "Payé" ? montant : statutPaiement === "Partiel" ? randomFloat(10, montant - 5) : 0,
-      num_licence_ffesm: estBapteme ? null : `FF${String(randomInt(1, 99999)).padStart(5, "0")}`,
+      // Réutilise le n° de licence canonique de cet adhérent (identite.
+      // adherentLicenceMap, voir seedIdentite.js) plutôt que d'en tirer un
+      // nouveau par ligne : une personne garde le même numéro FFESM d'une
+      // adhésion à l'autre, jamais un nouveau à chaque fois.
+      num_licence_ffesm: estBapteme ? null : identite.adherentLicenceMap[numAdherent],
       statut_paiement: statutPaiement,
       annee_adhesion: annee,
     });

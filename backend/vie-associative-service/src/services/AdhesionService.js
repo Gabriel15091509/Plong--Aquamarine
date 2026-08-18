@@ -47,6 +47,7 @@ class AdhesionService extends BaseService {
     }
 
     await this.assertNoOverlap(data.num_adherent, data.type, data.date_debut, data.date_fin);
+    await this.assertLicenceUniquePerPersonne(data.num_adherent, data.num_licence_ffesm);
 
     if (data.type !== "Club") {
       // Plus de validation manuelle du président pour une soumission
@@ -288,7 +289,36 @@ class AdhesionService extends BaseService {
       data.date_fin ?? adhesion.date_fin,
       id,
     );
+    await this.assertLicenceUniquePerPersonne(
+      adhesion.num_adherent,
+      data.num_licence_ffesm ?? adhesion.num_licence_ffesm,
+      id,
+    );
     return await this.adhesionRepository.update(id, data);
+  }
+
+  // Le n° de licence FFESM est délivré une seule fois par la fédération à
+  // une personne : deux adhérents ne peuvent légitimement pas en partager
+  // un (même règle que Adherent.num_licence_ffesm, identite-service — mais
+  // Adhesion vit dans un schéma/service séparé, sans contrainte unique
+  // Postgres possible entre les deux, d'où cette vérification applicative).
+  // Se limite volontairement aux autres lignes Adhesion (même service) :
+  // un vrai conflit avec le num_licence_ffesm d'un AUTRE adhérent côté
+  // identite-service nécessiterait un nouvel endpoint de recherche inversée
+  // qui n'existe pas encore — resterait un doublon possible mais rare tant
+  // qu'il n'a pas été introduit ici.
+  async assertLicenceUniquePerPersonne(num_adherent, num_licence_ffesm, excludeId = null) {
+    if (!num_licence_ffesm) return;
+    const conflit = await this.adhesionRepository.findOtherAdherentWithLicence(
+      num_licence_ffesm,
+      num_adherent,
+      excludeId,
+    );
+    if (conflit) {
+      throw new Error(
+        `Le numéro de licence FFESM "${num_licence_ffesm}" est déjà enregistré pour un autre adhérent (N°${conflit.num_adherent}).`,
+      );
+    }
   }
 
   // Empêche deux adhésions du même type, pour le même adhérent, dont les
