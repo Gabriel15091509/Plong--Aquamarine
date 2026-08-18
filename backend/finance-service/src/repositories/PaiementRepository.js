@@ -33,6 +33,17 @@ class PaiementRepository extends BaseRepository {
     });
   }
 
+  // Tous les paiements (tout statut confondu, pas seulement 'Payé' comme
+  // getTotalPaymentsByPeriod) dans une période — base de l'export CSV
+  // mensuel du trésorier (CDC §8.3). Ordre chronologique croissant : c'est
+  // l'ordre attendu d'un relevé.
+  async findByPeriod(startDate, endDate) {
+    return await this.model.findAll({
+      where: { date_paiement: { [Op.between]: [startDate, endDate] } },
+      order: [['date_paiement', 'ASC']],
+    });
+  }
+
   async findLatestByReference(type_paiement, reference_id) {
     return await this.model.findOne({
       where: { type_paiement, reference_id: String(reference_id) },

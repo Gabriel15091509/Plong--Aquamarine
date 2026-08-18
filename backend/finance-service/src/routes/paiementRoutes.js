@@ -11,6 +11,13 @@ router.get('/pending', AuthMiddleware.authenticate, paiementController.getPendin
 router.get('/stats', paiementController.getStats.bind(paiementController));
 router.get('/trend', paiementController.getTrend.bind(paiementController));
 router.get('/total-by-period', AuthMiddleware.authenticate, paiementController.getTotalByPeriod.bind(paiementController));
+// Doit rester avant `/:id` (sinon Express matcherait "export" comme id) —
+// même contrainte que `/pending` et `/total-by-period` ci-dessus.
+router.get('/export',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_TRESORIER),
+  paiementController.exportCsv.bind(paiementController)
+);
 router.get('/adherent/:num_adherent', AuthMiddleware.authenticate, paiementController.getByAdherent.bind(paiementController));
 router.get('/:id/recu', AuthMiddleware.authenticate, paiementController.getRecu.bind(paiementController));
 router.get('/:id', AuthMiddleware.authenticate, paiementController.getById.bind(paiementController));

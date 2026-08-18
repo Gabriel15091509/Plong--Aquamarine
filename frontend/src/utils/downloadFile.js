@@ -46,3 +46,30 @@ export async function fetchPdfBlobUrl(url, filename) {
   const blobUrl = window.URL.createObjectURL(blob);
   return { blobUrl, filename: serverFilename || filename };
 }
+
+// Même contournement IDM que fetchPdfBlob (voir plus haut), pour les exports
+// CSV (ex. paiements mensuels du trésorier) : le backend encode le fichier en
+// base64 dans du JSON plutôt qu'en réponse binaire directe.
+async function fetchCsvBlob(url) {
+  const response = await api.get(url);
+  const { data: base64, filename: serverFilename } = response.data;
+  const byteChars = window.atob(base64);
+  const byteNumbers = new Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteNumbers[i] = byteChars.charCodeAt(i);
+  }
+  const blob = new Blob([new Uint8Array(byteNumbers)], { type: "text/csv;charset=utf-8;" });
+  return { blob, filename: serverFilename };
+}
+
+export async function downloadCsv(url, filename) {
+  const { blob, filename: serverFilename } = await fetchCsvBlob(url);
+  const blobUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = serverFilename || filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(blobUrl);
+}

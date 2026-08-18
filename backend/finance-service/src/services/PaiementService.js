@@ -158,6 +158,13 @@ class PaiementService extends BaseService {
     return await this.paiementRepository.getTotalPaymentsByPeriod(startDate, endDate);
   }
 
+  // Détail (pas seulement le total) des paiements d'une période, pour
+  // l'export CSV du trésorier (CDC §8.3). Accès déjà restreint président/
+  // trésorier au niveau de la route.
+  async getPaymentsForExport(startDate, endDate) {
+    return await this.paiementRepository.findByPeriod(startDate, endDate);
+  }
+
   // Même calcul que DashboardService.sumTrend(Paiement, "date_paiement",
   // "montant", { statut: "Payé" }) dans le monolithe — dupliqué ici (voir
   // FormationService.getTrend pour le motif d'origine), exposé via

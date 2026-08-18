@@ -2,7 +2,21 @@ const BaseController = require("./BaseController");
 const PaiementService = require("../services/PaiementService");
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const { streamRecuPaiement } = require("../utils/pdf");
+const { sendCsvAsJson } = require("../utils/csv");
 const { withStatus } = require("../utils/errors");
+
+const EXPORT_HEADERS = [
+  "N° paiement",
+  "Date",
+  "N° adhérent",
+  "Adhérent",
+  "Type",
+  "Référence",
+  "Mode",
+  "Statut",
+  "Montant (€)",
+  "Description",
+];
 
 class PaiementController extends BaseController {
   constructor() {
@@ -167,6 +181,68 @@ class PaiementController extends BaseController {
         success: true,
         data: { total },
       });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
+  // Export CSV des paiements d'une période, pour le trésorier (CDC §8.3).
+  // Accès restreint président/trésorier au niveau de la route.
+  async exportCsv(req, res, next) {
+    try {
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          message: "Les dates de début et de fin sont requises",
+        });
+      }
+
+      const paiements = await this.paiementService.getPaymentsForExport(
+        new Date(startDate),
+        new Date(endDate),
+      );
+
+      // Un appel HTTP par num_adherent DISTINCT, pas par ligne : plusieurs
+      // paiements du même adhérent dans la période ne doivent pas déclencher
+      // autant d'allers-retours vers identite-service (même souci de
+      // dé-duplication que withAdherentNames, vie-associative-service —
+      // réécrit ici en local pour ne pas introduire de dépendance
+      // inter-service pour un seul usage).
+      const adherentCache = new Map();
+      const rows = [];
+      for (const paiement of paiements) {
+        if (!adherentCache.has(paiement.num_adherent)) {
+          adherentCache.set(
+            paiement.num_adherent,
+            identiteClient
+              .getAdherentById(paiement.num_adherent, req.headers.authorization)
+              .catch(() => null),
+          );
+        }
+        const adherent = await adherentCache.get(paiement.num_adherent);
+        const nomAdherent = adherent
+          ? `${adherent.civilite || ""} ${adherent.nom} ${adherent.prenom}`.trim()
+          : paiement.num_adherent;
+
+        rows.push([
+          paiement.id_paiement,
+          new Date(paiement.date_paiement).toLocaleDateString("fr-FR"),
+          paiement.num_adherent,
+          nomAdherent,
+          paiement.type_paiement,
+          paiement.reference_id || "",
+          paiement.mode,
+          paiement.statut,
+          // Virgule décimale (pas point) : cohérent avec le séparateur `;`
+          // choisi côté utils/csv.js pour Excel FR.
+          Number(paiement.montant).toFixed(2).replace(".", ","),
+          paiement.description || "",
+        ]);
+      }
+
+      const filename = `paiements_${startDate}_au_${endDate}.csv`;
+      sendCsvAsJson(res, { headers: EXPORT_HEADERS, rows, filename });
     } catch (error) {
       next(withStatus(error, 500));
     }

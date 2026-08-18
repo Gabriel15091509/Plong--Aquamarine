@@ -1,5 +1,5 @@
 import api from "../api";
-import { downloadFile } from "../../utils/downloadFile";
+import { downloadFile, downloadCsv } from "../../utils/downloadFile";
 
 class PaiementService {
   async getAll(params = {}) {
@@ -61,6 +61,13 @@ class PaiementService {
 
   async downloadRecu(id) {
     return downloadFile(`/paiements/${id}/recu`, `recu-paiement-${id}.pdf`);
+  }
+
+  async exportCsv(startDate, endDate) {
+    return downloadCsv(
+      `/paiements/export?startDate=${startDate}&endDate=${endDate}`,
+      `paiements_${startDate}_au_${endDate}.csv`,
+    );
   }
 }
 

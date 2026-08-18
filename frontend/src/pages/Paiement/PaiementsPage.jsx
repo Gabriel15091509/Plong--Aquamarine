@@ -1,20 +1,49 @@
 /* eslint-disable no-unused-vars */
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FiDollarSign, FiPlus } from "react-icons/fi";
+import { FiDollarSign, FiPlus, FiDownload } from "react-icons/fi";
+import toast from "react-hot-toast";
 import { usePaiements } from "../../hooks/Paiement/usePaiements";
 import PaiementList from "../../components/Paiement/PaiementList";
+import { useAuth } from "../../context/AuthContext";
+import paiementService from "../../services/Paiement/paiementService";
+
+// "YYYY-MM" du mois en cours, pour préremplir le sélecteur d'export.
+const moisCourant = () => new Date().toISOString().slice(0, 7);
 
 const PaiementsPage = () => {
   const { useGetAll } = usePaiements();
   const { data, isLoading, error } = useGetAll();
+  const { hasRole } = useAuth();
+  const canExport = hasRole(["president", "tresorier"]);
+
+  const [mois, setMois] = useState(moisCourant);
+  const [exporting, setExporting] = useState(false);
 
   const paiements = data?.data || [];
 
   // Le chargement est géré par PaiementList elle-même (son propre
   // squelette liste), pour éviter un double reflet.
   if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+
+  // Export CSV mensuel (CDC §8.3) : bornes du mois sélectionné, en tenant
+  // compte du nombre de jours réel (new Date(year, month, 0) = dernier jour
+  // du mois précédent le mois `month`, donc du mois sélectionné ici).
+  const handleExport = async () => {
+    const [year, month] = mois.split("-").map(Number);
+    const startDate = new Date(year, month - 1, 1).toISOString().slice(0, 10);
+    const endDate = new Date(year, month, 0).toISOString().slice(0, 10);
+
+    setExporting(true);
+    try {
+      await paiementService.exportCsv(startDate, endDate);
+    } catch (err) {
+      toast.error("Échec de l'export des paiements");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <motion.div
@@ -34,6 +63,27 @@ const PaiementsPage = () => {
             {isLoading ? "…" : paiements.length} paiements enregistrés
           </p>
         </div>
+
+        {canExport && (
+          <div className="flex items-center gap-2">
+            <input
+              type="month"
+              value={mois}
+              onChange={(e) => setMois(e.target.value)}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+              title="Exporter les paiements du mois sélectionné en CSV"
+            >
+              <FiDownload className="w-4 h-4" />
+              {exporting ? "Export…" : "Exporter (CSV)"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Liste des paiements */}
