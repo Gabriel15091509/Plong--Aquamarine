@@ -136,12 +136,32 @@ async function seed() {
   console.log(`[identite] trésorier créé (${tresorierUser.email})`);
 
   // ==================== ADHÉRENTS ====================
+  // Le n° de licence FFESM est délivré une seule fois par la fédération à
+  // vie : une même personne le garde sur toutes ses lignes Adhesion
+  // (FFESM/Assurance) d'une année sur l'autre — jamais un nouveau numéro à
+  // chaque ligne (voir la contrainte unique sur Adherent.num_licence_ffesm
+  // ci-dessous, et son usage dans seedVieAssociative.js). Généré ici une
+  // seule fois par adhérent (sauf Baptême, jamais licencié) et exporté via
+  // adherentLicenceMap pour que seedVieAssociative.js réutilise la même
+  // valeur au lieu d'en tirer une nouvelle à chaque ligne Adhesion.
+  const usedLicences = new Set();
+  const nextLicence = () => {
+    let licence;
+    do {
+      licence = `FF${String(randomInt(1, 99999)).padStart(5, "0")}`;
+    } while (usedLicences.has(licence));
+    usedLicences.add(licence);
+    return licence;
+  };
+
   const adherentIds = [];
   const adherentNiveauMap = {};
+  const adherentLicenceMap = {};
   for (let i = 0; i < CONFIG.ADHERENTS; i++) {
     const { nom, prenom } = randomFullName();
     const niveau = pickWeighted(NIVEAU_ADHERENT_WEIGHTS);
     const email = i === 0 ? "adherent@plongee.com" : randomEmail(nom, prenom);
+    const numLicenceFfesm = niveau !== "Baptême" ? nextLicence() : null;
 
     const user = await User.create({
       email,
@@ -167,12 +187,14 @@ async function seed() {
       contact_urgence: `${randomFullName().prenom} ${randomFullName().nom} - ${randomPhone()}`,
       niveau,
       date_obtention_niveau: niveau !== "Baptême" ? pastDate(8) : null,
+      num_licence_ffesm: numLicenceFfesm,
       statut: pickWeighted(STATUT_WEIGHTS),
       date_inscription: pastDate(6),
       nb_plongees_total: randomNbPlongees(niveau),
     });
     adherentIds.push(numAdherent);
     adherentNiveauMap[numAdherent] = niveau;
+    adherentLicenceMap[numAdherent] = numLicenceFfesm;
   }
   console.log(`[identite] ${adherentIds.length} adhérents créés (adherent@plongee.com / adherent123)`);
 
@@ -185,6 +207,7 @@ async function seed() {
     moniteurIds,
     adherentIds,
     adherentNiveauMap,
+    adherentLicenceMap,
   });
 
   console.log("[identite] seed terminé");
