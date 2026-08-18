@@ -277,11 +277,13 @@ function drawStatFit(doc, x, maxWidth, y, label, value) {
     .text(value, x, valueY, { lineBreak: false });
 }
 
-// 91 (et non un chiffre rond comme 96) : mesuré pour que la marge sous la
-// dernière rangée (jauges visibilité/courant) égale la marge au-dessus de la
-// date/site — sans ça le contenu paraît "collé" en haut de la carte avec un
-// vide net en bas.
-const DIVE_CARD_HEIGHT = 91;
+// 108 (91 + 17 pour la rangée "Matériel", voir plus bas) : mesuré pour que
+// la marge sous la dernière rangée égale la marge au-dessus de la date/site
+// — sans ça le contenu paraît "collé" en haut de la carte avec un vide net
+// en bas. Hauteur fixe même pour une plongée sans matériel attribué (la
+// rangée reste alors vide) : plus simple et prévisible qu'une hauteur
+// variable dans une boucle de pagination.
+const DIVE_CARD_HEIGHT = 108;
 const DIVE_CARD_GAP = 10;
 
 // Une carte par plongée — reprend l'esprit d'une page de carnet de plongée
@@ -330,6 +332,27 @@ function drawDiveCard(doc, plongee, y) {
 
   drawVisibiliteScale(doc, x + 14, y + 74, visibiliteLevel(plongee.visibilite));
   drawCourantRow(doc, x + 150, y + 74, plongee.courant);
+
+  // Matériel utilisé (CDC 3.3.1) : résolu via Attribution ↔ Plongee (même
+  // adhérent + même sortie), voir PlongeeService.attachMaterielUtilise.
+  // N'affiche rien pour une plongée sans matériel attribué (garde son
+  // propre équipement) plutôt qu'un "—" qui alourdirait la majorité des
+  // cartes.
+  if (plongee.materiel_utilise?.length) {
+    const label = plongee.materiel_utilise
+      .map((m) => (m.categorie ? `${m.categorie}${m.marque ? " " + m.marque : ""}` : m.num_inventaire))
+      .join(", ");
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(7.5)
+      .fillColor(FAINT)
+      .text("MATÉRIEL", x + 14, y + 92, { lineBreak: false });
+    doc
+      .font("Helvetica")
+      .fontSize(8.5)
+      .fillColor(INK)
+      .text(label, x + 75, y + 91, { width: width - 90, lineBreak: false });
+  }
 
   doc.font("Helvetica").fillColor(INK);
 }
