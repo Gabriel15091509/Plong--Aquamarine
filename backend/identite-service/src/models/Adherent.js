@@ -114,6 +114,18 @@ const Adherent = sequelize.define(
       type: DataTypes.BLOB,
       allowNull: true,
     },
+    // Fiche créée par le staff pour un invité non-membre (ex. un baptême
+    // pour un ami d'un adhérent) : passe par le même parcours qu'un
+    // adhérent normal (compte, adhésion Club, certificat médical requis
+    // pour plonger), mais paie le tarif_non_adherent d'une sortie au lieu
+    // du tarif_adherent (CDC 3.2.1, voir activites-service/src/utils/
+    // tarifRules.js) et n'entre pas dans les statistiques d'adhérents
+    // actifs ni dans la communication ciblée (CDC 3.6.1/3.6.2).
+    est_invite: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     archived_by: {
       type: DataTypes.INTEGER,
       allowNull: true,
