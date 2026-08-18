@@ -547,7 +547,9 @@ const InscriptionDetails = () => {
           </div>
 
           <div className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 hover:bg-gray-100 dark:hover:bg-gray-700/30 transition-colors duration-300">
-            {inscription.presence ? (
+            {!inscription.presence_checked ? (
+              <FiClock className="w-4 h-4 text-gray-400 mt-0.5" />
+            ) : inscription.presence ? (
               <FiCheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
             ) : (
               <FiXCircle className="w-4 h-4 text-red-500 mt-0.5" />
@@ -557,7 +559,11 @@ const InscriptionDetails = () => {
                 Présence
               </p>
               <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                {inscription.presence ? "Présent" : "Absent"}
+                {!inscription.presence_checked
+                  ? "Non pointé"
+                  : inscription.presence
+                    ? "Présent"
+                    : "Absent"}
               </p>
             </div>
           </div>
