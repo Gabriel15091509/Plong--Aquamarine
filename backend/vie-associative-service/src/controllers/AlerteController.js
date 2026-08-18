@@ -123,6 +123,20 @@ class AlerteController extends BaseController {
     }
   }
 
+  async relancerSms(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await this.alerteService.relancerParSms(id, req.user, req.headers.authorization);
+      res.json({
+        success: true,
+        data: result,
+        message: 'Relance envoyée par SMS'
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async create(req, res, next) {
     try {
       const data = { ...req.body };

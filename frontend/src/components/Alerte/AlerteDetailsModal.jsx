@@ -2,7 +2,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiX, FiMail, FiUser, FiClock, FiSend, FiExternalLink } from "react-icons/fi";
+import { FiX, FiMail, FiUser, FiClock, FiSend, FiExternalLink, FiMessageSquare } from "react-icons/fi";
 import { formatDateTime } from "../../utils/helpers";
 import { useAlertes } from "../../hooks/Alerte/useAlertes";
 import { useAuth } from "../../context/AuthContext";
@@ -19,8 +19,9 @@ const ALERT_DESCRIPTIONS = {
 };
 
 const AlerteDetailsModal = ({ alerte, onClose }) => {
-  const { useRelancer } = useAlertes();
+  const { useRelancer, useRelancerSms } = useAlertes();
   const relancer = useRelancer();
+  const relancerSms = useRelancerSms();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -129,23 +130,42 @@ const AlerteDetailsModal = ({ alerte, onClose }) => {
             </button>
 
             {canRelancer && (
-              <button
-                onClick={() => relancer.mutate(alerte.id_alerte)}
-                disabled={relancer.isPending || !alerte.adherent_email}
-                title={
-                  !alerte.adherent_email
-                    ? "Adresse email de l'adhérent introuvable"
-                    : undefined
-                }
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
-              >
-                {relancer.isPending ? (
-                  <FiSend className="w-4 h-4 animate-pulse" />
-                ) : (
-                  <FiMail className="w-4 h-4" />
-                )}
-                Relancer par email
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => relancer.mutate(alerte.id_alerte)}
+                  disabled={relancer.isPending || !alerte.adherent_email}
+                  title={
+                    !alerte.adherent_email
+                      ? "Adresse email de l'adhérent introuvable"
+                      : undefined
+                  }
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
+                >
+                  {relancer.isPending ? (
+                    <FiSend className="w-4 h-4 animate-pulse" />
+                  ) : (
+                    <FiMail className="w-4 h-4" />
+                  )}
+                  Email
+                </button>
+                <button
+                  onClick={() => relancerSms.mutate(alerte.id_alerte)}
+                  disabled={relancerSms.isPending || !alerte.adherent_telephone}
+                  title={
+                    !alerte.adherent_telephone
+                      ? "Numéro de téléphone de l'adhérent introuvable"
+                      : undefined
+                  }
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-200 text-sm font-medium rounded-xl transition-colors"
+                >
+                  {relancerSms.isPending ? (
+                    <FiSend className="w-4 h-4 animate-pulse" />
+                  ) : (
+                    <FiMessageSquare className="w-4 h-4" />
+                  )}
+                  SMS
+                </button>
+              </div>
             )}
           </div>
         </motion.div>

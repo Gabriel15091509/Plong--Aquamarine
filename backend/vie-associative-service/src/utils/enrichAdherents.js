@@ -24,6 +24,7 @@ async function withAdherentNames(rows, authHeader, { getNumAdherent = (r) => r.n
         const adherent = await cache.get(numAdherent);
         plain.adherent_nom = adherent ? `${adherent.prenom} ${adherent.nom}` : null;
         plain.adherent_email = adherent ? adherent.email : null;
+        plain.adherent_telephone = adherent ? adherent.telephone : null;
       }
       return plain;
     }),

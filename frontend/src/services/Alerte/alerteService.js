@@ -45,6 +45,11 @@ class AlerteService {
     const response = await api.post(`/alertes/${id}/relancer`);
     return response.data;
   }
+
+  async relancerSms(id) {
+    const response = await api.post(`/alertes/${id}/relancer-sms`);
+    return response.data;
+  }
 }
 
 export default new AlerteService();
