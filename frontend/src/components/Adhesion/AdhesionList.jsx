@@ -306,14 +306,19 @@ const AdhesionList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
-                    {/* Document (rectangle, mis en avant) + photo de
-                        l'adhérent en dessous, plus petite — le document est
-                        ce qui doit être vérifié en un coup d'œil dans cette
-                        liste, la photo n'est là que pour identifier la
-                        personne. document_path n'est jamais chiffré pour une
-                        adhésion (contrairement au certificat médical, voir
-                        CertificatList.jsx) : servable directement en <img>. */}
-                    <div className="flex-shrink-0 w-20 flex flex-col items-center gap-1.5">
+                    {/* Document (rectangle, mis en avant) et photo de
+                        l'adhérent côte à côte — le document est ce qui doit
+                        être vérifié en un coup d'œil dans cette liste, la
+                        photo n'est là que pour identifier la personne, quel
+                        que soit le rôle du visiteur (un adhérent qui
+                        consulte sa propre liste — vue "Toutes les
+                        adhésions"/"Validation" scopée à lui-même côté
+                        backend, voir AdhesionService.getAll — voit la même
+                        disposition que le staff). document_path n'est
+                        jamais chiffré pour une adhésion (contrairement au
+                        certificat médical, voir CertificatList.jsx) :
+                        servable directement en <img>. */}
+                    <div className="flex-shrink-0 flex items-center gap-2">
                       {adhesion.document_path ? (
                         <img
                           src={photoUrl(adhesion.document_path)}
@@ -331,20 +336,22 @@ const AdhesionList = () => {
                         <FiFileText className="w-6 h-6 text-gray-400" />
                       </div>
 
-                      {adherentInfo.photo ? (
-                        <img
-                          src={photoUrl(adherentInfo.photo)}
-                          alt={adherentName}
-                          className="w-9 h-9 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
-                          <FiUser className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-                        </div>
-                      )}
-                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                        #{adhesion.num_adherent}
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        {adherentInfo.photo ? (
+                          <img
+                            src={photoUrl(adherentInfo.photo)}
+                            alt={adherentName}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
+                            <FiUser className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                          </div>
+                        )}
+                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                          #{adhesion.num_adherent}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Informations */}
