@@ -43,10 +43,12 @@ const AdhesionList = () => {
 
   // "Validation" : activé depuis ?validation=soumis (lien du sous-menu
   // "Validation" dans la Sidebar) — affiche uniquement les auto-soumissions
-  // (soumis_par_adherent), tous statuts confondus (en attente/validée/
-  // rejetée, distingués par le badge sur chaque ligne). Ce n'est plus un
-  // filtre réglable en page : c'est une vue dédiée, il n'y a donc pas de
-  // <select> correspondant, seulement ce booléen dérivé de l'URL.
+  // (soumis_par_adherent) qui attendent encore une décision ou viennent
+  // d'être rejetées (En attente/Rejeté, distingués par le badge sur chaque
+  // ligne). Une auto-soumission validée quitte cette file et rejoint
+  // "Toutes les adhésions" (voir enFileDeValidation ci-dessous). Ce n'est
+  // plus un filtre réglable en page : c'est une vue dédiée, il n'y a donc
+  // pas de <select> correspondant, seulement ce booléen dérivé de l'URL.
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
@@ -95,13 +97,16 @@ const AdhesionList = () => {
 
       if (filter !== "all" && a.statut_paiement !== filter) return false;
       if (typeFilter !== "all" && a.type !== typeFilter) return false;
-      if (showValidationOnly && !a.soumis_par_adherent) return false;
       // "Toutes les adhésions" et "Validation" sont deux files distinctes,
-      // sans doublon : une auto-soumission (soumis_par_adherent) ne vit que
-      // dans "Validation", quel que soit son statut — même une fois
-      // validée, elle n'apparaît pas ici (elle reste consultable via
-      // "Validation").
-      if (!showValidationOnly && a.soumis_par_adherent) return false;
+      // sans doublon : une auto-soumission (soumis_par_adherent) relève de
+      // "Validation" tant qu'elle attend une décision ou vient d'être
+      // rejetée (En attente/Rejeté) — une fois validée, elle n'a plus rien à
+      // y faire et rejoint "Toutes les adhésions" comme n'importe quel
+      // dossier accepté.
+      const enFileDeValidation =
+        a.soumis_par_adherent && a.statut_validation !== "Validé";
+      if (showValidationOnly && !enFileDeValidation) return false;
+      if (!showValidationOnly && enFileDeValidation) return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
