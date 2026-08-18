@@ -506,7 +506,7 @@ const SortieDetails = () => {
             renseignée pour cette sortie (sinon rien à prévoir). */}
         {sortie.latitude != null && sortie.longitude != null && (
           <SectionCard
-            title="Prévision météo"
+            title={meteo?.forecast?.historique ? "Météo observée" : "Prévision météo"}
             icon={FiWind}
             headerExtra={
               meteo?.disponible ? (
@@ -522,7 +522,11 @@ const SortieDetails = () => {
                   ) : (
                     <FiCheckCircle className="w-3.5 h-3.5" />
                   )}
-                  {meteo.dangereux ? "Conditions dangereuses" : "Conditions favorables"}
+                  {meteo.dangereux
+                    ? meteo.forecast?.historique
+                      ? "Conditions dégradées"
+                      : "Conditions dangereuses"
+                    : "Conditions favorables"}
                 </span>
               ) : null
             }
@@ -562,7 +566,7 @@ const SortieDetails = () => {
                 />
                 <InfoItem
                   icon={FiZap}
-                  label="Ciel prévu"
+                  label={meteo.forecast.historique ? "Ciel observé" : "Ciel prévu"}
                   value={weatherCodeLabel(meteo.forecast.weathercode) || "Non disponible"}
                 />
                 <InfoItem

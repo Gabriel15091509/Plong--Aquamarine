@@ -627,13 +627,14 @@ class SortieService extends BaseService {
     return annulees;
   }
 
-  // Prévision météo affichée sur la fiche sortie (GET /sorties/:id/meteo) —
-  // même client et mêmes seuils que verifierMeteoEtAnnulerSiDangereux, mais
+  // Météo affichée sur la fiche sortie (GET /sorties/:id/meteo) — même
+  // client et mêmes seuils que verifierMeteoEtAnnulerSiDangereux, mais
   // purement consultatif : ne modifie jamais le statut de la sortie (seul le
-  // cron décide d'une annulation). Renvoie `disponible: false` avec une
-  // raison lisible plutôt qu'une erreur pour les cas normaux (pas de
-  // position renseignée, sortie passée, date trop lointaine pour une
-  // prévision fiable) — seule une sortie introuvable renvoie `null`.
+  // cron décide d'une annulation). Pour une sortie passée, meteoClient
+  // renvoie un relevé observé (pas une prévision) — voir `forecast.historique`.
+  // Renvoie `disponible: false` avec une raison lisible plutôt qu'une erreur
+  // pour les cas normaux (pas de position renseignée, date hors des fenêtres
+  // couvertes) — seule une sortie introuvable renvoie `null`.
   async getPrevisionMeteo(id) {
     const sortie = await this.sortieRepository.findById(id);
     if (!sortie) return null;
@@ -645,22 +646,18 @@ class SortieService extends BaseService {
       };
     }
 
-    const now = new Date();
-    const dateSortie = new Date(sortie.date_heure);
-    if (dateSortie < now) {
-      return { disponible: false, raison: "Sortie passée : plus de prévision météo disponible." };
-    }
-
     const forecast = await getForecastForDate({
       latitude: sortie.latitude,
       longitude: sortie.longitude,
       date: sortie.date_heure,
     });
     if (!forecast) {
-      return {
-        disponible: false,
-        raison: "Trop éloignée dans le temps pour une prévision fiable (au-delà de 16 jours).",
-      };
+      const dateSortie = new Date(sortie.date_heure);
+      const raison =
+        dateSortie < new Date()
+          ? "Aucun relevé météo disponible pour cette date (trop ancienne)."
+          : "Trop éloignée dans le temps pour une prévision fiable (au-delà de 16 jours).";
+      return { disponible: false, raison };
     }
 
     const { dangereux, motifs } = evaluerDanger(forecast);

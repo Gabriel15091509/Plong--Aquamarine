@@ -90,6 +90,73 @@ describe("meteoClient.getForecastForDate", () => {
 
     expect(forecast).toMatchObject({ windspeed: 15, waveHeight: null });
   });
+
+  // Date système fixée à 2026-08-18 (voir currentDate de session) : une
+  // sortie du 2026-08-10 est passée depuis 8 jours, dans la fenêtre
+  // `past_days` (<=92 jours) de l'API forecast — relevé observé, pas une
+  // prévision.
+  test("sortie passée récente (<=92j) : relevé observé via past_days, historique=true", async () => {
+    mockFetchSequence([
+      okJson({
+        daily: {
+          time: ["2026-08-10"],
+          weathercode: [3],
+          windspeed_10m_max: [25],
+          windgusts_10m_max: [35],
+          precipitation_sum: [2],
+        },
+      }),
+      okJson({ daily: { time: ["2026-08-10"], wave_height_max: [1.2] } }),
+    ]);
+
+    const forecast = await getForecastForDate({
+      latitude: -21.17,
+      longitude: 55.28,
+      date: "2026-08-10T08:00:00.000Z",
+    });
+
+    expect(forecast).toEqual({
+      date: "2026-08-10",
+      windspeed: 25,
+      windgusts: 35,
+      weathercode: 3,
+      precipitation: 2,
+      waveHeight: 1.2,
+      historique: true,
+    });
+  });
+
+  test("sortie très ancienne (>92j) : bascule sur l'archive historique, sans houle", async () => {
+    mockFetchSequence([
+      okJson({
+        daily: {
+          time: ["2025-01-01"],
+          weathercode: [2],
+          windspeed_10m_max: [18],
+          windgusts_10m_max: [22],
+          precipitation_sum: [1],
+        },
+      }),
+    ]);
+
+    const forecast = await getForecastForDate({
+      latitude: -21.17,
+      longitude: 55.28,
+      date: "2025-01-01T08:00:00.000Z",
+    });
+
+    expect(forecast).toEqual({
+      date: "2025-01-01",
+      windspeed: 18,
+      windgusts: 22,
+      weathercode: 2,
+      precipitation: 1,
+      waveHeight: null,
+      historique: true,
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch.mock.calls[0][0]).toContain("archive-api.open-meteo.com");
+  });
 });
 
 describe("meteoClient.evaluerDanger", () => {
@@ -144,6 +211,20 @@ describe("meteoClient.evaluerDanger", () => {
       expect(result.dangereux).toBe(true);
       expect(result.motifs).toContain("Orage prévu");
     }
+  });
+
+  test("relevé historique : motifs au passé (observé), pas au futur (prévu)", () => {
+    const result = evaluerDanger({
+      windspeed: 40,
+      windgusts: 70,
+      weathercode: 99,
+      precipitation: 40,
+      waveHeight: 3,
+      historique: true,
+    });
+    expect(result.dangereux).toBe(true);
+    expect(result.motifs.join(" ")).not.toMatch(/prévu|prévue|prévues/);
+    expect(result.motifs).toContain("Orage observé");
   });
 
   test("cumule plusieurs motifs simultanés", () => {
