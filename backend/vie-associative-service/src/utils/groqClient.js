@@ -7,7 +7,12 @@
 // télécharger sur chaque poste, API compatible OpenAI (chat/completions),
 // clé gratuite sans carte bancaire sur console.groq.com.
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+// "llama-3.3-70b-versatile" a été retiré du catalogue Groq (404
+// model_not_found, constaté le 2026-08-18 en implémentant l'assistant
+// conversationnel — voir backend/gateway-service/src/utils/groqClient.js) —
+// "groq/compound-mini" route en interne vers ce même modèle et renvoie un
+// `content` propre en JSON mode, contrairement aux modèles "reasoning" bruts.
+const GROQ_MODEL = process.env.GROQ_MODEL || "groq/compound-mini";
 const TIMEOUT_MS = 30000;
 
 function buildPrompt({ typeDocument, champsAttendus, texteOcr, avertissementsHeuristiques }) {

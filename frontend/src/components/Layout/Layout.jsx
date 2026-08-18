@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
+import ChatAssistant from '../Assistant/ChatAssistant';
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -44,6 +45,8 @@ const Layout = ({ children }) => {
 
         <Footer />
       </div>
+
+      <ChatAssistant />
     </div>
   );
 };
