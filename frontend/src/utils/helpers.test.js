@@ -9,6 +9,7 @@ import {
   formatPhoneNumber,
   isSortieSelectionnable,
   joursRestants,
+  formatCompteARebours,
 } from "./helpers";
 
 describe("formatDate", () => {
@@ -133,5 +134,19 @@ describe("joursRestants", () => {
     const hier = new Date();
     hier.setDate(hier.getDate() - 1);
     expect(joursRestants(hier)).toBe(-1);
+  });
+});
+
+describe("formatCompteARebours", () => {
+  it("affiche 'Aujourd'hui' pour 0 jour", () => {
+    expect(formatCompteARebours(0)).toBe("Aujourd'hui");
+  });
+
+  it("affiche 'Demain' pour 1 jour", () => {
+    expect(formatCompteARebours(1)).toBe("Demain");
+  });
+
+  it("affiche 'Dans N jours' au-delà", () => {
+    expect(formatCompteARebours(5)).toBe("Dans 5 jours");
   });
 });

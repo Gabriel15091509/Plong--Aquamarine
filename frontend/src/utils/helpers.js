@@ -179,6 +179,12 @@ export const joursRestants = (date) => {
   return Math.round((cible - aujourdhui) / 86400000);
 };
 
+// Texte convivial du compte à rebours à partir de joursRestants — pour une
+// date déjà passée (jours < 0), appelant a la responsabilité de ne pas
+// l'afficher (le sens d'un "compte à rebours" n'existe que pour l'avenir).
+export const formatCompteARebours = (jours) =>
+  jours <= 0 ? "Aujourd'hui" : jours === 1 ? "Demain" : `Dans ${jours} jours`;
+
 // NOUVEAU - Formater une durée en minutes/secondes
 export const formatDuration = (minutes) => {
   if (!minutes && minutes !== 0) return "-";

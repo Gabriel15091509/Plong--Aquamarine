@@ -27,13 +27,14 @@ export const useSorties = () => {
     });
   };
 
-  const useGetUpcoming = () => {
+  const useGetUpcoming = (options = {}) => {
     return useQuery({
       queryKey: ["sorties", "upcoming"],
       queryFn: () => sortieService.getUpcoming(),
       staleTime: 1000 * 60 * 5,
       gcTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
+      ...options,
     });
   };
 
