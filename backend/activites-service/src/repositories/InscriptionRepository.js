@@ -45,6 +45,14 @@ class InscriptionRepository {
       presence_checked: false,
       presence_check_by: null,
       date_confirmation: data.date_confirmation || null,
+      // Le tarif est calculé et figé par InscriptionService (computeMontantDu)
+      // avant l'appel ici — cette liste blanche les oubliait, si bien que
+      // montant_du repartait toujours sur son défaut (null, donc "Gratuit"
+      // à l'affichage) au lieu du tarif réel de la sortie, quel que soit ce
+      // que le service avait calculé.
+      montant_du: data.montant_du ?? null,
+      montant_paye: data.montant_paye ?? 0,
+      paye: data.paye ?? false,
     };
 
     return await Inscription.create(cleanData, options);
