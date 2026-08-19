@@ -21,12 +21,14 @@ import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { formatDate } from "../../utils/helpers";
 
+import ErrorState from "../Common/ErrorState";
+
 const AttributionList = () => {
   const { useGetAll, useRemove } = useAttributions();
   const { useGetAll: useGetAllMateriels } = useMateriels();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
-  const { data, isLoading, error } = useGetAll();
+  const { data, isLoading, error, refetch } = useGetAll();
   const { data: materielsData, isLoading: loadingMateriels } =
     useGetAllMateriels();
   const { data: adherentsData, isLoading: loadingAdherents } =
@@ -87,7 +89,7 @@ const AttributionList = () => {
 
   if (isLoading || loadingMateriels || loadingAdherents)
     return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredAttributions.length === 0) {
     return (

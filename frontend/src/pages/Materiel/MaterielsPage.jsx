@@ -6,6 +6,8 @@ import { FiTool, FiPlus } from "react-icons/fi";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import MaterielList from "../../components/Materiel/MaterielList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 const MaterielsPage = () => {
   const { useGetAll } = useMateriels();
   const { data, isLoading, error } = useGetAll();
@@ -14,7 +16,7 @@ const MaterielsPage = () => {
 
   // Le chargement est géré par MaterielList elle-même (son propre
   // squelette liste), pour éviter un double reflet.
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

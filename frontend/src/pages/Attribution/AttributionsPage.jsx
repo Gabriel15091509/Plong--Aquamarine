@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import AttributionList from "../../components/Attribution/AttributionList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 const AttributionsPage = () => {
   const { useGetAll } = useAttributions();
   const { data, isLoading, error } = useGetAll();
@@ -11,8 +13,7 @@ const AttributionsPage = () => {
 
   // Le chargement est géré par AttributionList elle-même (son propre
   // squelette liste), pour éviter un double reflet.
-  if (error)
-    return <div className="text-red-500">Erreur : {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

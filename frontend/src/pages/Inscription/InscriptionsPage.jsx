@@ -6,6 +6,8 @@ import InscriptionList from "../../components/Inscription/InscriptionList";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { useAuth } from "../../context/AuthContext";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 const InscriptionsPage = () => {
   const { user } = useAuth();
   const { useGetAll } = useInscriptions();
@@ -16,7 +18,7 @@ const InscriptionsPage = () => {
 
   // Le chargement est géré par InscriptionList elle-même (son propre
   // squelette liste), pour éviter un double reflet.
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

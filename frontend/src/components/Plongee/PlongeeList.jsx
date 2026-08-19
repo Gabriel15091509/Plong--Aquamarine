@@ -26,6 +26,8 @@ import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import { TYPE_PLONGEE_OPTIONS } from "../../utils/constants";
 
+import ErrorState from "../Common/ErrorState";
+
 // Brouillon : plongée créée automatiquement au pointage de présence (voir
 // PalanqueeService.creerPlongeeBrouillon), profondeur/durée pas encore
 // saisies par le moniteur — distinct de "Non validée" (des mesures peuvent
@@ -141,7 +143,7 @@ const PlongeeList = () => {
 
   // RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
   if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredPlongees.length === 0) {
     return (

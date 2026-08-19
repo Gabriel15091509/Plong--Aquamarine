@@ -6,6 +6,8 @@ import { FiPlus, FiDollarSign } from "react-icons/fi";
 import { useTresoriers } from "../../hooks/Tresorier/useTresoriers";
 import TresorierList from "../../components/Tresorier/TresorierList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 /**
  * Page principale de gestion des trésoriers
  */
@@ -17,8 +19,7 @@ const TresoriersPage = () => {
 
   // Gestion de l'état d'erreur — le chargement est géré par TresorierList
   // elle-même (son propre squelette liste), pour éviter un double reflet.
-  if (error)
-    return <div className="text-red-500">Erreur : {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

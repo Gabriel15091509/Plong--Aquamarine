@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { useIncidents } from "../../hooks/Incident/useIncidents";
 import IncidentList from "../../components/Incident/IncidentList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 const IncidentsPage = () => {
   const { useGetAll } = useIncidents();
   const { data, isLoading, error } = useGetAll();
@@ -11,8 +13,7 @@ const IncidentsPage = () => {
 
   // Le chargement est géré par IncidentList elle-même (son propre
   // squelette liste), pour éviter un double reflet.
-  if (error)
-    return <div className="text-red-500">Erreur : {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

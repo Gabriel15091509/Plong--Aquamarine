@@ -25,6 +25,8 @@ import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 
+import ErrorState from "../Common/ErrorState";
+
 const PaiementList = () => {
   // 1. TOUS LES HOOKS au même niveau, avant toute condition
   const { hasRole } = useAuth();
@@ -137,7 +139,7 @@ const PaiementList = () => {
 
   // 2. RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
   if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   // 3. RENDU PRINCIPAL
   if (filteredPaiements.length === 0) {

@@ -4,6 +4,8 @@ import { FiAward } from "react-icons/fi";
 import { useSpecialitesFormation } from "../../hooks/Formation/useSpecialitesFormation";
 import SpecialiteFormationList from "../../components/Formation/SpecialiteFormationList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 const SpecialitesFormationPage = () => {
   const { useGetAll } = useSpecialitesFormation();
   const { data, isLoading, error } = useGetAll();
@@ -12,7 +14,7 @@ const SpecialitesFormationPage = () => {
 
   // Le chargement est géré par SpecialiteFormationList elle-même (son
   // propre squelette liste), pour éviter un double reflet.
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

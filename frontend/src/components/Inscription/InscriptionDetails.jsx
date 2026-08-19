@@ -171,8 +171,12 @@ const InscriptionDetails = () => {
           Erreur de chargement
         </h3>
         <p className="text-gray-500 dark:text-gray-400">
-          {error?.message ||
-            "Une erreur est survenue lors du chargement des données"}
+          {/* Jamais error.message (technique : "Network Error", "timeout
+              of 30000ms exceeded"...) — error?.message était quasi toujours
+              vrai, ce texte générique ne s'affichait donc en pratique
+              jamais. */}
+          Une erreur est survenue lors du chargement des données. Vérifiez
+          votre connexion et réessayez dans un instant.
         </p>
         <button
           onClick={() => navigate("/inscriptions")}

@@ -6,6 +6,8 @@ import { FiDroplet, FiPlus } from "react-icons/fi";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import PlongeeList from "../../components/Plongee/PlongeeList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 const PlongeesPage = () => {
   const { useGetAll } = usePlongees();
   const { data, isLoading, error } = useGetAll();
@@ -14,7 +16,7 @@ const PlongeesPage = () => {
 
   // Le chargement est géré par PlongeeList elle-même (son propre
   // squelette liste), pour éviter un double reflet.
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

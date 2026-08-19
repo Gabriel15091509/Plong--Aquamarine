@@ -19,11 +19,13 @@ import { useIncidents } from "../../hooks/Incident/useIncidents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { formatDateTime } from "../../utils/helpers";
 
+import ErrorState from "../Common/ErrorState";
+
 const IncidentList = () => {
   const { useGetAll, useRemove } = useIncidents();
   const { useGetAll: useGetAllSorties } = useSorties();
 
-  const { data, isLoading, error } = useGetAll();
+  const { data, isLoading, error, refetch } = useGetAll();
   const { data: sortiesData, isLoading: loadingSorties } = useGetAllSorties();
   const remove = useRemove();
 
@@ -71,7 +73,7 @@ const IncidentList = () => {
   };
 
   if (isLoading || loadingSorties) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredIncidents.length === 0) {
     return (

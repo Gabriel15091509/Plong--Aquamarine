@@ -25,6 +25,8 @@ import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import { CATEGORIE_MATERIEL_OPTIONS } from "../../utils/constants";
 
+import ErrorState from "../Common/ErrorState";
+
 const MaterielList = () => {
   const { useGetAll, useRemove } = useMateriels();
   const { data, isLoading, error, refetch } = useGetAll();
@@ -61,7 +63,7 @@ const MaterielList = () => {
   }, [allMateriels, filter, categorieFilter, searchTerm]);
 
   if (isLoading) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   const totalPages = Math.ceil(filteredMateriels.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;

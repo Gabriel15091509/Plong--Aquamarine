@@ -25,6 +25,8 @@ import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 
+import ErrorState from "../Common/ErrorState";
+
 // Fonctions utilitaires hors du composant
 const isExpired = (date) => new Date(date) < new Date();
 const getDaysRemaining = (date) => {
@@ -165,7 +167,7 @@ const CertificatList = () => {
   };
 
   if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredCertificats.length === 0) {
     return (
