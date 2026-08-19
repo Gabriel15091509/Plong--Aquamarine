@@ -467,11 +467,14 @@ const SortiesPage = () => {
               // devenue complète/verrouillée, puisque la place de l'adhérent
               // est déjà acquise ou en cours d'examen.
               const monInscription = mesInscriptionsParSortie.get(sortieId);
-              // Compte à rebours : n'a de sens que pour une sortie encore à
-              // venir et non verrouillée (Planifiée) — inutile une fois
-              // Terminée/En cours/Annulée.
+              // Compte à rebours : même convention d'urgence que
+              // CertificatList (30 jours) — n'a de sens que pour une sortie
+              // encore à venir et non verrouillée (Planifiée), et ne
+              // s'affiche que si elle approche (<=30j), pas des mois à
+              // l'avance.
               const jours = joursRestants(sortie.date_heure);
-              const showCompteARebours = sortie.statut === "Planifiée" && jours >= 0;
+              const showCompteARebours =
+                sortie.statut === "Planifiée" && jours >= 0 && jours <= 30;
 
               if (viewMode === "grid") {
                 return (
@@ -501,7 +504,8 @@ const SortiesPage = () => {
                         </span>
                         <div className="flex items-center gap-1.5">
                           {showCompteARebours && (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 shadow-sm">
+                            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm">
+                              <FiClock className="w-3 h-3 flex-shrink-0" />
                               {formatCompteARebours(jours)}
                             </span>
                           )}
@@ -711,7 +715,8 @@ const SortiesPage = () => {
                               {sortie.site || ""}
                             </span>
                             {showCompteARebours && (
-                              <span className="text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-0.5 rounded-full font-medium">
+                              <span className="flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400">
+                                <FiClock className="w-3.5 h-3.5 flex-shrink-0" />
                                 {formatCompteARebours(jours)}
                               </span>
                             )}
