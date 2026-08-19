@@ -91,6 +91,20 @@ const Sortie = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    // Traçabilité des deux passages du test météo automatique — voir
+    // SortieService.verifierMeteoEtAnnulerSiDangereux et
+    // migrate-sortie-meteo-tests.sql. Empêchent de rejouer un test déjà
+    // fait tant que la sortie reste "Planifiée" dans la fenêtre du cron.
+    meteo_test_j3_fait: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    meteo_alerte_j1_envoyee: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     // Plus de FK Postgres vers `president` (identite-service, autre
     // schéma) : reste une colonne applicative, non validée en base.
     created_by: {

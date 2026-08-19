@@ -2,9 +2,23 @@ jest.mock("../../src/utils/meteoClient", () => ({
   getForecastForDate: jest.fn(),
   evaluerDanger: jest.requireActual("../../src/utils/meteoClient").evaluerDanger,
 }));
+jest.mock("../../src/utils/serviceClients/identiteClient", () => ({
+  getAdherentById: jest.fn(),
+  getUserBasicById: jest.fn(),
+}));
+jest.mock("../../src/utils/email", () => ({
+  sendSortieAnnuleeMeteoEmail: jest.fn(),
+  sendPropositionsReprogrammationEmail: jest.fn(),
+  sendAlerteMeteoDouteuseEmail: jest.fn(),
+}));
 
 const SortieService = require("../../src/services/SortieService");
 const { getForecastForDate } = require("../../src/utils/meteoClient");
+const identiteClient = require("../../src/utils/serviceClients/identiteClient");
+const {
+  sendSortieAnnuleeMeteoEmail,
+  sendAlerteMeteoDouteuseEmail,
+} = require("../../src/utils/email");
 
 const service = new SortieService();
 
@@ -105,7 +119,10 @@ describe("SortieService.assertSortieModifiable", () => {
 });
 
 describe("SortieService.getPrevisionMeteo", () => {
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
 
   const forecastFavorable = {
     date: "2026-09-01",
@@ -176,5 +193,189 @@ describe("SortieService.getPrevisionMeteo", () => {
 
     expect(result.dangereux).toBe(false);
     expect(result.annuleePourMeteo).toBeUndefined();
+  });
+});
+
+// Date système fixée à 2026-08-18 (voir currentDate de session).
+function dansNJours(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  d.setHours(8, 0, 0, 0);
+  return d.toISOString();
+}
+
+describe("SortieService.testerEtDeciderJ3 (test J-3, décision automatique)", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
+  const baseSortie = {
+    id_sortie: 10,
+    latitude: -21.17,
+    longitude: 55.28,
+    date_heure: dansNJours(3),
+    duree_estimee: "02:00:00",
+    created_by: 5,
+    inscriptions: [{ id_inscription: 1, num_adherent: "ADH-2026-0001", statut: "Confirmée" }],
+  };
+
+  test("dangereux : annule, fige le motif, marque meteo_test_j3_fait, notifie inscrits + organisateur", async () => {
+    getForecastForDate.mockResolvedValue({ windspeed: 50 });
+    jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+    jest.spyOn(service.sortieRepository, "findAutresPourChevauchement").mockResolvedValue([]);
+    identiteClient.getAdherentById.mockResolvedValue({
+      email: "membre@test.fr",
+      nom: "Payet",
+      prenom: "Marie",
+    });
+    identiteClient.getUserBasicById.mockResolvedValue({ email: "organisateur@test.fr", name: "Léa" });
+
+    const cancelled = await service.testerEtDeciderJ3(baseSortie, "Bearer x");
+
+    expect(cancelled).toBe(true);
+    expect(service.sortieRepository.update).toHaveBeenCalledWith(
+      10,
+      expect.objectContaining({
+        statut: "Annulée",
+        meteo_test_j3_fait: true,
+        motif_annulation: expect.stringMatching(/^Annulation automatique/),
+      }),
+    );
+    expect(sendSortieAnnuleeMeteoEmail).toHaveBeenCalledTimes(1);
+  });
+
+  test("favorable : marque juste meteo_test_j3_fait, aucune annulation ni notification", async () => {
+    getForecastForDate.mockResolvedValue({ windspeed: 10 });
+    jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+
+    const cancelled = await service.testerEtDeciderJ3(baseSortie, "Bearer x");
+
+    expect(cancelled).toBe(false);
+    expect(service.sortieRepository.update).toHaveBeenCalledWith(10, { meteo_test_j3_fait: true });
+    expect(sendSortieAnnuleeMeteoEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe("SortieService.testerEtAlerterJ1 (test J-1, jamais d'annulation automatique)", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
+  const baseSortie = {
+    id_sortie: 11,
+    latitude: -21.17,
+    longitude: 55.28,
+    date_heure: dansNJours(1),
+    created_by: 5,
+  };
+
+  test("doute (dangereux) : alerte l'organisateur seul, ne touche jamais au statut", async () => {
+    getForecastForDate.mockResolvedValue({ windspeed: 45 });
+    jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+    identiteClient.getUserBasicById.mockResolvedValue({ email: "organisateur@test.fr", name: "Léa" });
+
+    await service.testerEtAlerterJ1(baseSortie);
+
+    expect(service.sortieRepository.update).toHaveBeenCalledWith(11, {
+      meteo_test_j3_fait: true,
+      meteo_alerte_j1_envoyee: true,
+    });
+    expect(sendAlerteMeteoDouteuseEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "organisateur@test.fr" }),
+    );
+    expect(sendSortieAnnuleeMeteoEmail).not.toHaveBeenCalled();
+  });
+
+  test("favorable : marque les indicateurs, aucune alerte envoyée", async () => {
+    getForecastForDate.mockResolvedValue({ windspeed: 10 });
+    jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+
+    await service.testerEtAlerterJ1(baseSortie);
+
+    expect(service.sortieRepository.update).toHaveBeenCalledWith(11, {
+      meteo_test_j3_fait: true,
+      meteo_alerte_j1_envoyee: true,
+    });
+    expect(sendAlerteMeteoDouteuseEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe("SortieService.verifierMeteoEtAnnulerSiDangereux (aiguillage J-3 / J-1)", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
+  function mockSorties(sorties) {
+    jest.spyOn(service.sortieRepository, "findPlanifieesAVenirAvecCoordonnees").mockResolvedValue(sorties);
+  }
+
+  test("à J-3, jamais testée : passe par le test automatique (J-3)", async () => {
+    mockSorties([{ id_sortie: 1, date_heure: dansNJours(3), meteo_test_j3_fait: false, meteo_alerte_j1_envoyee: false }]);
+    const j3 = jest.spyOn(service, "testerEtDeciderJ3").mockResolvedValue(true);
+    const j1 = jest.spyOn(service, "testerEtAlerterJ1").mockResolvedValue();
+
+    const annulees = await service.verifierMeteoEtAnnulerSiDangereux("Bearer x");
+
+    expect(j3).toHaveBeenCalledTimes(1);
+    expect(j1).not.toHaveBeenCalled();
+    expect(annulees).toBe(1);
+  });
+
+  test("à J-2, jamais testée : fenêtre de rattrapage, passe aussi par le test J-3", async () => {
+    mockSorties([{ id_sortie: 1, date_heure: dansNJours(2), meteo_test_j3_fait: false, meteo_alerte_j1_envoyee: false }]);
+    const j3 = jest.spyOn(service, "testerEtDeciderJ3").mockResolvedValue(false);
+    const j1 = jest.spyOn(service, "testerEtAlerterJ1").mockResolvedValue();
+
+    await service.verifierMeteoEtAnnulerSiDangereux("Bearer x");
+
+    expect(j3).toHaveBeenCalledTimes(1);
+    expect(j1).not.toHaveBeenCalled();
+  });
+
+  test("déjà testée à J-3 (favorable), à J-3/J-2 encore : ne rejoue rien", async () => {
+    mockSorties([{ id_sortie: 1, date_heure: dansNJours(3), meteo_test_j3_fait: true, meteo_alerte_j1_envoyee: false }]);
+    const j3 = jest.spyOn(service, "testerEtDeciderJ3").mockResolvedValue(false);
+    const j1 = jest.spyOn(service, "testerEtAlerterJ1").mockResolvedValue();
+
+    await service.verifierMeteoEtAnnulerSiDangereux("Bearer x");
+
+    expect(j3).not.toHaveBeenCalled();
+    expect(j1).not.toHaveBeenCalled();
+  });
+
+  test("à J-1, déjà testée à J-3 : passe par l'alerte seule (J-1)", async () => {
+    mockSorties([{ id_sortie: 1, date_heure: dansNJours(1), meteo_test_j3_fait: true, meteo_alerte_j1_envoyee: false }]);
+    const j3 = jest.spyOn(service, "testerEtDeciderJ3").mockResolvedValue(false);
+    const j1 = jest.spyOn(service, "testerEtAlerterJ1").mockResolvedValue();
+
+    await service.verifierMeteoEtAnnulerSiDangereux("Bearer x");
+
+    expect(j3).not.toHaveBeenCalled();
+    expect(j1).toHaveBeenCalledTimes(1);
+  });
+
+  test("créée trop tard pour le test J-3 (déjà à J-1, jamais testée) : bascule directement en alerte J-1", async () => {
+    mockSorties([{ id_sortie: 1, date_heure: dansNJours(1), meteo_test_j3_fait: false, meteo_alerte_j1_envoyee: false }]);
+    const j3 = jest.spyOn(service, "testerEtDeciderJ3").mockResolvedValue(false);
+    const j1 = jest.spyOn(service, "testerEtAlerterJ1").mockResolvedValue();
+
+    await service.verifierMeteoEtAnnulerSiDangereux("Bearer x");
+
+    expect(j3).not.toHaveBeenCalled();
+    expect(j1).toHaveBeenCalledTimes(1);
+  });
+
+  test("alerte J-1 déjà envoyée : ne rejoue rien", async () => {
+    mockSorties([{ id_sortie: 1, date_heure: dansNJours(1), meteo_test_j3_fait: true, meteo_alerte_j1_envoyee: true }]);
+    const j3 = jest.spyOn(service, "testerEtDeciderJ3").mockResolvedValue(false);
+    const j1 = jest.spyOn(service, "testerEtAlerterJ1").mockResolvedValue();
+
+    await service.verifierMeteoEtAnnulerSiDangereux("Bearer x");
+
+    expect(j3).not.toHaveBeenCalled();
+    expect(j1).not.toHaveBeenCalled();
   });
 });

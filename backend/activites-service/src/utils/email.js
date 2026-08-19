@@ -286,6 +286,31 @@ const sendPropositionsReprogrammationEmail = async ({
   });
 };
 
+// Alerte J-1 (voir SortieService.verifierMeteoEtAnnulerSiDangereux) :
+// conditions jugées à risque la veille de la sortie, mais contrairement au
+// test à J-3, aucune annulation automatique n'est déclenchée à ce stade —
+// trop tard pour une décision purement algorithmique. Envoyé au seul
+// organisateur (Sortie.created_by) : c'est à lui de décider (annuler
+// manuellement via l'application, ou maintenir la sortie).
+const sendAlerteMeteoDouteuseEmail = async ({
+  to,
+  organisateurName,
+  sortieLabel,
+  motifs = [],
+}) => {
+  const motifsHtml = motifs.length
+    ? `<ul>${motifs.map((m) => `<li>${m}</li>`).join("")}</ul>`
+    : "";
+  const introHtml = `<p>Bonjour ${organisateurName},</p><p>La météo prévue pour demain sur la sortie "<strong>${sortieLabel}</strong>" est jugée à risque :</p>${motifsHtml}<p>Il ne s'agit pas d'une annulation automatique : à vous de décider, au vu des conditions, si la sortie doit être maintenue ou annulée.</p>`;
+  return sendEmail({
+    to,
+    subject: `Météo incertaine demain — décision à prendre — ${sortieLabel}`,
+    html: buildSimpleEmailHtml("Météo incertaine — à vous de décider", introHtml, [
+      { label: "Sortie", value: sortieLabel },
+    ]),
+  });
+};
+
 module.exports = {
   sendEmail,
   sendInscriptionConfirmationEmail,
@@ -294,4 +319,5 @@ module.exports = {
   sendSortieReminderEmail,
   sendSortieAnnuleeMeteoEmail,
   sendPropositionsReprogrammationEmail,
+  sendAlerteMeteoDouteuseEmail,
 };
