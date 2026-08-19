@@ -140,13 +140,14 @@ const initializeApp = async () => {
   cron.schedule("0 18 * * *", () => sortieService.envoyerRappels(getSystemAuthHeader()));
   logger.info("Planification des rappels de sortie active (quotidien 18:00)");
 
-  // Vérification météo en deux temps sur les sorties Planifiée localisées
-  // (vent, houle, orage, fortes précipitations) : test à J-3 avec décision
-  // automatique (annule si dangereux), puis re-test à J-1 en simple alerte
-  // (jamais d'annulation automatique à ce stade — décision humaine). Un
-  // premier passage immédiat au démarrage, puis tous les jours à 6h (avant
-  // la préparation matérielle habituelle) — voir SortieService.
-  // verifierMeteoEtAnnulerSiDangereux.
+  // Vérification météo en deux phases sur les sorties Planifiée localisées
+  // (vent, houle, orage, fortes précipitations) : 3 tests sur 3 jours
+  // différents (nominalement J-5, J-4, J-3) avec décision automatique après
+  // le 3e (annule si au moins un des 3 a détecté un danger), puis re-test à
+  // J-1 en simple alerte (jamais d'annulation automatique à ce stade —
+  // décision humaine). Un premier passage immédiat au démarrage, puis tous
+  // les jours à 6h (avant la préparation matérielle habituelle) — voir
+  // SortieService.verifierMeteoEtAnnulerSiDangereux.
   await sortieService.verifierMeteoEtAnnulerSiDangereux(systemAuthHeader);
   cron.schedule("0 6 * * *", () =>
     sortieService.verifierMeteoEtAnnulerSiDangereux(getSystemAuthHeader()),

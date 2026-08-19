@@ -13,20 +13,36 @@ const {
 const { getForecastForDate, evaluerDanger } = require("../utils/meteoClient");
 const { sortiesSeChevauchent } = require("../utils/sortieOverlap");
 
-// Le test météo automatique se joue en deux temps (jamais en continu) :
-//   - à J-3 (JOURS_TEST_AUTO) : décision automatique — annule si dangereux,
-//     motif figé (voir PREFIXE_MOTIF_ANNULATION_METEO).
+// Le test météo automatique se joue en deux phases (jamais en continu) :
+//   - 3 tests sur 3 jours différents, nominalement J-5, J-4, J-3 (voir
+//     ETAPES_TEST_AUTO) : chaque jour, UN SEUL test pas encore fait est joué
+//     (voir testerUneEtapeAuto) — jamais plus d'un par passage de cron,
+//     jamais rejoué. La décision (annuler ou non) ne tombe qu'après le 3e
+//     test, sur la base des motifs accumulés au fil des 3 :
+//     "dangereux" dès qu'au moins un des trois l'a détecté. Motif figé (voir
+//     PREFIXE_MOTIF_ANNULATION_METEO) si annulation.
+//     (Une sortie créée avec moins de 5 jours de marge compresse
+//     naturellement ses 3 tests sur les jours disponibles, dans le même
+//     ordre — voir la sélection de l'étape dans testerUneEtapeAuto.)
 //   - à J-1 (JOURS_ALERTE_HUMAINE), si la sortie n'a pas déjà été annulée à
-//     J-3 : re-test, mais sans jamais annuler automatiquement — trop proche
-//     du jour J pour une décision purement algorithmique. En cas de doute,
-//     l'organisateur est simplement prévenu ; c'est à lui de décider.
+//     l'issue des 3 tests : re-test, mais sans jamais annuler
+//     automatiquement — trop proche du jour J pour une décision purement
+//     algorithmique. En cas de doute, l'organisateur est simplement
+//     prévenu ; c'est à lui de décider.
 // FENETRE_METEO_JOURS élargit la requête d'un jour de marge (voir
 // findPlanifieesAVenirAvecCoordonnees) pour absorber un cron manqué un jour
-// donné sans jamais rejouer un test déjà fait (voir meteo_test_j3_fait /
-// meteo_alerte_j1_envoyee).
-const JOURS_TEST_AUTO = 3;
+// donné sans jamais rejouer un test déjà fait (voir meteo_test_j5_fait /
+// meteo_test_j4_fait / meteo_test_j3_fait / meteo_alerte_j1_envoyee).
+const JOURS_TEST_1 = 5;
 const JOURS_ALERTE_HUMAINE = 1;
-const FENETRE_METEO_JOURS = JOURS_TEST_AUTO + 1;
+const FENETRE_METEO_JOURS = JOURS_TEST_1 + 1;
+// Champ booléen + libellé associé pour chacune des 3 étapes auto, dans
+// l'ordre où elles doivent être jouées.
+const ETAPES_TEST_AUTO = [
+  { champ: "meteo_test_j5_fait", label: "J-5" },
+  { champ: "meteo_test_j4_fait", label: "J-4" },
+  { champ: "meteo_test_j3_fait", label: "J-3" },
+];
 // Dates alternatives proposées à l'organisateur d'une sortie annulée pour
 // météo : jusqu'à PROPOSITIONS_MAX dates, cherchées jour par jour (même
 // heure que la sortie annulée) sur une fenêtre de PROPOSITIONS_FENETRE_JOURS.
@@ -558,14 +574,15 @@ class SortieService extends BaseService {
   }
 
   // Vérifie la météo des sorties "Planifiée" localisées (latitude/longitude
-  // renseignées) en deux temps distincts, jamais en continu (voir
-  // JOURS_TEST_AUTO / JOURS_ALERTE_HUMAINE) :
-  //   - à J-3 : test unique, décision automatique — annule si dangereux
-  //     (voir testerEtDeciderJ3), motif figé.
-  //   - à J-1, si la sortie n'a pas déjà été annulée à J-3 : re-test, mais
-  //     sans jamais annuler automatiquement (voir testerEtAlerterJ1) — en
-  //     cas de doute, l'organisateur est simplement prévenu, à lui de
-  //     décider.
+  // renseignées) en deux phases distinctes, jamais en continu :
+  //   - 3 tests sur 3 jours différents (voir ETAPES_TEST_AUTO et
+  //     testerUneEtapeAuto) : un seul test pas encore fait par passage de
+  //     cron. Décision automatique — annule si au moins un des 3 tests a
+  //     détecté un danger, motif figé — seulement après le 3e.
+  //   - à J-1, si la sortie n'a pas déjà été annulée à l'issue des 3
+  //     tests : re-test, mais sans jamais annuler automatiquement (voir
+  //     testerEtAlerterJ1) — en cas de doute, l'organisateur est simplement
+  //     prévenu, à lui de décider.
   //
   // Appelé par un cron quotidien (voir app.js) — best-effort par sortie :
   // une erreur (API météo indisponible, email en échec...) sur une sortie
@@ -579,17 +596,14 @@ class SortieService extends BaseService {
     for (const sortie of sorties) {
       try {
         const restant = joursAvantSortie(sortie.date_heure);
+        const etapesRestantes = ETAPES_TEST_AUTO.some(({ champ }) => !sortie[champ]);
 
-        if (
-          !sortie.meteo_test_j3_fait &&
-          restant <= JOURS_TEST_AUTO &&
-          restant > JOURS_ALERTE_HUMAINE
-        ) {
-          const cancelled = await this.testerEtDeciderJ3(sortie, authHeader);
+        if (etapesRestantes && restant > JOURS_ALERTE_HUMAINE) {
+          const cancelled = await this.testerUneEtapeAuto(sortie, authHeader);
           if (cancelled) annulees += 1;
         } else if (!sortie.meteo_alerte_j1_envoyee && restant <= JOURS_ALERTE_HUMAINE) {
           // Couvre aussi le cas d'une sortie créée trop tard pour avoir
-          // bénéficié du test J-3 (meteo_test_j3_fait jamais posé) : trop
+          // bénéficié des 3 tests (des étapes restent non faites) : trop
           // proche du jour J pour une décision automatique, on bascule
           // directement en alerte seule.
           await this.testerEtAlerterJ1(sortie);
@@ -604,11 +618,16 @@ class SortieService extends BaseService {
     return annulees;
   }
 
-  // Test à J-3 : décision automatique. Marque meteo_test_j3_fait dans tous
-  // les cas (dangereux ou non) pour ne jamais le rejouer. Annule, fige le
-  // motif et notifie (inscrits + organisateur) uniquement si dangereux.
-  // Renvoie `true` si la sortie a été annulée.
-  async testerEtDeciderJ3(sortie, authHeader) {
+  // Joue LE PROCHAIN test non encore fait parmi les 3 (J-5, J-4, J-3, dans
+  // cet ordre — voir ETAPES_TEST_AUTO), jamais plus d'un par appel. Accumule
+  // ses motifs dans meteo_motifs_detectes si dangereux. Seul le 3e et
+  // dernier test (meteo_test_j3_fait) déclenche la décision : annule si au
+  // moins un des 3 tests a détecté un danger ("OR" — le choix le plus
+  // prudent), fige le motif et notifie (inscrits + organisateur). Renvoie
+  // `true` si la sortie a été annulée à l'issue de ce dernier test.
+  async testerUneEtapeAuto(sortie, authHeader) {
+    const etape = ETAPES_TEST_AUTO.find(({ champ }) => !sortie[champ]);
+
     const forecast = await getForecastForDate({
       latitude: sortie.latitude,
       longitude: sortie.longitude,
@@ -616,15 +635,35 @@ class SortieService extends BaseService {
     });
     const { dangereux, motifs } = evaluerDanger(forecast);
 
-    if (!dangereux) {
-      await this.sortieRepository.update(sortie.id_sortie, { meteo_test_j3_fait: true });
+    const motifsAccumules = Array.isArray(sortie.meteo_motifs_detectes)
+      ? [...sortie.meteo_motifs_detectes]
+      : [];
+    if (dangereux) {
+      motifsAccumules.push(...motifs.map((m) => `${m} (détecté à ${etape.label})`));
+    }
+
+    const estDernierTest = etape.champ === "meteo_test_j3_fait";
+    if (!estDernierTest) {
+      await this.sortieRepository.update(sortie.id_sortie, {
+        [etape.champ]: true,
+        meteo_motifs_detectes: motifsAccumules.length ? motifsAccumules : null,
+      });
+      return false;
+    }
+
+    if (motifsAccumules.length === 0) {
+      await this.sortieRepository.update(sortie.id_sortie, {
+        [etape.champ]: true,
+        meteo_motifs_detectes: null,
+      });
       return false;
     }
 
     await this.sortieRepository.update(sortie.id_sortie, {
+      [etape.champ]: true,
+      meteo_motifs_detectes: motifsAccumules,
       statut: "Annulée",
-      motif_annulation: `${PREFIXE_MOTIF_ANNULATION_METEO} : ${motifs.join(", ")}.`,
-      meteo_test_j3_fait: true,
+      motif_annulation: `${PREFIXE_MOTIF_ANNULATION_METEO} : ${motifsAccumules.join(", ")}.`,
     });
 
     const label = formatSortieLabel(sortie);
@@ -642,7 +681,7 @@ class SortieService extends BaseService {
           to: adherent.email,
           adherentName: `${adherent.prenom} ${adherent.nom}`,
           sortieLabel: label,
-          motifs,
+          motifs: motifsAccumules,
           propositions,
         });
       } catch (error) {
@@ -661,7 +700,7 @@ class SortieService extends BaseService {
             to: organisateur.email,
             organisateurName: organisateur.name,
             sortieLabel: label,
-            motifs,
+            motifs: motifsAccumules,
             propositions,
           });
         }
@@ -678,8 +717,10 @@ class SortieService extends BaseService {
 
   // Test à J-1 : jamais d'annulation automatique à ce stade — seulement une
   // alerte à l'organisateur en cas de doute (dangereux=true), qui décide
-  // lui-même (maintien ou annulation manuelle). Marque
-  // meteo_alerte_j1_envoyee dans tous les cas pour ne jamais le rejouer.
+  // lui-même (maintien ou annulation manuelle). Marque toutes les étapes
+  // comme faites (y compris les 3 tests auto, au cas où une sortie créée
+  // trop tard n'ait pas eu le temps de tous les jouer) pour ne jamais rien
+  // rejouer.
   async testerEtAlerterJ1(sortie) {
     const forecast = await getForecastForDate({
       latitude: sortie.latitude,
@@ -689,6 +730,8 @@ class SortieService extends BaseService {
     const { dangereux, motifs } = evaluerDanger(forecast);
 
     await this.sortieRepository.update(sortie.id_sortie, {
+      meteo_test_j5_fait: true,
+      meteo_test_j4_fait: true,
       meteo_test_j3_fait: true,
       meteo_alerte_j1_envoyee: true,
     });
