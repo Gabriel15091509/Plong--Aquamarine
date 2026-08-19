@@ -35,7 +35,7 @@ import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import ModalOverlay from "../../components/Common/ModalOverlay";
-import { formatDateTime } from "../../utils/helpers";
+import { formatDateTime, joursRestants, formatCompteARebours } from "../../utils/helpers";
 
 // Configuration des statuts de sortie
 const SORTIE_STATUS = [
@@ -467,6 +467,11 @@ const SortiesPage = () => {
               // devenue complète/verrouillée, puisque la place de l'adhérent
               // est déjà acquise ou en cours d'examen.
               const monInscription = mesInscriptionsParSortie.get(sortieId);
+              // Compte à rebours : n'a de sens que pour une sortie encore à
+              // venir et non verrouillée (Planifiée) — inutile une fois
+              // Terminée/En cours/Annulée.
+              const jours = joursRestants(sortie.date_heure);
+              const showCompteARebours = sortie.statut === "Planifiée" && jours >= 0;
 
               if (viewMode === "grid") {
                 return (
@@ -494,11 +499,18 @@ const SortiesPage = () => {
                         >
                           {sortie.statut || "Planifiée"}
                         </span>
-                        {isFull && (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm">
-                            Complet
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {showCompteARebours && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 shadow-sm">
+                              {formatCompteARebours(jours)}
+                            </span>
+                          )}
+                          {isFull && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm">
+                              Complet
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3">
                         <span className="text-lg font-bold text-white drop-shadow">
@@ -698,9 +710,9 @@ const SortiesPage = () => {
                             <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
                               {sortie.site || ""}
                             </span>
-                            {new Date(sortie.date_heure) > new Date() && (
-                              <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full">
-                                À venir
+                            {showCompteARebours && (
+                              <span className="text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 px-2 py-0.5 rounded-full font-medium">
+                                {formatCompteARebours(jours)}
                               </span>
                             )}
                           </div>

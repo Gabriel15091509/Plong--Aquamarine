@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiAnchor, FiMapPin, FiCalendar, FiArrowRight } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useAuth } from "../../context/AuthContext";
 import { joursRestants } from "../../utils/helpers";
 
 const formatDateLongue = (date) =>
@@ -12,19 +14,49 @@ const formatDateLongue = (date) =>
     month: "long",
   });
 
-// Bandeau "Prochaine sortie" : la sortie la plus proche dans le temps (déjà
-// triée et scopée par niveau côté backend, voir SortieService.
-// getUpcomingSorties/useGetUpcoming) avec un compte à rebours en jours —
-// affiché sur le tableau de bord plutôt que noyé dans la liste des sorties,
-// pour rester visible sans avoir à naviguer.
+// Bandeau "Prochaine sortie", affiché sur le tableau de bord plutôt que
+// noyé dans la liste des sorties, pour rester visible sans avoir à
+// naviguer. La source diffère selon le rôle :
+//   - staff (président/moniteur/trésorier) : la prochaine sortie du club,
+//     toutes confondues (voir SortieService.getUpcomingSorties).
+//   - adhérent : SA prochaine sortie, et seulement si son inscription est
+//     "Confirmée" — une sortie où il est juste en attente/liste d'attente
+//     n'est pas encore acquise, ça n'aurait pas de sens de lancer un compte
+//     à rebours dessus.
 const ProchaineSortieCard = () => {
+  const { user } = useAuth();
+  const isAdherent = user?.role === "adherent";
+
   const { useGetUpcoming } = useSorties();
-  const { data, isLoading } = useGetUpcoming();
+  const { useGetAll: useGetAllInscriptions } = useInscriptions();
+
+  // Scopée à l'adhérent connecté côté backend (InscriptionService.getAll) —
+  // un seul appel, filtré/trié ci-dessous, plutôt qu'un endpoint dédié.
+  const { data: upcomingData, isLoading: loadingUpcoming } = useGetUpcoming({
+    enabled: !isAdherent,
+  });
+  const { data: inscriptionsData, isLoading: loadingInscriptions } =
+    useGetAllInscriptions({ enabled: isAdherent });
+
+  const isLoading = isAdherent ? loadingInscriptions : loadingUpcoming;
 
   const prochaine = useMemo(() => {
-    const sorties = data?.data || [];
+    if (isAdherent) {
+      const inscriptions = inscriptionsData?.data || [];
+      const now = new Date();
+      const confirmees = inscriptions
+        .filter(
+          (i) =>
+            i.statut === "Confirmée" &&
+            i.sortie?.date_heure &&
+            new Date(i.sortie.date_heure) >= now,
+        )
+        .sort((a, b) => new Date(a.sortie.date_heure) - new Date(b.sortie.date_heure));
+      return confirmees[0]?.sortie || null;
+    }
+    const sorties = upcomingData?.data || [];
     return sorties.length > 0 ? sorties[0] : null;
-  }, [data]);
+  }, [isAdherent, inscriptionsData, upcomingData]);
 
   if (isLoading) {
     return (
@@ -40,10 +72,12 @@ const ProchaineSortieCard = () => {
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Aucune sortie à venir
+            {isAdherent ? "Aucune sortie confirmée à venir" : "Aucune sortie à venir"}
           </h3>
           <p className="text-xs text-slate-400 dark:text-slate-500">
-            Aucune sortie planifiée pour le moment.
+            {isAdherent
+              ? "Vous n'êtes inscrit(e) et confirmé(e) à aucune sortie pour le moment."
+              : "Aucune sortie planifiée pour le moment."}
           </p>
         </div>
       </div>
@@ -74,7 +108,7 @@ const ProchaineSortieCard = () => {
           </div>
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-white/70">
-              Prochaine sortie
+              {isAdherent ? "Ma prochaine sortie confirmée" : "Prochaine sortie"}
             </p>
             <h3 className="text-lg font-bold text-white truncate">
               {prochaine.type} — {prochaine.site || prochaine.lieu}
