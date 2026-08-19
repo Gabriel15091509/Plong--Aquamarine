@@ -110,14 +110,26 @@ const AdhesionForm = () => {
   // licence FFESM depuis sa fiche Adherent (source de vérité, plutôt que la
   // dernière adhésion FFESM en date qui n'est pas toujours fiable/à jour).
   // En édition, la valeur vient déjà de l'adhésion en cours de modification.
+  // Ne se redéclenche qu'à un vrai changement d'adhérent (voir
+  // lastAutoFilledAdherentRef) : sans ça, un simple refetch en arrière-plan
+  // de adherentsData (React Query, sur ce même adhérent) écraserait
+  // silencieusement une correction que l'utilisateur viendrait de taper à la
+  // main dans le champ.
+  const lastAutoFilledAdherentRef = useRef(null);
   useEffect(() => {
     if (editMode || !formData.num_adherent) return;
+    if (lastAutoFilledAdherentRef.current === formData.num_adherent) return;
     const adherent = adherentsData?.data?.find(
       (a) => a.num_adherent === formData.num_adherent,
     );
+    // adherentsData pas encore chargé pour cet adhérent : on retentera au
+    // prochain rendu (dépendance adherentsData) plutôt que de figer un champ
+    // vide sans jamais le remplir.
+    if (!adherent) return;
+    lastAutoFilledAdherentRef.current = formData.num_adherent;
     setFormData((prev) => ({
       ...prev,
-      num_licence_ffesm: adherent?.num_licence_ffesm || "",
+      num_licence_ffesm: adherent.num_licence_ffesm || "",
     }));
   }, [formData.num_adherent, adherentsData, editMode]);
 
