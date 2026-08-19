@@ -14,6 +14,8 @@ import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
 import { STATUT_INSCRIPTION } from "../../utils/constants";
 
+import ErrorState from "../Common/ErrorState";
+
 // TODO: Ajouter un filtre par date de sortie
 const InscriptionList = () => {
   const [searchParams] = useSearchParams();
@@ -188,7 +190,7 @@ const InscriptionList = () => {
 
   if (isLoading || loadingAdherents || loadingSorties)
     return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   // Actions
   const handleDelete = async (id) => {

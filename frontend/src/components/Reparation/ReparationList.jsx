@@ -20,11 +20,13 @@ import { useReparations } from "../../hooks/Reparation/useReparations";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 
+import ErrorState from "../Common/ErrorState";
+
 const ReparationList = () => {
   const { useGetAll, useRemove } = useReparations();
   const { useGetAll: useGetAllMateriels } = useMateriels();
 
-  const { data, isLoading, error } = useGetAll();
+  const { data, isLoading, error, refetch } = useGetAll();
   const { data: materielsData, isLoading: loadingMateriels } =
     useGetAllMateriels();
   const remove = useRemove();
@@ -72,7 +74,7 @@ const ReparationList = () => {
   };
 
   if (isLoading || loadingMateriels) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredReparations.length === 0) {
     return (

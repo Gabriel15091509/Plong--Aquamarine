@@ -6,6 +6,8 @@ import { FiPlus } from "react-icons/fi";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import AdherentList from "../../components/Adherent/AdherentList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 /**
  * Page principale de gestion des adhérents
  */
@@ -17,8 +19,7 @@ const AdherentsPage = () => {
 
   // Gestion de l'état d'erreur — le chargement est géré par AdherentList
   // elle-même (son propre squelette liste), pour éviter un double reflet.
-  if (error)
-    return <div className="text-red-500">Erreur : {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

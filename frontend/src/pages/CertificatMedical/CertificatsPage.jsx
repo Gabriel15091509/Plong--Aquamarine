@@ -6,6 +6,8 @@ import { FiPlus, FiFileText, FiHeart, FiChevronRight } from "react-icons/fi";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import CertificatList from "../../components/CertificatMedical/CertificatList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 const CertificatsPage = () => {
   const { useGetAll } = useCertificats();
   const { data, isLoading, error } = useGetAll();
@@ -14,7 +16,7 @@ const CertificatsPage = () => {
 
   // Le chargement est géré par CertificatList elle-même (son propre
   // squelette liste), pour éviter un double reflet.
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

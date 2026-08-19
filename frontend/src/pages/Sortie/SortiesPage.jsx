@@ -11,7 +11,6 @@ import {
   FiTrendingUp,
   FiCheckCircle,
   FiXCircle,
-  FiAlertCircle,
   FiBarChart2,
   FiEye,
   FiEdit,
@@ -35,6 +34,8 @@ import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import ModalOverlay from "../../components/Common/ModalOverlay";
+import ErrorState from "../../components/Common/ErrorState";
+
 import { formatDateTime, joursRestants, formatCompteARebours } from "../../utils/helpers";
 
 // Configuration des statuts de sortie
@@ -254,23 +255,7 @@ const SortiesPage = () => {
   if (loadingSorties || loadingAdherents) return <LoadingSpinner variant="list" />;
 
   if (sortiesError) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center py-12"
-      >
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
-          <FiAlertCircle className="w-8 h-8 text-red-500 dark:text-red-400" />
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-          Erreur de chargement
-        </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {sortiesError?.message}
-        </p>
-      </motion.div>
-    );
+    return <ErrorState onRetry={refetch} />;
   }
 
   if (filteredSorties.length === 0) {

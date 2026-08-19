@@ -24,6 +24,8 @@ import { formatDate, formatCurrency } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import { TYPE_ADHESION_OPTIONS } from "../../utils/constants";
 
+import ErrorState from "../Common/ErrorState";
+
 const AdhesionList = () => {
   // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { hasRole } = useAuth();
@@ -160,7 +162,7 @@ const AdhesionList = () => {
 
   // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
   if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredAdhesions.length === 0) {
     return (

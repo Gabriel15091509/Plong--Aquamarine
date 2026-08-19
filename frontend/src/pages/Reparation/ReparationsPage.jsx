@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { useReparations } from "../../hooks/Reparation/useReparations";
 import ReparationList from "../../components/Reparation/ReparationList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 const ReparationsPage = () => {
   const { useGetAll } = useReparations();
   const { data, isLoading, error } = useGetAll();
@@ -11,8 +13,7 @@ const ReparationsPage = () => {
 
   // Le chargement est géré par ReparationList elle-même (son propre
   // squelette liste), pour éviter un double reflet.
-  if (error)
-    return <div className="text-red-500">Erreur : {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

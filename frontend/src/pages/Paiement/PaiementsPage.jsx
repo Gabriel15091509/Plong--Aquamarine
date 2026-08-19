@@ -9,6 +9,8 @@ import PaiementList from "../../components/Paiement/PaiementList";
 import { useAuth } from "../../context/AuthContext";
 import paiementService from "../../services/Paiement/paiementService";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 // "YYYY-MM" du mois en cours, pour préremplir le sélecteur d'export.
 const moisCourant = () => new Date().toISOString().slice(0, 7);
 
@@ -25,7 +27,7 @@ const PaiementsPage = () => {
 
   // Le chargement est géré par PaiementList elle-même (son propre
   // squelette liste), pour éviter un double reflet.
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState />;
 
   // Export CSV mensuel (CDC §8.3) : bornes du mois sélectionné, en tenant
   // compte du nombre de jours réel (new Date(year, month, 0) = dernier jour

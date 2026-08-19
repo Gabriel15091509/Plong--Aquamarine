@@ -6,6 +6,8 @@ import { FiPlus, FiFileText } from "react-icons/fi";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
 import AdhesionList from "../../components/Adhesion/AdhesionList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 /**
  * Page principale de gestion des adhésions
  */
@@ -17,8 +19,7 @@ const AdhesionsPage = () => {
 
   // Gestion de l'état d'erreur — le chargement est géré par AdhesionList
   // elle-même (son propre squelette liste), pour éviter un double reflet.
-  if (error)
-    return <div className="text-red-500">Erreur : {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

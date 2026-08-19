@@ -29,6 +29,8 @@ import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 
+import ErrorState from "../Common/ErrorState";
+
 // TODO: Ajouter un filtre par niveau de formation
 const FormationList = () => {
   const { user, hasRole } = useAuth();
@@ -112,7 +114,7 @@ const FormationList = () => {
   }, [allFormations, adherentMap, filter, searchTerm]);
 
   if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   const totalPages = Math.ceil(filteredFormations.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;

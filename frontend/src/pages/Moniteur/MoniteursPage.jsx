@@ -6,6 +6,8 @@ import { FiPlus, FiAward } from "react-icons/fi";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import MoniteurList from "../../components/Moniteur/MoniteurList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 /**
  * Page principale de gestion des moniteurs
  */
@@ -17,8 +19,7 @@ const MoniteursPage = () => {
 
   // Gestion de l'état d'erreur — le chargement est géré par MoniteurList
   // elle-même (son propre squelette liste), pour éviter un double reflet.
-  if (error)
-    return <div className="text-red-500">Erreur : {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

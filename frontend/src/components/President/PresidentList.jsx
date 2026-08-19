@@ -23,6 +23,8 @@ import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useUsers } from "../../hooks/User/useUsers";
 import { photoUrl } from "../../utils/photoUrl";
 
+import ErrorState from "../Common/ErrorState";
+
 const toArray = (value) => {
   if (!value) return [];
   if (Array.isArray(value)) return value;
@@ -111,7 +113,7 @@ const PresidentList = () => {
 
   // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
   if (isLoading || loadingMoniteurs || loadingUsers) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredPresidents.length === 0) {
     return (

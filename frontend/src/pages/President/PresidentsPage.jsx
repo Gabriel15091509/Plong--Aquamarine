@@ -6,6 +6,8 @@ import { FiPlus, FiShield } from "react-icons/fi";
 import { usePresidents } from "../../hooks/President/usePresidents";
 import PresidentList from "../../components/President/PresidentList";
 
+import ErrorState from "../../components/Common/ErrorState";
+
 /**
  * Page principale de gestion des présidents
  */
@@ -17,8 +19,7 @@ const PresidentsPage = () => {
 
   // Gestion de l'état d'erreur — le chargement est géré par PresidentList
   // elle-même (son propre squelette liste), pour éviter un double reflet.
-  if (error)
-    return <div className="text-red-500">Erreur : {error.message}</div>;
+  if (error) return <ErrorState />;
 
   return (
     <motion.div

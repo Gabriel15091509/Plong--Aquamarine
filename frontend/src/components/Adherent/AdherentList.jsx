@@ -25,6 +25,8 @@ import StatusBadge from "../Common/StatusBadge";
 import { photoUrl } from "../../utils/photoUrl";
 import { STATUT_ADHERENT_OPTIONS } from "../../utils/constants";
 
+import ErrorState from "../Common/ErrorState";
+
 // TODO: Ajouter un filtre par date d'inscription
 const AdherentList = () => {
   const { hasRole } = useAuth();
@@ -60,7 +62,7 @@ const AdherentList = () => {
   }, [allAdherents, filter, searchTerm]);
 
   if (isLoading) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   const totalPages = Math.ceil(filteredAdherents.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;

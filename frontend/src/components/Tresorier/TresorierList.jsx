@@ -22,6 +22,8 @@ import { useTresoriers } from "../../hooks/Tresorier/useTresoriers";
 import { useUsers } from "../../hooks/User/useUsers";
 import { photoUrl } from "../../utils/photoUrl";
 
+import ErrorState from "../Common/ErrorState";
+
 const TresorierList = () => {
   // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { useGetAll, useRemove } = useTresoriers();
@@ -83,7 +85,7 @@ const TresorierList = () => {
 
   // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
   if (isLoading || loadingUsers) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredTresoriers.length === 0) {
     return (

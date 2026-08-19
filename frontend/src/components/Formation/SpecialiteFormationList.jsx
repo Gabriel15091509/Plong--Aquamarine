@@ -20,12 +20,14 @@ import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 
+import ErrorState from "../Common/ErrorState";
+
 const SpecialiteFormationList = () => {
   const { useGetAll, useRemove } = useSpecialitesFormation();
   const { useGetAll: useGetAllAdherents } = useAdherents();
   const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
 
-  const { data, isLoading, error } = useGetAll();
+  const { data, isLoading, error, refetch } = useGetAll();
   const { data: adherentsData, isLoading: loadingAdherents } = useGetAllAdherents();
   const { data: moniteursData, isLoading: loadingMoniteurs } = useGetAllMoniteurs();
 
@@ -65,7 +67,7 @@ const SpecialiteFormationList = () => {
   }, [data, adherentMap, searchTerm]);
 
   if (isLoading || loadingAdherents || loadingMoniteurs) return <LoadingSpinner variant="list" />;
-  if (error) return <div className="text-red-500">Erreur: {error.message}</div>;
+  if (error) return <ErrorState onRetry={refetch} />;
 
   const handleDelete = async (id) => {
     try {
