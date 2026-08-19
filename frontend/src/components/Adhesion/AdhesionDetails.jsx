@@ -218,6 +218,11 @@ const AdhesionDetails = () => {
 
   const isClub = adhesion.type === "Club";
   const isRejected = adhesion.statut_validation === "Rejeté";
+  // Tant que le président/trésorier n'a pas validé la soumission, "À jour"/
+  // "Expirée" n'a pas de sens : ce n'est pas encore un dossier accepté par
+  // le club. Idem pour "Modifier" plus bas : le corriger directement
+  // court-circuiterait le circuit rejet/resoumission.
+  const isPending = adhesion.statut_validation === "En attente";
 
   const getStatutColor = (statut) => {
     const colors = {
@@ -348,13 +353,19 @@ const AdhesionDetails = () => {
                 une adhésion créée par le staff reste modifiable comme avant. */}
             {!(adhesion.soumis_par_adherent && adhesion.statut_validation === "Validé") && (
               <>
-                <Link
-                  to={`/adhesions/edit/${adhesion.id_adhesion}`}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-                >
-                  <FiEdit className="w-4 h-4" />
-                  Modifier
-                </Link>
+                {/* Tant que la soumission est en attente, la corriger
+                    directement n'a pas sa place ici : c'est Valider/Rejeter
+                    ci-dessus qui tranche, pas une modification silencieuse du
+                    dossier de l'adhérent. */}
+                {!isPending && (
+                  <Link
+                    to={`/adhesions/edit/${adhesion.id_adhesion}`}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
+                  >
+                    <FiEdit className="w-4 h-4" />
+                    Modifier
+                  </Link>
+                )}
                 <button
                   onClick={() => setShowDeleteModal(true)}
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
@@ -396,9 +407,10 @@ const AdhesionDetails = () => {
             {/* Validité (À jour/Expiré) dérivée de date_fin — distincte du
                 circuit de validation/paiement ci-dessus, dans son propre
                 bloc étiqueté pour ne pas se lire comme un doublon accolé.
-                Rejetée : n'a jamais été acceptée, "À jour"/"Expiré" n'a pas
-                de sens — seul le rejet (bloc de gauche + motif) compte. */}
-            {!isRejected && (
+                Rejetée ou en attente : pas (encore) acceptée, "À jour"/
+                "Expiré" n'a pas de sens — seul le bloc de gauche (validation
+                + motif) compte. */}
+            {!isRejected && !isPending && (
               <div>
                 <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                   Validité
@@ -500,7 +512,11 @@ const AdhesionDetails = () => {
             value={
               <span className="flex items-center gap-2">
                 {formatDate(adhesion.date_fin)}
-                <StatusBadge status={adhesion.statut} />
+                {/* Même règle qu'au-dessus : "À jour"/"Expiré" seulement une
+                    fois le dossier validé. */}
+                {!isRejected && !isPending && (
+                  <StatusBadge status={adhesion.statut} />
+                )}
               </span>
             }
           />

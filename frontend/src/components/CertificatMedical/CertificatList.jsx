@@ -380,20 +380,26 @@ const CertificatList = () => {
                             {/* Badges et infos secondaires regroupés sur
                                 leur propre ligne sur mobile. */}
                             <span className="flex flex-wrap items-center gap-2">
-                              {/* Afficher uniquement si moins de 30 jours restants */}
-                              {daysRemaining <= 30 && daysRemaining > 0 && (
+                              {/* Afficher uniquement si moins de 30 jours
+                                  restants, et seulement une fois le
+                                  certificat validé — en attente ou rejeté, sa
+                                  date de péremption n'a pas encore été
+                                  acceptée par le club. */}
+                              {certificat.statut_validation === "Validé" &&
+                                daysRemaining <= 30 &&
+                                daysRemaining > 0 && (
                                 <span className="flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
                                   <FiClock className="w-3.5 h-3.5 flex-shrink-0" />
                                   {daysRemaining}{" "}
                                   {daysRemaining === 1 ? "jour" : "jours"}
                                 </span>
                               )}
-                              {/* Rejeté : l'expiration (À jour/Expiré) n'a pas
-                                  de sens pour un document jamais accepté —
-                                  seul le motif de rejet compte. Validé :
-                                  inutile de le répéter, l'expiration seule
-                                  suffit à l'affichage. */}
-                              {certificat.statut_validation !== "Rejeté" && (
+                              {/* En attente ou rejeté : l'expiration (À jour/
+                                  Expiré) n'a pas de sens pour un document pas
+                                  (encore) accepté — seul le statut de
+                                  validation (badge suivant) compte tant qu'il
+                                  n'est pas "Validé". */}
+                              {certificat.statut_validation === "Validé" && (
                                 <StatusBadge status={certificat.statut} />
                               )}
                               {certificat.statut_validation !== "Validé" && (
@@ -445,13 +451,19 @@ const CertificatList = () => {
                           {canManageCertificat &&
                             !(certificat.soumis_par_adherent && certificat.statut_validation === "Validé") && (
                             <>
-                              <Link
-                                to={`/certificats/edit/${certificat.id_certificat}`}
-                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                                title="Modifier"
-                              >
-                                <FiEdit className="w-4 h-4" />
-                              </Link>
+                              {/* En attente : Modifier n'a pas sa place ici —
+                                  c'est Valider/Rejeter ci-dessus qui tranche,
+                                  pas une correction silencieuse du dossier
+                                  soumis par l'adhérent. */}
+                              {certificat.statut_validation !== "En attente" && (
+                                <Link
+                                  to={`/certificats/edit/${certificat.id_certificat}`}
+                                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                  title="Modifier"
+                                >
+                                  <FiEdit className="w-4 h-4" />
+                                </Link>
+                              )}
                               <button
                                 onClick={() =>
                                   setDeleteModal(certificat.id_certificat)
