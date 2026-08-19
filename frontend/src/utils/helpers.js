@@ -167,6 +167,18 @@ export const isFuture = (date) => {
   }
 };
 
+// Nombre de jours calendaires (pas d'heures) avant `date` — troncature à
+// minuit pour que "aujourd'hui"/"demain" ne dépendent pas de l'heure
+// actuelle (même logique que côté backend, voir meteoClient.js). Utilisé
+// par le compte à rebours de ProchaineSortieCard.
+export const joursRestants = (date) => {
+  const aujourdhui = new Date();
+  aujourdhui.setHours(0, 0, 0, 0);
+  const cible = new Date(date);
+  cible.setHours(0, 0, 0, 0);
+  return Math.round((cible - aujourdhui) / 86400000);
+};
+
 // NOUVEAU - Formater une durée en minutes/secondes
 export const formatDuration = (minutes) => {
   if (!minutes && minutes !== 0) return "-";
