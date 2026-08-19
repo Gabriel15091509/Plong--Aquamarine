@@ -20,6 +20,7 @@ import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import StatsCard from "../Common/StatsCard";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import DashboardHero from "./DashboardHero";
+import ProchaineSortieCard from "./ProchaineSortieCard";
 import BarChart from "../Charts/BarChart";
 import PieChart from "../Charts/PieChart";
 import RecentActivityAdherent from "./RecentActivityAdherent";
@@ -283,6 +284,11 @@ const AdherentRecapCard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Sortie la plus proche (compatible avec mon niveau) + compte à
+          rebours — visible d'un coup d'œil plutôt que noyée dans la liste
+          des sorties. */}
+      <ProchaineSortieCard />
+
       {alerteActive && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}

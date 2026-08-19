@@ -8,6 +8,7 @@ import {
   formatDuration,
   formatPhoneNumber,
   isSortieSelectionnable,
+  joursRestants,
 } from "./helpers";
 
 describe("formatDate", () => {
@@ -106,5 +107,31 @@ describe("isSortieSelectionnable", () => {
     expect(isSortieSelectionnable({ statut: "Terminée" })).toBe(false);
     expect(isSortieSelectionnable({ statut: "En cours" })).toBe(false);
     expect(isSortieSelectionnable({ statut: "Annulée" })).toBe(false);
+  });
+});
+
+describe("joursRestants", () => {
+  it("renvoie 0 pour aujourd'hui, quelle que soit l'heure", () => {
+    const dansQuelquesHeures = new Date();
+    dansQuelquesHeures.setHours(dansQuelquesHeures.getHours() + 3);
+    expect(joursRestants(dansQuelquesHeures)).toBe(0);
+  });
+
+  it("renvoie 1 pour demain", () => {
+    const demain = new Date();
+    demain.setDate(demain.getDate() + 1);
+    expect(joursRestants(demain)).toBe(1);
+  });
+
+  it("renvoie le bon compte pour une date dans plusieurs jours", () => {
+    const dansCinqJours = new Date();
+    dansCinqJours.setDate(dansCinqJours.getDate() + 5);
+    expect(joursRestants(dansCinqJours)).toBe(5);
+  });
+
+  it("renvoie une valeur négative pour une date passée", () => {
+    const hier = new Date();
+    hier.setDate(hier.getDate() - 1);
+    expect(joursRestants(hier)).toBe(-1);
   });
 });

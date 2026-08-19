@@ -34,6 +34,7 @@ import PieChart from "../../components/Charts/PieChart";
 import RecentActivity from "../../components/Dashboard/RecentActivity";
 import AdherentRecapCard from "../../components/Dashboard/AdherentRecapCard";
 import DashboardHero from "../../components/Dashboard/DashboardHero";
+import ProchaineSortieCard from "../../components/Dashboard/ProchaineSortieCard";
 import { useAuth } from "../../context/AuthContext";
 
 // Formattage des nombres
@@ -588,6 +589,10 @@ const StaffDashboardContent = () => {
 
   return (
     <div className="min-h-screen from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 space-y-6">
+      {/* Sortie la plus proche + compte à rebours — visible d'un coup d'œil
+          plutôt que noyée dans la liste des sorties. */}
+      <ProchaineSortieCard />
+
       {/* Bannière d'erreur */}
       {hasError && (
         <motion.div
