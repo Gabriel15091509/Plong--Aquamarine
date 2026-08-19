@@ -21,6 +21,7 @@ import {
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SortieLocationPicker from "./SortieLocationPicker";
+import LieuAutocompleteInput from "./LieuAutocompleteInput";
 import {
   TYPE_SORTIE_OPTIONS,
   STATUT_SORTIE_OPTIONS,
@@ -153,6 +154,22 @@ const SortieForm = () => {
       site: site || prev.site,
     }));
 
+  // Symétrique de handleAddressResolved (carte → champs) : ici l'utilisateur
+  // choisit une suggestion issue de la saisie du champ "Lieu", donc c'est le
+  // texte qui pilote la carte — on repositionne le point et on complète
+  // "Site" si Nominatim en propose un, sans écraser un site déjà saisi à la
+  // main s'il n'en renvoie pas.
+  const handleLieuSelected = (result) => {
+    setFormData((prev) => ({
+      ...prev,
+      lieu: result.lieu || prev.lieu,
+      site: result.site || prev.site,
+      latitude: Math.round(result.lat * 1e6) / 1e6,
+      longitude: Math.round(result.lng * 1e6) / 1e6,
+    }));
+    setErrors((prev) => ({ ...prev, lieu: "", latitude: "" }));
+  };
+
   const validate = () => {
     const newErrors = {};
     if (!formData.date_heure) newErrors.date_heure = "La date est requise";
@@ -271,11 +288,11 @@ const SortieForm = () => {
                 Lieu *
               </span>
             </label>
-            <input
-              type="text"
+            <LieuAutocompleteInput
               name="lieu"
               value={formData.lieu}
               onChange={handleChange}
+              onSelect={handleLieuSelected}
               onFocus={() => handleFocus("lieu")}
               onBlur={handleBlur}
               className={inputClasses("lieu")}
@@ -284,6 +301,10 @@ const SortieForm = () => {
             {errors.lieu && (
               <p className="mt-1.5 text-sm text-red-500">{errors.lieu}</p>
             )}
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              Tapez au moins 3 lettres pour des suggestions (carte
+              synchronisée automatiquement).
+            </p>
           </motion.div>
 
           <motion.div {...fadeInUp}>
