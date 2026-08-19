@@ -28,16 +28,27 @@ class GeocodingService {
   // pouvoir recentrer la carte dès la sélection — même logique de mapping
   // adresse → { lieu, site } que le géocodage inverse, pour un résultat
   // cohérent quel que soit le sens (clic carte ↔ saisie clavier).
+  //
+  // `bounded=0` (essayé en premier lors de la mise en place) ne fait que
+  // *préférer* la Réunion sans l'imposer : le classement par "importance"
+  // de Nominatim continue à faire remonter des homonymes métropolitains
+  // plus connus avant le vrai spot réunionnais (constaté en vérifiant avec
+  // Playwright : "Saint-Gilles" ne renvoyait que des communes de métropole,
+  // aucune ne correspondant à Saint-Gilles-les-Bains). On force donc
+  // `bounded=1` (résultats strictement dans l'île) et on ne retente sans
+  // borne que si ça ne renvoie rien — cas d'une sortie exceptionnelle hors
+  // département, qui reste possible mais n'est plus le résultat par défaut.
   async search(query, { signal, limit = 5 } = {}) {
     const q = query?.trim();
     if (!q || q.length < 3) return [];
-    const url =
-      `${NOMINATIM_SEARCH_URL}?format=jsonv2&q=${encodeURIComponent(q)}` +
+    const baseParams =
+      `format=jsonv2&q=${encodeURIComponent(q)}` +
       `&addressdetails=1&limit=${limit}&accept-language=fr` +
-      `&viewbox=${REUNION_VIEWBOX}&bounded=0`;
-    const response = await fetch(url, { signal });
-    if (!response.ok) throw new Error("Nominatim request failed");
-    const data = await response.json();
+      `&viewbox=${REUNION_VIEWBOX}`;
+    let data = await this._fetchSearch(`${baseParams}&bounded=1`, signal);
+    if (data.length === 0) {
+      data = await this._fetchSearch(`${baseParams}&bounded=0`, signal);
+    }
     return data.map((item) => ({
       id: item.place_id,
       lat: Number(item.lat),
@@ -45,6 +56,12 @@ class GeocodingService {
       label: item.display_name,
       ...this._toLieuSite(item),
     }));
+  }
+
+  async _fetchSearch(params, signal) {
+    const response = await fetch(`${NOMINATIM_SEARCH_URL}?${params}`, { signal });
+    if (!response.ok) throw new Error("Nominatim request failed");
+    return response.json();
   }
 
   // "Lieu" = la localité (ex. "Saint-Leu") — "Site" = le repère le plus
