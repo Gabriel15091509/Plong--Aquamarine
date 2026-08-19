@@ -384,10 +384,12 @@ const AdhesionList = () => {
                                 qui se retrouvent seules en début de ligne
                                 quand ça déborde. */}
                             <span className="flex flex-wrap items-center gap-2">
-                              {/* Rejetée : "À jour"/"Expirée" n'a pas de sens
-                                  pour un dossier jamais accepté — seul le
-                                  rejet (badge + motif ci-dessous) compte. */}
-                              {adhesion.statut_validation !== "Rejeté" && (
+                              {/* En attente ou rejetée : "À jour"/"Expirée"
+                                  n'a pas de sens pour un dossier pas (encore)
+                                  accepté — seul le statut de validation
+                                  (badge suivant) compte tant qu'il n'est pas
+                                  "Validé". */}
+                              {adhesion.statut_validation === "Validé" && (
                                 <StatusBadge status={adhesion.statut} />
                               )}
                               {adhesion.type === "Club" && (
@@ -453,13 +455,19 @@ const AdhesionList = () => {
                           {canManageAdhesion &&
                             !(adhesion.soumis_par_adherent && adhesion.statut_validation === "Validé") && (
                             <>
-                              <Link
-                                to={`/adhesions/edit/${adhesion.id_adhesion}`}
-                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
-                                title="Modifier"
-                              >
-                                <FiEdit className="w-4 h-4" />
-                              </Link>
+                              {/* En attente : Modifier n'a pas sa place ici —
+                                  c'est Valider/Rejeter ci-dessus qui tranche,
+                                  pas une correction silencieuse du dossier
+                                  soumis par l'adhérent. */}
+                              {adhesion.statut_validation !== "En attente" && (
+                                <Link
+                                  to={`/adhesions/edit/${adhesion.id_adhesion}`}
+                                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                  title="Modifier"
+                                >
+                                  <FiEdit className="w-4 h-4" />
+                                </Link>
+                              )}
                               <button
                                 onClick={() => setDeleteModal(adhesion.id_adhesion)}
                                 className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"

@@ -173,6 +173,11 @@ const CertificatDetails = () => {
   const isExpired =
     certificat.date_validite && new Date(certificat.date_validite) < new Date();
   const isRejected = certificat.statut_validation === "Rejeté";
+  // Tant que le président n'a pas validé la soumission, "À jour"/"Expiré"
+  // n'a pas de sens : ce n'est pas encore un certificat accepté par le club,
+  // juste un document déposé par l'adhérent. Idem pour "Modifier" plus bas :
+  // le corriger directement court-circuiterait le circuit rejet/resoumission.
+  const isPending = certificat.statut_validation === "En attente";
 
   const daysUntilExpiry = () => {
     if (!certificat.date_validite) return null;
@@ -258,13 +263,19 @@ const CertificatDetails = () => {
                 modifiable comme avant. */}
             {!(certificat.soumis_par_adherent && certificat.statut_validation === "Validé") && (
               <>
-                <Link
-                  to={`/certificats/edit/${certificat.id_certificat}`}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-                >
-                  <FiEdit className="w-4 h-4" />
-                  Modifier
-                </Link>
+                {/* Tant que la soumission est en attente, la corriger
+                    directement n'a pas sa place ici : c'est Valider/Rejeter
+                    ci-dessus qui tranche, pas une modification silencieuse du
+                    dossier de l'adhérent. */}
+                {!isPending && (
+                  <Link
+                    to={`/certificats/edit/${certificat.id_certificat}`}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
+                  >
+                    <FiEdit className="w-4 h-4" />
+                    Modifier
+                  </Link>
+                )}
                 <button
                   onClick={() => setShowDeleteModal(true)}
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
@@ -285,9 +296,11 @@ const CertificatDetails = () => {
         className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${
           isRejected || isExpired
             ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-            : daysLeft && daysLeft <= 30
-              ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
-              : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+            : isPending
+              ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
+              : daysLeft && daysLeft <= 30
+                ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
+                : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
         }`}
       >
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -296,13 +309,19 @@ const CertificatDetails = () => {
               Statut du certificat
             </p>
             <div className="flex items-center gap-3 mt-2">
-              {/* Un document rejeté n'a jamais été accepté : "À jour"/
-                  "Expiré" n'a pas de sens ici, seul le rejet compte (motif
-                  détaillé plus bas dans "Validation"). */}
+              {/* Un document rejeté n'a jamais été accepté, et un document
+                  encore en attente n'a pas encore été examiné : "À jour"/
+                  "Expiré" n'a de sens que pour un certificat validé (motif de
+                  rejet ou décision en attente détaillés plus bas). */}
               {isRejected ? (
                 <>
                   <FiXCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                   <span className="text-xl font-bold text-gray-900 dark:text-white">Rejeté</span>
+                </>
+              ) : isPending ? (
+                <>
+                  <FiClock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                  <span className="text-xl font-bold text-gray-900 dark:text-white">En attente de validation</span>
                 </>
               ) : isExpired ? (
                 <>
@@ -318,7 +337,7 @@ const CertificatDetails = () => {
             </div>
           </div>
           <div className="flex items-center gap-8 flex-wrap">
-            {!isRejected && (
+            {!isRejected && !isPending && (
               <>
                 <div className="text-center">
                   <p className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -339,7 +358,7 @@ const CertificatDetails = () => {
                 Date d'expiration
               </p>
             </div>
-            {!isRejected && (
+            {!isRejected && !isPending && (
               <>
                 <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
                 <div className="text-center">
@@ -424,10 +443,11 @@ const CertificatDetails = () => {
             label="Médecin traitant"
             value={certificat.medecin || "Non renseigné"}
           />
-          {/* Rejeté : "À jour"/"Expiré" ne veut rien dire pour un document
-              jamais accepté — seule la section "Validation" (rejet + motif)
+          {/* Rejeté ou en attente : "À jour"/"Expiré" ne veut rien dire pour
+              un document pas (encore) accepté — seule la section
+              "Validation" ci-dessous (rejet + motif, ou décision en attente)
               compte, pas la peine de la répéter deux fois avec un autre mot. */}
-          {!isRejected && (
+          {!isRejected && !isPending && (
             <InfoItem
               icon={FiAward}
               label="Statut"
