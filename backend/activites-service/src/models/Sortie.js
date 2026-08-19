@@ -91,15 +91,36 @@ const Sortie = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    // Traçabilité des deux passages du test météo automatique — voir
-    // SortieService.verifierMeteoEtAnnulerSiDangereux et
-    // migrate-sortie-meteo-tests.sql. Empêchent de rejouer un test déjà
-    // fait tant que la sortie reste "Planifiée" dans la fenêtre du cron.
+    // Traçabilité des 3 tests météo automatiques (J-5, J-4, J-3) — voir
+    // SortieService.testerUneEtapeAuto et migrate-sortie-meteo-tests(-v2).sql.
+    // Empêchent de rejouer un test déjà fait tant que la sortie reste
+    // "Planifiée" dans la fenêtre du cron. La décision (annuler ou non) ne
+    // tombe qu'après le 3e test (meteo_test_j3_fait), sur la base des motifs
+    // accumulés au fil des 3 (meteo_motifs_detectes) : "dangereux" dès qu'au
+    // moins un des trois tests l'a détecté.
+    meteo_test_j5_fait: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    meteo_test_j4_fait: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     meteo_test_j3_fait: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
     },
+    meteo_motifs_detectes: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+    // Test à J-1, uniquement si la sortie n'a pas déjà été annulée à l'issue
+    // des 3 tests précédents — jamais d'annulation automatique à ce stade,
+    // seulement une alerte à l'organisateur en cas de doute (décision
+    // humaine).
     meteo_alerte_j1_envoyee: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
