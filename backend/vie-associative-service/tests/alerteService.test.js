@@ -7,6 +7,61 @@ jest.mock("../src/utils/smsClient");
 
 const service = new AlerteService();
 
+// Régression : deux adhésions différentes du même adhérent qui expirent la
+// même semaine (ex. Licence FFESM ET Assurance RC) convergeaient vers une
+// seule ligne d'alerte — upsertAutomaticAlerte dédupliquait uniquement sur
+// (num_adherent, type générique "Adhésion expire bientôt"), la seconde
+// écrasant silencieusement la trace de la première. Corrigé en ajoutant
+// reference_type/reference_id à la clé de déduplication.
+describe("AlerteService.upsertAutomaticAlerte — déduplication par référence", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("crée deux alertes distinctes pour deux adhésions différentes du même adhérent", async () => {
+    jest.spyOn(service.alerteRepository, "findOne").mockResolvedValue(null);
+    const createSpy = jest
+      .spyOn(service.alerteRepository, "create")
+      .mockImplementation(async (data) => ({ ...data, id_alerte: data.reference_id }));
+
+    await service.upsertAutomaticAlerte(
+      "ADH-2026-0001",
+      { preferred: "Adhesion expire bientot", fallback: "Adhésion expirée" },
+      { referenceType: "Adhesion", referenceId: 10, detail: "Licence FFESM" },
+    );
+    await service.upsertAutomaticAlerte(
+      "ADH-2026-0001",
+      { preferred: "Adhesion expire bientot", fallback: "Adhésion expirée" },
+      { referenceType: "Adhesion", referenceId: 11, detail: "Assurance responsabilité civile" },
+    );
+
+    expect(createSpy).toHaveBeenCalledTimes(2);
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ reference_id: 10, detail: "Licence FFESM" }),
+    );
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ reference_id: 11, detail: "Assurance responsabilité civile" }),
+    );
+  });
+
+  test("met à jour (pas de doublon) pour une resynchronisation de la même adhésion", async () => {
+    const existing = { type: "Adhesion expire bientot", update: jest.fn().mockResolvedValue(true) };
+    jest.spyOn(service.alerteRepository, "findOne").mockResolvedValue(existing);
+    const createSpy = jest.spyOn(service.alerteRepository, "create");
+
+    await service.upsertAutomaticAlerte(
+      "ADH-2026-0001",
+      { preferred: "Adhesion expire bientot", fallback: "Adhésion expirée" },
+      { referenceType: "Adhesion", referenceId: 10, detail: "Licence FFESM" },
+    );
+
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(existing.update).toHaveBeenCalledWith(
+      expect.objectContaining({ detail: "Licence FFESM" }),
+    );
+  });
+});
+
 const baseAlerte = {
   id_alerte: 1,
   num_adherent: "ADH-2026-0001",

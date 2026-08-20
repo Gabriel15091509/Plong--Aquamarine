@@ -37,6 +37,18 @@ const ROLE_ALERT_TYPES = {
   moniteur: ["Formation", "Inactivite plongee"],
 };
 
+// Libellé lisible par type d'Adhesion (voir TYPE_ADHESION_OPTIONS côté
+// frontend, dupliqué ici en léger — vie-associative-service n'a pas accès
+// aux constantes frontend) : porté sur Alerte.detail pour distinguer, dans
+// une notification "Adhésion expire bientôt", laquelle des adhésions de
+// l'adhérent est concernée.
+const LIBELLE_TYPE_ADHESION = {
+  Club: "Adhésion club",
+  FFESM: "Licence FFESM",
+  "Assurance RC": "Assurance responsabilité civile",
+  "Assurance IA": "Assurance individuelle accident",
+};
+
 const ALERT_DESCRIPTIONS = {
   "Certificat expiré": "Le certificat médical a expiré",
   "Certificat expire bientot": "Le certificat médical expire dans moins de 30 jours",
@@ -274,38 +286,55 @@ class AlerteService extends BaseService {
     ]);
 
     for (const adhesion of adhesionsExpirantBientot) {
-      await this.upsertAutomaticAlerte(
-        adhesion.num_adherent,
-        ALERT_TYPES.adhesionExpiring,
-      );
+      await this.upsertAutomaticAlerte(adhesion.num_adherent, ALERT_TYPES.adhesionExpiring, {
+        referenceType: "Adhesion",
+        referenceId: adhesion.id_adhesion,
+        detail: LIBELLE_TYPE_ADHESION[adhesion.type] || adhesion.type,
+      });
     }
 
     for (const adhesion of adhesionsExpirees) {
-      await this.upsertAutomaticAlerte(
-        adhesion.num_adherent,
-        ALERT_TYPES.adhesionExpired,
-      );
+      await this.upsertAutomaticAlerte(adhesion.num_adherent, ALERT_TYPES.adhesionExpired, {
+        referenceType: "Adhesion",
+        referenceId: adhesion.id_adhesion,
+        detail: LIBELLE_TYPE_ADHESION[adhesion.type] || adhesion.type,
+      });
     }
 
     for (const certificat of certificats) {
-      await this.upsertAutomaticAlerte(
-        certificat.num_adherent,
-        ALERT_TYPES.certificatExpiring,
-      );
+      await this.upsertAutomaticAlerte(certificat.num_adherent, ALERT_TYPES.certificatExpiring, {
+        referenceType: "CertificatMedical",
+        referenceId: certificat.id_certificat,
+        detail: `Certificat médical — ${certificat.type_certificat}`,
+      });
     }
   }
 
-  async upsertAutomaticAlerte(numAdherent, typeConfig) {
-    const existing = await this.alerteRepository.findOne({
+  // `referenceType`/`referenceId` (ligne Adhesion/CertificatMedical à
+  // l'origine de l'alerte) sont la clé de déduplication quand fournis :
+  // deux adhésions différentes du même adhérent (ex. Licence FFESM ET
+  // Assurance RC expirant la même semaine) produisent alors deux lignes
+  // distinctes au lieu de converger vers une seule qui s'écrase. Sans eux
+  // (appel générique, ex. futur type d'alerte sans ligne source précise),
+  // retombe sur l'ancien comportement : dédupliqué par adhérent + type
+  // seulement.
+  async upsertAutomaticAlerte(numAdherent, typeConfig, { referenceType = null, referenceId = null, detail = null } = {}) {
+    const dedupWhere = {
       num_adherent: numAdherent,
       type: { [Op.in]: [typeConfig.preferred, typeConfig.fallback] },
-    });
+    };
+    if (referenceId != null) {
+      dedupWhere.reference_type = referenceType;
+      dedupWhere.reference_id = referenceId;
+    }
+    const existing = await this.alerteRepository.findOne(dedupWhere);
 
     if (existing) {
       const updateData = {
         date_envoi: new Date(),
         statut: "Envoyé",
         read: false,
+        detail,
       };
 
       if (existing.type !== typeConfig.preferred) {
@@ -328,6 +357,9 @@ class AlerteService extends BaseService {
         statut: "Envoyé",
         read: false,
         date_envoi: new Date(),
+        detail,
+        reference_type: referenceType,
+        reference_id: referenceId,
       });
     } catch (error) {
       return await this.alerteRepository.create({
@@ -337,6 +369,9 @@ class AlerteService extends BaseService {
         statut: "Envoyé",
         read: false,
         date_envoi: new Date(),
+        detail,
+        reference_type: referenceType,
+        reference_id: referenceId,
       });
     }
   }

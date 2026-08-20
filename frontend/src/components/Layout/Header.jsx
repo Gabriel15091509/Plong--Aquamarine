@@ -307,6 +307,12 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-800 dark:text-white">
                                 {notification.type}
+                                {notification.detail && (
+                                  <span className="font-normal text-gray-500 dark:text-gray-400">
+                                    {" "}
+                                    · {notification.detail}
+                                  </span>
+                                )}
                               </p>
                               <p className="text-xs text-gray-600 dark:text-gray-300 truncate font-medium">
                                 {notification.adherent_nom || notification.num_adherent}

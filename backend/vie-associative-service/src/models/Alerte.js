@@ -46,6 +46,32 @@ const Alerte = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    // Précision affichable de CE qui expire/manque exactement (ex. "Licence
+    // FFESM", "Assurance responsabilité civile", "Certificat médical —
+    // Plongée") — `type` ci-dessus reste la catégorie générique utilisée pour
+    // le filtrage par rôle (ROLE_ALERT_TYPES) et les libellés d'icône, trop
+    // grossière pour distinguer laquelle des adhésions d'un même adhérent est
+    // concernée.
+    detail: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    // Avec reference_id ci-dessous : identifie la ligne source précise
+    // (Adhesion ou CertificatMedical) qui a déclenché l'alerte automatique.
+    // Sert de clé de déduplication dans AlerteService.upsertAutomaticAlerte
+    // — sans ça, deux adhésions différentes du même adhérent qui expirent la
+    // même semaine (ex. Licence FFESM ET Assurance RC) convergeaient vers
+    // une seule ligne d'alerte, la seconde écrasant silencieusement la
+    // trace de la première. Nul pour les alertes non liées à une ligne
+    // source précise (ex. relance manuelle, "Paiement en retard").
+    reference_type: {
+      type: DataTypes.STRING(30),
+      allowNull: true,
+    },
+    reference_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     schema: process.env.DB_SCHEMA || "vie_associative",
