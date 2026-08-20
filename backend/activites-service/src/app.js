@@ -153,6 +153,14 @@ const initializeApp = async () => {
     sortieService.verifierMeteoEtAnnulerSiDangereux(getSystemAuthHeader()),
   );
   logger.info("Planification de la vérification météo active (quotidien 06:00)");
+
+  // Alerte (jamais d'annulation automatique) à l'organisateur d'une sortie
+  // encore sans aucune inscription à 3 jours de la date — décision humaine,
+  // voir SortieService.alerterSortiesSansInscription. Un premier passage
+  // immédiat au démarrage, puis tous les jours à 8h.
+  await sortieService.alerterSortiesSansInscription();
+  cron.schedule("0 8 * * *", () => sortieService.alerterSortiesSansInscription());
+  logger.info("Planification de l'alerte sortie sans inscription active (quotidien 08:00)");
 };
 
 process.on("unhandledRejection", (err) => {

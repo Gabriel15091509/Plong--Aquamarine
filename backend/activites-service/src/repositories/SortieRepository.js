@@ -147,6 +147,31 @@ class SortieRepository extends BaseRepository {
     });
   }
 
+  // Sorties "Planifiée" dans les `withinDays` prochains jours, pas encore
+  // signalées comme sans inscription (alerte_sans_inscription_envoyee) —
+  // voir SortieService.alerterSortiesSansInscription. Le comptage réel des
+  // inscriptions (hors "Annulée") se fait côté service, pas ici : filtrer
+  // sur une jointure comptée serait plus lourd que de le faire en JS sur un
+  // jeu de résultats déjà réduit à quelques sorties par jour.
+  async findPlanifieesSansAlerteInscriptionAvant(withinDays) {
+    const now = new Date();
+    const limite = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+    return await this.model.findAll({
+      where: {
+        statut: "Planifiée",
+        date_heure: { [Op.gte]: now, [Op.lte]: limite },
+        alerte_sans_inscription_envoyee: false,
+      },
+      include: [
+        {
+          model: Inscription,
+          as: "inscriptions",
+        },
+      ],
+      order: [["date_heure", "ASC"]],
+    });
+  }
+
   // Toutes les sorties non annulées autres que `id_sortie_exclue`, allégé
   // aux seuls champs nécessaires au test de chevauchement horaire
   // (sortieOverlap.sortiesSeChevauchent) — utilisé pour proposer des dates

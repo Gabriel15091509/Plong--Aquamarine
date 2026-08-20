@@ -126,6 +126,16 @@ const Sortie = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    // Un seul envoi par sortie (voir SortieService.
+    // alerterSortiesSansInscription) : empêche de renvoyer le même email à
+    // l'organisateur chaque jour tant que la sortie reste sans inscription
+    // dans la fenêtre d'alerte — jamais remis à false ensuite, même si une
+    // inscription arrive après coup (l'alerte a fait son travail).
+    alerte_sans_inscription_envoyee: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     // Plus de FK Postgres vers `president` (identite-service, autre
     // schéma) : reste une colonne applicative, non validée en base.
     created_by: {

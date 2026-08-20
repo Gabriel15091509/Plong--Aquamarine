@@ -9,6 +9,7 @@ const {
   sendSortieAnnuleeMeteoEmail,
   sendPropositionsReprogrammationEmail,
   sendAlerteMeteoDouteuseEmail,
+  sendSortieSansInscriptionEmail,
 } = require("../utils/email");
 const { getForecastForDate, evaluerDanger } = require("../utils/meteoClient");
 const { sortiesSeChevauchent } = require("../utils/sortieOverlap");
@@ -36,6 +37,13 @@ const { sortiesSeChevauchent } = require("../utils/sortieOverlap");
 const JOURS_TEST_1 = 5;
 const JOURS_ALERTE_HUMAINE = 1;
 const FENETRE_METEO_JOURS = JOURS_TEST_1 + 1;
+// Délai d'alerte "sortie sans inscription" (voir
+// alerterSortiesSansInscription) : volontairement plus large que
+// JOURS_ALERTE_HUMAINE — contrairement à la météo, ici il n'y a rien à
+// tester automatiquement, l'alerte part dès que la sortie entre dans cette
+// fenêtre ET reste sans aucune inscription, une seule fois (voir
+// Sortie.alerte_sans_inscription_envoyee).
+const JOURS_ALERTE_SANS_INSCRIPTION = 3;
 // Champ booléen + libellé associé pour chacune des 3 étapes auto, dans
 // l'ordre où elles doivent être jouées.
 const ETAPES_TEST_AUTO = [
@@ -571,6 +579,55 @@ class SortieService extends BaseService {
       }
     }
     return envoyes;
+  }
+
+  // Alerte l'organisateur (Sortie.created_by) qu'une sortie encore
+  // "Planifiée" n'a reçu AUCUNE inscription à l'approche de la date —
+  // jamais d'annulation automatique ici, contrairement à la météo : 0
+  // inscription à J-3 ne prouve pas que la sortie ne se remplira jamais
+  // (les gens s'inscrivent parfois tard), la décision d'annuler reste
+  // entièrement humaine, comme testerEtAlerterJ1 pour la météo douteuse.
+  // Un seul envoi par sortie (alerte_sans_inscription_envoyee) : pas de
+  // rappel quotidien tant qu'elle reste sans inscription dans la fenêtre.
+  // Appelé par un cron quotidien (voir app.js) — best-effort par sortie :
+  // une erreur sur l'une n'interrompt pas le traitement des autres.
+  async alerterSortiesSansInscription() {
+    const sorties = await this.sortieRepository.findPlanifieesSansAlerteInscriptionAvant(
+      JOURS_ALERTE_SANS_INSCRIPTION,
+    );
+    let alertees = 0;
+
+    for (const sortie of sorties) {
+      const inscritsReels = (sortie.inscriptions || []).filter((i) => i.statut !== "Annulée");
+      if (inscritsReels.length > 0) continue;
+
+      try {
+        // Marqué avant l'envoi (comme testerEtAlerterJ1) : un échec d'email
+        // ne doit pas faire rejouer indéfiniment la même alerte chaque jour.
+        await this.sortieRepository.update(sortie.id_sortie, {
+          alerte_sans_inscription_envoyee: true,
+        });
+
+        if (!sortie.created_by) continue;
+        const organisateur = await identiteClient.getUserBasicById(sortie.created_by);
+        if (!organisateur?.email) continue;
+
+        await sendSortieSansInscriptionEmail({
+          to: organisateur.email,
+          organisateurName: organisateur.name,
+          sortieLabel: formatSortieLabel(sortie),
+          id_sortie: sortie.id_sortie,
+          joursRestants: Math.max(joursAvantSortie(sortie.date_heure), 0),
+        });
+        alertees += 1;
+      } catch (error) {
+        console.error(
+          `Erreur alerte sortie sans inscription (sortie ${sortie.id_sortie}):`,
+          error.message,
+        );
+      }
+    }
+    return alertees;
   }
 
   // Vérifie la météo des sorties "Planifiée" localisées (latitude/longitude

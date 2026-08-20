@@ -311,6 +311,30 @@ const sendAlerteMeteoDouteuseEmail = async ({
   });
 };
 
+// Alerte "sortie sans inscription" (voir SortieService.
+// alerterSortiesSansInscription) : envoyée une seule fois par sortie
+// (Sortie.alerte_sans_inscription_envoyee), quelques jours avant la date,
+// si aucune inscription n'a encore été passée. Jamais d'annulation
+// automatique — même logique que sendAlerteMeteoDouteuseEmail : un fait
+// qui appelle une décision humaine, pas une certitude (les inscriptions
+// arrivent parfois tard).
+const sendSortieSansInscriptionEmail = async ({
+  to,
+  organisateurName,
+  sortieLabel,
+  id_sortie,
+  joursRestants,
+}) => {
+  const introHtml = `<p>Bonjour ${organisateurName},</p><p>La sortie "<strong>${sortieLabel}</strong>" n'a encore <strong>aucune inscription</strong>, alors qu'elle a lieu dans ${joursRestants} jour${joursRestants > 1 ? "s" : ""}.</p><p>Ce n'est pas une annulation automatique : à vous de décider s'il faut relancer les adhérents, attendre, ou annuler la sortie manuellement.</p>`;
+  return sendEmail({
+    to,
+    subject: `Sortie sans inscription — décision à prendre (#${id_sortie})`,
+    html: buildSimpleEmailHtml("Sortie sans inscription — à vous de décider", introHtml, [
+      { label: "Sortie", value: sortieLabel },
+    ]),
+  });
+};
+
 module.exports = {
   sendEmail,
   sendInscriptionConfirmationEmail,
@@ -320,4 +344,5 @@ module.exports = {
   sendSortieAnnuleeMeteoEmail,
   sendPropositionsReprogrammationEmail,
   sendAlerteMeteoDouteuseEmail,
+  sendSortieSansInscriptionEmail,
 };
