@@ -253,6 +253,13 @@ const InscriptionDetails = () => {
 
   const StatutIcon = getStatutIcon(inscription.statut);
 
+  // Sortie annulée après coup, ou inscription elle-même annulée (l'adhérent
+  // s'est désisté) : dans les deux cas, plus aucun paiement ne doit être
+  // activement réclamé — le solde affiché reste un fait historique à
+  // régulariser manuellement (remboursement/avoir), pas une dette en cours.
+  const paiementARegulariser =
+    sortie?.statut === "Annulée" || inscription.statut === STATUT_INSCRIPTION.ANNULEE;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -273,7 +280,10 @@ const InscriptionDetails = () => {
           Retour à la liste
         </button>
         <div className="flex gap-2 flex-wrap">
-          {canManage && Number(inscription.montant_du) > 0 && !inscription.paye && (
+          {canManage &&
+            Number(inscription.montant_du) > 0 &&
+            !inscription.paye &&
+            !paiementARegulariser && (
             <button
               onClick={() => setShowPaiementModal(true)}
               className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors duration-150"
@@ -334,6 +344,34 @@ const InscriptionDetails = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* La sortie a été annulée après coup, ou l'adhérent s'est désisté :
+          dans les deux cas le statut affiché plus haut (Confirmée, etc.)
+          reste un fait historique exact, mais ne doit pas laisser croire
+          qu'un paiement est encore activement réclamé — voir le bouton
+          "Enregistrer un paiement" (masqué dans ce cas) et le "Statut du
+          paiement" ci-dessous. Même logique que la carte météo d'une sortie
+          annulée (SortieDetails.jsx). */}
+      {paiementARegulariser && Number(inscription.montant_du) > 0 && (
+        <motion.div
+          variants={fadeInUp}
+          initial="initial"
+          animate="animate"
+          className="flex items-start gap-3 rounded-xl border-2 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-5 py-4"
+        >
+          <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-700 dark:text-red-400">
+            <span className="font-semibold">
+              {sortie?.statut === "Annulée"
+                ? "Cette sortie a été annulée après cette inscription."
+                : "Cette inscription a été annulée."}
+            </span>{" "}
+            Les montants ci-dessous reflètent la situation avant
+            l&apos;annulation ; un remboursement ou un avoir doit être géré
+            manuellement si un paiement avait déjà été enregistré.
+          </p>
+        </motion.div>
+      )}
 
       {/* Grille d'informations */}
       <motion.div
@@ -435,9 +473,21 @@ const InscriptionDetails = () => {
                 )}`}
               />
               <InfoItem
-                icon={inscription.paye ? FiCheckCircle : FiClock}
+                icon={
+                  inscription.paye
+                    ? FiCheckCircle
+                    : paiementARegulariser
+                      ? FiAlertCircle
+                      : FiClock
+                }
                 label="Statut du paiement"
-                value={inscription.paye ? "Payé" : "En attente / partiel"}
+                value={
+                  inscription.paye
+                    ? "Payé"
+                    : paiementARegulariser
+                      ? "À régulariser (annulée)"
+                      : "En attente / partiel"
+                }
               />
             </>
           )}
@@ -466,7 +516,11 @@ const InscriptionDetails = () => {
               (inscription.montant_du || 0) - (inscription.montant_paye || 0),
               0,
             )}
-            canManage={canManage}
+            // Lecture seule si sortie/inscription annulée : consulter un
+            // échéancier déjà créé reste utile, en créer un nouveau ou
+            // marquer une échéance payée ne l'est plus (voir
+            // paiementARegulariser).
+            canManage={canManage && !paiementARegulariser}
             ownerQueryKeys={[["inscriptions"], ["inscription", inscription.id_inscription]]}
           />
         </motion.div>
