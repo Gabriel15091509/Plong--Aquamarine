@@ -194,12 +194,22 @@ class PalanqueeService extends BaseService {
     for (const palanquee of palanquees) {
       if (palanquee.statut === 'Terminée') continue;
 
+      // niveau_au_moment (snapshot pris à l'ajout de chaque membre) préféré
+      // au niveau actuel de l'adhérent : une palanquée en cours de
+      // constitution doit rester jugée sur les niveaux qu'elle a
+      // réellement à ce moment, pas sur un niveau qui aurait changé entre
+      // temps pour un membre déjà affecté. Fallback sur .adherent?.niveau
+      // pour les lignes créées avant ce champ (composers non re-remplis).
       const composersAvecAdherent = await withAdherent(palanquee.composers || [], { authHeader });
-      const niveaux = composersAvecAdherent.map((c) => c.adherent?.niveau);
+      const niveaux = composersAvecAdherent.map((c) => c.niveau_au_moment || c.adherent?.niveau);
       const maxRatio = this.computeMaxRatio([...niveaux, nouvelAdherent.niveau]);
 
       if ((palanquee.composers || []).length < maxRatio) {
-        await Composer.create({ id_palanquee: palanquee.id_palanquee, num_adherent });
+        await Composer.create({
+          id_palanquee: palanquee.id_palanquee,
+          num_adherent,
+          niveau_au_moment: nouvelAdherent.niveau,
+        });
         idPalanqueeAssignee = palanquee.id_palanquee;
         break;
       }
@@ -212,7 +222,11 @@ class PalanqueeService extends BaseService {
         nom_palanquee: `Palanquée ${palanquees.length + 1}`,
         id_moniteur_encadrant: moniteur?.id_moniteur || null,
       });
-      await Composer.create({ id_palanquee: nouvellePalanquee.id_palanquee, num_adherent });
+      await Composer.create({
+        id_palanquee: nouvellePalanquee.id_palanquee,
+        num_adherent,
+        niveau_au_moment: nouvelAdherent.niveau,
+      });
       idPalanqueeAssignee = nouvellePalanquee.id_palanquee;
     }
 
@@ -273,9 +287,12 @@ class PalanqueeService extends BaseService {
     if (!nouvelAdherent) throw new Error('Adhérent non trouvé');
 
     // Adherent (identite-service) a quitté ce schéma : niveaux des membres
-    // actuels recomposés via identiteClient avant de calculer le ratio.
+    // déjà affectés recomposés via identiteClient pour l'enrichissement
+    // d'affichage, mais le ratio se calcule sur niveau_au_moment (snapshot
+    // pris à l'ajout de chacun) — voir le commentaire équivalent dans
+    // autoConstituerPourPresence.
     const composersAvecAdherent = await withAdherent(palanquee.composers || [], { authHeader });
-    const niveauxActuels = composersAvecAdherent.map((c) => c.adherent?.niveau);
+    const niveauxActuels = composersAvecAdherent.map((c) => c.niveau_au_moment || c.adherent?.niveau);
     const maxRatio = this.computeMaxRatio([...niveauxActuels, nouvelAdherent.niveau]);
     if ((palanquee.composers || []).length + 1 > maxRatio) {
       throw new Error(
@@ -283,7 +300,11 @@ class PalanqueeService extends BaseService {
       );
     }
 
-    return await Composer.create({ id_palanquee, num_adherent });
+    return await Composer.create({
+      id_palanquee,
+      num_adherent,
+      niveau_au_moment: nouvelAdherent.niveau,
+    });
   }
 
   async removeMembre(id_palanquee, num_adherent, user = null) {
