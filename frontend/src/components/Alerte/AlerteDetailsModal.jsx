@@ -85,6 +85,12 @@ const AlerteDetailsModal = ({ alerte, onClose }) => {
               </p>
               <p className="text-sm font-semibold text-gray-800 dark:text-white">
                 {alerte.type}
+                {alerte.detail && (
+                  <span className="font-normal text-gray-500 dark:text-gray-400">
+                    {" "}
+                    · {alerte.detail}
+                  </span>
+                )}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                 {description}
