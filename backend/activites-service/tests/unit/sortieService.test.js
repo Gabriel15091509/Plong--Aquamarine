@@ -10,6 +10,7 @@ jest.mock("../../src/utils/email", () => ({
   sendSortieAnnuleeMeteoEmail: jest.fn(),
   sendPropositionsReprogrammationEmail: jest.fn(),
   sendAlerteMeteoDouteuseEmail: jest.fn(),
+  sendSortieSansInscriptionEmail: jest.fn(),
 }));
 
 const SortieService = require("../../src/services/SortieService");
@@ -18,6 +19,7 @@ const identiteClient = require("../../src/utils/serviceClients/identiteClient");
 const {
   sendSortieAnnuleeMeteoEmail,
   sendAlerteMeteoDouteuseEmail,
+  sendSortieSansInscriptionEmail,
 } = require("../../src/utils/email");
 
 const service = new SortieService();
@@ -457,5 +459,79 @@ describe("SortieService.verifierMeteoEtAnnulerSiDangereux (aiguillage 3 tests / 
 
     expect(autoSpy).not.toHaveBeenCalled();
     expect(j1).not.toHaveBeenCalled();
+  });
+});
+
+describe("SortieService.alerterSortiesSansInscription (jamais d'annulation automatique)", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
+  const sortieSansInscription = {
+    id_sortie: 21,
+    date_heure: dansNJours(3),
+    created_by: 5,
+    inscriptions: [],
+  };
+
+  test("alerte l'organisateur et marque la sortie comme signalée", async () => {
+    jest
+      .spyOn(service.sortieRepository, "findPlanifieesSansAlerteInscriptionAvant")
+      .mockResolvedValue([sortieSansInscription]);
+    const updateSpy = jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+    identiteClient.getUserBasicById.mockResolvedValue({ email: "organisateur@test.fr", name: "Léa" });
+
+    const result = await service.alerterSortiesSansInscription();
+
+    expect(updateSpy).toHaveBeenCalledWith(21, { alerte_sans_inscription_envoyee: true });
+    expect(sendSortieSansInscriptionEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "organisateur@test.fr", id_sortie: 21 }),
+    );
+    expect(result).toBe(1);
+  });
+
+  test("ne fait rien (pas d'alerte) si la sortie a déjà au moins une inscription non annulée", async () => {
+    jest.spyOn(service.sortieRepository, "findPlanifieesSansAlerteInscriptionAvant").mockResolvedValue([
+      {
+        ...sortieSansInscription,
+        inscriptions: [{ statut: "Confirmée" }],
+      },
+    ]);
+    const updateSpy = jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+
+    const result = await service.alerterSortiesSansInscription();
+
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(sendSortieSansInscriptionEmail).not.toHaveBeenCalled();
+    expect(result).toBe(0);
+  });
+
+  test("ignore une inscription \"Annulée\" : compte toujours comme sans inscription", async () => {
+    jest.spyOn(service.sortieRepository, "findPlanifieesSansAlerteInscriptionAvant").mockResolvedValue([
+      {
+        ...sortieSansInscription,
+        inscriptions: [{ statut: "Annulée" }],
+      },
+    ]);
+    jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+    identiteClient.getUserBasicById.mockResolvedValue({ email: "organisateur@test.fr", name: "Léa" });
+
+    const result = await service.alerterSortiesSansInscription();
+
+    expect(sendSortieSansInscriptionEmail).toHaveBeenCalled();
+    expect(result).toBe(1);
+  });
+
+  test("ne fait rien si la sortie n'a pas d'organisateur connu (created_by absent)", async () => {
+    jest.spyOn(service.sortieRepository, "findPlanifieesSansAlerteInscriptionAvant").mockResolvedValue([
+      { ...sortieSansInscription, created_by: null },
+    ]);
+    jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+
+    const result = await service.alerterSortiesSansInscription();
+
+    expect(sendSortieSansInscriptionEmail).not.toHaveBeenCalled();
+    expect(result).toBe(0);
   });
 });
