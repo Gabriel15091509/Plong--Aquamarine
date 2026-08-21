@@ -1,0 +1,356 @@
+# Blueprint Render (https://render.com/docs/blueprint-spec) : provisionne les
+# 7 microservices + la passerelle + une base Postgres managée, en miroir de
+# k8s/base/plongee-config.env (source de vérité des URLs inter-services —
+# voir ce fichier en cas de divergence). Plan "free" partout (accepté :
+# fichiers uploadés perdus à chaque redéploiement d'identite-service/
+# vie-associative-service, faute de disque persistant sur ce plan — voir
+# DEPLOY-RENDER-NETLIFY.md).
+#
+# Import : dashboard Render → "New +" → "Blueprint" → sélectionner ce repo.
+# JWT_SECRET est généré une seule fois sur aquanature-identite puis répercuté
+# sur les 7 autres services via fromService (doit être identique partout,
+# sinon la vérification de token échoue).
+
+databases:
+  - name: aquanature-plongee-db
+    databaseName: plongee_db
+    user: plongee
+    plan: free
+    region: singapore
+
+services:
+  # ==================== IDENTITE (émetteur JWT_SECRET) ====================
+  - type: web
+    name: aquanature-identite
+    runtime: docker
+    dockerfilePath: ./backend/identite-service/Dockerfile
+    dockerContext: ./backend/identite-service
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase: { name: aquanature-plongee-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: aquanature-plongee-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: aquanature-plongee-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: aquanature-plongee-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: aquanature-plongee-db, property: password }
+      - key: DB_SCHEMA
+        value: identite
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRE
+        value: 7d
+      - key: FINANCE_SERVICE_URL
+        value: https://aquanature-finance.onrender.com
+      - key: VIE_ASSOCIATIVE_SERVICE_URL
+        value: https://aquanature-vie-associative.onrender.com
+      # Désactivation temporaire du 2FA président (voir plongee-config.env) :
+      # volontairement PAS reportée sur ce nouveau déploiement public — le
+      # 2FA reste actif par défaut ici (retirer explicitement si besoin).
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_SECURE
+        value: "false"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: Club de Plongée <no-reply@aquanature-plongee.fr>
+
+  # ==================== FORMATION ====================
+  - type: web
+    name: aquanature-formation
+    runtime: docker
+    dockerfilePath: ./backend/formation-service/Dockerfile
+    dockerContext: ./backend/formation-service
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase: { name: aquanature-plongee-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: aquanature-plongee-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: aquanature-plongee-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: aquanature-plongee-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: aquanature-plongee-db, property: password }
+      - key: DB_SCHEMA
+        value: formation
+      - key: JWT_SECRET
+        fromService: { type: web, name: aquanature-identite, envVarKey: JWT_SECRET }
+      - key: IDENTITE_SERVICE_URL
+        value: https://aquanature-identite.onrender.com/api
+      - key: PAIEMENT_SERVICE_URL
+        value: https://aquanature-finance.onrender.com/api
+      - key: VIE_ASSOCIATIVE_SERVICE_URL
+        value: https://aquanature-vie-associative.onrender.com
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_SECURE
+        value: "false"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: Club de Plongée <no-reply@aquanature-plongee.fr>
+
+  # ==================== MATERIEL ====================
+  - type: web
+    name: aquanature-materiel
+    runtime: docker
+    dockerfilePath: ./backend/materiel-service/Dockerfile
+    dockerContext: ./backend/materiel-service
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase: { name: aquanature-plongee-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: aquanature-plongee-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: aquanature-plongee-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: aquanature-plongee-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: aquanature-plongee-db, property: password }
+      - key: DB_SCHEMA
+        value: materiel
+      - key: JWT_SECRET
+        fromService: { type: web, name: aquanature-identite, envVarKey: JWT_SECRET }
+
+  # ==================== FINANCE ====================
+  - type: web
+    name: aquanature-finance
+    runtime: docker
+    dockerfilePath: ./backend/finance-service/Dockerfile
+    dockerContext: ./backend/finance-service
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase: { name: aquanature-plongee-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: aquanature-plongee-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: aquanature-plongee-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: aquanature-plongee-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: aquanature-plongee-db, property: password }
+      - key: DB_SCHEMA
+        value: finance
+      - key: JWT_SECRET
+        fromService: { type: web, name: aquanature-identite, envVarKey: JWT_SECRET }
+      - key: IDENTITE_SERVICE_URL
+        value: https://aquanature-identite.onrender.com/api
+      - key: ADHESION_SERVICE_URL
+        value: https://aquanature-vie-associative.onrender.com
+      - key: INSCRIPTION_SERVICE_URL
+        value: https://aquanature-activites.onrender.com
+      - key: FORMATION_SERVICE_URL
+        value: https://aquanature-formation.onrender.com
+
+  # ==================== VIE ASSOCIATIVE ====================
+  - type: web
+    name: aquanature-vie-associative
+    runtime: docker
+    dockerfilePath: ./backend/vie-associative-service/Dockerfile
+    dockerContext: ./backend/vie-associative-service
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase: { name: aquanature-plongee-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: aquanature-plongee-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: aquanature-plongee-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: aquanature-plongee-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: aquanature-plongee-db, property: password }
+      - key: DB_SCHEMA
+        value: vie_associative
+      - key: JWT_SECRET
+        fromService: { type: web, name: aquanature-identite, envVarKey: JWT_SECRET }
+      - key: IDENTITE_SERVICE_URL
+        value: https://aquanature-identite.onrender.com/api
+      - key: FINANCE_SERVICE_URL
+        value: https://aquanature-finance.onrender.com
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_SECURE
+        value: "false"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: Club de Plongée <no-reply@aquanature-plongee.fr>
+      # 32 octets base64 (openssl rand -base64 32) — Render en génère un
+      # aléatoire et stable, à ne QUE conserver (jamais régénérer une fois
+      # des certificats déjà chiffrés avec, sous peine de les rendre
+      # indéchiffrables).
+      - key: CERTIFICAT_ENCRYPTION_KEY
+        generateValue: true
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: groq/compound-mini
+      - key: OVH_SMS_ACCOUNT
+        sync: false
+      - key: OVH_SMS_LOGIN
+        sync: false
+      - key: OVH_SMS_PASSWORD
+        sync: false
+      - key: OVH_SMS_FROM
+        value: Aquanature
+
+  # ==================== ACTIVITES ====================
+  - type: web
+    name: aquanature-activites
+    runtime: docker
+    dockerfilePath: ./backend/activites-service/Dockerfile
+    dockerContext: ./backend/activites-service
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase: { name: aquanature-plongee-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: aquanature-plongee-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: aquanature-plongee-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: aquanature-plongee-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: aquanature-plongee-db, property: password }
+      - key: DB_SCHEMA
+        value: activites
+      - key: JWT_SECRET
+        fromService: { type: web, name: aquanature-identite, envVarKey: JWT_SECRET }
+      - key: IDENTITE_SERVICE_URL
+        value: https://aquanature-identite.onrender.com/api
+      - key: MATERIEL_SERVICE_URL
+        value: https://aquanature-materiel.onrender.com
+      - key: FINANCE_SERVICE_URL
+        value: https://aquanature-finance.onrender.com
+      - key: VIE_ASSOCIATIVE_SERVICE_URL
+        value: https://aquanature-vie-associative.onrender.com
+      - key: FORMATION_SERVICE_URL
+        value: https://aquanature-formation.onrender.com
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_SECURE
+        value: "false"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: Club de Plongée <no-reply@aquanature-plongee.fr>
+
+  # ==================== GATEWAY (passerelle publique) ====================
+  - type: web
+    name: aquanature-gateway
+    runtime: docker
+    dockerfilePath: ./backend/gateway-service/Dockerfile
+    dockerContext: ./backend/gateway-service
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_HOST
+        fromDatabase: { name: aquanature-plongee-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: aquanature-plongee-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: aquanature-plongee-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: aquanature-plongee-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: aquanature-plongee-db, property: password }
+      - key: JWT_SECRET
+        fromService: { type: web, name: aquanature-identite, envVarKey: JWT_SECRET }
+      - key: JWT_EXPIRE
+        value: 7d
+      # Bare (sans /api) : gateway proxie /api/auth, /api/adherents... tels
+      # quels vers identite-service, qui les monte lui-même sous /api — voir
+      # routes/index.js. Les autres microservices, eux, attendent /api déjà
+      # inclus dans la valeur (cf. leurs propres blocs ci-dessus).
+      - key: IDENTITE_SERVICE_URL
+        value: https://aquanature-identite.onrender.com
+      - key: FORMATION_SERVICE_URL
+        value: https://aquanature-formation.onrender.com
+      - key: MATERIEL_SERVICE_URL
+        value: https://aquanature-materiel.onrender.com
+      - key: FINANCE_SERVICE_URL
+        value: https://aquanature-finance.onrender.com
+      - key: VIE_ASSOCIATIVE_SERVICE_URL
+        value: https://aquanature-vie-associative.onrender.com
+      - key: ACTIVITES_SERVICE_URL
+        value: https://aquanature-activites.onrender.com
+      # À ajuster si le site Netlify prend finalement un autre nom/domaine
+      # que celui choisi à la création (voir DEPLOY-RENDER-NETLIFY.md).
+      - key: FRONTEND_URL
+        value: https://aquanature-plongee.netlify.app
+      - key: CORS_ORIGIN
+        value: https://aquanature-plongee.netlify.app
+      - key: RATE_LIMIT_WINDOW
+        value: "15"
+      - key: RATE_LIMIT_MAX
+        value: "100"
+      - key: MAX_FILE_SIZE
+        value: "8388608"
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_SECURE
+        value: "false"
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: Club de Plongée <no-reply@aquanature-plongee.fr>
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: groq/compound-mini
