@@ -22,13 +22,17 @@ const CONFIG = { FORMATIONS: 60, COMPETENCES: 150, SPECIALITES: 40, SEANCES: 300
 const NIVEAUX_FORMATION = ["N1", "N2", "N3", "N4", "MF1"];
 // Le niveau visé par une formation est le niveau juste au-dessus du niveau
 // actuel de l'adhérent (identite-service) — pas un niveau déjà acquis.
+// Pas d'entrée pour "Moniteur" : c'est le sommet de l'échelle, aucun niveau
+// suivant n'existe (voir FormationService.checkPrerequis, qui refuse
+// désormais toute formation dont le niveau visé n'est pas strictement
+// supérieur au niveau actuel — un adhérent déjà Moniteur est exclu du tirage
+// ci-dessous plutôt que de lui assigner "MF1" à tort, comme avant).
 const NEXT_NIVEAU_MAP = {
   "Baptême": "N1",
   "Niveau 1": "N2",
   "Niveau 2": "N3",
   "Niveau 3": "N4",
   "Niveau 4": "MF1",
-  Moniteur: "MF1",
 };
 
 function inRange(date, from, to) {
@@ -63,6 +67,15 @@ async function seed() {
   const identite = readSeedData("identite");
   const activites = readSeedData("activites");
 
+  // Un adhérent déjà "Moniteur" n'a plus de niveau suivant à viser (voir
+  // NEXT_NIVEAU_MAP) : exclu du tirage plutôt que de retomber sur le
+  // fallback `pick(NIVEAUX_FORMATION)`, qui pourrait tout aussi bien lui
+  // assigner un niveau déjà largement dépassé (ex. N2) et violer la même
+  // règle.
+  const adherentIdsFormables = identite.adherentIds.filter(
+    (id) => identite.adherentNiveauMap[id] !== "Moniteur",
+  );
+
   // ==================== FORMATIONS ====================
   const formations = [];
   for (let i = 0; i < CONFIG.FORMATIONS; i++) {
@@ -72,7 +85,7 @@ async function seed() {
     const nbSeancesPrevues = randomInt(6, 16);
     const montantTotal = randomFloat(80, 400);
     const statutPaiement = pickWeighted(STATUT_PAIEMENT_WEIGHTS);
-    const numAdherent = pick(identite.adherentIds);
+    const numAdherent = pick(adherentIdsFormables);
     formations.push({
       num_adherent: numAdherent,
       id_moniteur: pick(identite.moniteurIds),
