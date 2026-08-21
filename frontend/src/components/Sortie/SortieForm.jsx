@@ -74,7 +74,7 @@ const SortieForm = () => {
     lieu: "",
     site: "",
     type: "Plongée d'exploration",
-    niveau_requis: "Débutant",
+    niveau_requis: "Baptême",
     nb_places: 10,
     profondeur_max: 20,
     duree_estimee: "01:00",
