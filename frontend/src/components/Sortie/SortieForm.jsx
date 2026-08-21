@@ -17,8 +17,10 @@ import {
   FiInfo,
   FiDollarSign,
   FiAlertTriangle,
+  FiUserCheck,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SortieLocationPicker from "./SortieLocationPicker";
 import LieuAutocompleteInput from "./LieuAutocompleteInput";
@@ -59,6 +61,14 @@ const SortieForm = () => {
   const { data, isLoading: loadingData } = useGetById(id);
   const create = useCreate();
   const update = useUpdate();
+  // Moniteurs enregistrés (identite-service) parmi lesquels désigner les
+  // encadrants de cette sortie — voir Sortie.encadrants (backend). Distinct
+  // de l'encadrant par palanquée (choisi plus tard, une fois les
+  // palanquées constituées, voir PalanqueesManager).
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
+  const { data: moniteursData, isLoading: loadingMoniteurs } =
+    useGetAllMoniteurs();
+  const moniteurs = moniteursData?.data || [];
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [focused, setFocused] = useState(null);
@@ -86,6 +96,7 @@ const SortieForm = () => {
     tarif_non_adherent: "",
     latitude: "",
     longitude: "",
+    encadrants: [],
   });
 
   useEffect(() => {
@@ -114,6 +125,7 @@ const SortieForm = () => {
         tarif_non_adherent: s.tarif_non_adherent ?? "",
         latitude: s.latitude ?? "",
         longitude: s.longitude ?? "",
+        encadrants: Array.isArray(s.encadrants) ? s.encadrants : [],
       });
     }
   }, [editMode, id, data]);
@@ -168,6 +180,18 @@ const SortieForm = () => {
       longitude: Math.round(result.lng * 1e6) / 1e6,
     }));
     setErrors((prev) => ({ ...prev, lieu: "", latitude: "" }));
+  };
+
+  const toggleEncadrant = (idMoniteur) => {
+    setFormData((prev) => {
+      const has = prev.encadrants.includes(idMoniteur);
+      return {
+        ...prev,
+        encadrants: has
+          ? prev.encadrants.filter((id) => id !== idMoniteur)
+          : [...prev.encadrants, idMoniteur],
+      };
+    });
   };
 
   const validate = () => {
@@ -537,6 +561,49 @@ const SortieForm = () => {
                 </option>
               ))}
             </select>
+          </motion.div>
+
+          <motion.div {...fadeInUp} className="md:col-span-2">
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiUserCheck className="w-4 h-4 text-gray-400" />
+                Encadrants désignés
+              </span>
+            </label>
+            {loadingMoniteurs ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500">
+                Chargement des moniteurs…
+              </p>
+            ) : moniteurs.length === 0 ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500">
+                Aucun moniteur enregistré pour le moment.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-3 pt-1 max-h-48 overflow-y-auto pr-1">
+                {moniteurs.map((moniteur) => (
+                  <label
+                    key={moniteur.id_moniteur}
+                    className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.encadrants.includes(moniteur.id_moniteur)}
+                      onChange={() => toggleEncadrant(moniteur.id_moniteur)}
+                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                    />
+                    {moniteur.user?.name || `Moniteur #${moniteur.id_moniteur}`}
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      ({moniteur.niveau})
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+              Moniteurs pressentis pour encadrer cette sortie — facultatif à
+              ce stade, l&apos;encadrant de chaque palanquée se choisit
+              séparément une fois les palanquées constituées.
+            </p>
           </motion.div>
 
           <motion.div {...fadeInUp} className="md:col-span-2">

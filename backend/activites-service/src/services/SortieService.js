@@ -498,6 +498,37 @@ class SortieService extends BaseService {
         });
     }
 
+    // Encadrants désignés (planification) : liste d'id_moniteur choisis
+    // parmi les moniteurs enregistrés (identite-service) — distinct de
+    // l'encadrant par palanquée (Palanquee.id_moniteur_encadrant), qui se
+    // décide plus tard, une fois les palanquées constituées. Facultatif à
+    // la création (une sortie peut être planifiée avant d'avoir trouvé ses
+    // encadrants), mais chaque id fourni doit correspondre à un moniteur
+    // réel — sinon l'affichage plantera silencieusement côté détail/liste.
+    if (data.encadrants !== undefined && data.encadrants !== null) {
+      if (!Array.isArray(data.encadrants)) {
+        errors.push({
+          field: "encadrants",
+          message: "Les encadrants désignés doivent être une liste d'identifiants",
+        });
+      } else {
+        const verifications = await Promise.all(
+          data.encadrants.map(async (idMoniteur) => {
+            const moniteur = await identiteClient.getMoniteurById(idMoniteur);
+            return { idMoniteur, existe: !!moniteur };
+          }),
+        );
+        verifications
+          .filter((v) => !v.existe)
+          .forEach((v) =>
+            errors.push({
+              field: "encadrants",
+              message: `Moniteur #${v.idMoniteur} introuvable`,
+            }),
+          );
+      }
+    }
+
     return errors;
   }
 

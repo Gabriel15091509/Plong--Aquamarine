@@ -28,12 +28,14 @@ import {
   FiCloudRain,
   FiZap,
   FiActivity,
+  FiUserCheck,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useIncidents } from "../../hooks/Incident/useIncidents";
 import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
@@ -107,7 +109,9 @@ const SortieDetails = () => {
   const { useGetBySortie: useGetAttributionsBySortie } = useAttributions();
   const { useGetAll: useGetAllMateriels } = useMateriels();
   const { useGetAll: useGetAllAdherents } = useAdherents();
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
   const { data, isLoading } = useGetById(id);
+  const { data: moniteursData } = useGetAllMoniteurs();
   const { data: meteoData, isLoading: loadingMeteo } = useGetMeteo(id);
   const { data: incidentsData } = useGetBySortie(id);
   const { data: attributionsData } = useGetAttributionsBySortie(id);
@@ -129,6 +133,13 @@ const SortieDetails = () => {
   adherentsData?.data?.forEach((a) => {
     adherentMap[a.num_adherent] = `${a.nom} ${a.prenom}`;
   });
+  const moniteurMap = {};
+  moniteursData?.data?.forEach((m) => {
+    moniteurMap[m.id_moniteur] = m.user?.name || `Moniteur #${m.id_moniteur}`;
+  });
+  const encadrantsNoms = (sortie?.encadrants || []).map(
+    (idMoniteur) => moniteurMap[idMoniteur] || `Moniteur #${idMoniteur}`,
+  );
 
   // La date de la sortie est passée mais son statut n'a pas été mis à
   // jour manuellement : on alerte le staff pour qu'il clôture/annule.
@@ -499,6 +510,15 @@ const SortieDetails = () => {
               value={`${Number(sortie.tarif_non_adherent).toFixed(2)} €`}
             />
           )}
+          <InfoItem
+            icon={FiUserCheck}
+            label="Encadrants désignés"
+            value={
+              encadrantsNoms.length > 0
+                ? encadrantsNoms.join(", ")
+                : "Aucun encadrant désigné pour l'instant"
+            }
+          />
         </SectionCard>
 
         {/* Prévision météo — voir SortieService.getPrevisionMeteo. Card
