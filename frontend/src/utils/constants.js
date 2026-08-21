@@ -125,6 +125,18 @@ export const STATUT_SORTIE_OPTIONS = Object.values(STATUT_SORTIE);
 
 export const TYPE_PLONGEE_OPTIONS = TYPE_ACTIVITE_OPTIONS;
 
+// Partagées entre PlongeeForm (saisie complète) et PlongeeList (complétion
+// rapide d'un brouillon) — un seul vocabulaire pour les deux.
+export const VISIBILITE_OPTIONS = [
+  'Très bonne',
+  'Bonne',
+  'Moyenne',
+  'Mauvaise',
+  'Très mauvaise',
+];
+
+export const COURANT_OPTIONS = ['Nul', 'Faible', 'Modéré', 'Fort', 'Très fort'];
+
 export const CATEGORIE_MATERIEL_OPTIONS = [
   'Bloc',
   'Détendeur',

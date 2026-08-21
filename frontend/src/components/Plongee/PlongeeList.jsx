@@ -16,6 +16,8 @@ import {
   FiCalendar,
   FiMapPin,
   FiSearch,
+  FiClipboard,
+  FiSave,
 } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
@@ -24,7 +26,11 @@ import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
-import { TYPE_PLONGEE_OPTIONS } from "../../utils/constants";
+import {
+  TYPE_PLONGEE_OPTIONS,
+  VISIBILITE_OPTIONS,
+  COURANT_OPTIONS,
+} from "../../utils/constants";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -38,7 +44,7 @@ const PlongeeList = () => {
   // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { hasRole } = useAuth();
   const canManagePlongee = hasRole(["president", "moniteur"]);
-  const { useGetAll, useRemove, useValidate } = usePlongees();
+  const { useGetAll, useRemove, useValidate, useUpdate } = usePlongees();
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
   const { data, isLoading, error, refetch } = useGetAll();
@@ -47,6 +53,7 @@ const PlongeeList = () => {
 
   const remove = useRemove();
   const validate = useValidate();
+  const update = useUpdate();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
@@ -55,6 +62,20 @@ const PlongeeList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 10;
+
+  // Complétion rapide d'un brouillon (voir isBrouillon) : uniquement les
+  // champs qu'un moniteur saisit après-coup — adhérent/sortie/date/type sont
+  // déjà fixés depuis le pointage de présence, inutile de repasser par le
+  // formulaire complet (PlongeeForm) pour eux.
+  const [completeModal, setCompleteModal] = useState(null);
+  const [completeForm, setCompleteForm] = useState({
+    profondeur_max: "",
+    duree: "",
+    temperature_eau: "",
+    visibilite: "Bonne",
+    courant: "Nul",
+  });
+  const [completeErrors, setCompleteErrors] = useState({});
 
   // Map des adhérents avec leurs infos (useMemo)
   const adherentMap = useMemo(() => {
@@ -136,6 +157,49 @@ const PlongeeList = () => {
       refetch();
     } catch (error) {
       console.error("Échec de la validation de la plongée :", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openCompleteModal = (plongee) => {
+    setCompleteForm({
+      profondeur_max: plongee.profondeur_max ?? "",
+      duree: plongee.duree ?? "",
+      temperature_eau: plongee.temperature_eau ?? "",
+      visibilite: plongee.visibilite || "Bonne",
+      courant: plongee.courant || "Nul",
+    });
+    setCompleteErrors({});
+    setCompleteModal(plongee.id_plongee);
+  };
+
+  const handleCompleteChange = (e) => {
+    const { name, value } = e.target;
+    setCompleteForm((prev) => ({ ...prev, [name]: value }));
+    if (completeErrors[name]) setCompleteErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const validateCompleteForm = () => {
+    const newErrors = {};
+    if (!completeForm.profondeur_max || completeForm.profondeur_max <= 0)
+      newErrors.profondeur_max = "La profondeur est requise";
+    if (!completeForm.duree || completeForm.duree <= 0)
+      newErrors.duree = "La durée est requise";
+    setCompleteErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleCompleteSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateCompleteForm()) return;
+    try {
+      setLoading(true);
+      await update.mutateAsync({ id: completeModal, data: completeForm });
+      setCompleteModal(null);
+      refetch();
+    } catch (error) {
+      console.error("Échec de la complétion de la plongée :", error);
     } finally {
       setLoading(false);
     }
@@ -367,13 +431,34 @@ const PlongeeList = () => {
 
                         {/* Actions */}
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          {/* Valider - uniquement si non validée */}
+                          {/* Compléter - action mise en avant tant que la
+                              plongée est un brouillon (voir isBrouillon) :
+                              évite de passer par le formulaire complet pour
+                              seulement saisir profondeur/durée/etc. */}
+                          {canManagePlongee && isBrouillon(plongee) && (
+                            <button
+                              onClick={() => openCompleteModal(plongee)}
+                              disabled={loading}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Compléter les données de cette plongée"
+                            >
+                              <FiClipboard className="w-4 h-4" /> Compléter
+                            </button>
+                          )}
+                          {/* Valider - uniquement si non validée ; désactivé
+                              tant que profondeur/durée ne sont pas saisies
+                              (voir PlongeeService.validatePlongee, même
+                              règle revalidée côté serveur). */}
                           {canManagePlongee && !plongee.id_moniteur_validateur && (
                             <button
                               onClick={() => handleValidate(plongee.id_plongee)}
-                              disabled={loading}
-                              className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
-                              title="Valider la plongée"
+                              disabled={loading || isBrouillon(plongee)}
+                              className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title={
+                                isBrouillon(plongee)
+                                  ? "Complétez d'abord la profondeur et la durée"
+                                  : "Valider la plongée"
+                              }
                             >
                               <FiCheck className="w-4 h-4" />
                             </button>
@@ -484,6 +569,149 @@ const PlongeeList = () => {
               </button>
             </div>
           </motion.div>
+        </ModalOverlay>
+      )}
+
+      {/* Modal de complétion rapide d'un brouillon — uniquement les champs
+          qu'un moniteur saisit après le pointage (voir openCompleteModal),
+          pas le formulaire complet (PlongeeForm) qui redemanderait
+          adhérent/sortie/date/type déjà fixés. */}
+      {completeModal && (
+        <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.form
+            onSubmit={handleCompleteSubmit}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
+          >
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400 mb-4">
+              <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                <FiClipboard className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                Compléter la plongée
+              </h3>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Profondeur max (m) *
+                  </label>
+                  <input
+                    type="number"
+                    name="profondeur_max"
+                    value={completeForm.profondeur_max}
+                    onChange={handleCompleteChange}
+                    min="0"
+                    placeholder="0"
+                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                      completeErrors.profondeur_max
+                        ? "border-red-400"
+                        : "border-gray-300 dark:border-gray-600"
+                    }`}
+                  />
+                  {completeErrors.profondeur_max && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {completeErrors.profondeur_max}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Durée (min) *
+                  </label>
+                  <input
+                    type="number"
+                    name="duree"
+                    value={completeForm.duree}
+                    onChange={handleCompleteChange}
+                    min="0"
+                    placeholder="0"
+                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                      completeErrors.duree
+                        ? "border-red-400"
+                        : "border-gray-300 dark:border-gray-600"
+                    }`}
+                  />
+                  {completeErrors.duree && (
+                    <p className="mt-1 text-xs text-red-500">{completeErrors.duree}</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Température de l&apos;eau (°C)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  name="temperature_eau"
+                  value={completeForm.temperature_eau}
+                  onChange={handleCompleteChange}
+                  placeholder="Facultatif"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Visibilité
+                  </label>
+                  <select
+                    name="visibilite"
+                    value={completeForm.visibilite}
+                    onChange={handleCompleteChange}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {VISIBILITE_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Courant
+                  </label>
+                  <select
+                    name="courant"
+                    value={completeForm.courant}
+                    onChange={handleCompleteChange}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {COURANT_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setCompleteModal(null)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-colors disabled:opacity-60"
+              >
+                <FiSave className="w-4 h-4" />
+                Enregistrer
+              </button>
+            </div>
+          </motion.form>
         </ModalOverlay>
       )}
     </div>

@@ -1,7 +1,9 @@
 const PlongeeService = require("../../src/services/PlongeeService");
 const materielClient = require("../../src/utils/serviceClients/materielClient");
+const identiteClient = require("../../src/utils/serviceClients/identiteClient");
 
 jest.mock("../../src/utils/serviceClients/materielClient");
+jest.mock("../../src/utils/serviceClients/identiteClient");
 
 const service = new PlongeeService();
 
@@ -16,6 +18,64 @@ describe("PlongeeService.assertPlongeeModifiable", () => {
     expect(() =>
       service.assertPlongeeModifiable({ id_moniteur_validateur: 3 }),
     ).toThrow(/validée/);
+  });
+});
+
+describe("PlongeeService.validatePlongee", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("refuse de valider un brouillon sans profondeur ni durée", async () => {
+    jest.spyOn(service, "getById").mockResolvedValue({
+      id_moniteur_validateur: null,
+      profondeur_max: null,
+      duree: null,
+    });
+
+    await expect(service.validatePlongee(1, 7)).rejects.toThrow(/complétée/);
+    expect(identiteClient.incrementPlongeesCount).not.toHaveBeenCalled();
+  });
+
+  test("refuse si seule la durée manque encore", async () => {
+    jest.spyOn(service, "getById").mockResolvedValue({
+      id_moniteur_validateur: null,
+      profondeur_max: 20,
+      duree: null,
+    });
+
+    await expect(service.validatePlongee(1, 7)).rejects.toThrow(/complétée/);
+  });
+
+  test("valide une plongée complète et incrémente le compteur de l'adhérent", async () => {
+    const plongee = {
+      id_moniteur_validateur: null,
+      profondeur_max: 18,
+      duree: 45,
+      num_adherent: "ADH-1",
+      id_seance: null,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    jest.spyOn(service, "getById").mockResolvedValue(plongee);
+    identiteClient.incrementPlongeesCount.mockResolvedValue({});
+
+    const result = await service.validatePlongee(1, 7);
+
+    expect(plongee.id_moniteur_validateur).toBe(7);
+    expect(plongee.save).toHaveBeenCalled();
+    expect(identiteClient.incrementPlongeesCount).toHaveBeenCalledWith("ADH-1", null);
+    expect(result).toBe(plongee);
+  });
+
+  test("ne revalide pas (et ne re-vérifie pas les données) une plongée déjà validée", async () => {
+    identiteClient.incrementPlongeesCount.mockClear();
+    const plongee = { id_moniteur_validateur: 3, profondeur_max: null, duree: null };
+    jest.spyOn(service, "getById").mockResolvedValue(plongee);
+
+    const result = await service.validatePlongee(1, 7);
+
+    expect(result).toBe(plongee);
+    expect(identiteClient.incrementPlongeesCount).not.toHaveBeenCalled();
   });
 });
 

@@ -22,22 +22,16 @@ import { useSeances } from "../../hooks/Formation/useSeances";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
-import { TYPE_PLONGEE_OPTIONS } from "../../utils/constants";
+import {
+  TYPE_PLONGEE_OPTIONS,
+  VISIBILITE_OPTIONS,
+  COURANT_OPTIONS,
+} from "../../utils/constants";
 import {
   formatDate,
   formatDateTime,
   isSortieSelectionnable,
 } from "../../utils/helpers";
-
-const VISIBILITE_OPTIONS = [
-  "Très bonne",
-  "Bonne",
-  "Moyenne",
-  "Mauvaise",
-  "Très mauvaise",
-];
-
-const COURANT_OPTIONS = ["Nul", "Faible", "Modéré", "Fort", "Très fort"];
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },

@@ -182,6 +182,17 @@ class PlongeeService extends BaseService {
     // validée par un autre moniteur).
     if (plongee.id_moniteur_validateur) return plongee;
 
+    // Brouillon (créé automatiquement au pointage de présence, voir
+    // PalanqueeService.creerPlongeeBrouillon) pas encore complété par le
+    // moniteur : le valider tel quel compterait une plongée sans aucune
+    // mesure réelle dans le carnet de l'adhérent (voir PlongeeList "À
+    // compléter" côté frontend, qui doit être utilisé avant "Valider").
+    if (plongee.profondeur_max == null || plongee.duree == null) {
+      throw new Error(
+        "Cette plongée doit d'abord être complétée (profondeur et durée) avant d'être validée",
+      );
+    }
+
     plongee.id_moniteur_validateur = id_moniteur;
     await plongee.save();
 
