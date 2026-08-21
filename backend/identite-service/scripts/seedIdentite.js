@@ -31,6 +31,17 @@ const NIVEAU_ADHERENT_WEIGHTS = [
   ["Moniteur", 0.05],
 ];
 
+// Préfixe FFESSM du brevet Adherent.num_brevet (distinct de Moniteur.
+// num_brevet ci-dessus, format MF1/MF2 propre à l'encadrement) — reflète le
+// placeholder du formulaire ("FFESSM N2-2024-00123").
+const NIVEAU_BREVET_CODE = {
+  "Niveau 1": "N1",
+  "Niveau 2": "N2",
+  "Niveau 3": "N3",
+  "Niveau 4": "N4",
+  Moniteur: "MF1",
+};
+
 const STATUT_WEIGHTS = [
   ["Actif", 0.75],
   ["Inactif", 0.08],
@@ -162,6 +173,14 @@ async function seed() {
     const niveau = pickWeighted(NIVEAU_ADHERENT_WEIGHTS);
     const email = i === 0 ? "adherent@plongee.com" : randomEmail(nom, prenom);
     const numLicenceFfesm = niveau !== "Baptême" ? nextLicence() : null;
+    const dateObtentionNiveau = niveau !== "Baptême" ? pastDate(8) : null;
+    // Contrairement à num_licence_ffesm, num_brevet n'a pas de contrainte
+    // d'unicité (deux fédérations/organismes différents peuvent en théorie
+    // délivrer le même n° de brevet côte à côte) — pas de Set de suivi requis.
+    const numBrevet =
+      niveau !== "Baptême"
+        ? `${NIVEAU_BREVET_CODE[niveau] || "N1"}-${dateObtentionNiveau.getFullYear()}-${String(randomInt(1, 99999)).padStart(5, "0")}`
+        : null;
 
     const user = await User.create({
       email,
@@ -186,8 +205,9 @@ async function seed() {
       email,
       contact_urgence: `${randomFullName().prenom} ${randomFullName().nom} - ${randomPhone()}`,
       niveau,
-      date_obtention_niveau: niveau !== "Baptême" ? pastDate(8) : null,
+      date_obtention_niveau: dateObtentionNiveau,
       num_licence_ffesm: numLicenceFfesm,
+      num_brevet: numBrevet,
       statut: pickWeighted(STATUT_WEIGHTS),
       date_inscription: pastDate(6),
       nb_plongees_total: randomNbPlongees(niveau),
