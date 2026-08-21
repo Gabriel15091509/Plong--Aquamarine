@@ -307,8 +307,11 @@ const CertificatList = () => {
                         CertificatDetails.jsx). Le décrypter pour chaque
                         ligne d'une liste irait justement à l'encontre de ce
                         pourquoi il est chiffré — un cadenas signale
-                        "document protégé", pas "absent". */}
-                    <div className="flex-shrink-0 flex items-center gap-2">
+                        "document protégé", pas "absent". Empilés (colonne)
+                        sur mobile pour laisser toute la largeur aux
+                        informations, côte à côte (ligne) à partir de sm:
+                        comme en affichage bureau. */}
+                    <div className="flex-shrink-0 flex flex-col sm:flex-row items-center gap-2">
                       <div
                         className="w-20 h-14 rounded-lg bg-gray-100 dark:bg-gray-700 flex flex-col items-center justify-center gap-0.5 border-2 border-gray-200 dark:border-gray-600"
                         title={

@@ -319,8 +319,11 @@ const AdhesionList = () => {
                         disposition que le staff). document_path n'est
                         jamais chiffré pour une adhésion (contrairement au
                         certificat médical, voir CertificatList.jsx) :
-                        servable directement en <img>. */}
-                    <div className="flex-shrink-0 flex items-center gap-2">
+                        servable directement en <img>. Empilés (colonne) sur
+                        mobile pour laisser toute la largeur aux
+                        informations, côte à côte (ligne) à partir de sm:
+                        comme en affichage bureau. */}
+                    <div className="flex-shrink-0 flex flex-col sm:flex-row items-center gap-2">
                       {adhesion.document_path ? (
                         <img
                           src={photoUrl(adhesion.document_path)}
