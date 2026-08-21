@@ -202,6 +202,28 @@ class FormationService extends BaseService {
         errors.push(`Niveau insuffisant (niveau minimum requis : ${prerequis.niveauMin})`);
       }
     }
+
+    // Le niveau visé doit faire progresser l'adhérent, jamais répéter ou
+    // redescendre sous ce qu'il a déjà : niveauMin ci-dessus ne garantit
+    // qu'un plancher (ex. N4 exige au moins Niveau 3), rien n'empêchait par
+    // ailleurs d'inscrire un Niveau 3 à une formation N1, ou un Niveau 2 à
+    // une nouvelle formation N2 qu'il possède déjà. Comparé via NIVEAU_ORDER
+    // (même échelle que niveau_vise une fois traduit par NIVEAU_OBTENU,
+    // ex. "N2" -> "Niveau 2") plutôt qu'une égalité de chaîne, qui aurait
+    // toujours échoué silencieusement ("N2" !== "Niveau 2"). Un adhérent
+    // sans niveau connu (adherent.niveau null, jamais licencié) n'est
+    // jamais bloqué ici : indexOf(null) vaut -1, la comparaison est
+    // ignorée.
+    const niveauViseComplet = NIVEAU_OBTENU[niveau_vise];
+    if (niveauViseComplet) {
+      const indexActuel = NIVEAU_ORDER.indexOf(adherent.niveau);
+      const indexVise = NIVEAU_ORDER.indexOf(niveauViseComplet);
+      if (indexActuel !== -1 && indexVise !== -1 && indexVise <= indexActuel) {
+        errors.push(
+          `L'adhérent a déjà le niveau ${adherent.niveau} : le niveau visé (${niveauViseComplet}) doit être strictement supérieur`,
+        );
+      }
+    }
     if ((adherent.nb_plongees_total || 0) < prerequis.nbPlongeesMin) {
       errors.push(`Nombre de plongées insuffisant (minimum requis : ${prerequis.nbPlongeesMin})`);
     }
