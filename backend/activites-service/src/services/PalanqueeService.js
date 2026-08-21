@@ -10,6 +10,8 @@ const materielClient = require('../utils/serviceClients/materielClient');
 const { isStaff } = require('../utils/roleScope');
 const { withAdherent, withMoniteurEncadrant } = require('../utils/enrichAdherents');
 
+const NIVEAUX_LIMITANTS = ['Baptême', 'Niveau 1'];
+
 const JOURS_SEMAINE = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 
 // Fait le lien entre le niveau requis d'une sortie et la spécialité
@@ -256,21 +258,11 @@ class PalanqueeService extends BaseService {
     });
   }
 
-  // Calcule le nombre max de plongeurs pour un groupe encadré par 1 seul
-  // encadrant, d'après le Code du Sport (Manuel de Formation Technique
-  // FFESSM, annexes III-16a « Baptême : effectif maximal 1 » et III-16b
-  // « plongée encadrée en exploration : effectif maximal 4 », valable de
-  // PE-12 à PE-60 — AUCUNE zone/niveau n'autorise 6 plongeurs pour un seul
-  // encadrant, contrairement à l'ancienne règle ici ("1/4 ou 1/6"), qui
-  // n'avait pas de base réglementaire réelle pour le palier à 6.
-  // Volontairement pas de gestion du 5e plongeur exceptionnel autorisé par
-  // les annexes (uniquement si lui-même Guide de Palanquée/Niveau 4) : ça
-  // demanderait de savoir lequel des membres joue ce rôle, non modélisé
-  // ici — cap simple et sûr à 4 dans ce cas plutôt qu'une exception non
-  // vérifiée.
+  // Calcule le nombre max de plongeurs pour un groupe encadré par 1 moniteur :
+  // 1/4 si un membre est Débutant ou Niveau 1, 1/6 sinon (règle FFESSM simplifiée)
   computeMaxRatio(niveaux) {
-    if (niveaux.includes('Baptême')) return 1;
-    return 4;
+    const aUnNiveauLimitant = niveaux.some((n) => NIVEAUX_LIMITANTS.includes(n));
+    return aUnNiveauLimitant ? 4 : 6;
   }
 
   async assertPalanqueeModifiable(palanquee) {
