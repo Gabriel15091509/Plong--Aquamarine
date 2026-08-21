@@ -113,6 +113,69 @@ async function seed() {
   await Formation.bulkCreate(formations);
   console.log(`[formation] ${formations.length} formations créées`);
 
+  // Répercute sur identite.adherents (autre schéma, même base Postgres —
+  // requête brute plutôt qu'un modèle Sequelize, formation-service n'a pas
+  // Adherent/Brevet dans son registre de modèles) ce qu'un vrai passage par
+  // FormationService.completeFormation aurait fait pour chaque formation
+  // "Terminée" ci-dessus : sans ça, un adhérent avec une formation
+  // "Terminée" visant N3 restait affiché "Niveau 2" dans la liste des
+  // adhérents — jamais promu, puisque niveau_vise est calculé à partir du
+  // niveau AVANT la formation (NEXT_NIVEAU_MAP ci-dessus) et que ce script
+  // insère les lignes Formation directement, sans jamais appeler
+  // updateNiveau. Même logique que backend/identite-service/scripts/
+  // backfill-adherent-niveau-formation-terminee.sql (à date : ce backfill a
+  // servi une fois pour rattraper les formations déjà seedées avant ce
+  // correctif) — reproduite ici pour que chaque nouveau seed reste cohérent
+  // dès la génération, sans dépendre qu'on repense à relancer un script à
+  // part.
+  await sequelize.query(`
+    WITH echelle(niveau, rang) AS (
+      VALUES ('Baptême', 0), ('Niveau 1', 1), ('Niveau 2', 2), ('Niveau 3', 3), ('Niveau 4', 4), ('Moniteur', 5)
+    ),
+    obtenu(niveau_vise, niveau_obtenu) AS (
+      VALUES ('N1', 'Niveau 1'), ('N2', 'Niveau 2'), ('N3', 'Niveau 3'), ('N4', 'Niveau 4'), ('MF1', 'Moniteur')
+    ),
+    promotions AS (
+      SELECT DISTINCT ON (f.num_adherent) f.num_adherent, o.niveau_obtenu, f.date_fin_reelle
+      FROM formation.formations f
+      JOIN obtenu o ON o.niveau_vise = f.niveau_vise
+      JOIN identite.adherents a ON a.num_adherent = f.num_adherent
+      JOIN echelle e_actuel ON e_actuel.niveau = a.niveau::text
+      JOIN echelle e_obtenu ON e_obtenu.niveau = o.niveau_obtenu
+      WHERE f.statut = 'Terminée' AND e_actuel.rang < e_obtenu.rang
+      ORDER BY f.num_adherent, f.date_fin_reelle ASC
+    )
+    INSERT INTO identite.brevets (num_adherent, niveau, date_obtention, created_at, updated_at)
+    SELECT p.num_adherent, p.niveau_obtenu, p.date_fin_reelle, now(), now()
+    FROM promotions p
+    WHERE NOT EXISTS (
+      SELECT 1 FROM identite.brevets b WHERE b.num_adherent = p.num_adherent AND b.niveau::text = p.niveau_obtenu
+    );
+  `);
+  await sequelize.query(`
+    WITH echelle(niveau, rang) AS (
+      VALUES ('Baptême', 0), ('Niveau 1', 1), ('Niveau 2', 2), ('Niveau 3', 3), ('Niveau 4', 4), ('Moniteur', 5)
+    ),
+    obtenu(niveau_vise, niveau_obtenu) AS (
+      VALUES ('N1', 'Niveau 1'), ('N2', 'Niveau 2'), ('N3', 'Niveau 3'), ('N4', 'Niveau 4'), ('MF1', 'Moniteur')
+    ),
+    promotions AS (
+      SELECT DISTINCT ON (f.num_adherent) f.num_adherent, o.niveau_obtenu, f.date_fin_reelle
+      FROM formation.formations f
+      JOIN obtenu o ON o.niveau_vise = f.niveau_vise
+      JOIN identite.adherents a ON a.num_adherent = f.num_adherent
+      JOIN echelle e_actuel ON e_actuel.niveau = a.niveau::text
+      JOIN echelle e_obtenu ON e_obtenu.niveau = o.niveau_obtenu
+      WHERE f.statut = 'Terminée' AND e_actuel.rang < e_obtenu.rang
+      ORDER BY f.num_adherent, f.date_fin_reelle ASC
+    )
+    UPDATE identite.adherents a
+    SET niveau = p.niveau_obtenu::"enum_adherents_niveau", date_obtention_niveau = p.date_fin_reelle
+    FROM promotions p
+    WHERE a.num_adherent = p.num_adherent;
+  `);
+  console.log("[formation] niveau des adhérents réconcilié avec leurs formations Terminée");
+
   const formationRows = await Formation.findAll({
     attributes: ["id_formation", "date_debut", "date_fin_prevue", "num_adherent", "montant_total", "montant_paye"],
   });
