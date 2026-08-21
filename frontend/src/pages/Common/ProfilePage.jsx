@@ -10,6 +10,8 @@ import { useFormations } from "../../hooks/Formation/useFormations";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import { useUsers } from "../../hooks/User/useUsers";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { usePaiements } from "../../hooks/Paiement/usePaiements";
 import {
   FiUser,
   FiMail,
@@ -125,15 +127,18 @@ const ProfilePage = () => {
   }, [photoPreview]);
 
   // Récupération des données API
-  const { useGetAll: useGetAllAdherents } = useAdherents();
+  const { useGetAll: useGetAllAdherents, useGetById: useGetAdherentById } =
+    useAdherents();
   const { useGetAll: useGetAllPlongees } = usePlongees();
   const { useGetAll: useGetAllSorties } = useSorties();
   const { useGetAll: useGetAllFormations } = useFormations();
   const { useGetAll: useGetAllInscriptions } = useInscriptions();
   const { useGetAll: useGetAllUsers } = useUsers();
   const { useUpdateProfile } = useUsers();
-  const updateProfile = useUpdateProfile();
   const { useGetByAdherent: useGetAttributionsByAdherent } = useAttributions();
+  const { useGetByUserId: useGetMoniteurByUserId } = useMoniteurs();
+  const { useGetStats: useGetPaiementStats } = usePaiements();
+  const updateProfile = useUpdateProfile();
 
   // Appels API
   const { data: adherentsData, isLoading: loadingAdherents } =
@@ -178,6 +183,28 @@ const ProfilePage = () => {
   );
   const monMateriel = attributionsData?.data || [];
 
+  // Fiche adhérent détaillée (avec l'historique des brevets, absent de la
+  // liste globale ci-dessus) : sert au décompte réel des certifications
+  // obtenues, plutôt que de déduire "0 ou 1" depuis le seul niveau courant.
+  const { data: currentAdherentDetail } = useGetAdherentById(
+    currentAdherent?.num_adherent,
+  );
+
+  // Fiche moniteur du compte connecté : Formation.id_moniteur et
+  // Sortie.encadrants référencent Moniteur.id_moniteur (identite-service),
+  // pas Adherent.num_adherent — indispensable pour rattacher au bon
+  // moniteur les formations/sorties qu'il encadre réellement.
+  const { data: currentMoniteurData } = useGetMoniteurByUserId(
+    user?.role === "moniteur" ? user?.id : undefined,
+  );
+  const currentMoniteurId = currentMoniteurData?.data?.id_moniteur;
+
+  // Paiements (rôle trésorier) : agrégat global par statut, comme sur le
+  // tableau de bord. /paiements (liste) est scopé à l'adhérent appelant dès
+  // que son compte a lui-même une fiche adhérent (PaiementService.getAll)
+  // — /paiements/stats reste la seule source non ambiguë du total club.
+  const { data: paiementStatsData } = useGetPaiementStats();
+
   // Statistiques en fonction du rôle
   const stats = useMemo(() => {
     const allPlongees = plongeesData?.data || [];
@@ -186,6 +213,7 @@ const ProfilePage = () => {
     const allInscriptions = inscriptionsData?.data || [];
     const allAdherents = adherentsData?.data || [];
     const allUsers = usersData?.data || [];
+    const paiementStats = paiementStatsData?.data || [];
 
     const userPlongees = currentAdherent
       ? allPlongees.filter(
@@ -205,12 +233,20 @@ const ProfilePage = () => {
         )
       : [];
 
+    // Historique réel des brevets (une ligne par passage de niveau) —
+    // n'arrive qu'une fois currentAdherentDetail chargé ; en attendant, on
+    // retombe sur l'ancienne heuristique "a un niveau ou non" pour ne pas
+    // afficher un 0 trompeur le temps du chargement.
+    const certifications =
+      currentAdherentDetail?.data?.brevets?.length ??
+      (currentAdherent?.niveau ? 1 : 0);
+
     // Statistiques communes
     const commonStats = {
       totalPlongees: userPlongees.length || 0,
       sortiesInscrites: userInscriptions.length || 0,
       formationsSuivies: userFormations.length || 0,
-      certifications: currentAdherent?.niveau ? 1 : 0,
+      certifications,
       anneesMembre: currentAdherent?.date_inscription
         ? new Date().getFullYear() -
           new Date(currentAdherent.date_inscription).getFullYear()
@@ -239,20 +275,33 @@ const ProfilePage = () => {
           allPlongees.filter((p) => !!p.id_moniteur_validateur).length || 0,
         plongeesEnAttente:
           allPlongees.filter((p) => !p.id_moniteur_validateur).length || 0,
-        formationsEncadrees:
-          allFormations.filter(
-            (f) => f.num_adherent === currentAdherent?.num_adherent,
-          ).length || 0,
-        sortiesEncadrees:
-          allSorties.filter(
-            (s) => s.moniteur_id === currentAdherent?.num_adherent,
-          ).length || 0,
+        // id_moniteur (identite-service), pas num_adherent : un moniteur
+        // n'est pas forcément inscrit comme "adhérent" à sa propre formation.
+        formationsEncadrees: currentMoniteurId
+          ? allFormations.filter((f) => f.id_moniteur === currentMoniteurId)
+              .length
+          : 0,
+        // Sortie.encadrants est un tableau d'id_moniteur (voir
+        // SortieService.validate) — il n'existe pas de champ moniteur_id sur
+        // la sortie elle-même.
+        sortiesEncadrees: currentMoniteurId
+          ? allSorties.filter(
+              (s) =>
+                Array.isArray(s.encadrants) &&
+                s.encadrants.includes(currentMoniteurId),
+            ).length
+          : 0,
       },
       // Trésorier
       tresorier: {
         ...commonStats,
-        totalPaiements: 0, // À remplacer par les données réelles des paiements
-        paiementsEnAttente: 0,
+        totalPaiements: paiementStats.reduce(
+          (sum, p) => sum + (parseInt(p.count) || 0),
+          0,
+        ),
+        paiementsEnAttente: paiementStats
+          .filter((p) => p.statut === "En attente")
+          .reduce((sum, p) => sum + (parseInt(p.count) || 0), 0),
         totalAdhesions:
           allAdherents.filter((a) => a.statut === "actif").length || 0,
         renouvellements:
@@ -291,6 +340,9 @@ const ProfilePage = () => {
     inscriptionsData,
     adherentsData,
     usersData,
+    paiementStatsData,
+    currentAdherentDetail,
+    currentMoniteurId,
     currentAdherent,
     user?.role,
   ]);
