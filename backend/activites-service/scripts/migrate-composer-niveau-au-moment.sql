@@ -1,8 +1,7 @@
 -- Ajoute le snapshot du niveau de l'adhérent au moment où il rejoint une
 -- palanquée (voir le commentaire sur Composer.niveau_au_moment) : sans lui,
--- le ratio encadrant/plongeur (Code du Sport, annexes III-16a/III-16b,
--- voir computeMaxRatio) était recalculé à chaque lecture avec le niveau
--- ACTUEL de l'adhérent —
+-- le ratio encadrant/plongeur (règle RG5, 1/4 ou 1/6 selon computeMaxRatio)
+-- était recalculé à chaque lecture avec le niveau ACTUEL de l'adhérent —
 -- une palanquée clôturée depuis longtemps pouvait donc apparaître
 -- rétroactivement conforme (ou non conforme) au ratio réellement respecté
 -- le jour de la plongée, dès qu'un de ses membres changeait de niveau
