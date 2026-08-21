@@ -34,7 +34,7 @@ images:
   newTag: sha-5d1cea3
 - name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
-  newTag: sha-c3b0a98
+  newTag: sha-15b914a
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newTag: sha-ecbf7b4
