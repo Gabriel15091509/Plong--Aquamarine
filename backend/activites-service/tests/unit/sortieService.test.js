@@ -5,6 +5,7 @@ jest.mock("../../src/utils/meteoClient", () => ({
 jest.mock("../../src/utils/serviceClients/identiteClient", () => ({
   getAdherentById: jest.fn(),
   getUserBasicById: jest.fn(),
+  getMoniteurById: jest.fn(),
 }));
 jest.mock("../../src/utils/email", () => ({
   sendSortieAnnuleeMeteoEmail: jest.fn(),
@@ -81,6 +82,29 @@ describe("SortieService.validateSortieData", () => {
       longitude: 200,
     });
     expect(errors.some((e) => e.field === "longitude" && /-180 et 180/.test(e.message))).toBe(true);
+  });
+
+  test("accepte des encadrants désignés existants", async () => {
+    identiteClient.getMoniteurById.mockImplementation((id) =>
+      Promise.resolve({ id_moniteur: id, niveau: "Moniteur" }),
+    );
+    const errors = await service.validateSortieData({ ...validData, encadrants: [1, 2] });
+    expect(errors).toEqual([]);
+  });
+
+  test("rejette un encadrant désigné qui ne correspond à aucun moniteur", async () => {
+    identiteClient.getMoniteurById.mockResolvedValue(null);
+    const errors = await service.validateSortieData({ ...validData, encadrants: [999] });
+    expect(errors).toEqual([
+      { field: "encadrants", message: "Moniteur #999 introuvable" },
+    ]);
+  });
+
+  test("rejette des encadrants désignés qui ne sont pas une liste", async () => {
+    identiteClient.getMoniteurById.mockClear();
+    const errors = await service.validateSortieData({ ...validData, encadrants: "1" });
+    expect(errors.some((e) => e.field === "encadrants")).toBe(true);
+    expect(identiteClient.getMoniteurById).not.toHaveBeenCalled();
   });
 });
 
