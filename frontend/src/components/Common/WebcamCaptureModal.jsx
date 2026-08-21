@@ -26,6 +26,7 @@ const STEP_LABELS = { recto: "recto", verso: "verso" };
 const WebcamCaptureModal = ({ title = "Photo du document", onCapture, onClose }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
   const streamRef = useRef(null);
   // React.StrictMode (dev) monte/démonte/remonte l'effet d'ouverture de
   // caméra : sans ce garde, deux `getUserMedia` se chevauchent et le premier
@@ -33,6 +34,21 @@ const WebcamCaptureModal = ({ title = "Photo du document", onCapture, onClose })
   // le bon flux. On ignore le résultat de toute requête qui n'est plus la
   // plus récente au moment où elle se résout.
   const streamRequestIdRef = useRef(0);
+
+  // `getUserMedia` n'existe même pas (pas juste refusé) hors contexte
+  // sécurisé — HTTP simple sur une IP LAN (ex. accès depuis un smartphone
+  // via l'adresse réseau du PC), navigateur trop ancien. Dans ce cas la
+  // caméra live est structurellement indisponible ; retenter ne change
+  // rien. On bascule alors sur la capture native du téléphone (<input
+  // capture="environment">, qui ouvre directement l'appareil photo sans
+  // dépendre de cette API), et on réutilise le même pipeline de recadrage/
+  // recto-verso ensuite (voir processCapturedFrame) — la fonctionnalité
+  // reste accessible, seule la source de l'image change.
+  const [captureMode] = useState(() =>
+    typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia
+      ? "live"
+      : "file",
+  );
 
   const [step, setStep] = useState("recto"); // 'recto' | 'verso'
   const [phase, setPhase] = useState("live"); // 'live' | 'review'
@@ -81,10 +97,22 @@ const WebcamCaptureModal = ({ title = "Photo du document", onCapture, onClose })
   };
 
   useEffect(() => {
-    startStream();
+    if (captureMode === "live") startStream();
     return () => stopStream();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Commun aux deux sources d'image (flux caméra live ou fichier natif
+  // choisi via l'input <capture>) : le recadrage automatique ne dépend que
+  // du contenu du canvas, pas de sa provenance.
+  const processCapturedFrame = async (canvas) => {
+    setCropping(true);
+    const { canvas: croppedCanvas, detected } = await autoCropDocument(canvas);
+    const url = croppedCanvas.toDataURL("image/jpeg", 0.92);
+    setCaptures((prev) => ({ ...prev, [step]: { canvas: croppedCanvas, url, detected } }));
+    setCropping(false);
+    setPhase("review");
+  };
 
   const handleCapture = async () => {
     const video = videoRef.current;
@@ -94,25 +122,50 @@ const WebcamCaptureModal = ({ title = "Photo du document", onCapture, onClose })
     canvas.height = video.videoHeight;
     canvas.getContext("2d", { willReadFrequently: true }).drawImage(video, 0, 0, canvas.width, canvas.height);
     stopStream();
+    await processCapturedFrame(canvas);
+  };
 
-    setCropping(true);
-    const { canvas: croppedCanvas, detected } = await autoCropDocument(canvas);
-    const url = croppedCanvas.toDataURL("image/jpeg", 0.92);
-    setCaptures((prev) => ({ ...prev, [step]: { canvas: croppedCanvas, url, detected } }));
-    setCropping(false);
-    setPhase("review");
+  const handleFilePicked = async (e) => {
+    const file = e.target.files?.[0];
+    // Permet de reprendre exactement la même photo (même nom de fichier)
+    // sans que l'input ignore un second choix identique.
+    e.target.value = "";
+    if (!file) return;
+
+    const canvas = canvasRef.current;
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = url;
+      });
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext("2d", { willReadFrequently: true }).drawImage(img, 0, 0);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+    await processCapturedFrame(canvas);
+  };
+
+  // Ne relance le flux live que si la caméra live est réellement
+  // disponible (captureMode === "live") — en mode "file", il n'y a rien à
+  // redémarrer, l'utilisateur rouvre l'appareil photo natif lui-même.
+  const resumeLive = () => {
+    setPhase("live");
+    if (captureMode === "live") startStream();
   };
 
   const handleRetake = () => {
     setCaptures((prev) => ({ ...prev, [step]: null }));
-    setPhase("live");
-    startStream();
+    resumeLive();
   };
 
   const handleAddVerso = () => {
     setStep("verso");
-    setPhase("live");
-    startStream();
+    resumeLive();
   };
 
   const buildOutputFile = () => {
@@ -204,6 +257,13 @@ const WebcamCaptureModal = ({ title = "Photo du document", onCapture, onClose })
             <div className="rounded-lg overflow-hidden bg-black aspect-video flex items-center justify-center relative">
               {phase === "review" && current ? (
                 <img src={current.url} alt={`Document ${STEP_LABELS[step]} capturé`} className="w-full h-full object-contain" />
+              ) : captureMode === "file" ? (
+                <div className="flex flex-col items-center gap-2 text-white text-sm px-6 text-center">
+                  <FiCamera className="w-8 h-8 text-gray-400" />
+                  Aperçu en direct indisponible (connexion non sécurisée) —
+                  utilisez le bouton ci-dessous pour ouvrir l&apos;appareil
+                  photo de votre téléphone.
+                </div>
               ) : (
                 <video ref={videoRef} muted playsInline className="w-full h-full object-contain" />
               )}
@@ -227,7 +287,31 @@ const WebcamCaptureModal = ({ title = "Photo du document", onCapture, onClose })
 
         {!error && (
           <div className="px-5 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-wrap justify-end gap-3">
-            {phase === "live" && (
+            {phase === "live" && captureMode === "file" && (
+              <>
+                {/* `capture="environment"` ouvre directement l'appareil
+                    photo (caméra arrière) sur mobile — pas de dépendance à
+                    getUserMedia, fonctionne donc aussi en HTTP simple. */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFilePicked}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={cropping}
+                  className="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-60"
+                >
+                  <FiCamera className="w-4 h-4" />
+                  Ouvrir l&apos;appareil photo
+                </button>
+              </>
+            )}
+            {phase === "live" && captureMode === "live" && (
               <button
                 type="button"
                 onClick={handleCapture}
