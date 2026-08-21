@@ -22,3 +22,7 @@ frontend/*.log
 # Données de langue OCR (tesseract.js) : téléchargées/mises en cache
 # automatiquement à la première analyse de photo de certificat, pas du code.
 backend/*/*.traineddata
+
+# État local du CLI Netlify (lien vers le site, cache de déploiement) —
+# généré par `netlify deploy`, jamais à committer.
+.netlify/

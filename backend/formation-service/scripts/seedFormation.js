@@ -146,7 +146,7 @@ async function seed() {
       ORDER BY f.num_adherent, f.date_fin_reelle ASC
     )
     INSERT INTO identite.brevets (num_adherent, niveau, date_obtention, created_at, updated_at)
-    SELECT p.num_adherent, p.niveau_obtenu, p.date_fin_reelle, now(), now()
+    SELECT p.num_adherent, p.niveau_obtenu::"identite"."enum_brevets_niveau", p.date_fin_reelle, now(), now()
     FROM promotions p
     WHERE NOT EXISTS (
       SELECT 1 FROM identite.brevets b WHERE b.num_adherent = p.num_adherent AND b.niveau::text = p.niveau_obtenu
@@ -170,7 +170,7 @@ async function seed() {
       ORDER BY f.num_adherent, f.date_fin_reelle ASC
     )
     UPDATE identite.adherents a
-    SET niveau = p.niveau_obtenu::"enum_adherents_niveau", date_obtention_niveau = p.date_fin_reelle
+    SET niveau = p.niveau_obtenu::"identite"."enum_adherents_niveau", date_obtention_niveau = p.date_fin_reelle
     FROM promotions p
     WHERE a.num_adherent = p.num_adherent;
   `);
