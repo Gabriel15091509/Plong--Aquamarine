@@ -15,7 +15,13 @@ import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import SearchableSelect from "../Common/SearchableSelect";
 import { ETAT_MATERIEL_OPTIONS } from "../../utils/constants";
 
-const NIVEAUX_LIMITANTS = ["Débutant", "Niveau 1"];
+// "Débutant" n'a jamais existé comme valeur de niveau réelle (voir
+// NIVEAU_OPTIONS/constants.js et Adherent.niveau côté identite-service :
+// c'est "Baptême") — cette liste ne détectait donc jamais un membre
+// baptêmé comme limitant, affichant un plafond 6 au lieu de 4 pour ce
+// cas dans la carte de palanquée (l'application réelle du ratio, elle,
+// se fait côté backend/PalanqueeService.computeMaxRatio, non affectée).
+const NIVEAUX_LIMITANTS = ["Baptême", "Niveau 1"];
 
 function computeMaxRatio(niveaux) {
   const limitant = niveaux.some((n) => NIVEAUX_LIMITANTS.includes(n));
