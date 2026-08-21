@@ -51,7 +51,16 @@ export default defineConfig({
     },
   },
   server: {
+    // host: true (= --host) : écoute sur 0.0.0.0 au lieu du seul localhost,
+    // pour tester depuis un smartphone sur le même Wi-Fi sans repasser
+    // `npm run dev -- --host` à chaque lancement (le `--host` seul, sans le
+    // séparateur `--`, est avalé par npm et ignoré silencieusement).
+    // strictPort : échoue si 3000 est déjà pris plutôt que de basculer sur
+    // 3001 en silence — l'IP affichée resterait alors fausse par rapport à
+    // ce que le téléphone doit composer.
+    host: true,
     port: 3000,
+    strictPort: true,
     proxy: {
       "/api": {
         target: "http://localhost:5000",
@@ -74,7 +83,9 @@ export default defineConfig({
   // appels /api de l'app tournée via `preview` retombent sur le port 3000
   // lui-même (404), le proxy ne s'appliquant qu'à `vite dev`.
   preview: {
+    host: true,
     port: 3000,
+    strictPort: true,
     proxy: {
       "/api": {
         target: "http://localhost:5000",
