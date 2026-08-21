@@ -37,6 +37,7 @@ import ModalOverlay from "../../components/Common/ModalOverlay";
 import ErrorState from "../../components/Common/ErrorState";
 
 import { formatDateTime, joursRestants, formatCompteARebours } from "../../utils/helpers";
+import { TYPE_SORTIE_OPTIONS } from "../../utils/constants";
 
 // Configuration des statuts de sortie
 const SORTIE_STATUS = [
@@ -46,6 +47,10 @@ const SORTIE_STATUS = [
   { value: "Terminée", label: "Terminée" },
   { value: "Annulée", label: "Annulée" },
 ];
+
+// Filtre par type d'activité — mêmes valeurs que le formulaire de création
+// (TYPE_SORTIE_OPTIONS), avec "Tous" en tête comme pour le statut.
+const SORTIE_TYPES = ["all", ...TYPE_SORTIE_OPTIONS];
 
 const SortiesPage = () => {
   // useNavigate doit être appelé à l'intérieur du composant
@@ -61,6 +66,7 @@ const SortiesPage = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteModal, setDeleteModal] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -151,17 +157,19 @@ const SortiesPage = () => {
 
       const matchFilter = filter === "all" || sortie.statut === filter;
 
+      const matchType = typeFilter === "all" || sortie.type === typeFilter;
+
       const matchMesSorties =
         !mesSortiesOnly || mesSortiesIds.has(sortie.id_sortie || sortie.id);
 
-      return matchSearch && matchFilter && matchMesSorties;
+      return matchSearch && matchFilter && matchType && matchMesSorties;
     }).sort((a, b) => {
       const now = Date.now();
       const diffA = Math.abs(new Date(a.date_heure) - now);
       const diffB = Math.abs(new Date(b.date_heure) - now);
       return diffA - diffB;
     });
-  }, [sortiesList, searchTerm, filter, mesSortiesOnly, mesSortiesIds]);
+  }, [sortiesList, searchTerm, filter, typeFilter, mesSortiesOnly, mesSortiesIds]);
 
   // Pagination
   const totalPages = Math.ceil(filteredSorties.length / itemsPerPage);
@@ -224,6 +232,11 @@ const SortiesPage = () => {
     setCurrentPage(1);
   };
 
+  const handleTypeFilterChange = (newType) => {
+    setTypeFilter(newType);
+    setCurrentPage(1);
+  };
+
   const handleSearchChange = (newSearch) => {
     setSearchTerm(newSearch);
     setCurrentPage(1);
@@ -232,9 +245,13 @@ const SortiesPage = () => {
   const clearFilters = () => {
     setSearchTerm("");
     setFilter("all");
+    setTypeFilter("all");
     setMesSortiesOnly(false);
     setCurrentPage(1);
   };
+
+  const hasActiveFilters =
+    searchTerm || filter !== "all" || typeFilter !== "all" || mesSortiesOnly;
 
   const getStatutColor = (statut) => {
     const colors = {
@@ -271,21 +288,21 @@ const SortiesPage = () => {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           {mesSortiesOnly
             ? "Vous n'êtes inscrit à aucune sortie"
-            : searchTerm || filter !== "all"
+            : hasActiveFilters
               ? "Aucune sortie trouvée"
               : "Commencez par créer votre première sortie"}
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
           {mesSortiesOnly
             ? "Aucune sortie où vous êtes inscrit(e) ou avez envoyé une demande"
-            : searchTerm || filter !== "all"
+            : hasActiveFilters
               ? "Aucun résultat pour vos critères"
               : "Organisez une nouvelle sortie de plongée"}
         </p>
         {/* Cet état vide remplace toute la vue, y compris la barre de
             recherche : sans ce bouton, rien ne permettait de revenir à la
             liste complète une fois une recherche/filtre sans résultat. */}
-        {(searchTerm || filter !== "all" || mesSortiesOnly) && (
+        {hasActiveFilters && (
           <button
             type="button"
             onClick={clearFilters}
@@ -371,7 +388,19 @@ const SortiesPage = () => {
             ))}
           </select>
 
-          {(searchTerm || filter !== "all" || mesSortiesOnly) && (
+          <select
+            value={typeFilter}
+            onChange={(e) => handleTypeFilterChange(e.target.value)}
+            className="px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 min-w-[160px]"
+          >
+            {SORTIE_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type === "all" ? "Tous les types" : type}
+              </option>
+            ))}
+          </select>
+
+          {hasActiveFilters && (
             <button
               onClick={clearFilters}
               className="px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex items-center gap-1"
@@ -421,7 +450,7 @@ const SortiesPage = () => {
               Aucune sortie trouvée
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-              {searchTerm || filter !== "all"
+              {hasActiveFilters
                 ? "Essayez de modifier vos filtres"
                 : "Aucune sortie pour le moment"}
             </p>
