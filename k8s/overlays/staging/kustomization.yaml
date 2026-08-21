@@ -28,10 +28,10 @@ images:
   newTag: sha-3de43f6
 - name: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
-  newTag: sha-79c6a2a
+  newTag: sha-1177dd3
 - name: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
-  newTag: sha-5d1cea3
+  newTag: sha-1177dd3
 - name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newTag: sha-15b914a
@@ -40,13 +40,13 @@ images:
   newTag: sha-ecbf7b4
 - name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
-  newTag: sha-5d1cea3
+  newTag: sha-1177dd3
 - name: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
-  newTag: sha-4381eae
+  newTag: sha-1177dd3
 - name: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
-  newTag: sha-d815adc
+  newTag: sha-1177dd3
 
 # Réplicas de départ à 1 (= minReplicas des HPA ci-dessus) ; le HPA prend
 # ensuite la main entre 1 et 3 selon la charge CPU.
