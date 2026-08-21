@@ -97,23 +97,24 @@ const ProchaineSortieCard = () => {
     >
       <Link
         to={`/sorties/${prochaine.id_sortie}`}
-        className="group relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 dark:from-indigo-800 dark:via-blue-800 dark:to-cyan-800 shadow-xl hover:shadow-2xl transition-shadow duration-300 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        // Couleur pleine (pas de dégradé arc-en-ciel) : bleu marine profond,
+        // cohérent avec l'identité "plongée" (voir l'en-tête des emails OTP,
+        // même teinte) plutôt qu'un gradient générique — un simple accent
+        // cyan sur l'icône suffit à faire le lien avec le reste de l'appli.
+        className="group relative overflow-hidden rounded-3xl bg-slate-800 dark:bg-slate-900 border border-slate-700/60 shadow-lg hover:shadow-xl transition-shadow duration-300 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
-        <div className="absolute top-0 right-0 w-56 h-56 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4" />
-
-        <div className="relative flex items-center gap-4 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center flex-shrink-0">
-            <FiAnchor className="w-5 h-5 text-white" />
+        <div className="relative flex items-center gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center flex-shrink-0">
+            <FiAnchor className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-white/70">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               {isAdherent ? "Ma prochaine sortie confirmée" : "Prochaine sortie"}
             </p>
-            <h3 className="text-lg font-bold text-white truncate">
+            <h3 className="text-base sm:text-lg font-bold text-white truncate">
               {prochaine.type} — {prochaine.site || prochaine.lieu}
             </h3>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-white/80 text-xs">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-slate-300 text-xs">
               <span className="flex items-center gap-1.5">
                 <FiCalendar className="w-3.5 h-3.5" />
                 {formatDateLongue(prochaine.date_heure)}
@@ -126,18 +127,23 @@ const ProchaineSortieCard = () => {
           </div>
         </div>
 
-        <div className="relative flex items-center gap-3 flex-shrink-0 self-stretch sm:self-auto">
-          <div className="px-5 py-2.5 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/10 text-center">
-            <p className="text-2xl font-bold text-white leading-none">
+        {/* self-stretch retiré : sur mobile, ça étirait ce bloc sur toute la
+            largeur alors que la pastille reste alignée à gauche (la flèche
+            est masquée en dessous de sm) — beaucoup de vide à droite pour
+            rien. En largeur naturelle, la pastille suit directement le bloc
+            titre/date au lieu de flotter. */}
+        <div className="relative flex items-center gap-3 flex-shrink-0">
+          <div className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white/5 rounded-2xl border border-white/10 text-center">
+            <p className="text-xl sm:text-2xl font-bold text-white leading-none">
               {compteARebours}
             </p>
             {compteARebourSuffixe && (
-              <p className="text-[10px] font-medium uppercase tracking-wider text-white/60 mt-1">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400 mt-1">
                 {compteARebourSuffixe}
               </p>
             )}
           </div>
-          <FiArrowRight className="w-4 h-4 text-white/60 group-hover:translate-x-1 group-hover:text-white transition-all duration-300 hidden sm:block" />
+          <FiArrowRight className="w-4 h-4 text-slate-500 group-hover:translate-x-1 group-hover:text-cyan-400 transition-all duration-300 hidden sm:block" />
         </div>
       </Link>
     </motion.div>
