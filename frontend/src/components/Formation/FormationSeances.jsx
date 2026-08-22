@@ -234,7 +234,7 @@ const FormationSeances = ({ formation, canManage = false }) => {
           {seances.map((seance) => (
             <div
               key={seance.id_seance}
-              className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800"
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800"
             >
               <div>
                 <p className="font-medium text-gray-900 dark:text-white">
@@ -253,11 +253,11 @@ const FormationSeances = ({ formation, canManage = false }) => {
                 )}
               </div>
               {seance.statut === "Planifiée" && canManage ? (
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto">
                   <button
                     onClick={() => handleMarquer(seance.id_seance, "Réalisée")}
                     disabled={updateStatut.isPending}
-                    className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-60 flex-1 sm:flex-initial"
                   >
                     <FiCheck className="w-3.5 h-3.5" />
                     Présent
@@ -265,7 +265,7 @@ const FormationSeances = ({ formation, canManage = false }) => {
                   <button
                     onClick={() => handleMarquer(seance.id_seance, "Absence")}
                     disabled={updateStatut.isPending}
-                    className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-60 flex-1 sm:flex-initial"
                   >
                     <FiX className="w-3.5 h-3.5" />
                     Absent
