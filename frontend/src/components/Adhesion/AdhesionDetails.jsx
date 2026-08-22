@@ -306,14 +306,21 @@ const AdhesionDetails = () => {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={handleDownloadAttestation}
-            disabled={downloading}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl transition-all duration-300 disabled:opacity-60"
-          >
-            <FiDownload className="w-4 h-4" />
-            Télécharger l'attestation
-          </button>
+          {/* Pas encore acceptée : une attestation ne doit pas pouvoir être
+              produite pour une soumission qui attend toujours une décision
+              du président/trésorier (elle pourrait servir de "preuve"
+              trompeuse d'une adhésion pas encore réelle). Même logique que
+              "Modifier" plus bas, gardée derrière !isPending. */}
+          {!isPending && (
+            <button
+              onClick={handleDownloadAttestation}
+              disabled={downloading}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl transition-all duration-300 disabled:opacity-60"
+            >
+              <FiDownload className="w-4 h-4" />
+              Télécharger l'attestation
+            </button>
+          )}
           {isClub &&
             canManageAdhesion &&
             adhesion.statut_paiement === "Partiel" && (
