@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   formatDate,
   formatCurrency,
@@ -112,6 +112,19 @@ describe("isSortieSelectionnable", () => {
 });
 
 describe("joursRestants", () => {
+  // Horloge système figée à 10h — "aujourd'hui + 3h" (13h) reste alors
+  // toujours le même jour calendaire. Sans ça, ce test dépendait de l'heure
+  // réelle d'exécution : lancé entre 21h et 23h59 (heure du runner CI, UTC),
+  // "+3h" faisait déborder sur le jour calendaire suivant et le test
+  // échouait (voir l'incident CI du 22/08/2026, exécuté à 21h28 UTC).
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2024, 0, 15, 10, 0, 0));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("renvoie 0 pour aujourd'hui, quelle que soit l'heure", () => {
     const dansQuelquesHeures = new Date();
     dansQuelquesHeures.setHours(dansQuelquesHeures.getHours() + 3);
