@@ -14,6 +14,15 @@ const { testConnection, syncDatabase } = require("./config/database");
 
 const app = express();
 
+// Indispensable derrière le reverse proxy de Render (et tout hébergeur
+// PaaS équivalent) : sans ça, req.ip retombe sur l'IP du proxy pour
+// TOUTES les requêtes au lieu de lire X-Forwarded-For, donc express-rate-
+// limit (plus bas) compte tous les visiteurs du site dans un seul et
+// même compteur global au lieu d'un compteur par vrai client. `1` = on
+// ne fait confiance qu'au premier hop devant nous (le load balancer
+// Render), pas à une chaîne de proxies arbitraire.
+app.set("trust proxy", 1);
+
 // Métriques Prometheus (Phase 5) : un registre par process, séparé du
 // registre global de prom-client pour éviter toute collision si ce
 // module était un jour importé plusieurs fois (tests, notamment).
