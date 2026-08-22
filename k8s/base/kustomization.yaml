@@ -64,7 +64,7 @@ images:
   newTag: sha-3de43f6
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
-  newTag: sha-95d9019
+  newTag: sha-b0f11ff
 - name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
   newTag: sha-f7a022f
