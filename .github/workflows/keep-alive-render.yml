@@ -1,0 +1,35 @@
+# Empêche les 7 services Render (plan gratuit) de s'endormir après 15 min
+# d'inactivité — sans ça, le premier utilisateur qui arrive après une pause
+# attend jusqu'à 30-60s le réveil, souvent plus long que le timeout de 30s
+# côté frontend (frontend/src/services/api.js), ce qui ressemble à une
+# panne. Un simple ping périodique suffit à garder chaque service "chaud".
+#
+# Volontairement un fichier séparé de ci.yml (jamais touché) : ce workflow
+# n'a rien à voir avec le build/test/déploiement, juste un cron minimal.
+name: Keep Render services awake
+
+on:
+  schedule:
+    # Toutes les 10 min — en dessous du seuil de mise en veille de 15 min,
+    # avec de la marge pour l'imprécision documentée des crons GitHub
+    # Actions en période de forte charge.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health checks
+        run: |
+          for url in \
+            https://aquanature-gateway.onrender.com/health \
+            https://aquanature-identite.onrender.com/health \
+            https://aquanature-formation.onrender.com/health \
+            https://aquanature-materiel.onrender.com/health \
+            https://aquanature-finance.onrender.com/health \
+            https://aquanature-vie-associative.onrender.com/health \
+            https://aquanature-activites.onrender.com/health ; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$url")
+            echo "$url -> $code"
+          done
