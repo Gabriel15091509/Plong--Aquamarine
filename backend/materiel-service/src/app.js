@@ -14,6 +14,15 @@ const { sequelize, testConnection } = require("./config/database");
 
 const app = express();
 
+// Indispensable derrière le reverse proxy de Render (et le relais interne
+// du gateway-service qui, lui, transmet le X-Forwarded-For d'origine sans
+// le modifier) : sans ça, req.ip retombe sur l'IP du proxy pour TOUTES
+// les requêtes au lieu de lire X-Forwarded-For, donc express-rate-limit
+// (plus bas) compte tous les appelants dans un seul et même compteur
+// global au lieu d'un compteur par vrai client. `1` = on ne fait
+// confiance qu'au premier hop devant nous.
+app.set("trust proxy", 1);
+
 // Métriques Prometheus (Phase 5) : un registre par process, séparé du
 // registre global de prom-client pour éviter toute collision si ce
 // module était un jour importé plusieurs fois (tests, notamment).
