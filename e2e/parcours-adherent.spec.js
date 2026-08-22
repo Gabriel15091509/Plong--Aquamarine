@@ -18,10 +18,21 @@ test("un adhérent se connecte, consulte le tableau de bord puis le détail d'un
 
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
 
-  await page.getByRole("link", { name: "Sorties" }).click();
+  // exact: true est indispensable depuis que la sidebar propose aussi
+  // "Toutes les sorties" et "Mes sorties" (sous-liens) : leur nom
+  // accessible contient "Sorties" en sous-chaîne, donc un match par
+  // défaut (substring, insensible à la casse) est ambigu — Playwright
+  // remonte une "strict mode violation" avec 3 éléments candidats.
+  await page.getByRole("link", { name: "Sorties", exact: true }).click();
   await expect(page).toHaveURL(/\/sorties$/);
 
-  const firstDetailLink = page.getByTitle("Voir").first();
+  // exact: true également ici : getByTitle matche par sous-chaîne par
+  // défaut, et "Voir mon inscription à cette sortie" / "Voir les
+  // inscriptions de cette sortie (N)" contiennent tous les deux "Voir" —
+  // sans exact, .first() peut retomber sur l'un de ces liens-là plutôt
+  // que sur le vrai lien "Voir" (détail de la sortie) selon l'ordre
+  // d'affichage des sorties pour l'adhérent de démo.
+  const firstDetailLink = page.getByTitle("Voir", { exact: true }).first();
   await expect(firstDetailLink).toBeVisible({ timeout: 10_000 });
   await firstDetailLink.click();
 

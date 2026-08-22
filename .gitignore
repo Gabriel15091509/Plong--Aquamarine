@@ -26,3 +26,9 @@ backend/*/*.traineddata
 # État local du CLI Netlify (lien vers le site, cache de déploiement) —
 # généré par `netlify deploy`, jamais à committer.
 .netlify/
+
+# Sorties locales de Playwright (npx playwright test) : captures d'écran,
+# traces, rapport HTML et état de la dernière exécution — régénérés à
+# chaque run, jamais à committer.
+test-results/
+playwright-report/
