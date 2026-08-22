@@ -66,7 +66,16 @@ const InscriptionDetails = () => {
 
   // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { hasRole } = useAuth();
-  const canManage = hasRole(["president", "moniteur", "tresorier"]);
+  // "moniteur" retiré : les deux usages de ce flag plus bas (bouton
+  // "Enregistrer un paiement" et gestion de l'échéancier) sont des actions
+  // financières, réservées à président/trésorier partout ailleurs dans
+  // l'appli (canManagePaiement dans PaiementList.jsx, permission
+  // manage_paiements côté backend — voir AuthController.getPermissionsForRole,
+  // absente du rôle moniteur) — le nom "canManage" laissait croire que
+  // c'était une gestion générale de l'inscription, alors que le moniteur
+  // gère bien les inscriptions elles-mêmes (confirmer/annuler, voir
+  // InscriptionRow.jsx) mais pas leurs paiements.
+  const canManagePaiement = hasRole(["president", "tresorier"]);
   const { useGetById: useGetInscriptionById, useEnregistrerPaiement } = useInscriptions();
   const { useGetById: useGetAdherentById } = useAdherents();
   const { useGetById: useGetSortieById } = useSorties();
@@ -280,7 +289,7 @@ const InscriptionDetails = () => {
           Retour à la liste
         </button>
         <div className="flex gap-2 flex-wrap">
-          {canManage &&
+          {canManagePaiement &&
             Number(inscription.montant_du) > 0 &&
             !inscription.paye &&
             !paiementARegulariser && (
@@ -520,7 +529,7 @@ const InscriptionDetails = () => {
             // échéancier déjà créé reste utile, en créer un nouveau ou
             // marquer une échéance payée ne l'est plus (voir
             // paiementARegulariser).
-            canManage={canManage && !paiementARegulariser}
+            canManage={canManagePaiement && !paiementARegulariser}
             ownerQueryKeys={[["inscriptions"], ["inscription", inscription.id_inscription]]}
           />
         </motion.div>

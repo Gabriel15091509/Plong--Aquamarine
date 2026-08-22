@@ -31,9 +31,14 @@ router.patch('/:id/cancel',
   inscriptionController.cancelInscription.bind(inscriptionController)
 );
 
+// PRESIDENT_TRESORIER, pas STAFF : enregistrer un paiement est une action
+// financière réservée à président/trésorier partout ailleurs (permission
+// manage_paiements, absente du rôle moniteur côté
+// AuthController.getPermissionsForRole ; voir aussi le bouton "Enregistrer
+// un paiement", masqué au moniteur dans InscriptionDetails.jsx).
 router.post('/:id/paiement',
   AuthMiddleware.authenticate,
-  AuthMiddleware.authorize(ROLES.STAFF),
+  AuthMiddleware.authorize(ROLES.PRESIDENT_TRESORIER),
   inscriptionController.enregistrerPaiement.bind(inscriptionController)
 );
 
