@@ -1,9 +1,12 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { User } = require("../models");
-const { sendOtpEmail } = require("../utils/email");
+// OTP président désactivé (2026-08-22, voir plus bas dans login()) : ces
+// deux imports/constantes ne servent plus qu'au bloc commenté, laissés en
+// commentaire eux aussi pour repartir tel quel à la réactivation.
+// const { sendOtpEmail } = require("../utils/email");
 
-const OTP_VALIDITY_MINUTES = 5;
+// const OTP_VALIDITY_MINUTES = 5;
 const OTP_MAX_ATTEMPTS = 5;
 
 const getPermissionsForRole = (role) => {
@@ -103,30 +106,30 @@ class AuthController {
       // Authentification renforcée (exigence 4.4) : le président doit en
       // plus saisir un code à usage unique envoyé par email avant que le
       // JWT ne soit délivré.
-      // Coupure temporaire (2026-08-13, demande explicite du président) :
-      // PRESIDENT_2FA_DISABLED="true" saute cette étape sans toucher au
-      // code ci-dessous. Par défaut (variable absente), le 2FA reste actif
-      // — désactiver est un choix explicite, pas un oubli silencieux.
-      // À retirer de k8s/base/plongee-config.env dès que possible pour
-      // réactiver.
-      const president2faDisabled = process.env.PRESIDENT_2FA_DISABLED === "true";
-      if (user.role === "president" && !president2faDisabled) {
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        const salt = await bcrypt.genSalt(10);
-        user.otp_code_hash = await bcrypt.hash(code, salt);
-        user.otp_expires_at = new Date(
-          Date.now() + OTP_VALIDITY_MINUTES * 60 * 1000,
-        );
-        user.otp_attempts = 0;
-        await user.save();
-
-        await sendOtpEmail({ to: user.email, name: user.name, code });
-
-        return res.json({
-          success: true,
-          data: { otpRequired: true, email: user.email },
-        });
-      }
+      // Désactivée (2026-08-22, demande explicite) : bloc entier mis en
+      // commentaire plutôt que supprimé, pour pouvoir la réactiver
+      // simplement en décommentant. Le kill-switch PRESIDENT_2FA_DISABLED
+      // (env var, voir k8s/base/plongee-config.env) existait déjà mais
+      // dépend d'une variable déployée côté infra ; ici la coupure est
+      // dans le code lui-même, indépendante de toute config d'environnement.
+      // const president2faDisabled = process.env.PRESIDENT_2FA_DISABLED === "true";
+      // if (user.role === "president" && !president2faDisabled) {
+      //   const code = Math.floor(100000 + Math.random() * 900000).toString();
+      //   const salt = await bcrypt.genSalt(10);
+      //   user.otp_code_hash = await bcrypt.hash(code, salt);
+      //   user.otp_expires_at = new Date(
+      //     Date.now() + OTP_VALIDITY_MINUTES * 60 * 1000,
+      //   );
+      //   user.otp_attempts = 0;
+      //   await user.save();
+      //
+      //   await sendOtpEmail({ to: user.email, name: user.name, code });
+      //
+      //   return res.json({
+      //     success: true,
+      //     data: { otpRequired: true, email: user.email },
+      //   });
+      // }
 
       await user.update({ last_login: new Date() });
       res.json({ success: true, data: buildAuthResponse(user) });
