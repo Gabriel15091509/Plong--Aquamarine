@@ -92,7 +92,7 @@ class CertificatMedicalService extends BaseService {
     // Fichier illisible/corrompu/indéchiffrable : pas un problème Groq
     // (jamais atteint), donc pas de repli "En attente" ici non plus.
     try {
-      const buffer = readEncryptedDocument("certificats", document_path);
+      const buffer = await readEncryptedDocument("certificats", document_path);
       const champsAttendus = {
         nom: adherent.nom,
         prenom: adherent.prenom,

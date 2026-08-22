@@ -5,6 +5,7 @@
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
+const objectStorage = require("../utils/objectStorage");
 
 const UPLOADS_ROOT = path.join(__dirname, "../../uploads");
 const IMAGE_MIMETYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -19,19 +20,11 @@ function makeUploader(
     errorMessage = "Format de fichier non autorisé",
   } = {},
 ) {
-  const destination = path.join(UPLOADS_ROOT, subfolder);
-  fs.mkdirSync(destination, { recursive: true });
-
-  const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, destination),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname);
-      cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
-    },
-  });
-
+  // Toujours en mémoire : que la destination finale soit R2 ou le disque
+  // local, on a besoin du buffer complet avant de savoir où l'écrire (voir
+  // objectStorage.isConfigured plus bas).
   const upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: MAX_FILE_SIZE },
     fileFilter: (req, file, cb) => {
       if (!allowedMimetypes.includes(file.mimetype)) {
@@ -41,11 +34,35 @@ function makeUploader(
     },
   }).single(fileField);
 
-  const attachFilePath = (req, res, next) => {
-    if (req.file) {
-      req.body[bodyKey] = `/uploads/${subfolder}/${req.file.filename}`;
+  const attachFilePath = async (req, res, next) => {
+    if (!req.file) return next();
+
+    const ext = path.extname(req.file.originalname);
+    const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+
+    try {
+      if (objectStorage.isConfigured) {
+        // R2 configuré (production) : stockage persistant, survit aux
+        // redéploiements — voir objectStorage.js pour le détail. L'URL
+        // publique complète est stockée telle quelle en base ; le
+        // frontend (utils/photoUrl.js) l'utilise sans transformation.
+        req.body[bodyKey] = await objectStorage.uploadBuffer(
+          `${subfolder}/${filename}`,
+          req.file.buffer,
+          req.file.mimetype,
+        );
+      } else {
+        // Repli disque local (dev, ou tant que R2 n'est pas configuré) :
+        // comportement historique, chemin relatif servi par express.static.
+        const destination = path.join(UPLOADS_ROOT, subfolder);
+        fs.mkdirSync(destination, { recursive: true });
+        fs.writeFileSync(path.join(destination, filename), req.file.buffer);
+        req.body[bodyKey] = `/uploads/${subfolder}/${filename}`;
+      }
+      next();
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
     }
-    next();
   };
 
   const handleUpload = (req, res, next) => {

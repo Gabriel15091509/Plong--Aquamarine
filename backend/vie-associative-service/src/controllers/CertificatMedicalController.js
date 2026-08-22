@@ -83,7 +83,7 @@ class CertificatMedicalController extends BaseController {
         });
       }
 
-      const buffer = readEncryptedDocument("certificats", certificat.document_path);
+      const buffer = await readEncryptedDocument("certificats", certificat.document_path);
       const ext = path.extname(certificat.document_path).toLowerCase();
 
       res.setHeader("Content-Type", MIMETYPES_BY_EXT[ext] || "application/octet-stream");
