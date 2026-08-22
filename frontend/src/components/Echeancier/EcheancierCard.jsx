@@ -127,9 +127,9 @@ const EcheancierCard = ({
             {(echeancier.echeances || []).map((echeance) => (
               <div
                 key={echeance.id_echeance}
-                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/50"
               >
-                <div className="flex items-center gap-3 text-sm">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm">
                   <span className="font-semibold text-gray-900 dark:text-white">
                     n°{echeance.numero}
                   </span>
@@ -140,13 +140,13 @@ const EcheancierCard = ({
                     {formatCurrency(echeance.montant)}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between sm:justify-end gap-2">
                   <StatusBadge status={echeance.statut} />
                   {canManage && ["En attente", "En retard"].includes(echeance.statut) && (
                     <button
                       type="button"
                       onClick={() => setEcheanceAPayer(echeance)}
-                      className="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-lg transition-all duration-300"
+                      className="px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-lg transition-all duration-300 flex-shrink-0"
                     >
                       Marquer payée
                     </button>
