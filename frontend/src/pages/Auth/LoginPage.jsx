@@ -7,18 +7,36 @@ import {
   FiEye,
   FiEyeOff,
   FiLogIn,
+  FiLogOut,
   FiShield,
   FiCreditCard,
   FiDroplet,
   FiAnchor,
   FiCompass,
+  FiArrowRight,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import Logo from "../../components/Common/Logo";
 
+// Libellés de rôle courts, cohérents avec Sidebar.jsx (footer profil).
+const ROLE_LABELS = {
+  president: "Président",
+  moniteur: "Moniteur",
+  tresorier: "Trésorier",
+  adherent: "Adhérent",
+};
+
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, verifyOtp } = useAuth();
+  const { user, login, verifyOtp, logout } = useAuth();
+  // Revenir en arrière (bouton précédent du navigateur) vers /login alors
+  // que la session est toujours valide (token en localStorage, jamais
+  // effacé) affichait jusqu'ici le formulaire de connexion vide, sans rien
+  // dire de la session existante — confus ("suis-je connecté ou non ?").
+  // On propose maintenant explicitement de continuer vers l'espace déjà
+  // ouvert, ou de se déconnecter pour vider la session (ex. changer de
+  // compte sur le même appareil).
+  const alreadyLoggedIn = Boolean(user);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -224,16 +242,72 @@ const LoginPage = () => {
           {/* Titre */}
           <motion.div variants={itemVariants} className="mb-8">
             <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
-              {otpEmail ? "Vérification" : "Connexion"}
+              {alreadyLoggedIn ? "Déjà connecté" : otpEmail ? "Vérification" : "Connexion"}
             </h2>
             <p className="text-gray-500 dark:text-gray-400 mt-2">
-              {otpEmail
-                ? `Saisissez le code envoyé à ${otpEmail}`
-                : "Connectez-vous pour accéder à votre espace de gestion"}
+              {alreadyLoggedIn
+                ? `Vous êtes toujours connecté(e) en tant que ${user.name}.`
+                : otpEmail
+                  ? `Saisissez le code envoyé à ${otpEmail}`
+                  : "Connectez-vous pour accéder à votre espace de gestion"}
             </p>
           </motion.div>
 
-          {otpEmail ? (
+          {alreadyLoggedIn ? (
+            /* Session encore valide (retour arrière du navigateur, onglet
+               resté ouvert...) : proposer de continuer plutôt que de se
+               reconnecter par-dessus, ou de se déconnecter explicitement
+               pour vider la session (ex. changer de compte). */
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              className="space-y-6"
+            >
+              <motion.div
+                variants={itemVariants}
+                className="flex items-center gap-3 p-4 rounded-xl bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-800/40"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                  {user.name?.charAt(0) || "?"}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 dark:text-white truncate">
+                    {user.name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {ROLE_LABELS[user.role] || user.role}
+                  </p>
+                </div>
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  type="button"
+                  onClick={() => navigate("/dashboard")}
+                  className="w-full py-3 bg-gradient-to-r from-primary-500 to-ocean-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  <FiArrowRight className="w-5 h-5" />
+                  Continuer vers mon espace
+                </motion.button>
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  type="button"
+                  onClick={logout}
+                  className="w-full py-3 border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 rounded-xl font-semibold hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  <FiLogOut className="w-5 h-5" />
+                  Se déconnecter
+                </motion.button>
+              </motion.div>
+            </motion.div>
+          ) : otpEmail ? (
             /* Étape 2 : code OTP (authentification renforcée président) */
             <motion.form
               variants={containerVariants}
