@@ -104,6 +104,13 @@ const SortieDetails = () => {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const canManageSortie = hasRole(["president", "moniteur"]);
+  // La gestion du matériel (attribuer/retirer) reste réservée au président
+  // partout ailleurs dans l'appli (canSeeMateriel dans Sidebar.jsx, route
+  // /attributions/create) — un moniteur (voire un adhérent, cette page leur
+  // est aussi accessible) ne doit donc pas voir le lien "+ Attribuer du
+  // matériel" plus bas, même si la liste du matériel déjà attribué reste
+  // visible à tous en lecture seule.
+  const canManageMateriel = hasRole(["president"]);
   const { useGetById, useGetMeteo, useRemove, useUpdate } = useSorties();
   const { useGetBySortie } = useIncidents();
   const { useGetBySortie: useGetAttributionsBySortie } = useAttributions();
@@ -813,7 +820,7 @@ const SortieDetails = () => {
             </span>
             Matériel attribué ({attributionsMateriel.length})
           </h3>
-          {isTerminee ? (
+          {canManageMateriel && (isTerminee ? (
             <span
               className="text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"
               title="Sortie terminée : attribution de matériel impossible"
@@ -827,7 +834,7 @@ const SortieDetails = () => {
             >
               + Attribuer du matériel
             </Link>
-          )}
+          ))}
         </div>
         {attributionsMateriel.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">

@@ -14,6 +14,7 @@ import { usePalanquees } from "../../hooks/Palanquee/usePalanquees";
 import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import SearchableSelect from "../Common/SearchableSelect";
 import { ETAT_MATERIEL_OPTIONS } from "../../utils/constants";
+import { useAuth } from "../../context/AuthContext";
 
 // "Débutant" n'a jamais existé comme valeur de niveau réelle (voir
 // NIVEAU_OPTIONS/constants.js et Adherent.niveau côté identite-service :
@@ -29,6 +30,16 @@ function computeMaxRatio(niveaux) {
 }
 
 const PalanqueeCard = ({ palanquee, presents, moniteurOptions, materielsDisponibles, sortie }) => {
+  const { hasRole } = useAuth();
+  // Attribuer du matériel (nouveau checkout) reste une décision de gestion
+  // d'inventaire réservée au président partout ailleurs (canSeeMateriel
+  // dans Sidebar.jsx, /attributions/create restreint côté route) — cette
+  // mini-form, embarquée dans le pointage d'une sortie que le moniteur
+  // gère bien lui, ne doit pas être une porte dérobée vers cette même
+  // action. Enregistrer le RETOUR d'un matériel déjà attribué reste en
+  // revanche une tâche opérationnelle du moniteur (il rend le matériel en
+  // fin de plongée), donc non concernée par ce garde.
+  const canManageMateriel = hasRole(["president"]);
   const {
     useAddMembre,
     useRemoveMembre,
@@ -325,35 +336,37 @@ const PalanqueeCard = ({ palanquee, presents, moniteurOptions, materielsDisponib
         </div>
         {!isCloturee && (
           <>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex-1">
-                <SearchableSelect
-                  value={selectedMateriel}
-                  onChange={setSelectedMateriel}
-                  options={materielsDisponibles || []}
-                  getOptionLabel={(m) => `${m.marque} ${m.modele} - N°${m.num_inventaire}`}
-                  getOptionValue={(m) => m.num_inventaire}
-                  placeholder="Matériel disponible..."
-                />
+            {canManageMateriel && (
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex-1">
+                  <SearchableSelect
+                    value={selectedMateriel}
+                    onChange={setSelectedMateriel}
+                    options={materielsDisponibles || []}
+                    getOptionLabel={(m) => `${m.marque} ${m.modele} - N°${m.num_inventaire}`}
+                    getOptionValue={(m) => m.num_inventaire}
+                    placeholder="Matériel disponible..."
+                  />
+                </div>
+                <div className="flex-1">
+                  <SearchableSelect
+                    value={selectedMembreMateriel}
+                    onChange={setSelectedMembreMateriel}
+                    options={membres.map((c) => c.adherent).filter(Boolean)}
+                    getOptionLabel={(a) => `${a.nom} ${a.prenom}`}
+                    getOptionValue={(a) => a.num_adherent}
+                    placeholder="Pour quel plongeur..."
+                  />
+                </div>
+                <button
+                  onClick={handleAttribuerMateriel}
+                  disabled={!selectedMateriel || !selectedMembreMateriel || createAttribution.isPending}
+                  className="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  Attribuer
+                </button>
               </div>
-              <div className="flex-1">
-                <SearchableSelect
-                  value={selectedMembreMateriel}
-                  onChange={setSelectedMembreMateriel}
-                  options={membres.map((c) => c.adherent).filter(Boolean)}
-                  getOptionLabel={(a) => `${a.nom} ${a.prenom}`}
-                  getOptionValue={(a) => a.num_adherent}
-                  placeholder="Pour quel plongeur..."
-                />
-              </div>
-              <button
-                onClick={handleAttribuerMateriel}
-                disabled={!selectedMateriel || !selectedMembreMateriel || createAttribution.isPending}
-                className="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
-              >
-                Attribuer
-              </button>
-            </div>
+            )}
             {attributionsEnCours.length > 0 && (
               <button
                 onClick={handleRetourMateriel}
