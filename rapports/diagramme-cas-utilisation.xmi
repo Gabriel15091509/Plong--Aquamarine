@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.1" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1" xmlns:uml="http://www.eclipse.org/uml2/3.0.0/UML">
+  <uml:Model xmi:id="model_169" name="PlongeeAppDiagrammeCasUtilisation">
+    <packagedElement xmi:type="uml:Actor" xmi:id="actor_1" name="Utilisateur">
+    </packagedElement>
+    <packagedElement xmi:type="uml:Actor" xmi:id="actor_2" name="Adhérent">
+      <generalization xmi:type="uml:Generalization" xmi:id="gen_6" general="actor_1"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Actor" xmi:id="actor_3" name="Trésorier">
+      <generalization xmi:type="uml:Generalization" xmi:id="gen_7" general="actor_1"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Actor" xmi:id="actor_4" name="Moniteur">
+      <generalization xmi:type="uml:Generalization" xmi:id="gen_8" general="actor_1"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Actor" xmi:id="actor_5" name="Président">
+      <generalization xmi:type="uml:Generalization" xmi:id="gen_9" general="actor_4"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_10" name="Se connecter">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_11" name="Consulter le planning des sorties">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_12" name="Consulter et modifier son profil">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_13" name="Consulter ses alertes">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_14" name="S'inscrire à une sortie">
+      <include xmi:type="uml:Include" xmi:id="inc_48" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_15" name="Annuler son inscription à une sortie">
+      <extend xmi:type="uml:Extend" xmi:id="ext_49" extendedCase="uc_14"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_16" name="Consulter son carnet de plongée">
+      <include xmi:type="uml:Include" xmi:id="inc_50" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_17" name="Exporter son carnet en PDF">
+      <extend xmi:type="uml:Extend" xmi:id="ext_51" extendedCase="uc_16"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_18" name="Soumettre une adhésion">
+      <include xmi:type="uml:Include" xmi:id="inc_52" addition="uc_20"/>
+      <include xmi:type="uml:Include" xmi:id="inc_53" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_19" name="Soumettre un certificat médical">
+      <include xmi:type="uml:Include" xmi:id="inc_54" addition="uc_20"/>
+      <include xmi:type="uml:Include" xmi:id="inc_55" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_20" name="Analyser automatiquement le document soumis (IA)">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_21" name="Consulter son échéancier de paiement">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_22" name="Créer / modifier / annuler une sortie">
+      <include xmi:type="uml:Include" xmi:id="inc_56" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_23" name="Pointer les présences">
+      <include xmi:type="uml:Include" xmi:id="inc_57" addition="uc_24"/>
+      <include xmi:type="uml:Include" xmi:id="inc_58" addition="uc_25"/>
+      <include xmi:type="uml:Include" xmi:id="inc_59" addition="uc_26"/>
+      <include xmi:type="uml:Include" xmi:id="inc_60" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_24" name="Marquer un adhérent présent">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_25" name="Marquer un adhérent absent">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_26" name="Constituer les palanquées">
+      <include xmi:type="uml:Include" xmi:id="inc_61" addition="uc_27"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_27" name="Enregistrer une plongée (carnet)">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_28" name="Valider une plongée de formation">
+      <extend xmi:type="uml:Extend" xmi:id="ext_62" extendedCase="uc_27"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_29" name="Gérer une formation (séances et compétences)">
+      <include xmi:type="uml:Include" xmi:id="inc_63" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_30" name="Déclarer un incident">
+      <include xmi:type="uml:Include" xmi:id="inc_64" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_31" name="Enregistrer les conditions et circonstances">
+      <extend xmi:type="uml:Extend" xmi:id="ext_65" extendedCase="uc_30"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_32" name="Enregistrer le retour du matériel">
+      <include xmi:type="uml:Include" xmi:id="inc_66" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_33" name="Consulter la fiche d'un adhérent">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_34" name="Gérer les comptes utilisateurs">
+      <include xmi:type="uml:Include" xmi:id="inc_67" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_35" name="Créer / modifier une fiche adhérent">
+      <include xmi:type="uml:Include" xmi:id="inc_68" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_36" name="Archiver un adhérent">
+      <extend xmi:type="uml:Extend" xmi:id="ext_69" extendedCase="uc_35"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_37" name="Gérer l'inventaire matériel">
+      <include xmi:type="uml:Include" xmi:id="inc_70" addition="uc_38"/>
+      <include xmi:type="uml:Include" xmi:id="inc_71" addition="uc_40"/>
+      <include xmi:type="uml:Include" xmi:id="inc_72" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_38" name="Attribuer du matériel (avec check-list d'état)">
+      <include xmi:type="uml:Include" xmi:id="inc_73" addition="uc_39"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_39" name="Vérifier l'échéance du matériel">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_40" name="Enregistrer une réparation matériel">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_41" name="Valider une adhésion soumise par un adhérent">
+      <include xmi:type="uml:Include" xmi:id="inc_74" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_42" name="Valider un certificat médical soumis par un adhérent">
+      <include xmi:type="uml:Include" xmi:id="inc_75" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_43" name="Consulter les statistiques et exporter des rapports">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_44" name="Enregistrer un paiement">
+      <include xmi:type="uml:Include" xmi:id="inc_76" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_45" name="Gérer un échéancier de paiement">
+      <include xmi:type="uml:Include" xmi:id="inc_77" addition="uc_46"/>
+      <include xmi:type="uml:Include" xmi:id="inc_78" addition="uc_10"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_46" name="Marquer une échéance payée">
+    </packagedElement>
+    <packagedElement xmi:type="uml:UseCase" xmi:id="uc_47" name="Exporter les paiements mensuels">
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_79" memberEnd="end_80 end_81">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_80" type="actor_1" association="assoc_79"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_81" type="uc_10" association="assoc_79"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_82" memberEnd="end_83 end_84">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_83" type="actor_1" association="assoc_82"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_84" type="uc_11" association="assoc_82"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_85" memberEnd="end_86 end_87">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_86" type="actor_1" association="assoc_85"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_87" type="uc_12" association="assoc_85"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_88" memberEnd="end_89 end_90">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_89" type="actor_1" association="assoc_88"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_90" type="uc_13" association="assoc_88"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_91" memberEnd="end_92 end_93">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_92" type="actor_2" association="assoc_91"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_93" type="uc_14" association="assoc_91"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_94" memberEnd="end_95 end_96">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_95" type="actor_2" association="assoc_94"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_96" type="uc_16" association="assoc_94"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_97" memberEnd="end_98 end_99">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_98" type="actor_2" association="assoc_97"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_99" type="uc_18" association="assoc_97"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_100" memberEnd="end_101 end_102">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_101" type="actor_2" association="assoc_100"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_102" type="uc_19" association="assoc_100"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_103" memberEnd="end_104 end_105">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_104" type="actor_2" association="assoc_103"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_105" type="uc_21" association="assoc_103"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_106" memberEnd="end_107 end_108">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_107" type="actor_4" association="assoc_106"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_108" type="uc_22" association="assoc_106"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_109" memberEnd="end_110 end_111">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_110" type="actor_4" association="assoc_109"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_111" type="uc_23" association="assoc_109"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_112" memberEnd="end_113 end_114">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_113" type="actor_4" association="assoc_112"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_114" type="uc_26" association="assoc_112"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_115" memberEnd="end_116 end_117">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_116" type="actor_4" association="assoc_115"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_117" type="uc_27" association="assoc_115"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_118" memberEnd="end_119 end_120">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_119" type="actor_4" association="assoc_118"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_120" type="uc_29" association="assoc_118"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_121" memberEnd="end_122 end_123">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_122" type="actor_4" association="assoc_121"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_123" type="uc_30" association="assoc_121"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_124" memberEnd="end_125 end_126">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_125" type="actor_4" association="assoc_124"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_126" type="uc_32" association="assoc_124"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_127" memberEnd="end_128 end_129">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_128" type="actor_4" association="assoc_127"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_129" type="uc_33" association="assoc_127"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_130" memberEnd="end_131 end_132">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_131" type="actor_5" association="assoc_130"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_132" type="uc_34" association="assoc_130"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_133" memberEnd="end_134 end_135">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_134" type="actor_5" association="assoc_133"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_135" type="uc_35" association="assoc_133"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_136" memberEnd="end_137 end_138">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_137" type="actor_5" association="assoc_136"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_138" type="uc_37" association="assoc_136"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_139" memberEnd="end_140 end_141">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_140" type="actor_5" association="assoc_139"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_141" type="uc_41" association="assoc_139"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_142" memberEnd="end_143 end_144">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_143" type="actor_5" association="assoc_142"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_144" type="uc_42" association="assoc_142"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_145" memberEnd="end_146 end_147">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_146" type="actor_5" association="assoc_145"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_147" type="uc_43" association="assoc_145"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_148" memberEnd="end_149 end_150">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_149" type="actor_3" association="assoc_148"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_150" type="uc_43" association="assoc_148"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_151" memberEnd="end_152 end_153">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_152" type="actor_5" association="assoc_151"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_153" type="uc_44" association="assoc_151"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_154" memberEnd="end_155 end_156">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_155" type="actor_3" association="assoc_154"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_156" type="uc_44" association="assoc_154"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_157" memberEnd="end_158 end_159">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_158" type="actor_5" association="assoc_157"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_159" type="uc_45" association="assoc_157"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_160" memberEnd="end_161 end_162">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_161" type="actor_3" association="assoc_160"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_162" type="uc_45" association="assoc_160"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_163" memberEnd="end_164 end_165">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_164" type="actor_5" association="assoc_163"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_165" type="uc_47" association="assoc_163"/>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_166" memberEnd="end_167 end_168">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_167" type="actor_3" association="assoc_166"/>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_168" type="uc_47" association="assoc_166"/>
+    </packagedElement>
+  </uml:Model>
+</xmi:XMI>
