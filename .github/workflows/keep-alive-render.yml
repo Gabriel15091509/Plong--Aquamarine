@@ -2,7 +2,24 @@
 # d'inactivité — sans ça, le premier utilisateur qui arrive après une pause
 # attend jusqu'à 30-60s le réveil, souvent plus long que le timeout de 30s
 # côté frontend (frontend/src/services/api.js), ce qui ressemble à une
-# panne. Un simple ping périodique suffit à garder chaque service "chaud".
+# panne.
+#
+# v2 : un cron "*/10 * * * *" classique s'est révélé peu fiable en
+# pratique — vérifié le 22/08/2026, les deux premières exécutions sont
+# arrivées 34 min puis 37 min après le tir précédent au lieu de 10 min.
+# GitHub documente ce comportement : les événements "schedule" sont
+# best-effort et peuvent être retardés ou silencieusement ignorés en
+# période de forte charge (typiquement en début d'heure), surtout sur un
+# repo à faible activité. Avec des trous de 35+ min, le service a
+# largement le temps de se rendormir (seuil 15 min) entre deux pings —
+# le cron dense ne protégeait rien dans les faits.
+#
+# Nouvelle approche : au lieu de compter sur un déclenchement externe
+# fréquent (peu fiable), UNE SEULE exécution boucle en interne pendant
+# ~5h50 (sous la limite de 6h par job GitHub Actions) en pingant toutes
+# les 9 min. Le cron externe, lui, n'a plus qu'à se déclencher une fois
+# toutes les 5h — un intervalle assez large pour absorber les mêmes
+# retards de 30-40 min sans jamais laisser passer 15 min sans ping.
 #
 # Volontairement un fichier séparé de ci.yml (jamais touché) : ce workflow
 # n'a rien à voir avec le build/test/déploiement, juste un cron minimal.
@@ -10,26 +27,44 @@ name: Keep Render services awake
 
 on:
   schedule:
-    # Toutes les 10 min — en dessous du seuil de mise en veille de 15 min,
-    # avec de la marge pour l'imprécision documentée des crons GitHub
-    # Actions en période de forte charge.
-    - cron: "*/10 * * * *"
+    # Toutes les 5h — filet de sécurité pour relancer la boucle interne,
+    # avec largement de marge pour l'imprécision documentée des crons
+    # GitHub Actions (observée jusqu'à ~35-40 min de retard).
+    - cron: "0 */5 * * *"
   workflow_dispatch:
+
+# Si un tir programmé arrive pendant qu'une boucle précédente tourne
+# encore (cron en retard + boucle qui a fini son plein temps), on met le
+# nouveau en file plutôt que d'annuler celui en cours — on préfère un
+# court chevauchement à un trou de couverture.
+concurrency:
+  group: keep-alive-render
+  cancel-in-progress: false
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    # ~5h50, sous la limite de 6h imposée par GitHub Actions pour un job.
+    timeout-minutes: 350
     steps:
-      - name: Ping health checks
+      - name: Boucle de ping (toutes les 9 min, ~5h50)
         run: |
-          for url in \
-            https://aquanature-gateway.onrender.com/health \
-            https://aquanature-identite.onrender.com/health \
-            https://aquanature-formation.onrender.com/health \
-            https://aquanature-materiel.onrender.com/health \
-            https://aquanature-finance.onrender.com/health \
-            https://aquanature-vie-associative.onrender.com/health \
-            https://aquanature-activites.onrender.com/health ; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$url")
-            echo "$url -> $code"
+          urls="
+            https://aquanature-gateway.onrender.com/health
+            https://aquanature-identite.onrender.com/health
+            https://aquanature-formation.onrender.com/health
+            https://aquanature-materiel.onrender.com/health
+            https://aquanature-finance.onrender.com/health
+            https://aquanature-vie-associative.onrender.com/health
+            https://aquanature-activites.onrender.com/health
+          "
+          # 340 min de boucle utile, la marge restante (10 min) absorbe
+          # la durée des dernières requêtes avant le timeout du job.
+          end=$((SECONDS + 340 * 60))
+          while [ "$SECONDS" -lt "$end" ]; do
+            for url in $urls; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$url")
+              echo "$(date -u +%H:%M:%S) $url -> $code"
+            done
+            sleep 540
           done
