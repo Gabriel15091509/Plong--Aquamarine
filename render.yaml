@@ -334,8 +334,16 @@ services:
         value: https://aquanature-plongee.netlify.app
       - key: RATE_LIMIT_WINDOW
         value: "15"
+      # 1000, pas 100 : c'est justement la valeur que le code (gateway-service/
+      # src/app.js) documente comme ayant provoqué des 429 en usage normal
+      # (pas de l'abus) avant d'être relevée à 1000 par défaut -- ce "100"
+      # ici l'écrasait silencieusement en repartant sur l'ancienne valeur.
+      # Aggravé par l'absence de "trust proxy" côté app.js (corrigé au
+      # même commit) : sans ça, tous les visiteurs partagent le même
+      # compteur derrière le proxy Render, donc 100/15min pour TOUT le
+      # site, pas par visiteur.
       - key: RATE_LIMIT_MAX
-        value: "100"
+        value: "1000"
       - key: MAX_FILE_SIZE
         value: "8388608"
       - key: EMAIL_HOST
