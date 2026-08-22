@@ -298,10 +298,15 @@ const SortieDetails = () => {
           </div>
         </div>
         {canManageSortie && (
-          <div className="flex gap-2">
+          // flex-col sur mobile (empilés, pleine largeur) : 3 boutons avec
+          // libellé complet en px-5 dans un simple flex gap-2 débordaient
+          // hors de l'écran sur mobile (pas de flex-wrap, pas de largeur
+          // contrainte) — sm:flex-row remet la rangée horizontale dès que
+          // la largeur le permet.
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             {isTerminee ? (
               <span
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed w-full sm:w-auto"
                 title="Sortie terminée : déclaration d'incident impossible"
               >
                 <FiAlertTriangle className="w-4 h-4" />
@@ -310,7 +315,7 @@ const SortieDetails = () => {
             ) : (
               <Link
                 to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150 w-full sm:w-auto"
               >
                 <FiAlertTriangle className="w-4 h-4" />
                 Déclarer un incident
@@ -318,7 +323,7 @@ const SortieDetails = () => {
             )}
             {isVerrouillee ? (
               <span
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed w-full sm:w-auto"
                 title='Cette sortie a quitté le statut "Planifiée" : modification impossible'
               >
                 <FiEdit className="w-4 h-4" />
@@ -327,7 +332,7 @@ const SortieDetails = () => {
             ) : (
               <Link
                 to={`/sorties/edit/${sortie.id_sortie}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150 w-full sm:w-auto"
               >
                 <FiEdit className="w-4 h-4" />
                 Modifier
@@ -337,7 +342,7 @@ const SortieDetails = () => {
               onClick={() => setShowDeleteModal(true)}
               disabled={isVerrouillee}
               title={isVerrouillee ? 'Cette sortie a quitté le statut "Planifiée" : suppression impossible' : undefined}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
             >
               <FiTrash2 className="w-4 h-4" />
               Supprimer
@@ -361,18 +366,18 @@ const SortieDetails = () => {
               mettre à jour.
             </p>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 w-full sm:w-auto sm:flex-shrink-0">
             <button
               onClick={() => handleChangeStatut("Terminée")}
               disabled={update.isPending}
-              className="px-4 py-2 text-sm font-semibold text-white bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold text-white bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
             >
               Marquer terminée
             </button>
             <button
               onClick={() => handleChangeStatut("Annulée")}
               disabled={update.isPending}
-              className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+              className="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
             >
               Annuler
             </button>
