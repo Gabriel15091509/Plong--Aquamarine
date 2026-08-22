@@ -93,6 +93,14 @@ const DashboardPage = () => {
 };
 
 const StaffDashboardContent = () => {
+  const { user } = useAuth();
+  // Le trésorier n'a droit de regard sur les sorties nulle part ailleurs
+  // dans l'appli (absent de canSeeSorties dans Sidebar.jsx, exclu du
+  // requiredRoles de la route /sorties dans App.jsx) — la carte doit
+  // suivre la même règle, sinon elle offre un lien direct vers le détail
+  // d'une sortie (/sorties/:id) qu'aucun autre chemin ne lui montre.
+  const canSeeSorties = ["president", "moniteur"].includes(user?.role);
+
   // Hooks
   const { useGetStats: useGetAdherentStats } = useAdherents();
   const { useGetStats: useGetSortieStats } = useSorties();
@@ -590,8 +598,9 @@ const StaffDashboardContent = () => {
   return (
     <div className="min-h-screen from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 space-y-6">
       {/* Sortie la plus proche + compte à rebours — visible d'un coup d'œil
-          plutôt que noyée dans la liste des sorties. */}
-      <ProchaineSortieCard />
+          plutôt que noyée dans la liste des sorties. Masquée pour le
+          trésorier, voir canSeeSorties ci-dessus. */}
+      {canSeeSorties && <ProchaineSortieCard />}
 
       {/* Bannière d'erreur */}
       {hasError && (

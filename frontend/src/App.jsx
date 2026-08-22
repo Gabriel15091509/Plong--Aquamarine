@@ -200,7 +200,15 @@ function App() {
               <Route
                 path="/adherents/:id"
                 element={
-                  <ProtectedRoute>
+                  // Manquait ici : AlerteDetailsModal.jsx redirige déjà un
+                  // adhérent vers /profile en expliquant que cette fiche est
+                  // "réservée au staff", mais la route elle-même n'imposait
+                  // jamais cette règle — un adhérent tapant l'URL
+                  // directement (ou suivant un lien deviné) atteignait la
+                  // fiche complète d'un autre adhérent. Même restriction que
+                  // /adherents (liste) et canViewDossier dans
+                  // AdherentDetails.jsx.
+                  <ProtectedRoute requiredRoles={["president", "moniteur", "tresorier"]}>
                     <Layout>
                       <AdherentDetailsPage />
                     </Layout>
@@ -376,7 +384,13 @@ function App() {
               <Route
                 path="/sorties/:id"
                 element={
-                  <ProtectedRoute>
+                  // Manquait ici (contrairement à /plongees/:id, même
+                  // restriction) : sans requiredRoles, un trésorier tapant
+                  // l'URL directement (ou cliquant la carte "Prochaine
+                  // sortie" du dashboard, corrigée au même commit) accédait
+                  // au détail d'une sortie alors qu'il n'a droit de regard
+                  // sur les sorties nulle part ailleurs dans l'appli.
+                  <ProtectedRoute requiredRoles={["president", "moniteur", "adherent"]}>
                     <Layout>
                       <SortieDetails />
                     </Layout>
