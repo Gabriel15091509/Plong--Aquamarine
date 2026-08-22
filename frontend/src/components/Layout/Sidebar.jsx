@@ -376,6 +376,13 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   // sorties par défaut, "les miennes" n'a de sens que pour quelqu'un qui
   // s'inscrit lui-même.
   const canSeeMesSortiesMenu = hasRole(["adherent"]);
+  // Sous-menu "Sorties que j'encadre" / "Mes plongées" (?filtre=mes-sorties-
+  // encadrees, ?filtre=mes-plongees, voir SortiesPage.jsx/PlongeeList.jsx) :
+  // réservé au moniteur (pas au président, qui a déjà une vue globale sans
+  // avoir besoin de filtrer sur lui-même) — un moniteur encadre certaines
+  // sorties parmi toutes (Sortie.encadrants) et veut vite retrouver
+  // celles-ci, ainsi que les plongées qui s'y rattachent.
+  const canSeeMoniteurSousMenus = hasRole(["moniteur"]);
 
   const sortieMenu = [
     {
@@ -390,7 +397,15 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
               label: "Mes sorties",
             },
           ]
-        : undefined,
+        : canSeeMoniteurSousMenus
+          ? [
+              { path: "/sorties", label: "Toutes les sorties" },
+              {
+                path: "/sorties?filtre=mes-sorties-encadrees",
+                label: "Sorties que j'encadre",
+              },
+            ]
+          : undefined,
     },
     {
       path: "/inscriptions",
@@ -398,7 +413,18 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       label: "Inscriptions",
       badge: nouvellesInscriptions,
     },
-    { path: "/plongees", icon: FiActivity, label: "Plongées", badge: plongeesAValider },
+    {
+      path: "/plongees",
+      icon: FiActivity,
+      label: "Plongées",
+      badge: plongeesAValider,
+      children: canSeeMoniteurSousMenus
+        ? [
+            { path: "/plongees", label: "Toutes les plongées" },
+            { path: "/plongees?filtre=mes-plongees", label: "Mes plongées" },
+          ]
+        : undefined,
+    },
   ];
 
   const formationMenu = [

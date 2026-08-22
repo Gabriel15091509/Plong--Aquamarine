@@ -31,6 +31,7 @@ import {
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import ModalOverlay from "../../components/Common/ModalOverlay";
@@ -61,8 +62,10 @@ const SortiesPage = () => {
   const { useGetAll: useGetAllInscriptions, useCreate: useCreateInscription } =
     useInscriptions();
   const { useGetAll: useGetAllAdherents } = useAdherents();
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
   const { user, hasRole } = useAuth();
   const canManageSortie = hasRole(["president", "moniteur"]);
+  const isMoniteur = hasRole(["moniteur"]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
@@ -76,8 +79,18 @@ const SortiesPage = () => {
   const [mesSortiesOnly, setMesSortiesOnly] = useState(
     searchParams.get("filtre") === "mes-sorties",
   );
+  // Sous-menu sidebar "Sorties que j'encadre" (?filtre=mes-sorties-
+  // encadrees, réservé au moniteur, voir Sidebar.jsx) : distinct de
+  // "Mes sorties" (réservé à l'adhérent, basé sur ses inscriptions) —
+  // ici basé sur Sortie.encadrants, la liste des moniteurs désignés.
+  const [mesSortiesEncadreesOnly, setMesSortiesEncadreesOnly] = useState(
+    searchParams.get("filtre") === "mes-sorties-encadrees",
+  );
   useEffect(() => {
     setMesSortiesOnly(searchParams.get("filtre") === "mes-sorties");
+    setMesSortiesEncadreesOnly(
+      searchParams.get("filtre") === "mes-sorties-encadrees",
+    );
     setCurrentPage(1);
   }, [searchParams]);
   const itemsPerPage = 10;
@@ -91,6 +104,9 @@ const SortiesPage = () => {
 
   const { data: adherentsData, isLoading: loadingAdherents } =
     useGetAllAdherents();
+  // Uniquement pour résoudre le moniteur connecté (id_moniteur) — inutile de
+  // charger la liste des moniteurs pour un rôle qui n'en a pas besoin.
+  const { data: moniteursData } = useGetAllMoniteurs({}, { enabled: isMoniteur });
   // Scopée à l'adhérent connecté côté backend (InscriptionService.getAll) —
   // sert à déterminer "mes sorties" : celles où il a une inscription active
   // (inscrit ou demande envoyée), peu importe le statut précis, sauf
@@ -135,6 +151,14 @@ const SortiesPage = () => {
     return adherent?.num_adherent || null;
   }, [user, adherentsData]);
 
+  // Récupérer le moniteur connecté (pour "Sorties que j'encadre" —
+  // Sortie.encadrants est une liste d'id_moniteur, pas de user.id).
+  const currentMoniteurId = useMemo(() => {
+    if (!user || !moniteursData?.data) return null;
+    const moniteur = moniteursData.data.find((m) => m.user?.email === user.email);
+    return moniteur?.id_moniteur || null;
+  }, [user, moniteursData]);
+
   // Filtrage
   const filteredSorties = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -162,14 +186,35 @@ const SortiesPage = () => {
       const matchMesSorties =
         !mesSortiesOnly || mesSortiesIds.has(sortie.id_sortie || sortie.id);
 
-      return matchSearch && matchFilter && matchType && matchMesSorties;
+      const matchMesSortiesEncadrees =
+        !mesSortiesEncadreesOnly ||
+        (currentMoniteurId != null &&
+          Array.isArray(sortie.encadrants) &&
+          sortie.encadrants.includes(currentMoniteurId));
+
+      return (
+        matchSearch &&
+        matchFilter &&
+        matchType &&
+        matchMesSorties &&
+        matchMesSortiesEncadrees
+      );
     }).sort((a, b) => {
       const now = Date.now();
       const diffA = Math.abs(new Date(a.date_heure) - now);
       const diffB = Math.abs(new Date(b.date_heure) - now);
       return diffA - diffB;
     });
-  }, [sortiesList, searchTerm, filter, typeFilter, mesSortiesOnly, mesSortiesIds]);
+  }, [
+    sortiesList,
+    searchTerm,
+    filter,
+    typeFilter,
+    mesSortiesOnly,
+    mesSortiesIds,
+    mesSortiesEncadreesOnly,
+    currentMoniteurId,
+  ]);
 
   // Pagination
   const totalPages = Math.ceil(filteredSorties.length / itemsPerPage);
@@ -247,11 +292,16 @@ const SortiesPage = () => {
     setFilter("all");
     setTypeFilter("all");
     setMesSortiesOnly(false);
+    setMesSortiesEncadreesOnly(false);
     setCurrentPage(1);
   };
 
   const hasActiveFilters =
-    searchTerm || filter !== "all" || typeFilter !== "all" || mesSortiesOnly;
+    searchTerm ||
+    filter !== "all" ||
+    typeFilter !== "all" ||
+    mesSortiesOnly ||
+    mesSortiesEncadreesOnly;
 
   const getStatutColor = (statut) => {
     const colors = {
@@ -288,16 +338,20 @@ const SortiesPage = () => {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           {mesSortiesOnly
             ? "Vous n'êtes inscrit à aucune sortie"
-            : hasActiveFilters
-              ? "Aucune sortie trouvée"
-              : "Commencez par créer votre première sortie"}
+            : mesSortiesEncadreesOnly
+              ? "Aucune sortie où vous êtes désigné(e) encadrant"
+              : hasActiveFilters
+                ? "Aucune sortie trouvée"
+                : "Commencez par créer votre première sortie"}
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
           {mesSortiesOnly
             ? "Aucune sortie où vous êtes inscrit(e) ou avez envoyé une demande"
-            : hasActiveFilters
-              ? "Aucun résultat pour vos critères"
-              : "Organisez une nouvelle sortie de plongée"}
+            : mesSortiesEncadreesOnly
+              ? "Le président ne vous a encore désigné encadrant sur aucune sortie"
+              : hasActiveFilters
+                ? "Aucun résultat pour vos critères"
+                : "Organisez une nouvelle sortie de plongée"}
         </p>
         {/* Cet état vide remplace toute la vue, y compris la barre de
             recherche : sans ce bouton, rien ne permettait de revenir à la
@@ -334,13 +388,19 @@ const SortiesPage = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-3">
-            {mesSortiesOnly ? "Mes sorties" : "Gestion des sorties"}
+            {mesSortiesOnly
+              ? "Mes sorties"
+              : mesSortiesEncadreesOnly
+                ? "Sorties que j'encadre"
+                : "Gestion des sorties"}
             <FiMapPin className="w-5 h-5 text-indigo-500" />
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {mesSortiesOnly
               ? `${filteredSorties.length} sortie${filteredSorties.length > 1 ? "s" : ""} où vous êtes inscrit(e) ou avez envoyé une demande`
-              : `${filteredSorties.length} sorties trouvées`}
+              : mesSortiesEncadreesOnly
+                ? `${filteredSorties.length} sortie${filteredSorties.length > 1 ? "s" : ""} où vous êtes désigné(e) encadrant`
+                : `${filteredSorties.length} sorties trouvées`}
           </p>
         </div>
         {canManageSortie && (
