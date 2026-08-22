@@ -128,20 +128,42 @@ const initializeApp = async () => {
     logger.error("[finance-service] Database connection failed");
     process.exit(1);
   }
+};
 
+// Jobs de fond (relances/rappels par email) : volontairement séparés de
+// initializeApp() et jamais attendus avant app.listen() (voir server.js).
+// Incident du 22/08/2026 : finance-service restait bloqué en
+// "update_in_progress" sur Render, /health injoignable indéfiniment,
+// parce que startServer() attendait la fin de ces deux envois SMTP avant
+// même de démarrer à écouter — un envoi qui traîne (identifiants email
+// absents/rejetés, port SMTP filtré côté hébergeur...) ne doit jamais
+// pouvoir empêcher le serveur de répondre. Chaque appel est maintenant
+// catché individuellement : une erreur ici est loggée, pas fatale (avant,
+// une rejection non catchée ici déclenchait process.exit(1) via le
+// handler unhandledRejection plus bas, tuant tout le service pour un
+// simple échec d'envoi d'email).
+const startBackgroundJobs = () => {
   // Relance des impayés (CDC 3.1.4) : un premier passage immédiat au
   // démarrage, puis tous les jours à 7h — motif identique aux alertes
   // d'expiration de vie-associative-service.
   const paiementService = new PaiementService();
-  await paiementService.relancerImpayes();
-  cron.schedule("0 7 * * *", () => paiementService.relancerImpayes());
+  const runRelanceImpayes = () =>
+    paiementService
+      .relancerImpayes()
+      .catch((err) => logger.error("Échec de la relance des impayés :", err));
+  runRelanceImpayes();
+  cron.schedule("0 7 * * *", runRelanceImpayes);
   logger.info("Planification des relances d'impayés active (quotidien 07:00)");
 
   // Rappels d'échéancier (avant échéance + retard) : même schéma que la
   // relance d'impayés ci-dessus, décalé à 8h pour ne pas se chevaucher.
   const echeancierService = new EcheancierService();
-  await echeancierService.envoyerRappelsEcheances(getSystemAuthHeader());
-  cron.schedule("0 8 * * *", () => echeancierService.envoyerRappelsEcheances(getSystemAuthHeader()));
+  const runRappelsEcheances = () =>
+    echeancierService
+      .envoyerRappelsEcheances(getSystemAuthHeader())
+      .catch((err) => logger.error("Échec des rappels d'échéancier :", err));
+  runRappelsEcheances();
+  cron.schedule("0 8 * * *", runRappelsEcheances);
   logger.info("Planification des rappels d'échéancier active (quotidien 08:00)");
 };
 
@@ -155,4 +177,4 @@ process.on("uncaughtException", (err) => {
   process.exit(1);
 });
 
-module.exports = { app, initializeApp, sequelize };
+module.exports = { app, initializeApp, startBackgroundJobs, sequelize };

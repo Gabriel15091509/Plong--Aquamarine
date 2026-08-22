@@ -134,13 +134,29 @@ const initializeApp = async () => {
     logger.error("[vie-associative-service] Database connection failed");
     process.exit(1);
   }
+};
 
+// Jobs de fond : volontairement séparés de initializeApp() et jamais
+// attendus avant app.listen() (voir server.js). Même précaution que le
+// correctif du 22/08/2026 sur finance-service (incident réel : un envoi
+// email bloquant au démarrage a empêché finance-service de seulement
+// commencer à écouter, /health injoignable indéfiniment) — ces jobs-ci
+// n'envoient pas d'email eux-mêmes aujourd'hui, mais le motif est
+// identique et un futur envoi ajouté ici ne doit jamais pouvoir bloquer
+// le démarrage. Chaque appel est catché individuellement plutôt que de
+// laisser une rejection non gérée déclencher process.exit(1) via le
+// handler unhandledRejection plus bas.
+const startBackgroundJobs = () => {
   // Alertes d'expiration (adhésion / certificat médical à J-30) : un premier
   // passage immédiat au démarrage, puis tous les jours à 6h — motif identique
   // à celui du monolithe avant que ce domaine n'en soit extrait.
   const alerteService = new AlerteService();
-  await alerteService.syncExpirationAlertes();
-  cron.schedule("0 6 * * *", () => alerteService.syncExpirationAlertes());
+  const runSyncExpirationAlertes = () =>
+    alerteService
+      .syncExpirationAlertes()
+      .catch((err) => logger.error("Échec de la synchro des alertes d'expiration :", err));
+  runSyncExpirationAlertes();
+  cron.schedule("0 6 * * *", runSyncExpirationAlertes);
   logger.info("Planification des alertes d'expiration active (quotidien 06:00)");
 
   // Auto-expiration des certificats médicaux : `statut` est saisi
@@ -149,11 +165,17 @@ const initializeApp = async () => {
   // resté "Valide" en base est corrigé ici, en plus de la correction
   // dynamique faite à la lecture (CertificatMedicalService.deriveStatut).
   const certificatMedicalService = new CertificatMedicalService();
-  const nbExpires = await certificatMedicalService.expireOverdueCertificates();
-  if (nbExpires > 0) {
-    logger.info(`${nbExpires} certificat(s) médical(aux) marqué(s) "Expiré" (date de validité dépassée)`);
-  }
-  cron.schedule("5 6 * * *", () => certificatMedicalService.expireOverdueCertificates());
+  const runExpireOverdueCertificates = () =>
+    certificatMedicalService
+      .expireOverdueCertificates()
+      .then((nbExpires) => {
+        if (nbExpires > 0) {
+          logger.info(`${nbExpires} certificat(s) médical(aux) marqué(s) "Expiré" (date de validité dépassée)`);
+        }
+      })
+      .catch((err) => logger.error("Échec de l'auto-expiration des certificats médicaux :", err));
+  runExpireOverdueCertificates();
+  cron.schedule("5 6 * * *", runExpireOverdueCertificates);
   logger.info("Auto-expiration des certificats médicaux active (quotidien 06:05)");
 };
 
@@ -167,4 +189,4 @@ process.on("uncaughtException", (err) => {
   process.exit(1);
 });
 
-module.exports = { app, initializeApp, sequelize };
+module.exports = { app, initializeApp, startBackgroundJobs, sequelize };

@@ -129,24 +129,48 @@ const initializeApp = async () => {
     logger.error("[activites-service] Database connection failed");
     process.exit(1);
   }
+};
 
+// Jobs de fond : volontairement séparés de initializeApp() et jamais
+// attendus avant app.listen() (voir server.js). Correctif du 22/08/2026
+// (incident réel sur finance-service, même motif copié-collé ici : un
+// envoi email bloquant au démarrage a empêché le service de seulement
+// commencer à écouter, /health injoignable indéfiniment). C'est ici le
+// service le plus exposé : envoyerRappels envoie des emails/SMS, et
+// verifierMeteoEtAnnulerSiDangereux appelle une API météo externe — deux
+// dépendances réseau de plus qui peuvent traîner ou ne jamais répondre.
+// Chaque appel est catché individuellement plutôt que de laisser une
+// rejection non gérée déclencher process.exit(1) via le handler
+// unhandledRejection plus bas.
+const startBackgroundJobs = () => {
   // Alertes "prêt en retard" (3.4.4) et "inactivité carnet de plongée"
   // (3.3.2) : un premier passage immédiat au démarrage, puis tous les jours
   // à 7h — motif identique aux alertes d'expiration de vie-associative-service.
   const attributionService = new AttributionService();
   const plongeeService = new PlongeeService();
-  await attributionService.alerterRetards();
-  await plongeeService.alerterInactifs();
-  cron.schedule("0 7 * * *", () => attributionService.alerterRetards());
-  cron.schedule("0 7 * * *", () => plongeeService.alerterInactifs());
+  const runAlerterRetards = () =>
+    attributionService
+      .alerterRetards()
+      .catch((err) => logger.error("Échec de l'alerte prêts en retard :", err));
+  const runAlerterInactifs = () =>
+    plongeeService
+      .alerterInactifs()
+      .catch((err) => logger.error("Échec de l'alerte inactivité carnet :", err));
+  runAlerterRetards();
+  runAlerterInactifs();
+  cron.schedule("0 7 * * *", runAlerterRetards);
+  cron.schedule("0 7 * * *", runAlerterInactifs);
   logger.info("Planification des alertes matériel/plongée active (quotidien 07:00)");
 
   // Rappel 24h avant sortie (3.2.2) : un premier passage immédiat au
   // démarrage, puis tous les jours à 18h.
   const sortieService = new SortieService();
-  const systemAuthHeader = getSystemAuthHeader();
-  await sortieService.envoyerRappels(systemAuthHeader);
-  cron.schedule("0 18 * * *", () => sortieService.envoyerRappels(getSystemAuthHeader()));
+  const runEnvoyerRappels = () =>
+    sortieService
+      .envoyerRappels(getSystemAuthHeader())
+      .catch((err) => logger.error("Échec des rappels de sortie :", err));
+  runEnvoyerRappels();
+  cron.schedule("0 18 * * *", runEnvoyerRappels);
   logger.info("Planification des rappels de sortie active (quotidien 18:00)");
 
   // Vérification météo en deux phases sur les sorties Planifiée localisées
@@ -157,18 +181,24 @@ const initializeApp = async () => {
   // décision humaine). Un premier passage immédiat au démarrage, puis tous
   // les jours à 6h (avant la préparation matérielle habituelle) — voir
   // SortieService.verifierMeteoEtAnnulerSiDangereux.
-  await sortieService.verifierMeteoEtAnnulerSiDangereux(systemAuthHeader);
-  cron.schedule("0 6 * * *", () =>
-    sortieService.verifierMeteoEtAnnulerSiDangereux(getSystemAuthHeader()),
-  );
+  const runVerifierMeteo = () =>
+    sortieService
+      .verifierMeteoEtAnnulerSiDangereux(getSystemAuthHeader())
+      .catch((err) => logger.error("Échec de la vérification météo :", err));
+  runVerifierMeteo();
+  cron.schedule("0 6 * * *", runVerifierMeteo);
   logger.info("Planification de la vérification météo active (quotidien 06:00)");
 
   // Alerte (jamais d'annulation automatique) à l'organisateur d'une sortie
   // encore sans aucune inscription à 3 jours de la date — décision humaine,
   // voir SortieService.alerterSortiesSansInscription. Un premier passage
   // immédiat au démarrage, puis tous les jours à 8h.
-  await sortieService.alerterSortiesSansInscription();
-  cron.schedule("0 8 * * *", () => sortieService.alerterSortiesSansInscription());
+  const runAlerterSortiesSansInscription = () =>
+    sortieService
+      .alerterSortiesSansInscription()
+      .catch((err) => logger.error("Échec de l'alerte sorties sans inscription :", err));
+  runAlerterSortiesSansInscription();
+  cron.schedule("0 8 * * *", runAlerterSortiesSansInscription);
   logger.info("Planification de l'alerte sortie sans inscription active (quotidien 08:00)");
 };
 
@@ -182,4 +212,4 @@ process.on("uncaughtException", (err) => {
   process.exit(1);
 });
 
-module.exports = { app, initializeApp, sequelize };
+module.exports = { app, initializeApp, startBackgroundJobs, sequelize };
