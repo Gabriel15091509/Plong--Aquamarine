@@ -66,6 +66,23 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: Club de Plongée <no-reply@aquanature-plongee.fr>
+      # Stockage persistant des photos de profil (Cloudflare R2, voir
+      # src/utils/objectStorage.js) : sans ça, le disque local de ce service
+      # est effacé à chaque redéploiement (constaté en pratique). Facultatif
+      # (dégrade proprement vers le disque local si absent) mais fortement
+      # recommandé en production — les 4 valeurs viennent du dashboard
+      # Cloudflare (R2 > Manage API tokens, et Settings du bucket pour
+      # l'URL publique).
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
 
   # ==================== FORMATION ====================
   - type: web
@@ -138,6 +155,18 @@ services:
         value: materiel
       - key: JWT_SECRET
         fromService: { type: web, name: aquanature-identite, envVarKey: JWT_SECRET }
+      # Stockage persistant des photos de matériel — voir le commentaire
+      # équivalent sur aquanature-identite ci-dessus.
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
 
   # ==================== FINANCE ====================
   - type: web
@@ -234,6 +263,19 @@ services:
         sync: false
       - key: OVH_SMS_FROM
         value: Aquanature
+      # Stockage persistant des documents d'adhésion (publics) et
+      # certificats médicaux (chiffrés, jamais servis en direct) — voir le
+      # commentaire équivalent sur aquanature-identite plus haut.
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        sync: false
+      - key: R2_PUBLIC_URL
+        sync: false
 
   # ==================== ACTIVITES ====================
   - type: web

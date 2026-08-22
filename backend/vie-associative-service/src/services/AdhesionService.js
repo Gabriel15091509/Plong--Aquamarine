@@ -156,7 +156,7 @@ class AdhesionService extends BaseService {
     // donc pas de repli "En attente" ici non plus — resoumettre une photo
     // lisible est la seule action utile.
     try {
-      const buffer = readAdhesionDocument(document_path);
+      const buffer = await readAdhesionDocument(document_path);
       const champsAttendus = {
         nom: adherent.nom,
         prenom: adherent.prenom,
