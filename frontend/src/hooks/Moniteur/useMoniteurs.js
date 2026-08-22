@@ -5,11 +5,12 @@ import toast from 'react-hot-toast';
 export const useMoniteurs = () => {
   const queryClient = useQueryClient();
 
-  const useGetAll = (params = {}) => {
+  const useGetAll = (params = {}, options = {}) => {
     return useQuery({
       queryKey: ['moniteurs', params],
       queryFn: () => moniteurService.getAll(params),
       staleTime: 5 * 60 * 1000,
+      ...options,
     });
   };
 

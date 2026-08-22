@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiEye,
@@ -23,6 +23,8 @@ import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
@@ -42,14 +44,24 @@ const isBrouillon = (p) => p.profondeur_max == null || p.duree == null;
 
 const PlongeeList = () => {
   // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
-  const { hasRole } = useAuth();
+  const { user, hasRole } = useAuth();
   const canManagePlongee = hasRole(["president", "moniteur"]);
+  const isMoniteur = hasRole(["moniteur"]);
+  const [searchParams] = useSearchParams();
   const { useGetAll, useRemove, useValidate, useUpdate } = usePlongees();
   const { useGetAll: useGetAllAdherents } = useAdherents();
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
+  const { useGetAll: useGetAllSorties } = useSorties();
 
   const { data, isLoading, error, refetch } = useGetAll();
   const { data: adherentsData, isLoading: loadingAdherents } =
     useGetAllAdherents();
+  // Uniquement pour le sous-menu "Mes plongées" (voir Sidebar.jsx) —
+  // résoudre le moniteur connecté, et savoir quelles sorties il encadre
+  // (Sortie.encadrants), pour couvrir aussi les plongées qu'il n'a pas
+  // encore personnellement validées.
+  const { data: moniteursData } = useGetAllMoniteurs({}, { enabled: isMoniteur });
+  const { data: sortiesData } = useGetAllSorties({}, { enabled: isMoniteur });
 
   const remove = useRemove();
   const validate = useValidate();
@@ -61,7 +73,32 @@ const PlongeeList = () => {
   const [deleteModal, setDeleteModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  // Sous-menu sidebar "Mes plongées" (?filtre=mes-plongees, réservé au
+  // moniteur, voir Sidebar.jsx) : plongées qu'il a validées OU issues d'une
+  // sortie qu'il encadre (même s'il ne les a pas encore validées lui-même).
+  const [mesPlongeesOnly, setMesPlongeesOnly] = useState(
+    searchParams.get("filtre") === "mes-plongees",
+  );
+  useEffect(() => {
+    setMesPlongeesOnly(searchParams.get("filtre") === "mes-plongees");
+    setCurrentPage(1);
+  }, [searchParams]);
   const itemsPerPage = 10;
+
+  const currentMoniteurId = useMemo(() => {
+    if (!user || !moniteursData?.data) return null;
+    const moniteur = moniteursData.data.find((m) => m.user?.email === user.email);
+    return moniteur?.id_moniteur || null;
+  }, [user, moniteursData]);
+
+  // Map id_sortie -> liste d'id_moniteur encadrants (Sortie.encadrants)
+  const sortieEncadrantsMap = useMemo(() => {
+    const map = new Map();
+    (sortiesData?.data || []).forEach((s) => {
+      map.set(s.id_sortie || s.id, Array.isArray(s.encadrants) ? s.encadrants : []);
+    });
+    return map;
+  }, [sortiesData]);
 
   // Complétion rapide d'un brouillon (voir isBrouillon) : uniquement les
   // champs qu'un moniteur saisit après-coup — adhérent/sortie/date/type sont
@@ -112,6 +149,15 @@ const PlongeeList = () => {
 
       if (typeFilter !== "all" && p.type_plongee !== typeFilter) return false;
 
+      if (mesPlongeesOnly) {
+        const jeSuisValidateur =
+          currentMoniteurId != null && p.id_moniteur_validateur === currentMoniteurId;
+        const jEncadreLaSortie =
+          currentMoniteurId != null &&
+          (sortieEncadrantsMap.get(p.id_sortie) || []).includes(currentMoniteurId);
+        if (!jeSuisValidateur && !jEncadreLaSortie) return false;
+      }
+
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         return (
@@ -121,7 +167,16 @@ const PlongeeList = () => {
       }
       return true;
     });
-  }, [allPlongees, adherentMap, filter, typeFilter, searchTerm]);
+  }, [
+    allPlongees,
+    adherentMap,
+    filter,
+    typeFilter,
+    searchTerm,
+    mesPlongeesOnly,
+    currentMoniteurId,
+    sortieEncadrantsMap,
+  ]);
 
   const brouillonsCount = useMemo(
     () => allPlongees.filter(isBrouillon).length,
@@ -220,22 +275,27 @@ const PlongeeList = () => {
           <FiDroplet className="w-10 h-10 text-gray-400" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {searchTerm || filter !== "all"
-            ? "Aucune plongée trouvée"
-            : "Aucune plongée enregistrée"}
+          {mesPlongeesOnly
+            ? "Aucune plongée liée à vous"
+            : searchTerm || filter !== "all"
+              ? "Aucune plongée trouvée"
+              : "Aucune plongée enregistrée"}
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {searchTerm || filter !== "all"
-            ? "Aucun résultat pour vos critères"
-            : "Commencez par enregistrer votre première plongée"}
+          {mesPlongeesOnly
+            ? "Aucune plongée que vous avez validée ou issue d'une sortie que vous encadrez"
+            : searchTerm || filter !== "all"
+              ? "Aucun résultat pour vos critères"
+              : "Commencez par enregistrer votre première plongée"}
         </p>
-        {(searchTerm || filter !== "all" || typeFilter !== "all") && (
+        {(searchTerm || filter !== "all" || typeFilter !== "all" || mesPlongeesOnly) && (
           <button
             type="button"
             onClick={() => {
               setSearchTerm("");
               setFilter("all");
               setTypeFilter("all");
+              setMesPlongeesOnly(false);
               setCurrentPage(1);
             }}
             className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -258,6 +318,14 @@ const PlongeeList = () => {
   // RENDU DU COMPOSANT
   return (
     <div className="space-y-4">
+      {mesPlongeesOnly && (
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          <FiUser className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
+          {filteredPlongees.length} plongée
+          {filteredPlongees.length > 1 ? "s" : ""} que vous avez validée(s) ou
+          issue(s) d&apos;une sortie que vous encadrez
+        </p>
+      )}
       {/* Barre de recherche et filtres */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
