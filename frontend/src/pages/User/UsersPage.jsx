@@ -394,7 +394,9 @@ const UsersPage = () => {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Vue tableau — écrans sm et plus */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -570,6 +572,146 @@ const UsersPage = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Vue cartes — mobile */}
+            <div className="sm:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {filteredUsers.map((u, index) => {
+                const roleInfo = getRoleInfo(u.role);
+                const RoleIcon = roleInfo.icon;
+                const isActioning = actionLoading === u.id;
+
+                return (
+                  <motion.div
+                    key={u.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="p-4"
+                    onClick={() => {
+                      setSelectedUser(u);
+                      setIsDetailModalOpen(true);
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary-500 to-ocean-500 flex items-center justify-center text-white text-sm font-semibold overflow-hidden flex-shrink-0">
+                        {u.photo ? (
+                          <img
+                            src={photoUrl(u.photo)}
+                            alt={u.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          u.name.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {u.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5 truncate">
+                          <FiMail className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">{u.email}</span>
+                        </p>
+                        {u.phone && (
+                          <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                            <FiPhone className="w-3 h-3 flex-shrink-0" />
+                            {u.phone}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${roleInfo.bg} ${roleInfo.color} flex items-center gap-1 w-fit`}
+                          >
+                            <RoleIcon className="w-3 h-3" />
+                            {roleInfo.label}
+                          </span>
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1 w-fit ${
+                              u.active
+                                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                                : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                            }`}
+                          >
+                            {u.active ? (
+                              <>
+                                <FiCheckCircle className="w-3 h-3" />
+                                Actif
+                              </>
+                            ) : (
+                              <>
+                                <FiXCircle className="w-3 h-3" />
+                                Inactif
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-1.5">
+                          <FiCalendar className="w-3 h-3 flex-shrink-0" />
+                          Inscrit le {formatDate(u.created_at)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {canEditRoles && (
+                        <>
+                          <button
+                            onClick={() => handleToggleActive(u)}
+                            disabled={isActioning || u.id === currentUser?.id}
+                            title={u.active ? "Désactiver" : "Activer"}
+                            className={`p-2 rounded-lg transition-colors disabled:opacity-40 ${
+                              u.active
+                                ? "text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                                : "text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
+                            }`}
+                          >
+                            {u.active ? (
+                              <FiToggleRight className="w-4 h-4" />
+                            ) : (
+                              <FiToggleLeft className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleResetPassword(u)}
+                            disabled={isActioning}
+                            title="Réinitialiser le mot de passe"
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:text-blue-400 dark:hover:bg-blue-900/20 disabled:opacity-40"
+                          >
+                            <FiKey className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setIsDetailModalOpen(true);
+                        }}
+                        title="Voir / Modifier"
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors dark:text-gray-400 dark:hover:bg-gray-700"
+                      >
+                        <FiEdit className="w-4 h-4" />
+                      </button>
+
+                      {canDeleteUsers && u.id !== currentUser?.id && (
+                        <button
+                          onClick={() => handleDelete(u)}
+                          disabled={isActioning}
+                          title="Supprimer"
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors dark:text-red-400 dark:hover:bg-red-900/20 disabled:opacity-40 ml-auto"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+            </>
           )}
         </div>
 
