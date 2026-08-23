@@ -197,6 +197,20 @@ class FormationController extends BaseController {
     }
   }
 
+  // Route de maintenance ponctuelle (voir formationRoutes.js) : applique
+  // backend/formation-service/scripts/backfill-seances-coherence.sql
+  // depuis le service lui-même (voir FormationService.runSeancesCoherenceBackfill
+  // pour le contexte : contourne un problème de connexion externe SSL au
+  // Postgres de production).
+  async backfillSeancesCoherence(req, res, next) {
+    try {
+      const result = await this.formationService.runSeancesCoherenceBackfill();
+      res.json({ success: true, data: result, message: "Backfill appliqué avec succès" });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async validateBeforeCreate(req, res, next) {
     const errors = await this.formationService.validateFormationData(
       req.body,
