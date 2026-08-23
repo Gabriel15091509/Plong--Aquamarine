@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { FiPlus, FiClipboard, FiX, FiSearch } from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import SearchableSelect from "../Common/SearchableSelect";
 import InscriptionRow from "./InscriptionRow";
 import InscriptionActionModals from "./InscriptionActionModals";
@@ -12,7 +13,9 @@ import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
+import { useSelection } from "../../hooks/useSelection";
 import { STATUT_INSCRIPTION } from "../../utils/constants";
+import inscriptionService from "../../services/Inscription/inscriptionService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -33,7 +36,10 @@ const InscriptionList = () => {
     setCurrentPage(1);
   }, [searchParams]);
   const [loading, setLoading] = useState(false);
+  const selection = useSelection();
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
   const [cancelModal, setCancelModal] = useState(null);
   const [waitlistModal, setWaitlistModal] = useState(null);
@@ -213,6 +219,25 @@ const InscriptionList = () => {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (!isAdmin) {
+      toast.error("Vous n'avez pas les droits pour supprimer une inscription");
+      return;
+    }
+    setIsBulkDeleting(true);
+    try {
+      const result = await inscriptionService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
+    }
+  };
+
   const handleConfirm = async (id) => {
     if (!isAdmin) {
       toast.error("Seul un gestionnaire peut confirmer");
@@ -383,6 +408,29 @@ const InscriptionList = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées (suppression réservée aux
+          gestionnaires, même règle que le bouton individuel) */}
+      {isAdmin && (
+        <>
+          <div className="flex items-center gap-2 px-1">
+            <input
+              type="checkbox"
+              checked={selection.allSelected(paginatedInscriptions.map((i) => i.id_inscription))}
+              onChange={() => selection.toggleAll(paginatedInscriptions.map((i) => i.id_inscription))}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+            />
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Tout sélectionner (page courante)
+            </span>
+          </div>
+          <BulkActionBar
+            count={selection.selectedCount}
+            onClear={selection.clear}
+            onDelete={() => setBulkDeleteModal(true)}
+          />
+        </>
+      )}
+
       {/* Liste des inscriptions */}
       <AnimatePresence>
         {paginatedInscriptions.length === 0 ? (
@@ -442,6 +490,10 @@ const InscriptionList = () => {
                   onRequestDelete={() =>
                     setDeleteModal(inscription.id_inscription)
                   }
+                  selected={isAdmin ? selection.isSelected(inscription.id_inscription) : undefined}
+                  onToggleSelect={
+                    isAdmin ? () => selection.toggle(inscription.id_inscription) : undefined
+                  }
                 />
               );
             })}
@@ -484,6 +536,14 @@ const InscriptionList = () => {
         message="Êtes-vous sûr de vouloir supprimer cette inscription ?"
         onCancel={() => setDeleteModal(null)}
         onConfirm={() => handleDelete(deleteModal)}
+      />
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} inscription(s) sélectionnée(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
       />
 
       <InscriptionActionModals

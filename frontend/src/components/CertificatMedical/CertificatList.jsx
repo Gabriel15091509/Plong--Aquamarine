@@ -16,14 +16,19 @@ import {
   FiSearch,
   FiLock,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
+import { useSelection } from "../../hooks/useSelection";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
+import certificatService from "../../services/CertificatMedical/certificatService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -48,6 +53,7 @@ const CertificatList = () => {
     useGetAllAdherents();
   const remove = useRemove();
   const valider = useValider();
+  const selection = useSelection();
 
   // "Validation" : activé depuis ?validation=soumis (lien du sous-menu
   // "Validation" dans la Sidebar) — affiche uniquement les auto-soumissions
@@ -74,6 +80,8 @@ const CertificatList = () => {
     setShowValidationOnly(searchParams.get("validation") === "soumis");
   }, [searchParams]);
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectMotif, setRejectMotif] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -142,6 +150,21 @@ const CertificatList = () => {
       setDeleteModal(null);
     } catch (error) {
       console.error("Échec de la suppression du certificat médical :", error);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await certificatService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -256,6 +279,37 @@ const CertificatList = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées (mêmes dossiers verrouillés
+          que le bouton Supprimer individuel : soumission adhérent déjà
+          validée exclue) */}
+      {canManageCertificat && (() => {
+        const selectableIds = paginatedCertificats
+          .filter((c) => !(c.soumis_par_adherent && c.statut_validation === "Validé"))
+          .map((c) => c.id_certificat);
+        return (
+          <>
+            {selectableIds.length > 0 && (
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="checkbox"
+                  checked={selection.allSelected(selectableIds)}
+                  onChange={() => selection.toggleAll(selectableIds)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  Tout sélectionner (page courante)
+                </span>
+              </div>
+            )}
+            <BulkActionBar
+              count={selection.selectedCount}
+              onClear={selection.clear}
+              onDelete={() => setBulkDeleteModal(true)}
+            />
+          </>
+        );
+      })()}
+
       {/* Liste des certificats */}
       <AnimatePresence>
         {paginatedCertificats.length === 0 ? (
@@ -296,6 +350,15 @@ const CertificatList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
+                    {canManageCertificat &&
+                      !(certificat.soumis_par_adherent && certificat.statut_validation === "Validé") && (
+                        <input
+                          type="checkbox"
+                          checked={selection.isSelected(certificat.id_certificat)}
+                          onChange={() => selection.toggle(certificat.id_certificat)}
+                          className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                        />
+                      )}
                     {/* Document (rectangle) et photo de l'adhérent côte à
                         côte — même disposition que AdhesionList.jsx, pour le
                         staff comme pour un adhérent qui consulte sa propre
@@ -602,6 +665,14 @@ const CertificatList = () => {
           </motion.div>
         </ModalOverlay>
       )}
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} certificat(s) sélectionné(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };

@@ -16,12 +16,17 @@ import {
   FiX,
   FiSearch,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { usePresidents } from "../../hooks/President/usePresidents";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useUsers } from "../../hooks/User/useUsers";
+import { useSelection } from "../../hooks/useSelection";
 import { photoUrl } from "../../utils/photoUrl";
+import presidentService from "../../services/President/presidentService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -47,9 +52,12 @@ const PresidentList = () => {
     useGetAllMoniteurs();
   const { data: usersData, isLoading: loadingUsers } = useGetAllUsers();
   const remove = useRemove();
+  const selection = useSelection();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState("list");
   const itemsPerPage = 10;
@@ -108,6 +116,21 @@ const PresidentList = () => {
       setDeleteModal(null);
     } catch (err) {
       console.error("Échec de la suppression du président :", err);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await presidentService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -209,6 +232,24 @@ const PresidentList = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées */}
+      <div className="flex items-center gap-2 px-1">
+        <input
+          type="checkbox"
+          checked={selection.allSelected(paginatedPresidents.map((p) => p.id_president))}
+          onChange={() => selection.toggleAll(paginatedPresidents.map((p) => p.id_president))}
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+        />
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          Tout sélectionner (page courante)
+        </span>
+      </div>
+      <BulkActionBar
+        count={selection.selectedCount}
+        onClear={selection.clear}
+        onDelete={() => setBulkDeleteModal(true)}
+      />
+
       {/* Liste des présidents */}
       <AnimatePresence>
         {paginatedPresidents.length === 0 ? (
@@ -242,8 +283,14 @@ const PresidentList = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
+                    className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
                   >
+                    <input
+                      type="checkbox"
+                      checked={selection.isSelected(president.id_president)}
+                      onChange={() => selection.toggle(president.id_president)}
+                      className="absolute top-3 left-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
                     {moniteur?.user?.photo ? (
                       <img
                         src={photoUrl(moniteur.user.photo)}
@@ -315,6 +362,12 @@ const PresidentList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
+                    <input
+                      type="checkbox"
+                      checked={selection.isSelected(president.id_president)}
+                      onChange={() => selection.toggle(president.id_president)}
+                      className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
                     <div className="flex-shrink-0">
                       {moniteur?.user?.photo ? (
                         <img
@@ -472,6 +525,14 @@ const PresidentList = () => {
           </motion.div>
         </ModalOverlay>
       )}
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} président(s) sélectionné(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };

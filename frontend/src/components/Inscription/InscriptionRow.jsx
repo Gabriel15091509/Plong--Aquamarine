@@ -32,6 +32,8 @@ const InscriptionRow = ({
   onRequestWaitlist,
   onRequestCancel,
   onRequestDelete,
+  selected,
+  onToggleSelect,
 }) => {
   const adherentName = adherentInfo.nom;
   const hasAvailablePlace = (capacityInfo.placesDisponibles || 0) > 0;
@@ -54,6 +56,14 @@ const InscriptionRow = ({
       className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
     >
       <div className="flex items-start gap-4">
+        {onToggleSelect && (
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={onToggleSelect}
+            className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+          />
+        )}
         {/* Photo en évidence */}
         <div className="flex-shrink-0">
           {adherentInfo.photo ? (

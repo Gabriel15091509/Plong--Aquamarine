@@ -40,6 +40,11 @@ class IncidentService {
     const response = await api.delete(`/incidents/${id}`);
     return response.data;
   }
+
+  async bulkDelete(ids) {
+    const response = await api.post("/incidents/bulk-delete", { ids });
+    return response.data;
+  }
 }
 
 export default new IncidentService();

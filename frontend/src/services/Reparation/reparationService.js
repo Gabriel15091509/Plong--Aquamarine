@@ -40,6 +40,11 @@ class ReparationService {
     const response = await api.delete(`/reparations/${id}`);
     return response.data;
   }
+
+  async bulkDelete(ids) {
+    const response = await api.post("/reparations/bulk-delete", { ids });
+    return response.data;
+  }
 }
 
 export default new ReparationService();

@@ -181,6 +181,44 @@ class UserController extends BaseController {
     }
   }
 
+  // Surcharge de BaseController.bulkDelete : UserService n'a pas de
+  // delete() propre, seulement deleteAccount() (anonymisation RGPD — voir
+  // ce commentaire) — le bulkDelete générique appellerait
+  // BaseService.delete (suppression SQL brute) et casserait
+  // l'anonymisation. Rejoue donc deleteAccount pour chaque id, avec le
+  // même résultat détaillé par id que BaseService.bulkDelete.
+  async bulkDelete(req, res, next) {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Le champ ids (tableau non vide) est requis",
+        });
+      }
+      const results = [];
+      for (const id of ids) {
+        try {
+          await this.userService.deleteAccount(id);
+          results.push({ id, success: true });
+        } catch (error) {
+          results.push({ id, success: false, message: error.message });
+        }
+      }
+      const failed = results.filter((r) => !r.success);
+      res.json({
+        success: failed.length === 0,
+        data: results,
+        message:
+          failed.length === 0
+            ? `${results.length} compte(s) supprimé(s) avec succès`
+            : `${results.length - failed.length}/${results.length} supprimé(s), ${failed.length} échec(s)`,
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async updateProfile(req, res, next) {
     try {
       const userId = req.user.id;

@@ -35,6 +35,11 @@ class PresidentService {
     const response = await api.delete(`/president/${id}`);
     return response.data;
   }
+
+  async bulkDelete(ids) {
+    const response = await api.post("/president/bulk-delete", { ids });
+    return response.data;
+  }
 }
 
 export default new PresidentService();

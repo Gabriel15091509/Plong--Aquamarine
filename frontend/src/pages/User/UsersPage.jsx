@@ -22,14 +22,18 @@ import {
   FiToggleLeft,
   FiToggleRight,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import ProtectedRoute from "../../components/Common/ProtectedRoute";
 import SearchBar from "../../components/Common/SearchBar";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import ModalOverlay from "../../components/Common/ModalOverlay";
+import BulkActionBar from "../../components/Common/BulkActionBar";
 import { useUsers } from "../../hooks/User/useUsers";
+import { useSelection } from "../../hooks/useSelection";
 import { Link } from "react-router-dom";
 import { photoUrl } from "../../utils/photoUrl";
+import userService from "../../services/User/userService";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -87,7 +91,7 @@ const UsersPage = () => {
     useChangeRole,
     useDeleteAccount,
   } = useUsers();
-  const { data: usersResponse, isLoading: loading } = useGetAll();
+  const { data: usersResponse, isLoading: loading, refetch } = useGetAll();
   const users = usersResponse?.data || [];
 
   const disableAccount = useDisableAccount();
@@ -112,6 +116,8 @@ const UsersPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const selection = useSelection();
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const canManageUsers =
     hasPermission("manage_users") || hasRole(["president"]);
@@ -195,6 +201,26 @@ const UsersPage = () => {
         if (selectedUser?.id === u.id) setIsDetailModalOpen(false);
       },
     });
+  };
+
+  const handleBulkDelete = async () => {
+    if (
+      !window.confirm(
+        `Supprimer définitivement les ${selection.selectedCount} compte(s) sélectionné(s) ? Cette action est irréversible.`,
+      )
+    )
+      return;
+    setIsBulkDeleting(true);
+    try {
+      const result = await userService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+    }
   };
 
   if (!canManageUsers) {
@@ -380,6 +406,38 @@ const UsersPage = () => {
           </AnimatePresence>
         </div>
 
+        {/* Sélection multiple / actions groupées (comptes supprimables :
+            président seulement, jamais son propre compte — même règle que
+            le bouton Supprimer individuel) */}
+        {canDeleteUsers && (() => {
+          const selectableIds = filteredUsers
+            .filter((u) => u.id !== currentUser?.id)
+            .map((u) => u.id);
+          return (
+            selectableIds.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 px-1">
+                  <input
+                    type="checkbox"
+                    checked={selection.allSelected(selectableIds)}
+                    onChange={() => selection.toggleAll(selectableIds)}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                  />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Tout sélectionner
+                  </span>
+                </div>
+                <BulkActionBar
+                  count={selection.selectedCount}
+                  onClear={selection.clear}
+                  onDelete={handleBulkDelete}
+                  deleteDisabled={isBulkDeleting}
+                />
+              </>
+            )
+          );
+        })()}
+
         {/* Tableau */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-card overflow-hidden border border-gray-100 dark:border-gray-700">
           {loading ? (
@@ -400,6 +458,7 @@ const UsersPage = () => {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
+                    {canDeleteUsers && <th className="px-6 py-3 w-4"></th>}
                     {[
                       "Utilisateur",
                       "Email",
@@ -435,6 +494,18 @@ const UsersPage = () => {
                           setIsDetailModalOpen(true);
                         }}
                       >
+                        {canDeleteUsers && (
+                          <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                            {u.id !== currentUser?.id && (
+                              <input
+                                type="checkbox"
+                                checked={selection.isSelected(u.id)}
+                                onChange={() => selection.toggle(u.id)}
+                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                              />
+                            )}
+                          </td>
+                        )}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-gradient-to-r from-primary-500 to-ocean-500 flex items-center justify-center text-white text-sm font-semibold overflow-hidden">
@@ -593,6 +664,18 @@ const UsersPage = () => {
                     }}
                   >
                     <div className="flex items-start gap-3">
+                      {canDeleteUsers && u.id !== currentUser?.id && (
+                        <input
+                          type="checkbox"
+                          checked={selection.isSelected(u.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            selection.toggle(u.id);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                        />
+                      )}
                       <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary-500 to-ocean-500 flex items-center justify-center text-white text-sm font-semibold overflow-hidden flex-shrink-0">
                         {u.photo ? (
                           <img

@@ -56,6 +56,11 @@ class AttributionService {
     return response.data;
   }
 
+  async bulkDelete(ids) {
+    const response = await api.post("/attributions/bulk-delete", { ids });
+    return response.data;
+  }
+
   async enregistrerCaution(id, data) {
     const response = await api.post(`/attributions/${id}/caution`, data);
     return response.data;

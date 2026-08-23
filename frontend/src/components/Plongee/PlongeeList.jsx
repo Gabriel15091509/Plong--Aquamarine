@@ -19,13 +19,17 @@ import {
   FiClipboard,
   FiSave,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
+import { useSelection } from "../../hooks/useSelection";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import {
@@ -33,6 +37,7 @@ import {
   VISIBILITE_OPTIONS,
   COURANT_OPTIONS,
 } from "../../utils/constants";
+import plongeeService from "../../services/Plongee/plongeeService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -66,11 +71,14 @@ const PlongeeList = () => {
   const remove = useRemove();
   const validate = useValidate();
   const update = useUpdate();
+  const selection = useSelection();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   // Sous-menu sidebar "Mes plongées" (?filtre=mes-plongees, réservé au
@@ -213,6 +221,21 @@ const PlongeeList = () => {
       console.error("Échec de la suppression de la plongée :", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await plongeeService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -395,6 +418,36 @@ const PlongeeList = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées (mêmes plongées verrouillées
+          que le bouton Supprimer individuel : déjà validées exclues) */}
+      {canManagePlongee && (() => {
+        const selectableIds = paginatedPlongees
+          .filter((p) => !p.id_moniteur_validateur)
+          .map((p) => p.id_plongee);
+        return (
+          <>
+            {selectableIds.length > 0 && (
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="checkbox"
+                  checked={selection.allSelected(selectableIds)}
+                  onChange={() => selection.toggleAll(selectableIds)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  Tout sélectionner (page courante)
+                </span>
+              </div>
+            )}
+            <BulkActionBar
+              count={selection.selectedCount}
+              onClear={selection.clear}
+              onDelete={() => setBulkDeleteModal(true)}
+            />
+          </>
+        );
+      })()}
+
       {/* Liste des plongées */}
       <AnimatePresence>
         {paginatedPlongees.length === 0 ? (
@@ -434,6 +487,14 @@ const PlongeeList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
+                    {canManagePlongee && !plongee.id_moniteur_validateur && (
+                      <input
+                        type="checkbox"
+                        checked={selection.isSelected(plongee.id_plongee)}
+                        onChange={() => selection.toggle(plongee.id_plongee)}
+                        className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                      />
+                    )}
                     {/* Photo / Avatar de l'adhérent */}
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
@@ -793,6 +854,14 @@ const PlongeeList = () => {
           </motion.form>
         </ModalOverlay>
       )}
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} plongée(s) sélectionnée(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };

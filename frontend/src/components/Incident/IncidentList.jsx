@@ -13,11 +13,16 @@ import {
   FiX,
   FiSearch,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { useIncidents } from "../../hooks/Incident/useIncidents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useSelection } from "../../hooks/useSelection";
 import { formatDateTime } from "../../utils/helpers";
+import incidentService from "../../services/Incident/incidentService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -28,10 +33,13 @@ const IncidentList = () => {
   const { data, isLoading, error, refetch } = useGetAll();
   const { data: sortiesData, isLoading: loadingSorties } = useGetAllSorties();
   const remove = useRemove();
+  const selection = useSelection();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const sortieMap = useMemo(() => {
     const map = {};
@@ -69,6 +77,21 @@ const IncidentList = () => {
       setDeleteModal(null);
     } catch (error) {
       // toast déjà géré par le hook useRemove
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await incidentService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -148,6 +171,21 @@ const IncidentList = () => {
         </div>
       </div>
 
+      <div className="flex items-center gap-2 px-1">
+        <input
+          type="checkbox"
+          checked={selection.allSelected(filteredIncidents.map((i) => i.id_incident))}
+          onChange={() => selection.toggleAll(filteredIncidents.map((i) => i.id_incident))}
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+        />
+        <span className="text-sm text-gray-500 dark:text-gray-400">Tout sélectionner</span>
+      </div>
+      <BulkActionBar
+        count={selection.selectedCount}
+        onClear={selection.clear}
+        onDelete={() => setBulkDeleteModal(true)}
+      />
+
       <AnimatePresence>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-3">
           {filteredIncidents.map((incident) => (
@@ -159,6 +197,12 @@ const IncidentList = () => {
               className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start gap-4">
+                <input
+                  type="checkbox"
+                  checked={selection.isSelected(incident.id_incident)}
+                  onChange={() => selection.toggle(incident.id_incident)}
+                  className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                />
                 <div className="flex-shrink-0">
                   <div
                     className={`w-12 h-12 rounded-full flex items-center justify-center ${
@@ -279,6 +323,14 @@ const IncidentList = () => {
           </motion.div>
         </ModalOverlay>
       )}
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} incident(s) sélectionné(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };

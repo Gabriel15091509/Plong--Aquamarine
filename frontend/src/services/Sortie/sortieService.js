@@ -57,6 +57,11 @@ class SortieService {
     return response.data;
   }
 
+  async bulkDelete(ids) {
+    const response = await api.post("/sorties/bulk-delete", { ids });
+    return response.data;
+  }
+
   // NOUVEAU - Pointage de présence
   async getPointage(id) {
     const response = await api.get(`/sorties/${id}/pointage`);

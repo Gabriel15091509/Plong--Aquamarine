@@ -81,6 +81,11 @@ class PlongeeService {
     const response = await api.delete(`/plongees/${id}`);
     return response.data;
   }
+
+  async bulkDelete(ids) {
+    const response = await api.post("/plongees/bulk-delete", { ids });
+    return response.data;
+  }
 }
 
 export default new PlongeeService();

@@ -35,7 +35,11 @@ import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import ModalOverlay from "../../components/Common/ModalOverlay";
+import ConfirmModal from "../../components/Common/ConfirmModal";
+import BulkActionBar from "../../components/Common/BulkActionBar";
 import ErrorState from "../../components/Common/ErrorState";
+import { useSelection } from "../../hooks/useSelection";
+import sortieService from "../../services/Sortie/sortieService";
 
 import { formatDateTime, joursRestants, formatCompteARebours } from "../../utils/helpers";
 import { TYPE_SORTIE_OPTIONS } from "../../utils/constants";
@@ -114,6 +118,9 @@ const SortiesPage = () => {
   const { data: mesInscriptionsData } = useGetAllInscriptions();
   const remove = useRemove();
   const createInscription = useCreateInscription();
+  const selection = useSelection();
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Map id_sortie -> inscription active de l'adhérent connecté (statut !==
   // "Annulée") — sert à la fois à "Mes sorties" (mesSortiesIds ci-dessous)
@@ -245,6 +252,21 @@ const SortiesPage = () => {
       console.error("Échec de la suppression de la sortie :", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await sortieService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -508,6 +530,37 @@ const SortiesPage = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées (sorties verrouillées —
+          statut != "Planifiée" — exclues, même règle que le bouton
+          Supprimer individuel) */}
+      {canManageSortie && (() => {
+        const selectableIds = paginatedSorties
+          .filter((s) => s.statut === "Planifiée")
+          .map((s) => s.id_sortie || s.id);
+        return (
+          <>
+            {selectableIds.length > 0 && (
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="checkbox"
+                  checked={selection.allSelected(selectableIds)}
+                  onChange={() => selection.toggleAll(selectableIds)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  Tout sélectionner (page courante)
+                </span>
+              </div>
+            )}
+            <BulkActionBar
+              count={selection.selectedCount}
+              onClear={selection.clear}
+              onDelete={() => setBulkDeleteModal(true)}
+            />
+          </>
+        );
+      })()}
+
       {/* Liste des sorties */}
       <AnimatePresence>
         {paginatedSorties.length === 0 ? (
@@ -583,8 +636,16 @@ const SortiesPage = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
+                    className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
                   >
+                    {canManageSortie && sortie.statut === "Planifiée" && (
+                      <input
+                        type="checkbox"
+                        checked={selection.isSelected(sortieId)}
+                        onChange={() => selection.toggle(sortieId)}
+                        className="absolute top-3 left-3 z-10 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                      />
+                    )}
                     {/* Photo / bandeau de la sortie */}
                     <div className="relative h-40 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
                       {sortie.image ? (
@@ -797,6 +858,14 @@ const SortiesPage = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center gap-4">
+                    {canManageSortie && sortie.statut === "Planifiée" && (
+                      <input
+                        type="checkbox"
+                        checked={selection.isSelected(sortieId)}
+                        onChange={() => selection.toggle(sortieId)}
+                        className="h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                      />
+                    )}
                     {/* Icône de la sortie */}
                     <div className="flex-shrink-0">
                       {sortie.image ? (
@@ -1057,6 +1126,14 @@ const SortiesPage = () => {
           </motion.div>
         </ModalOverlay>
       )}
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} sortie(s) sélectionnée(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+      />
 
       {/* Pied de page */}
       <div className="text-xs text-gray-400 text-center pt-3 border-t border-gray-200 dark:border-gray-700">

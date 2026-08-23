@@ -118,4 +118,12 @@ router.delete(
   adherentController.delete.bind(adherentController),
 );
 
+// Suppression groupée — même rôle que la suppression unitaire ci-dessus.
+router.post(
+  "/adherents/bulk-delete",
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  adherentController.bulkDelete.bind(adherentController),
+);
+
 module.exports = router;

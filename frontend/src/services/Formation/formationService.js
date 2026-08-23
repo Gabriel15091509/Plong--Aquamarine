@@ -60,6 +60,11 @@ class FormationService {
     const response = await api.delete(`/formations/${id}`);
     return response.data;
   }
+
+  async bulkDelete(ids) {
+    const response = await api.post("/formations/bulk-delete", { ids });
+    return response.data;
+  }
 }
 
 export default new FormationService();

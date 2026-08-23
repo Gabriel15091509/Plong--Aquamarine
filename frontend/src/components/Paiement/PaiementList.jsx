@@ -16,14 +16,18 @@ import {
   FiTag,
   FiSearch,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { usePaiements } from "../../hooks/Paiement/usePaiements";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
+import { useSelection } from "../../hooks/useSelection";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
+import paiementService from "../../services/Paiement/paiementService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -41,11 +45,14 @@ const PaiementList = () => {
   const remove = useRemove();
   const process = useProcess();
   const cancel = useCancel();
+  const selection = useSelection();
 
   // Tous les useState
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const itemsPerPage = 10;
@@ -108,6 +115,21 @@ const PaiementList = () => {
       console.error("Échec de la suppression du paiement :", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await paiementService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -231,6 +253,28 @@ const PaiementList = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées */}
+      {canManagePaiement && (
+        <>
+          <div className="flex items-center gap-2 px-1">
+            <input
+              type="checkbox"
+              checked={selection.allSelected(paginatedPaiements.map((p) => p.id_paiement))}
+              onChange={() => selection.toggleAll(paginatedPaiements.map((p) => p.id_paiement))}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+            />
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Tout sélectionner (page courante)
+            </span>
+          </div>
+          <BulkActionBar
+            count={selection.selectedCount}
+            onClear={selection.clear}
+            onDelete={() => setBulkDeleteModal(true)}
+          />
+        </>
+      )}
+
       {/* Liste des paiements */}
       <AnimatePresence>
         {paginatedPaiements.length === 0 ? (
@@ -270,6 +314,14 @@ const PaiementList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
+                    {canManagePaiement && (
+                      <input
+                        type="checkbox"
+                        checked={selection.isSelected(paiement.id_paiement)}
+                        onChange={() => selection.toggle(paiement.id_paiement)}
+                        className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                      />
+                    )}
                     {/* Photo / Avatar de l'adhérent */}
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
@@ -434,6 +486,14 @@ const PaiementList = () => {
         message="Êtes-vous sûr de vouloir supprimer ce paiement ?"
         onCancel={() => setDeleteModal(null)}
         onConfirm={() => handleDelete(deleteModal)}
+      />
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} paiement(s) sélectionné(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
       />
     </div>
   );
