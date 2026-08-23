@@ -200,10 +200,16 @@ const SortiesPage = () => {
         matchMesSortiesEncadrees
       );
     }).sort((a, b) => {
-      const now = Date.now();
-      const diffA = Math.abs(new Date(a.date_heure) - now);
-      const diffB = Math.abs(new Date(b.date_heure) - now);
-      return diffA - diffB;
+      // Planifiées d'abord (celles qui demandent encore une action —
+      // inscription, organisation), triées par date la plus proche en
+      // premier. Le reste (Terminée/Annulée/En cours) ensuite, plus
+      // récentes en tête — même esprit qu'un historique.
+      const aPlanifiee = a.statut === "Planifiée";
+      const bPlanifiee = b.statut === "Planifiée";
+      if (aPlanifiee !== bPlanifiee) return aPlanifiee ? -1 : 1;
+      return aPlanifiee
+        ? new Date(a.date_heure) - new Date(b.date_heure)
+        : new Date(b.date_heure) - new Date(a.date_heure);
     });
   }, [
     sortiesList,
