@@ -284,14 +284,6 @@ const AdherentList = () => {
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
                   >
-                    {canManageAdherent && (
-                      <input
-                        type="checkbox"
-                        checked={selection.isSelected(adherent.num_adherent)}
-                        onChange={() => selection.toggle(adherent.num_adherent)}
-                        className="absolute top-3 left-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                      />
-                    )}
                     {adherent.photo ? (
                       <img
                         src={photoUrl(adherent.photo)}
@@ -329,6 +321,15 @@ const AdherentList = () => {
                       {adherent.nb_plongees_total || 0} plongées
                     </p>
                     <div className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 w-full">
+                      {canManageAdherent && (
+                        <input
+                          type="checkbox"
+                          checked={selection.isSelected(adherent.num_adherent)}
+                          onChange={() => selection.toggle(adherent.num_adherent)}
+                          className="mr-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                          title="Sélectionner"
+                        />
+                      )}
                       <Link
                         to={`/adherents/${adherent.num_adherent}`}
                         className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
