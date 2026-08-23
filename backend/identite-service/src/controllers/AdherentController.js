@@ -334,6 +334,44 @@ class AdherentController extends BaseController {
     }
   }
 
+  // Appelé par formation-service (identiteClient.syncStatutFormation) à
+  // chaque création/clôture/ajournement/suppression de formation — voir
+  // AdherentService.syncStatutFormation pour la règle appliquée.
+  async syncStatutFormation(req, res, next) {
+    try {
+      const { enFormation } = req.body;
+      const result = await this.adherentService.syncStatutFormation(
+        req.params.id,
+        Boolean(enFormation),
+      );
+      if (!result) {
+        return res.status(404).json({
+          success: false,
+          message: "Adhérent non trouvé",
+        });
+      }
+      res.json({
+        success: true,
+        data: result,
+        message: "Statut formation synchronisé",
+      });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
+  // Route de maintenance ponctuelle (voir adherentRoutes.js) : applique
+  // scripts/backfill-adherent-statut-formation.sql depuis le service
+  // lui-même (voir AdherentService.runStatutFormationBackfill).
+  async backfillStatutFormation(req, res, next) {
+    try {
+      const result = await this.adherentService.runStatutFormationBackfill();
+      res.json({ success: true, data: result, message: "Backfill appliqué avec succès" });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async validateBeforeCreate(req, res, next) {
     try {
       const errors = await this.adherentService.validateAdherentData(req.body);

@@ -506,12 +506,25 @@ const AdherentForm = () => {
               onBlur={handleBlur}
               className={inputClasses("statut")}
             >
-              {STATUT_ADHERENT_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
+              {STATUT_ADHERENT_OPTIONS
+                // "En formation" n'est plus une saisie libre : ce statut ne
+                // doit refléter qu'une vraie formation "En cours" (mis à
+                // jour automatiquement à la création/clôture/ajournement
+                // d'une formation) — retiré des choix ici, sauf s'il s'agit
+                // déjà de la valeur actuelle (auquel cas on l'affiche
+                // encore, pour ne pas masquer l'état réel de l'adhérent).
+                .filter((opt) => opt !== "En formation" || formData.statut === "En formation")
+                .map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
             </select>
+            {formData.statut === "En formation" && (
+              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                Statut dérivé automatiquement des formations en cours de l&apos;adhérent — se met à jour tout seul.
+              </p>
+            )}
           </motion.div>
 
           <motion.div {...fadeInUp}>

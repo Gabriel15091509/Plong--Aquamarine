@@ -283,12 +283,14 @@ class FormationService extends BaseService {
         : null;
 
     if (!montantTotal || montantTotal <= 0) {
-      return await this.formationRepository.create({
+      const formationGratuite = await this.formationRepository.create({
         ...data,
         montant_total: null,
         montant_paye: 0,
         statut_paiement: "Payé",
       });
+      await this.syncAdherentStatutFormation(formationGratuite.num_adherent, authHeader);
+      return formationGratuite;
     }
 
     const montantPaye =
@@ -303,6 +305,7 @@ class FormationService extends BaseService {
       montant_paye: montantPaye,
       statut_paiement,
     });
+    await this.syncAdherentStatutFormation(formation.num_adherent, authHeader);
 
     if (montantPaye > 0) {
       const id_tresorier = await identiteClient.getTresorierIdForUser(user);
@@ -383,7 +386,7 @@ class FormationService extends BaseService {
   // payante à "En cours" (ex. après une édition) tant qu'aucun paiement n'a
   // été enregistré — vérifié contre le montant_paye réel de la formation,
   // que l'édition ne modifie jamais elle-même (géré via enregistrerPaiement).
-  async update(id, data, user = null) {
+  async update(id, data, user = null, authHeader = null) {
     const formation = await this.formationRepository.findById(id);
     if (!formation) throw new Error("Formation non trouvée");
     await this.assertCanModifyFormation(formation, user);
@@ -440,7 +443,11 @@ class FormationService extends BaseService {
       }
     }
 
-    return await this.formationRepository.update(id, safeData);
+    const updated = await this.formationRepository.update(id, safeData);
+    if (nextStatut !== formation.statut) {
+      await this.syncAdherentStatutFormation(formation.num_adherent, authHeader);
+    }
+    return updated;
   }
 
   // Ne peut terminer une formation que si toutes les compétences déjà
@@ -484,13 +491,14 @@ class FormationService extends BaseService {
 
     formation.statut = "Terminée";
     await formation.save();
+    await this.syncAdherentStatutFormation(formation.num_adherent, authHeader);
     return formation;
   }
 
   // Le moniteur garde la main pour retenir un adhérent qui n'a pas le niveau
   // malgré les séances/compétences cochées, plutôt que de laisser la
   // complétion automatique (tryAutoComplete) attribuer le niveau à sa place.
-  async ajourner(id, motif, user = null) {
+  async ajourner(id, motif, user = null, authHeader = null) {
     const formation = await this.formationRepository.findById(id);
     if (!formation) throw new Error("Formation non trouvée");
     await this.assertCanModifyFormation(formation, user);
@@ -502,14 +510,38 @@ class FormationService extends BaseService {
     formation.statut = "Ajournée";
     formation.commentaire_moniteur = motif;
     await formation.save();
+    await this.syncAdherentStatutFormation(formation.num_adherent, authHeader);
     return formation;
   }
 
-  async delete(id, user = null) {
+  async delete(id, user = null, authHeader = null) {
     const formation = await this.formationRepository.findById(id);
     if (!formation) throw new Error("Formation non trouvée");
     await this.assertCanModifyFormation(formation, user);
-    return await this.formationRepository.delete(id);
+    const result = await this.formationRepository.delete(id);
+    if (formation.statut === "En cours") {
+      await this.syncAdherentStatutFormation(formation.num_adherent, authHeader);
+    }
+    return result;
+  }
+
+  // Détermine si l'adhérent a encore au moins une formation "En cours" et
+  // répercute ce fait sur Adherent.statut (identite-service) — même
+  // principe que la synchro du niveau (identiteClient.updateNiveau), mais
+  // pour un simple booléen indépendant de la formation qui vient de
+  // changer : une formation qui se termine/s'abandonne/s'ajourne/se
+  // supprime ne doit pas faire sortir l'adhérent de "En formation" s'il en
+  // a une autre encore "En cours" en parallèle. Best-effort (comme
+  // notifyPayment) : ne doit jamais faire échouer l'opération de formation
+  // qui vient de réussir si identite-service est injoignable.
+  async syncAdherentStatutFormation(num_adherent, authHeader) {
+    try {
+      const formations = await this.formationRepository.findByAdherent(num_adherent);
+      const enFormation = formations.some((f) => f.statut === "En cours");
+      await identiteClient.syncStatutFormation(num_adherent, enFormation, authHeader);
+    } catch (error) {
+      console.error("Erreur synchronisation statut adhérent (En formation):", error.message);
+    }
   }
 
   // Appelé après qu'une séance passe à "Réalisée" (SeanceService.updateStatut)

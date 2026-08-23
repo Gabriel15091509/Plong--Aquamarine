@@ -94,6 +94,29 @@ async function updateNiveau(numAdherent, niveau, extra = {}, authHeader) {
   return body.data;
 }
 
+// Répercute sur Adherent.statut le fait que l'adhérent ait encore, ou non,
+// au moins une formation "En cours" — appelé par
+// FormationService.syncAdherentStatutFormation après chaque
+// création/modification/clôture/ajournement/suppression de formation.
+// Best-effort côté appelant : ne doit jamais faire échouer l'opération de
+// formation qui vient de se produire (voir les sites d'appel, tous dans un
+// try/catch dédié).
+async function syncStatutFormation(numAdherent, enFormation, authHeader) {
+  const response = await fetch(`${BASE_URL}/adherents/${numAdherent}/statut-formation`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(authHeader ? { Authorization: authHeader } : {}),
+    },
+    body: JSON.stringify({ enFormation }),
+  });
+  if (!response.ok) {
+    throw new Error(`identite-service: échec synchronisation statut adhérent ${numAdherent} (${response.status})`);
+  }
+  const body = await response.json();
+  return body.data;
+}
+
 module.exports = {
   getAdherentById,
   getAdherentForUser,
@@ -101,4 +124,5 @@ module.exports = {
   getMoniteurByUserId,
   getMoniteurById,
   updateNiveau,
+  syncStatutFormation,
 };

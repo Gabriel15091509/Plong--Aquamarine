@@ -103,6 +103,25 @@ router.patch(
   adherentController.updateNiveau.bind(adherentController),
 );
 
+// Interne : appelée par formation-service (identiteClient.syncStatutFormation)
+// à chaque changement de formation — même contrat que PATCH .../niveau.
+router.patch(
+  "/adherents/:id/statut-formation",
+  AuthMiddleware.authenticate,
+  adherentController.syncStatutFormation.bind(adherentController),
+);
+
+// Maintenance ponctuelle, réservée au président — voir le commentaire de
+// AdherentService.runStatutFormationBackfill. À retirer une fois le
+// backfill appliqué en production (pas de risque à la laisser : SQL
+// idempotent, réservée président).
+router.post(
+  "/adherents/admin/backfill-statut-formation",
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  adherentController.backfillStatutFormation.bind(adherentController),
+);
+
 router.delete(
   "/adherents/:id",
   AuthMiddleware.authenticate,

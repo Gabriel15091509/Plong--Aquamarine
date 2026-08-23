@@ -208,6 +208,69 @@ class AdherentService extends BaseService {
     return adherent;
   }
 
+  // Surcharge de BaseService.update : "En formation" n'est plus une valeur
+  // que le président peut saisir librement dans le formulaire adhérent —
+  // elle ne doit refléter que la présence d'une vraie formation "En cours"
+  // (voir syncStatutFormation, seule méthode qui doit désormais poser cette
+  // valeur). Une valeur "En formation" envoyée ici est ignorée
+  // silencieusement plutôt que rejetée, pour ne pas faire échouer une
+  // édition qui renvoie simplement le formulaire tel quel — même choix que
+  // FormationService.update pour nb_seances_realisees. Les autres valeurs
+  // de statut (Actif/Suspendu/Inactif/Ancien) restent librement éditables.
+  async update(id, data) {
+    const safeData = { ...data };
+    if (safeData.statut === "En formation") delete safeData.statut;
+    return await this.repository.update(id, safeData);
+  }
+
+  // Répercute sur Adherent.statut le fait qu'une formation soit "En cours"
+  // ou non (appelé par formation-service — identiteClient.syncStatutFormation
+  // — à chaque création/clôture/ajournement/suppression de formation). Ne
+  // touche volontairement que la transition "Actif" <-> "En formation" :
+  // un adhérent explicitement positionné "Suspendu"/"Inactif"/"Ancien" par
+  // le président ne doit jamais être silencieusement remis "Actif" par ce
+  // mécanisme automatique, ni un adhérent "Actif" sans lien avec une
+  // formation être touché à tort. Best-effort côté appelant (formation-service),
+  // comme notifyPayment/tryAutoComplete : ne doit jamais faire échouer
+  // l'opération de formation qui vient de se produire.
+  async syncStatutFormation(num_adherent, enFormation) {
+    const adherent = await this.repository.findById(num_adherent);
+    if (!adherent) return null;
+
+    if (enFormation && adherent.statut === "Actif") {
+      adherent.statut = "En formation";
+      await adherent.save();
+    } else if (!enFormation && adherent.statut === "En formation") {
+      adherent.statut = "Actif";
+      await adherent.save();
+    }
+
+    return adherent;
+  }
+
+  // Exécute scripts/backfill-adherent-statut-formation.sql — même principe
+  // que FormationService.runSeancesCoherenceBackfill côté formation-service
+  // (contourne le même problème de connexion externe SSL à la base de
+  // production, réutilise la connexion Sequelize déjà en place). Réservé au
+  // président (route protégée) ; SQL idempotent, sûr à rejouer.
+  async runStatutFormationBackfill() {
+    const fs = require("fs");
+    const path = require("path");
+    const { sequelize } = require("../config/database");
+    const sqlPath = path.join(__dirname, "..", "..", "scripts", "backfill-adherent-statut-formation.sql");
+    const rawSql = fs.readFileSync(sqlPath, "utf8");
+    // `\encoding UTF8` est une méta-commande psql, invalide pour le driver
+    // "pg" utilisé par Sequelize — voir FormationService.runSeancesCoherenceBackfill
+    // pour le contexte complet (bug découvert et corrigé lors du premier
+    // backfill de ce type dans ce projet).
+    const sql = rawSql
+      .split("\n")
+      .filter((line) => !line.trim().startsWith("\\"))
+      .join("\n");
+    await sequelize.query(sql);
+    return { applied: true };
+  }
+
   async getAdherentStats() {
     const total = await this.repository.count();
     // Un invité (CDC 3.2.1) n'est pas un membre du club : exclu du décompte
