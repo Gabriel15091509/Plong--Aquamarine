@@ -638,14 +638,6 @@ const SortiesPage = () => {
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
                   >
-                    {canManageSortie && sortie.statut === "Planifiée" && (
-                      <input
-                        type="checkbox"
-                        checked={selection.isSelected(sortieId)}
-                        onChange={() => selection.toggle(sortieId)}
-                        className="absolute top-3 left-3 z-10 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                      />
-                    )}
                     {/* Photo / bandeau de la sortie */}
                     <div className="relative h-40 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
                       {sortie.image ? (
@@ -741,6 +733,15 @@ const SortiesPage = () => {
                           Niveau {sortie.niveau_requis || "—"}
                         </span>
                         <div className="flex items-center gap-1">
+                          {canManageSortie && sortie.statut === "Planifiée" && (
+                            <input
+                              type="checkbox"
+                              checked={selection.isSelected(sortieId)}
+                              onChange={() => selection.toggle(sortieId)}
+                              className="mr-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                              title="Sélectionner"
+                            />
+                          )}
                           {isAdherent ? (
                             monInscription ? (
                               <Link
