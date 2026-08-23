@@ -117,28 +117,34 @@ const FormationList = () => {
   const allFormations = data?.data || [];
 
   const filteredFormations = useMemo(() => {
-    return allFormations.filter((f) => {
-      const adherentInfo = adherentMap[f.num_adherent] || {
-        nom: `#${f.num_adherent}`,
-        photo: null,
-      };
-      const adherentName = adherentInfo.nom;
+    return allFormations
+      .filter((f) => {
+        const adherentInfo = adherentMap[f.num_adherent] || {
+          nom: `#${f.num_adherent}`,
+          photo: null,
+        };
+        const adherentName = adherentInfo.nom;
 
-      if (filter !== "all" && f.statut !== filter) return false;
+        if (filter !== "all" && f.statut !== filter) return false;
 
-      if (mesFormationsEncadreesOnly) {
-        if (currentMoniteurId == null || f.id_moniteur !== currentMoniteurId) return false;
-      }
+        if (mesFormationsEncadreesOnly) {
+          if (currentMoniteurId == null || f.id_moniteur !== currentMoniteurId) return false;
+        }
 
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        return (
-          adherentName.toLowerCase().includes(search) ||
-          f.niveau_vise?.toLowerCase().includes(search)
-        );
-      }
-      return true;
-    });
+        if (searchTerm) {
+          const search = searchTerm.toLowerCase();
+          return (
+            adherentName.toLowerCase().includes(search) ||
+            f.niveau_vise?.toLowerCase().includes(search)
+          );
+        }
+        return true;
+      })
+      // Les formations "En cours" (celles qui demandent réellement un suivi
+      // actif) toujours en tête — tri stable : l'ordre relatif au sein d'un
+      // même groupe (ex. entre deux "En cours") reste celui renvoyé par
+      // l'API, inchangé.
+      .sort((a, b) => (a.statut === "En cours" ? 0 : 1) - (b.statut === "En cours" ? 0 : 1));
   }, [
     allFormations,
     adherentMap,

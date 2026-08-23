@@ -131,9 +131,19 @@ const PlongeeList = () => {
 
   const allPlongees = data?.data || [];
 
+  // Priorité d'affichage : à compléter (brouillon) puis en attente (non
+  // validée mais complète) en tête de liste, validées en dernier — ce sont
+  // les deux seules qui demandent encore une action du moniteur.
+  const priorite = (p) => {
+    if (isBrouillon(p)) return 0;
+    if (!p.id_moniteur_validateur) return 1;
+    return 2;
+  };
+
   // Filtrage (useMemo)
   const filteredPlongees = useMemo(() => {
-    return allPlongees.filter((p) => {
+    return allPlongees
+      .filter((p) => {
       const adherentInfo = adherentMap[p.num_adherent] || {
         nom: `#${p.num_adherent}`,
         photo: null,
@@ -166,7 +176,8 @@ const PlongeeList = () => {
         );
       }
       return true;
-    });
+    })
+      .sort((a, b) => priorite(a) - priorite(b));
   }, [
     allPlongees,
     adherentMap,
