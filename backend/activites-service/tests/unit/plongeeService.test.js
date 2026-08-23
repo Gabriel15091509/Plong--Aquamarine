@@ -85,7 +85,7 @@ describe("PlongeeService.attachMaterielUtilise", () => {
   });
 
   test("attache un tableau vide si la plongée n'a pas de sortie associée", async () => {
-    const spy = jest
+    jest
       .spyOn(service.attributionRepository, "findByAdherentAndSortie")
       .mockResolvedValue([]);
 
