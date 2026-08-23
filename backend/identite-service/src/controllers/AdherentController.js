@@ -360,18 +360,6 @@ class AdherentController extends BaseController {
     }
   }
 
-  // Route de maintenance ponctuelle (voir adherentRoutes.js) : applique
-  // scripts/backfill-adherent-statut-formation.sql depuis le service
-  // lui-même (voir AdherentService.runStatutFormationBackfill).
-  async backfillStatutFormation(req, res, next) {
-    try {
-      const result = await this.adherentService.runStatutFormationBackfill();
-      res.json({ success: true, data: result, message: "Backfill appliqué avec succès" });
-    } catch (error) {
-      next(withStatus(error, 500));
-    }
-  }
-
   async validateBeforeCreate(req, res, next) {
     try {
       const errors = await this.adherentService.validateAdherentData(req.body);
