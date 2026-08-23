@@ -1,0 +1,66 @@
+name: DB backfill - cohérence séances formation
+
+# Déclenchement manuel uniquement (jamais sur push) : ce workflow exécute
+# scripts/backfill-seances-coherence.sql contre la base Postgres de
+# production. Créé en dernier recours après avoir constaté que la connexion
+# directe depuis la machine locale (psql, puis le client Node "pg") échouait
+# systématiquement à la négociation SSL — reproductible sur wifi, sur
+# partage de connexion mobile, et avec Tailscale désactivé, donc pas un
+# problème de réseau local identifiable. Un runner GitHub Actions a une
+# sortie réseau propre et évite toute cette classe de problème.
+#
+# Prérequis : un secret de dépôt BACKFILL_DATABASE_URL contenant la
+# chaîne de connexion externe Postgres de Render (postgresql://user:pass@host:5432/db).
+# Settings -> Secrets and variables -> Actions -> New repository secret.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier la présence de psql
+        run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+
+      - name: État avant correction (échantillon)
+        env:
+          DATABASE_URL: ${{ secrets.BACKFILL_DATABASE_URL }}
+        run: |
+          psql "$DATABASE_URL" -c "
+            SELECT f.id_formation, f.statut, f.nb_seances_realisees, f.nb_seances_prevues
+            FROM formation.formations f
+            WHERE f.statut = 'Terminée'
+            ORDER BY f.id_formation
+            LIMIT 15;
+          "
+          psql "$DATABASE_URL" -c "
+            SELECT COUNT(*) AS seances_planifiees_orphelines
+            FROM formation.seances s
+            JOIN formation.formations f ON f.id_formation = s.id_formation
+            WHERE s.statut = 'Planifiée' AND f.statut IN ('Terminée', 'Abandonnée');
+          "
+
+      - name: Appliquer le backfill
+        env:
+          DATABASE_URL: ${{ secrets.BACKFILL_DATABASE_URL }}
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f backend/formation-service/scripts/backfill-seances-coherence.sql
+
+      - name: État après correction (vérification)
+        env:
+          DATABASE_URL: ${{ secrets.BACKFILL_DATABASE_URL }}
+        run: |
+          psql "$DATABASE_URL" -c "
+            SELECT f.id_formation, f.statut, f.nb_seances_realisees, f.nb_seances_prevues
+            FROM formation.formations f
+            WHERE f.statut = 'Terminée'
+            ORDER BY f.id_formation
+            LIMIT 15;
+          "
+          psql "$DATABASE_URL" -c "
+            SELECT COUNT(*) AS seances_planifiees_orphelines_restantes
+            FROM formation.seances s
+            JOIN formation.formations f ON f.id_formation = s.id_formation
+            WHERE s.statut = 'Planifiée' AND f.statut IN ('Terminée', 'Abandonnée');
+          "
