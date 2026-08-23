@@ -1,0 +1,66 @@
+name: Deploy Cloudflare Pages
+
+# Remplace Deploy Netlify (retiré le 2026-08-23 : jeton Netlify bloqué en
+# JSONHTTPError: Forbidden de façon persistante, cause non identifiable
+# sans accès au compte). Même principe : ce dépôt n'est PAS relié au projet
+# Cloudflare Pages via son intégration GitHub native — chaque déploiement
+# passe par `wrangler pages deploy` ici, piloté uniquement par ce workflow,
+# pour rester cohérent avec le reste du pipeline (aucune divergence
+# possible entre ce qui est sur `main` et ce qui est en ligne).
+#
+# Secrets requis (Settings > Secrets and variables > Actions) :
+#   CLOUDFLARE_API_TOKEN   : dashboard Cloudflare > My Profile > API Tokens
+#     > Create Token > template "Edit Cloudflare Workers" (couvre Pages) ou
+#     un jeton personnalisé avec la permission "Account > Cloudflare Pages >
+#     Edit".
+#   CLOUDFLARE_ACCOUNT_ID  : dashboard Cloudflare > Workers & Pages (ou
+#     n'importe quelle page du compte) > barre latérale droite, "Account ID".
+#
+# Le nom du projet Pages (ci-dessous "aquanature-plongee") doit correspondre
+# exactement à celui choisi à la création du projet dans le dashboard
+# Cloudflare — son URL par défaut sera alors
+# https://aquanature-plongee.pages.dev. Si le nom pris à la création diffère,
+# ajuster `--project-name` ci-dessous ET `FRONTEND_URL`/`CORS_ORIGIN` dans
+# render.yaml (voir DEPLOY-RENDER-CLOUDFLARE.md, section 5).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-cloudflare.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Voir ci.yml (job build-frontend) pour le contexte : `npm ci` refuse
+      # ce lock file à cause d'un dédup hoisted inoffensif entre eslint/
+      # workbox-build et tailwind/vite-plugin-pwa. `npm install` le tolère.
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages (prod)
+        working-directory: frontend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler pages deploy dist --project-name=aquanature-plongee --branch=main

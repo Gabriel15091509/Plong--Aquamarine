@@ -1,7 +1,7 @@
 # Déploiement GitOps — runbook d'amorçage (à faire une seule fois par cluster)
 
-> Cible publique retenue depuis 2026-08-21 : Render + Netlify (voir
-> [DEPLOY-RENDER-NETLIFY.md](DEPLOY-RENDER-NETLIFY.md)). Ce document reste la
+> Cible publique retenue depuis 2026-08-21 : Render + Cloudflare Pages (voir
+> [DEPLOY-RENDER-CLOUDFLARE.md](DEPLOY-RENDER-CLOUDFLARE.md)). Ce document reste la
 > référence pour faire tourner l'app sur un cluster Kubernetes local (démo,
 > développement, tests du pipeline GitOps lui-même).
 

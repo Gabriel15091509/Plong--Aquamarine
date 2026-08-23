@@ -1,0 +1,17 @@
+# Cloudflare Pages (syntaxe compatible Netlify _redirects) : le frontend
+# appelle son API en URL relative ("/api", voir src/services/api.js) — les
+# règles ci-dessous la reproxient en interne vers la passerelle Render,
+# exactement comme le fait le proxy Vite en dev (vite.config.js) : le
+# navigateur ne voit jamais l'origine Render, donc aucun souci de CORS.
+# Copié tel quel dans dist/ au build (Vite copie public/ sans y toucher).
+#
+# ⚠️ Remplacer GATEWAY_URL ci-dessous par l'URL réelle du service Render
+# "aquanature-gateway" si elle diffère de la valeur par défaut ci-dessous
+# (voir DEPLOY-RENDER-CLOUDFLARE.md).
+
+/api/*      https://aquanature-gateway.onrender.com/api/:splat      200
+/uploads/*  https://aquanature-gateway.onrender.com/uploads/:splat  200
+
+# Fallback SPA (React Router) : doit rester la dernière règle, sinon elle
+# capte les deux règles ci-dessus avant qu'elles ne s'appliquent.
+/*          /index.html                                             200

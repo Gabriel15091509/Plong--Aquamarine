@@ -4,7 +4,7 @@
 # voir ce fichier en cas de divergence). Plan "free" partout (accepté :
 # fichiers uploadés perdus à chaque redéploiement d'identite-service/
 # vie-associative-service, faute de disque persistant sur ce plan — voir
-# DEPLOY-RENDER-NETLIFY.md).
+# DEPLOY-RENDER-CLOUDFLARE.md).
 #
 # Import : dashboard Render → "New +" → "Blueprint" → sélectionner ce repo.
 # JWT_SECRET est généré une seule fois sur aquanature-identite puis répercuté
@@ -368,12 +368,12 @@ services:
         value: https://aquanature-vie-associative.onrender.com
       - key: ACTIVITES_SERVICE_URL
         value: https://aquanature-activites.onrender.com
-      # À ajuster si le site Netlify prend finalement un autre nom/domaine
-      # que celui choisi à la création (voir DEPLOY-RENDER-NETLIFY.md).
+      # À ajuster si le projet Cloudflare Pages prend finalement un autre
+      # nom que celui choisi à la création (voir DEPLOY-RENDER-CLOUDFLARE.md).
       - key: FRONTEND_URL
-        value: https://aquanature-plongee.netlify.app
+        value: https://aquanature-plongee.pages.dev
       - key: CORS_ORIGIN
-        value: https://aquanature-plongee.netlify.app
+        value: https://aquanature-plongee.pages.dev
       - key: RATE_LIMIT_WINDOW
         value: "15"
       # 1000, pas 100 : c'est justement la valeur que le code (gateway-service/

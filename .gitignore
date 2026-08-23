@@ -23,9 +23,9 @@ frontend/*.log
 # automatiquement à la première analyse de photo de certificat, pas du code.
 backend/*/*.traineddata
 
-# État local du CLI Netlify (lien vers le site, cache de déploiement) —
-# généré par `netlify deploy`, jamais à committer.
-.netlify/
+# État local du CLI Cloudflare Wrangler (lien vers le projet, cache de
+# déploiement) — généré par `wrangler pages deploy`, jamais à committer.
+.wrangler/
 
 # Sorties locales de Playwright (npx playwright test) : captures d'écran,
 # traces, rapport HTML et état de la dernière exécution — régénérés à
