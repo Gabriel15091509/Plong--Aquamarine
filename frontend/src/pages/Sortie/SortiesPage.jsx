@@ -200,14 +200,18 @@ const SortiesPage = () => {
         matchMesSortiesEncadrees
       );
     }).sort((a, b) => {
-      // Planifiées d'abord (celles qui demandent encore une action —
-      // inscription, organisation), triées par date la plus proche en
-      // premier. Le reste (Terminée/Annulée/En cours) ensuite, plus
-      // récentes en tête — même esprit qu'un historique.
-      const aPlanifiee = a.statut === "Planifiée";
-      const bPlanifiee = b.statut === "Planifiée";
-      if (aPlanifiee !== bPlanifiee) return aPlanifiee ? -1 : 1;
-      return aPlanifiee
+      // 3 groupes, dans cet ordre : Planifiée à jour (date à venir — la plus
+      // proche en tête), Planifiée à terminer (date passée mais jamais
+      // clôturée, voir "aTerminer" plus bas), puis le reste (Terminée/
+      // Annulée/En cours — plus récentes en tête, esprit historique).
+      const priorite = (s) => {
+        if (s.statut !== "Planifiée") return 2;
+        return new Date(s.date_heure) < new Date() ? 1 : 0;
+      };
+      const prioriteA = priorite(a);
+      const prioriteB = priorite(b);
+      if (prioriteA !== prioriteB) return prioriteA - prioriteB;
+      return prioriteA === 0
         ? new Date(a.date_heure) - new Date(b.date_heure)
         : new Date(b.date_heure) - new Date(a.date_heure);
     });
@@ -534,6 +538,12 @@ const SortiesPage = () => {
             {paginatedSorties.map((sortie) => {
               const sortieId = sortie.id_sortie || sortie.id;
               const isPastSortie = new Date(sortie.date_heure) < new Date();
+              // Sortie dont la date est passée mais toujours "Planifiée" :
+              // rien ne fait avancer son statut tout seul (voir
+              // InscriptionService.createInscription), il faut que
+              // l'organisateur la clôture manuellement (bouton "Terminer",
+              // même bandeau ambre que SortieDetails).
+              const aTerminer = sortie.statut === "Planifiée" && isPastSortie;
               const isFull =
                 (sortie.nb_places || 0) <= (sortie.nb_inscrits || 0);
               const canInscribe =
@@ -593,6 +603,11 @@ const SortiesPage = () => {
                           {sortie.statut || "Planifiée"}
                         </span>
                         <div className="flex items-center gap-1.5">
+                          {aTerminer && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 shadow-sm">
+                              À terminer
+                            </span>
+                          )}
                           {showCompteARebours && (
                             <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm">
                               <FiClock className="w-3 h-3 flex-shrink-0" />
@@ -848,6 +863,11 @@ const SortiesPage = () => {
                             >
                               {sortie.statut || "Planifiée"}
                             </span>
+                            {aTerminer && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                                À terminer
+                              </span>
+                            )}
                           </div>
                         </div>
 
