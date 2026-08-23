@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiEye,
@@ -24,6 +24,7 @@ import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
 import { useFormations } from "../../hooks/Formation/useFormations";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useAuth } from "../../context/AuthContext";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
@@ -35,12 +36,18 @@ import ErrorState from "../Common/ErrorState";
 const FormationList = () => {
   const { user, hasRole } = useAuth();
   const canManage = hasRole(["president", "moniteur"]);
+  const isMoniteur = hasRole(["moniteur"]);
+  const [searchParams] = useSearchParams();
 
   const { useGetAll, useGetByAdherent, useRemove, useComplete, useAjourner } = useFormations();
   const { useGetAll: useGetAllAdherents } = useAdherents();
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
 
   const { data: adherentsData, isLoading: loadingAdherents } =
     useGetAllAdherents();
+  // Uniquement pour le sous-menu "Formations que j'encadre" (voir
+  // Sidebar.jsx) — résoudre le moniteur connecté (id_moniteur).
+  const { data: moniteursData } = useGetAllMoniteurs({}, { enabled: isMoniteur });
 
   // Un adhérent ne doit voir que ses propres formations ("où il en est"),
   // pas la liste de gestion complète réservée à président/moniteur — on
@@ -71,7 +78,24 @@ const FormationList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [actionLoading, setActionLoading] = useState(null);
   const [viewMode, setViewMode] = useState("list");
+  // Sous-menu sidebar "Formations que j'encadre" (?filtre=mes-formations-
+  // encadrees, réservé au moniteur, voir Sidebar.jsx).
+  const [mesFormationsEncadreesOnly, setMesFormationsEncadreesOnly] = useState(
+    searchParams.get("filtre") === "mes-formations-encadrees",
+  );
+  useEffect(() => {
+    setMesFormationsEncadreesOnly(
+      searchParams.get("filtre") === "mes-formations-encadrees",
+    );
+    setCurrentPage(1);
+  }, [searchParams]);
   const itemsPerPage = 10;
+
+  const currentMoniteurId = useMemo(() => {
+    if (!user || !moniteursData?.data) return null;
+    const moniteur = moniteursData.data.find((m) => m.user?.email === user.email);
+    return moniteur?.id_moniteur || null;
+  }, [user, moniteursData]);
 
   // Map des adhérents avec leurs infos
   const adherentMap = useMemo(() => {
@@ -102,6 +126,10 @@ const FormationList = () => {
 
       if (filter !== "all" && f.statut !== filter) return false;
 
+      if (mesFormationsEncadreesOnly) {
+        if (currentMoniteurId == null || f.id_moniteur !== currentMoniteurId) return false;
+      }
+
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         return (
@@ -111,7 +139,14 @@ const FormationList = () => {
       }
       return true;
     });
-  }, [allFormations, adherentMap, filter, searchTerm]);
+  }, [
+    allFormations,
+    adherentMap,
+    filter,
+    searchTerm,
+    mesFormationsEncadreesOnly,
+    currentMoniteurId,
+  ]);
 
   if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
   if (error) return <ErrorState onRetry={refetch} />;
@@ -183,21 +218,26 @@ const FormationList = () => {
           <FiAward className="w-10 h-10 text-gray-400" />
         </div>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Aucune formation trouvée
+          {mesFormationsEncadreesOnly
+            ? "Aucune formation que vous encadrez"
+            : "Aucune formation trouvée"}
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {searchTerm || filter !== "all"
-            ? "Aucun résultat pour vos critères"
-            : canManage
-              ? "Commencez par créer une nouvelle formation"
-              : "Vous n'êtes inscrit à aucune formation pour le moment"}
+          {mesFormationsEncadreesOnly
+            ? "Aucune formation dont vous êtes le moniteur référent"
+            : searchTerm || filter !== "all"
+              ? "Aucun résultat pour vos critères"
+              : canManage
+                ? "Commencez par créer une nouvelle formation"
+                : "Vous n'êtes inscrit à aucune formation pour le moment"}
         </p>
-        {(searchTerm || filter !== "all") && (
+        {(searchTerm || filter !== "all" || mesFormationsEncadreesOnly) && (
           <button
             type="button"
             onClick={() => {
               setSearchTerm("");
               setFilter("all");
+              setMesFormationsEncadreesOnly(false);
               setCurrentPage(1);
             }}
             className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -219,6 +259,14 @@ const FormationList = () => {
 
   return (
     <div className="space-y-4">
+      {mesFormationsEncadreesOnly && (
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          <FiUser className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
+          {filteredFormations.length} formation
+          {filteredFormations.length > 1 ? "s" : ""} dont vous êtes le
+          moniteur référent
+        </p>
+      )}
       {/* Barre de recherche et filtres */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
