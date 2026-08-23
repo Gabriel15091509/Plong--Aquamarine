@@ -18,12 +18,26 @@ function mockFetchSequence(responses) {
 
 const okJson = (body) => ({ ok: true, status: 200, json: async () => body });
 
+// Dates calculées par rapport à "aujourd'hui" (même logique locale à minuit
+// que meteoClient.joursDepuisAujourdhui) plutôt que codées en dur : un jour
+// calendaire fixe finit toujours par glisser dans le passé au fil des runs
+// CI, ce qui a déjà rendu ce test faussement rouge (cf. le même problème
+// déjà rencontré et corrigé sur le test joursRestants).
+function dateStr(daysFromNow) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + daysFromNow);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 describe("meteoClient.getForecastForDate", () => {
   test("extrait les valeurs du bon jour dans les tableaux daily.time", async () => {
+    const veille = dateStr(0);
+    const jourCible = dateStr(1);
     mockFetchSequence([
       okJson({
         daily: {
-          time: ["2026-08-20", "2026-08-21"],
+          time: [veille, jourCible],
           weathercode: [1, 95],
           windspeed_10m_max: [15, 42],
           windgusts_10m_max: [20, 60],
@@ -31,18 +45,18 @@ describe("meteoClient.getForecastForDate", () => {
         },
       }),
       okJson({
-        daily: { time: ["2026-08-20", "2026-08-21"], wave_height_max: [0.8, 2.5] },
+        daily: { time: [veille, jourCible], wave_height_max: [0.8, 2.5] },
       }),
     ]);
 
     const forecast = await getForecastForDate({
       latitude: -21.17,
       longitude: 55.28,
-      date: "2026-08-21T08:00:00.000Z",
+      date: `${jourCible}T08:00:00.000Z`,
     });
 
     expect(forecast).toEqual({
-      date: "2026-08-21",
+      date: jourCible,
       windspeed: 42,
       windgusts: 60,
       weathercode: 95,
@@ -52,27 +66,31 @@ describe("meteoClient.getForecastForDate", () => {
   });
 
   test("renvoie null si la date est hors des deux fenêtres de prévision", async () => {
+    const veille = dateStr(0);
+    const horsFenetre = dateStr(30); // > 16 jours dans le futur
+
     mockFetchSequence([
-      okJson({ daily: { time: ["2026-08-20"], weathercode: [1], windspeed_10m_max: [15] } }),
-      okJson({ daily: { time: ["2026-08-20"], wave_height_max: [0.8] } }),
+      okJson({ daily: { time: [veille], weathercode: [1], windspeed_10m_max: [15] } }),
+      okJson({ daily: { time: [veille], wave_height_max: [0.8] } }),
     ]);
 
     const forecast = await getForecastForDate({
       latitude: -21.17,
       longitude: 55.28,
-      date: "2027-01-01T08:00:00.000Z",
+      date: `${horsFenetre}T08:00:00.000Z`,
     });
 
     expect(forecast).toBeNull();
   });
 
   test("reste utilisable si la Marine API échoue (best-effort, non bloquant)", async () => {
+    const jourCible = dateStr(1);
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce(
         okJson({
           daily: {
-            time: ["2026-08-21"],
+            time: [jourCible],
             weathercode: [1],
             windspeed_10m_max: [15],
             windgusts_10m_max: [20],
@@ -85,7 +103,7 @@ describe("meteoClient.getForecastForDate", () => {
     const forecast = await getForecastForDate({
       latitude: -21.17,
       longitude: 55.28,
-      date: "2026-08-21T08:00:00.000Z",
+      date: `${jourCible}T08:00:00.000Z`,
     });
 
     expect(forecast).toMatchObject({ windspeed: 15, waveHeight: null });
