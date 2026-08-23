@@ -25,7 +25,7 @@ resources:
 images:
 - name: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/activites-service
-  newTag: sha-3de43f6
+  newTag: sha-bd49d1d
 - name: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
   newTag: sha-2ae5e6f
