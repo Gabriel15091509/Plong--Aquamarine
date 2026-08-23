@@ -532,6 +532,16 @@ const SortiesPage = () => {
                 (sortie.nb_places || 0) <= (sortie.nb_inscrits || 0);
               const canInscribe =
                 !isPastSortie && !isFull && sortie.statut === "Planifiée";
+              // Raison affichée dans le title de l'icône désactivée (pas
+              // seulement masquée, pour que "inscription fermée" reste
+              // visible/compréhensible plutôt que de disparaître sans
+              // explication) — priorité à la date passée, la raison la plus
+              // fréquente et la plus définitive des trois.
+              const raisonNonInscriptible = isPastSortie
+                ? "Cette sortie a déjà eu lieu : inscription impossible"
+                : isFull
+                  ? "Sortie complète : inscription impossible"
+                  : "Sortie non planifiée : inscription impossible";
               // Verrouillé côté serveur (SortieService.update/delete) dès que
               // la sortie a quitté "Planifiée" — pas seulement "Terminée".
               const isVerrouillee = sortie.statut !== "Planifiée";
@@ -658,21 +668,26 @@ const SortiesPage = () => {
                               >
                                 <FiFileText className="w-4 h-4" />
                               </Link>
+                            ) : canInscribe ? (
+                              <button
+                                onClick={() => handleInscription(sortieId)}
+                                disabled={loading}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="S'inscrire à cette sortie"
+                              >
+                                <FiUserPlus className="w-4 h-4" />
+                              </button>
                             ) : (
-                              canInscribe && (
-                                <button
-                                  onClick={() => handleInscription(sortieId)}
-                                  disabled={loading}
-                                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                  title="S'inscrire à cette sortie"
-                                >
-                                  <FiUserPlus className="w-4 h-4" />
-                                </button>
-                              )
+                              <span
+                                className="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                title={raisonNonInscriptible}
+                              >
+                                <FiUserPlus className="w-4 h-4" />
+                              </span>
                             )
                           ) : (
                             isAdmin &&
-                            canInscribe && (
+                            (canInscribe ? (
                               <button
                                 onClick={() => handleAddInscription(sortieId)}
                                 disabled={loading}
@@ -681,7 +696,14 @@ const SortiesPage = () => {
                               >
                                 <FiUserCheck className="w-4 h-4" />
                               </button>
-                            )
+                            ) : (
+                              <span
+                                className="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                title={raisonNonInscriptible}
+                              >
+                                <FiUserCheck className="w-4 h-4" />
+                              </span>
+                            ))
                           )}
                           {isAdmin && (
                             <Link
@@ -836,23 +858,28 @@ const SortiesPage = () => {
                               >
                                 <FiFileText className="w-4 h-4" />
                               </Link>
-                            ) : (
+                            ) : canInscribe ? (
                               // Adhérent pas encore inscrit : S'inscrire (pour lui-même)
-                              canInscribe && (
-                                <button
-                                  onClick={() => handleInscription(sortieId)}
-                                  disabled={loading}
-                                  className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                  title="S'inscrire à cette sortie"
-                                >
-                                  <FiUserPlus className="w-4 h-4" />
-                                </button>
-                              )
+                              <button
+                                onClick={() => handleInscription(sortieId)}
+                                disabled={loading}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                title="S'inscrire à cette sortie"
+                              >
+                                <FiUserPlus className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <span
+                                className="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                title={raisonNonInscriptible}
+                              >
+                                <FiUserPlus className="w-4 h-4" />
+                              </span>
                             )
                           ) : (
                             // Admin : Ajouter inscription (pour un autre)
                             isAdmin &&
-                            canInscribe && (
+                            (canInscribe ? (
                               <button
                                 onClick={() => handleAddInscription(sortieId)}
                                 disabled={loading}
@@ -861,7 +888,14 @@ const SortiesPage = () => {
                               >
                                 <FiUserCheck className="w-4 h-4" />
                               </button>
-                            )
+                            ) : (
+                              <span
+                                className="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                title={raisonNonInscriptible}
+                              >
+                                <FiUserCheck className="w-4 h-4" />
+                              </span>
+                            ))
                           )}
                           {isAdmin && (
                             <Link
