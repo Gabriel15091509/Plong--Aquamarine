@@ -328,7 +328,15 @@ class InscriptionService extends BaseService {
       throw new Error("Cet adhérent est déjà inscrit à cette sortie");
     }
 
-    const sortie = await this.sortieService.getSortieDetails(id_sortie, data.authHeader);
+    // getById (pas getSortieDetails) : seuls des champs propres à la Sortie
+    // (statut, dates, niveau_requis, profondeur_max, type) sont nécessaires
+    // ci-dessous, jamais `.inscriptions` enrichies. getSortieDetails
+    // recompose par HTTP l'adhérent de chaque inscription existante de la
+    // sortie — un aller-retour inutile ici qui, si identite-service est
+    // indisponible, fait échouer toute nouvelle inscription avec une
+    // erreur réseau générique au lieu du message métier attendu (ex :
+    // "Cette sortie est annulée").
+    const sortie = await this.sortieService.getById(id_sortie);
     if (!sortie) {
       throw new Error("Sortie non trouvée");
     }
