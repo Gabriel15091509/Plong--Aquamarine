@@ -40,6 +40,12 @@ const FormationSeances = ({ formation, canManage = false }) => {
   );
   const { data: sortiesData } = useGetAllSorties();
   const seances = seancesData?.data || [];
+  // nb_seances_prevues : cible connue à la création de la formation,
+  // nullable pour les formations existantes créées avant l'ajout de ce
+  // champ (voir Formation.js) — pas de limite tant qu'elle n'est pas
+  // renseignée. Miroir du garde-fou serveur (SeanceService.validateSeanceData).
+  const quotaAtteint =
+    !!formation?.nb_seances_prevues && seances.length >= formation.nb_seances_prevues;
   // Une séance "Pratique" se déroule réellement lors d'une sortie : on ne
   // propose que les sorties de type "Formation" (cf. taxonomie des types
   // d'activités), cohérent avec la validation faite côté formation-service,
@@ -71,6 +77,7 @@ const FormationSeances = ({ formation, canManage = false }) => {
 
   const handleAddSeance = async (e) => {
     e.preventDefault();
+    if (quotaAtteint) return;
     if (!form.date_seance || !form.type_seance) return;
     if (form.type_seance === "Pratique" && !form.id_sortie) {
       setSortieError('Une séance pratique doit être liée à une sortie de type "Formation"');
@@ -111,20 +118,30 @@ const FormationSeances = ({ formation, canManage = false }) => {
           <span className="p-2 rounded-xl bg-gradient-to-br from-blue-500/10 to-cyan-500/10 text-blue-600 dark:text-blue-400">
             <FiCalendar className="w-5 h-5" />
           </span>
-          Séances ({seances.length})
+          Séances ({seances.length}
+          {formation?.nb_seances_prevues ? `/${formation.nb_seances_prevues}` : ""})
         </h3>
         {canManage && (
-          <button
-            onClick={() => setShowForm((prev) => !prev)}
-            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            <FiPlus className="w-4 h-4" />
-            Planifier une séance
-          </button>
+          quotaAtteint ? (
+            <span
+              className="text-sm font-medium text-gray-400 dark:text-gray-600"
+              title={`Nombre de séances prévues (${formation.nb_seances_prevues}) déjà atteint`}
+            >
+              Quota de séances atteint
+            </span>
+          ) : (
+            <button
+              onClick={() => setShowForm((prev) => !prev)}
+              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <FiPlus className="w-4 h-4" />
+              Planifier une séance
+            </button>
+          )
         )}
       </div>
 
-      {canManage && showForm && (
+      {canManage && showForm && !quotaAtteint && (
         <form
           onSubmit={handleAddSeance}
           className="mb-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end"
