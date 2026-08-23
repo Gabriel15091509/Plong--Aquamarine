@@ -3,11 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import {
-  FiUser,
-  FiCalendar,
-  FiTag,
-  FiList,
-  FiCheckCircle,
   FiClock,
   FiSave,
   FiX,
@@ -195,7 +190,8 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
   };
 
   if (editMode && loadingData) return <LoadingSpinner variant="form" />;
-  if (loadingAdherents || loadingSorties) return <LoadingSpinner variant="form" />;
+  if (loadingAdherents || loadingSorties)
+    return <LoadingSpinner variant="form" />;
 
   const availableStatus = isAdherent ? ["En attente"] : INSCRIPTION_STATUS;
 
@@ -257,7 +253,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
               <FiInfo className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  Vous êtes connecté en tant qu'adhérent
+                  Vous êtes connecté en tant qu&apos;adhérent
                 </p>
                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                   Votre inscription sera automatiquement mise en attente. Un
@@ -341,82 +337,13 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
             </select>
             {isAdherent && (
               <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
-                ⏳ Statut bloqué sur "En attente" pour les adhérents
+                ⏳ Statut bloqué sur &quot;En attente&quot; pour les adhérents
               </p>
             )}
           </motion.div>
 
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiList className="w-4 h-4 text-gray-400" />
-                Rang liste d'attente
-              </span>
-            </label>
-            <input
-              type="number"
-              name="rang_liste_attente"
-              value={formData.rang_liste_attente}
-              onChange={handleChange}
-              disabled={isAdherent}
-              onFocus={() => handleFocus("rang_liste_attente")}
-              onBlur={handleBlur}
-              className={inputClasses("rang_liste_attente")}
-              min="0"
-              placeholder="0"
-            />
-            {isAdherent && (
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Le rang sera déterminé automatiquement
-              </p>
-            )}
-          </motion.div>
-
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiCheckCircle className="w-4 h-4 text-gray-400" />
-                Date confirmation
-              </span>
-            </label>
-            <input
-              type="date"
-              name="date_confirmation"
-              value={formData.date_confirmation}
-              onChange={handleChange}
-              disabled={isAdherent}
-              onFocus={() => handleFocus("date_confirmation")}
-              onBlur={handleBlur}
-              className={inputClasses("date_confirmation")}
-            />
-            {isAdherent && (
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Sera définie lors de la confirmation
-              </p>
-            )}
-          </motion.div>
-
-          <motion.div {...fadeInUp} className="flex items-center pt-6">
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                name="presence"
-                checked={formData.presence}
-                onChange={handleChange}
-                disabled={isAdherent}
-                className="w-5 h-5 text-blue-600 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                Présent
-              </span>
-            </label>
-            {isAdherent && (
-              <span className="ml-3 text-xs text-gray-400 dark:text-gray-500">
-                (Géré par le moniteur)
-              </span>
-            )}
-          </motion.div>
         </div>
+
       </div>
 
       {/* Pied de page */}
