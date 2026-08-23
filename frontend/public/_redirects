@@ -1,17 +1,10 @@
-# Cloudflare Pages (syntaxe compatible Netlify _redirects) : le frontend
-# appelle son API en URL relative ("/api", voir src/services/api.js) — les
-# règles ci-dessous la reproxient en interne vers la passerelle Render,
-# exactement comme le fait le proxy Vite en dev (vite.config.js) : le
-# navigateur ne voit jamais l'origine Render, donc aucun souci de CORS.
-# Copié tel quel dans dist/ au build (Vite copie public/ sans y toucher).
+# Cloudflare Pages : /api/* et /uploads/* sont désormais gérés par les
+# Pages Functions (functions/api/[[path]].js, functions/uploads/[[path]].js)
+# — pas par des règles _redirects, dont le "proxy" (status 200) ne relaie
+# que GET/HEAD sur Cloudflare (contrairement à Netlify), ce qui cassait
+# tout POST/PUT/DELETE (ex. la connexion). Les Functions sont évaluées
+# avant les _redirects, donc rien à déclarer ici pour ces deux chemins.
 #
-# ⚠️ Remplacer GATEWAY_URL ci-dessous par l'URL réelle du service Render
-# "aquanature-gateway" si elle diffère de la valeur par défaut ci-dessous
-# (voir DEPLOY-RENDER-CLOUDFLARE.md).
-
-/api/*      https://aquanature-gateway.onrender.com/api/:splat      200
-/uploads/*  https://aquanature-gateway.onrender.com/uploads/:splat  200
-
-# Fallback SPA (React Router) : doit rester la dernière règle, sinon elle
-# capte les deux règles ci-dessus avant qu'elles ne s'appliquent.
-/*          /index.html                                             200
+# Fallback SPA (React Router) : reste nécessaire pour toute route qui n'est
+# ni un fichier statique existant ni gérée par une Function.
+/*  /index.html  200

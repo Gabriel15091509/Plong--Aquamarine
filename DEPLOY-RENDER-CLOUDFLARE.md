@@ -20,6 +20,16 @@ qui est en ligne).
 > domaine personnalisé en jeu ici) avec un chemin de déploiement plus simple
 > à déboguer (`wrangler pages deploy` en ligne de commande).
 
+> Correctif le même jour : le proxy `/api`/`/uploads` a d'abord été tenté via
+> `frontend/public/_redirects` (même syntaxe que Netlify) — mais le "proxy"
+> `_redirects` (status 200 vers une URL externe) ne relaie que GET/HEAD sur
+> Cloudflare Pages, contrairement à Netlify qui relayait aussi POST/PUT/
+> DELETE/PATCH de la même façon. Conséquence en prod : `/api/health` (GET)
+> répondait, `/api/auth/login` (POST) renvoyait 405 — connexion impossible.
+> Remplacé par deux Cloudflare Pages Functions (`frontend/functions/api/
+> [[path]].js`, `frontend/functions/uploads/[[path]].js`), qui relaient
+> l'intégralité de la requête (méthode, headers, corps) sans cette limite.
+
 Plan gratuit partout, ce qui implique deux limites acceptées pour ce
 déploiement (voir échanges du 2026-08-21) :
 - **Fichiers uploadés perdus à chaque redéploiement** d'`aquanature-identite`
@@ -34,9 +44,10 @@ déploiement (voir échanges du 2026-08-21) :
   doivent se réveiller en cascade (ex. gateway → identite → finance).
 
 `render.yaml` (racine du repo) décrit toute l'infrastructure backend ;
-`frontend/public/_redirects` (copié tel quel dans `dist/` au build) décrit
-le proxy `/api`, `/uploads` et le fallback SPA côté Cloudflare Pages — ce
-runbook ne fait que les brancher aux comptes.
+`frontend/functions/{api,uploads}/[[path]].js` proxifient `/api/*` et
+`/uploads/*` vers la passerelle Render (toutes méthodes HTTP) et
+`frontend/public/_redirects` ne garde que le fallback SPA — ce runbook ne
+fait que les brancher aux comptes.
 
 ## 1. Générer les deux jetons d'accès
 
@@ -96,8 +107,8 @@ trois endroits :
 - `--project-name=` dans `.github/workflows/deploy-cloudflare.yml`.
 - `CORS_ORIGIN` et `FRONTEND_URL` dans `render.yaml` (section
   `aquanature-gateway`) avec l'URL réelle.
-- Rien à changer dans `frontend/public/_redirects` (il pointe vers Render,
-  pas l'inverse).
+- Rien à changer dans `frontend/functions/{api,uploads}/[[path]].js` ni
+  `frontend/public/_redirects` (ils pointent vers Render, pas l'inverse).
 
 Un `git push` suffit ensuite à répercuter le changement sur Render et sur
 le prochain déploiement Cloudflare Pages.
