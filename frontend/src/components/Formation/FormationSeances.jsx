@@ -269,7 +269,7 @@ const FormationSeances = ({ formation, canManage = false }) => {
                   </p>
                 )}
               </div>
-              {seance.statut === "Planifiée" && canManage ? (
+              {seance.statut === "Planifiée" && canManage && formation?.statut === "En cours" ? (
                 <div className="flex gap-2 w-full sm:w-auto">
                   <button
                     onClick={() => handleMarquer(seance.id_seance, "Réalisée")}
