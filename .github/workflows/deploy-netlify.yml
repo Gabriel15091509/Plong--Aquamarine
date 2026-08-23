@@ -1,0 +1,67 @@
+name: Deploy Netlify
+
+# Le site Netlify (aquanature-plongee) n'est PAS relié à ce dépôt via le
+# GitHub App de Netlify (build_settings vide côté API) : chaque déploiement
+# jusqu'ici a été un `netlify deploy --prod` manuel, au clavier. Résultat
+# constaté le 23/08/2026 : le site est resté figé sur le build du
+# 22/08 19h23 UTC (commit 782b737) pendant que ~6 commits frontend
+# ultérieurs (dont le fix mobile de l'échéancier, 1f30270) n'ont jamais
+# été publiés — silencieusement, sans aucune erreur visible côté CI
+# GitHub Actions (`ci.yml` ne construit/déploie que l'image Docker pour
+# l'ancien pipeline k8s/ArgoCD, complètement indépendant de Netlify).
+#
+# Ce workflow ferme cet écart : il construit et publie le frontend sur
+# Netlify via son CLI (mêmes commande que le runbook DEPLOY-RENDER-
+# NETLIFY.md, section 4) à chaque push sur main qui touche le frontend,
+# sans dépendre du GitHub App Netlify.
+#
+# Secrets requis (Settings > Secrets and variables > Actions) :
+#   NETLIFY_AUTH_TOKEN : jeton personnel Netlify (dashboard > User
+#     settings > Applications > Personal access tokens > New access token)
+#   NETLIFY_SITE_ID    : bae699f9-2a40-42db-999a-d1d0a02e9cfd (site
+#     aquanature-plongee — non sensible, mais gardé en secret pour rester
+#     à côté du token et éviter de coder en dur un identifiant qui peut
+#     changer si le site est un jour recréé)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - "netlify.toml"
+      - ".github/workflows/deploy-netlify.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-netlify
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # Voir ci.yml (job build-frontend) pour le contexte : `npm ci` refuse
+      # ce lock file à cause d'un dédup hoisted inoffensif entre eslint/
+      # workbox-build et tailwind/vite-plugin-pwa. `npm install` le tolère.
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy to Netlify (prod)
+        working-directory: frontend
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli deploy --prod --dir=dist
