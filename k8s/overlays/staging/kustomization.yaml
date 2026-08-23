@@ -28,25 +28,25 @@ images:
   newTag: sha-3de43f6
 - name: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/finance-service
-  newTag: sha-0ad64f0
+  newTag: sha-2ae5e6f
 - name: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/formation-service
-  newTag: sha-a334047
+  newTag: sha-2ae5e6f
 - name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
-  newTag: sha-423411d
+  newTag: sha-2ae5e6f
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newTag: sha-b0f11ff
 - name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
-  newTag: sha-a334047
+  newTag: sha-2ae5e6f
 - name: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
-  newTag: sha-8342a77
+  newTag: sha-2ae5e6f
 - name: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/vie-associative-service
-  newTag: sha-8342a77
+  newTag: sha-2ae5e6f
 
 # Réplicas de départ à 1 (= minReplicas des HPA ci-dessus) ; le HPA prend
 # ensuite la main entre 1 et 3 selon la charge CPU.
