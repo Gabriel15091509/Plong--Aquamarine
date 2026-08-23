@@ -140,7 +140,12 @@ class FormationController extends BaseController {
 
   async ajourner(req, res, next) {
     try {
-      const result = await this.formationService.ajourner(req.params.id, req.body.motif, req.user);
+      const result = await this.formationService.ajourner(
+        req.params.id,
+        req.body.motif,
+        req.user,
+        req.headers.authorization,
+      );
       res.json({
         success: true,
         data: result,
@@ -156,7 +161,12 @@ class FormationController extends BaseController {
   // peut modifier/supprimer sa formation" (FormationService.assertCanModifyFormation).
   async update(req, res, next) {
     try {
-      const result = await this.formationService.update(req.params.id, req.body, req.user);
+      const result = await this.formationService.update(
+        req.params.id,
+        req.body,
+        req.user,
+        req.headers.authorization,
+      );
       res.json({
         success: true,
         data: result,
@@ -169,7 +179,7 @@ class FormationController extends BaseController {
 
   async delete(req, res, next) {
     try {
-      await this.formationService.delete(req.params.id, req.user);
+      await this.formationService.delete(req.params.id, req.user, req.headers.authorization);
       res.json({
         success: true,
         message: "Supprimé avec succès",

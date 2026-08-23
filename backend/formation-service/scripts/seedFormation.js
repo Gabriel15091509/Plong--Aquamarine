@@ -182,6 +182,35 @@ async function seed() {
   `);
   console.log("[formation] niveau des adhérents réconcilié avec leurs formations Terminée");
 
+  // Même principe pour identite.adherents.statut ("En formation") : ce
+  // script tire le statut de chaque adhérent au hasard dans
+  // seedIdentite.js, exécuté AVANT ce fichier et donc sans connaissance des
+  // formations qui vont être créées ici — sans cette réconciliation, un
+  // adhérent "Actif" pouvait se retrouver avec une vraie formation "En
+  // cours", et un adhérent "En formation" sans aucune formation associée.
+  // Même règle de precedence que FormationService.syncAdherentStatutFormation
+  // (via AdherentService.syncStatutFormation) : ne touche que la
+  // transition "Actif" <-> "En formation", jamais "Suspendu"/"Inactif"/"Ancien".
+  await sequelize.query(`
+    UPDATE identite.adherents a
+    SET statut = 'En formation'
+    WHERE a.statut = 'Actif'
+      AND EXISTS (
+        SELECT 1 FROM formation.formations f
+        WHERE f.num_adherent = a.num_adherent AND f.statut = 'En cours'
+      );
+  `);
+  await sequelize.query(`
+    UPDATE identite.adherents a
+    SET statut = 'Actif'
+    WHERE a.statut = 'En formation'
+      AND NOT EXISTS (
+        SELECT 1 FROM formation.formations f
+        WHERE f.num_adherent = a.num_adherent AND f.statut = 'En cours'
+      );
+  `);
+  console.log("[formation] statut des adhérents réconcilié avec leurs formations En cours");
+
   const formationRows = await Formation.findAll({
     attributes: [
       "id_formation",
