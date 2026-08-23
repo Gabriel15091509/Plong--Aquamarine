@@ -96,7 +96,13 @@ async function seed() {
       date_examen_brevet: statut === "Terminée" ? toDateOnly(betweenDates(dateDebut, dateFinPrevue)) : null,
       statut,
       nb_seances_prevues: nbSeancesPrevues,
-      nb_seances_realisees: statut === "Terminée" ? nbSeancesPrevues : randomInt(0, nbSeancesPrevues - 1),
+      // Recalculé plus bas (section SEANCES) à partir des lignes Seance
+      // réellement créées pour cette formation — une valeur tirée au
+      // hasard ici serait déconnectée des séances et fausserait la
+      // progression affichée (voir le correctif FormationService.update
+      // qui, de la même façon, ignore désormais toute valeur envoyée par
+      // le client pour ce champ).
+      nb_seances_realisees: 0,
       commentaire_moniteur: Math.random() > 0.4 ? pick([
         "Bonne progression, continue ainsi.",
         "Doit travailler la gestion de la flottabilité.",
@@ -177,7 +183,16 @@ async function seed() {
   console.log("[formation] niveau des adhérents réconcilié avec leurs formations Terminée");
 
   const formationRows = await Formation.findAll({
-    attributes: ["id_formation", "date_debut", "date_fin_prevue", "num_adherent", "montant_total", "montant_paye"],
+    attributes: [
+      "id_formation",
+      "date_debut",
+      "date_fin_prevue",
+      "num_adherent",
+      "montant_total",
+      "montant_paye",
+      "statut",
+      "nb_seances_prevues",
+    ],
   });
   const formationIdList = formationRows.map((f) => f.id_formation);
 
@@ -215,52 +230,88 @@ async function seed() {
   console.log(`[formation] ${specialites.length} spécialités créées`);
 
   // ==================== SEANCES ====================
+  // Générées par formation (et non plus 300 lignes tirées au hasard parmi
+  // toutes les formations, indépendamment de leur statut) pour que les
+  // données restent cohérentes :
+  //  - jamais plus de nb_seances_prevues séances pour une même formation
+  //    (même règle que le garde-fou SeanceService.validateSeanceData) ;
+  //  - une formation "Terminée" a exactement nb_seances_prevues séances,
+  //    toutes "Réalisée" — jamais de séance encore "Planifiée" à pointer
+  //    derrière une formation déjà close (même invariant que
+  //    FormationService.completeFormation, qui exige nb_seances_realisees
+  //    >= nb_seances_prevues avant de terminer) ;
+  //  - les autres statuts (En cours, Abandonnée, Suspendue, Ajournée)
+  //    n'ont qu'un sous-ensemble des séances prévues, avec un mélange
+  //    Réalisée/Planifiée/Absence légitime tant que la formation n'est
+  //    pas close.
   const seances = [];
-  for (let i = 0; i < CONFIG.SEANCES; i++) {
-    const formation = pick(formationRows);
-    let typeSeance = pick(["Théorique", "Pratique"]);
-    const statutSeance = pickWeighted(STATUT_SEANCE_WEIGHTS);
-    let idSortie = null;
-    let dateSeance;
-    if (typeSeance === "Pratique") {
-      // Une séance pratique se déroule sur une vraie sortie déjà réalisée,
-      // et qui tombe dans la période de la formation — sinon pas de séance
-      // pratique cohérente possible pour cette formation, on bascule en
-      // Théorique plutôt que d'inventer un lien incohérent.
-      const candidates = activites.sortieDoneIdList.filter((id) =>
-        inRange(activites.sortieDateMap[id], formation.date_debut, formation.date_fin_prevue),
-      );
-      if (candidates.length > 0) {
-        idSortie = pick(candidates);
-        dateSeance = activites.sortieDateMap[idSortie];
+  for (const formation of formationRows) {
+    if (!formation.nb_seances_prevues) continue;
+    const estTerminee = formation.statut === "Terminée";
+    const nbSeances = estTerminee
+      ? formation.nb_seances_prevues
+      : randomInt(0, formation.nb_seances_prevues);
+
+    for (let i = 0; i < nbSeances; i++) {
+      const statutSeance = estTerminee ? "Réalisée" : pickWeighted(STATUT_SEANCE_WEIGHTS);
+      let typeSeance = pick(["Théorique", "Pratique"]);
+      let idSortie = null;
+      let dateSeance;
+      if (typeSeance === "Pratique") {
+        // Une séance pratique se déroule sur une vraie sortie déjà réalisée,
+        // et qui tombe dans la période de la formation — sinon pas de séance
+        // pratique cohérente possible pour cette formation, on bascule en
+        // Théorique plutôt que d'inventer un lien incohérent.
+        const candidates = activites.sortieDoneIdList.filter((id) =>
+          inRange(activites.sortieDateMap[id], formation.date_debut, formation.date_fin_prevue),
+        );
+        if (candidates.length > 0) {
+          idSortie = pick(candidates);
+          dateSeance = activites.sortieDateMap[idSortie];
+        } else {
+          typeSeance = "Théorique";
+          dateSeance = betweenDates(formation.date_debut, formation.date_fin_prevue);
+        }
       } else {
-        typeSeance = "Théorique";
         dateSeance = betweenDates(formation.date_debut, formation.date_fin_prevue);
       }
-    } else {
-      dateSeance = betweenDates(formation.date_debut, formation.date_fin_prevue);
+      seances.push({
+        id_formation: formation.id_formation,
+        id_sortie: idSortie,
+        date_seance: toDateOnly(dateSeance),
+        type_seance: typeSeance,
+        contenu: pick([
+          "Théorie des tables de plongée",
+          "Gestion de la décompression",
+          "Exercices de flottabilité",
+          "Orientation sous-marine",
+          "Procédures de sécurité",
+          "Assistance et sauvetage",
+          "Utilisation de l'ordinateur de plongée",
+          "Biologie marine",
+        ]),
+        statut: statutSeance,
+        commentaire: statutSeance === "Absence" ? "Absence non justifiée." : null,
+      });
     }
-    seances.push({
-      id_formation: formation.id_formation,
-      id_sortie: idSortie,
-      date_seance: toDateOnly(dateSeance),
-      type_seance: typeSeance,
-      contenu: pick([
-        "Théorie des tables de plongée",
-        "Gestion de la décompression",
-        "Exercices de flottabilité",
-        "Orientation sous-marine",
-        "Procédures de sécurité",
-        "Assistance et sauvetage",
-        "Utilisation de l'ordinateur de plongée",
-        "Biologie marine",
-      ]),
-      statut: statutSeance,
-      commentaire: statutSeance === "Absence" ? "Absence non justifiée." : null,
-    });
   }
   await Seance.bulkCreate(seances);
   console.log(`[formation] ${seances.length} séances créées`);
+
+  // Recalcule nb_seances_realisees à partir des lignes Seance réellement
+  // créées ci-dessus, plutôt que de garder la valeur placeholder (0) posée
+  // à la création des formations — même requête que le backfill
+  // backend/formation-service/scripts/backfill-seances-coherence.sql,
+  // gardée synchronisée pour qu'un nouveau seed reste cohérent sans
+  // dépendre qu'on relance le backfill à part.
+  await sequelize.query("UPDATE formation.formations SET nb_seances_realisees = 0");
+  await sequelize.query(`
+    UPDATE formation.formations f
+    SET nb_seances_realisees = sub.n
+    FROM (SELECT id_formation, COUNT(*) AS n FROM formation.seances WHERE statut = 'Réalisée' GROUP BY id_formation) sub
+    WHERE f.id_formation = sub.id_formation;
+  `);
+  console.log("[formation] nb_seances_realisees recalculé à partir des séances réellement créées");
 
   writeSeedData("formation", {
     formationIdList,

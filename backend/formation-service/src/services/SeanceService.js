@@ -88,6 +88,18 @@ class SeanceService extends BaseService {
     const formation = await this.formationRepository.findById(seance.id_formation);
     if (formation) await this.formationService.assertCanModifyFormation(formation, user);
 
+    // Une formation "Terminée" ou "Abandonnée" est close : pointer une
+    // séance restée "Planifiée" derrière elle n'a plus de sens (et
+    // incrémenterait nb_seances_realisees au-delà de ce que
+    // completeFormation a déjà validé). Ce cas ne devrait plus se produire
+    // pour les nouvelles formations (le quota de SeanceService.validateSeanceData
+    // + le garde-fou de FormationService.completeFormation empêchent
+    // désormais qu'une formation se termine avec une séance non résolue),
+    // mais protège contre les données historiques (voir backfill-seances-coherence.sql).
+    if (formation && ["Terminée", "Abandonnée"].includes(formation.statut)) {
+      throw new Error(`Impossible de pointer une séance : la formation est "${formation.statut}"`);
+    }
+
     const devientRealisee = statut === "Réalisée" && seance.statut !== "Réalisée";
 
     seance.statut = statut;

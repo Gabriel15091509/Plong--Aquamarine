@@ -335,7 +335,17 @@ const FormationForm = () => {
               onBlur={handleBlur}
               className={inputClasses("statut")}
             >
-              {STATUT_FORMATION_OPTIONS.map((opt) => (
+              {/* "Terminée" ne se sélectionne pas ici : seule l'action
+                  dédiée "Terminer la formation" (bouton de la liste/fiche)
+                  y mène, car elle seule vérifie les séances/compétences
+                  requises et promeut l'adhérent — le serveur rejette de
+                  toute façon ce passage via cette route générique (voir
+                  FormationService.update). Reste affichée si c'est déjà
+                  le statut courant, pour ne pas casser l'affichage d'une
+                  formation déjà terminée. */}
+              {STATUT_FORMATION_OPTIONS.filter(
+                (opt) => opt !== "Terminée" || formData.statut === "Terminée",
+              ).map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
@@ -445,25 +455,26 @@ const FormationForm = () => {
             </p>
           </motion.div>
 
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiList className="w-4 h-4 text-gray-400" />
-                Séances réalisées
-              </span>
-            </label>
-            <input
-              type="number"
-              name="nb_seances_realisees"
-              value={formData.nb_seances_realisees}
-              onChange={handleChange}
-              onFocus={() => handleFocus("nb_seances_realisees")}
-              onBlur={handleBlur}
-              className={inputClasses("nb_seances_realisees")}
-              min="0"
-              placeholder="0"
-            />
-          </motion.div>
+          {editMode && (
+            <motion.div {...fadeInUp}>
+              <label className={labelClasses}>
+                <span className="flex items-center gap-2">
+                  <FiList className="w-4 h-4 text-gray-400" />
+                  Séances réalisées
+                </span>
+              </label>
+              {/* Lecture seule : ce compteur ne doit refléter que les
+                  séances réellement pointées "Réalisée" (voir
+                  FormationSeances.jsx) — une saisie libre ici le
+                  déconnectait des vraies séances et faussait la
+                  progression affichée. */}
+              <p className="w-full px-4 py-2.5 text-sm border rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
+                {formData.nb_seances_realisees}
+                {formData.nb_seances_prevues ? `/${formData.nb_seances_prevues}` : ""} — mis à jour
+                automatiquement lors du pointage des séances
+              </p>
+            </motion.div>
+          )}
 
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>

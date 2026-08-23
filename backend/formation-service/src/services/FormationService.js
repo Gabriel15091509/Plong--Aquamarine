@@ -1,6 +1,7 @@
 const BaseService = require("./BaseService");
 const FormationRepository = require("../repositories/FormationRepository");
 const CompetenceRepository = require("../repositories/CompetenceRepository");
+const SeanceRepository = require("../repositories/SeanceRepository");
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const paiementClient = require("../utils/serviceClients/paiementClient");
 const vieAssociativeClient = require("../utils/serviceClients/vieAssociativeClient");
@@ -54,6 +55,7 @@ class FormationService extends BaseService {
     super(repository);
     this.formationRepository = repository;
     this.competenceRepository = new CompetenceRepository();
+    this.seanceRepository = new SeanceRepository();
   }
 
   async getAll() {
@@ -396,7 +398,46 @@ class FormationService extends BaseService {
       );
     }
 
-    return await this.formationRepository.update(id, data);
+    // "Terminée" ne doit être atteignable que via completeFormation (PATCH
+    // /:id/complete) : c'est le seul chemin qui vérifie que les séances
+    // prévues sont réalisées et les compétences acquises, et qui répercute
+    // le niveau obtenu sur l'adhérent (identiteClient.updateNiveau). Un
+    // passage par cette route générique laissait jusqu'ici une formation se
+    // déclarer "Terminée" avec des séances encore "Planifiée" et sans
+    // jamais promouvoir l'adhérent.
+    if (nextStatut === "Terminée" && formation.statut !== "Terminée") {
+      throw new Error(
+        'Utilisez l\'action "Terminer la formation" pour clôturer une formation (elle vérifie les séances et compétences requises).',
+      );
+    }
+
+    // nb_seances_realisees n'est plus une saisie libre : elle ne doit
+    // refléter que les séances réellement marquées "Réalisée" (seul
+    // SeanceService.updateStatut l'incrémente). Une valeur envoyée ici par
+    // le client serait déconnectée des vraies séances et fausserait la
+    // progression affichée (FormationDetails.jsx) — ignorée silencieusement
+    // plutôt que rejetée, pour ne pas faire échouer une édition qui renvoie
+    // simplement le formulaire tel quel.
+    const { nb_seances_realisees, ...safeData } = data;
+
+    // nb_seances_prevues peut être ajusté (ex. programme rallongé), mais
+    // jamais en dessous du nombre de séances déjà créées : sinon la
+    // progression afficherait plus de 100% et le garde-fou de création de
+    // séance (SeanceService.validateSeanceData) deviendrait incohérent.
+    if (
+      safeData.nb_seances_prevues !== undefined &&
+      safeData.nb_seances_prevues !== null &&
+      safeData.nb_seances_prevues !== ""
+    ) {
+      const seancesExistantes = await this.seanceRepository.findByFormation(id);
+      if (Number(safeData.nb_seances_prevues) < seancesExistantes.length) {
+        throw new Error(
+          `Le nombre de séances prévues ne peut pas être inférieur au nombre de séances déjà créées (${seancesExistantes.length})`,
+        );
+      }
+    }
+
+    return await this.formationRepository.update(id, safeData);
   }
 
   // Ne peut terminer une formation que si toutes les compétences déjà
