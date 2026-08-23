@@ -39,4 +39,12 @@ router.delete(
   formationSpecialiteController.delete.bind(formationSpecialiteController),
 );
 
+// Suppression groupée — même rôle que la suppression unitaire ci-dessus.
+router.post(
+  "/bulk-delete",
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
+  formationSpecialiteController.bulkDelete.bind(formationSpecialiteController),
+);
+
 module.exports = router;

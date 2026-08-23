@@ -74,4 +74,13 @@ router.delete(
   formationController.delete.bind(formationController),
 );
 
+// Suppression groupée — même garde que la suppression unitaire ci-dessus
+// (authenticate seul : le contrôle "moniteur assigné uniquement" est fait
+// dans FormationService.assertCanModifyFormation, pas au niveau route).
+router.post(
+  "/bulk-delete",
+  AuthMiddleware.authenticate,
+  formationController.bulkDelete.bind(formationController),
+);
+
 module.exports = router;

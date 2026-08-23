@@ -52,6 +52,11 @@ class CertificatService {
     return response.data;
   }
 
+  async bulkDelete(ids) {
+    const response = await api.post("/certificats-medicaux/bulk-delete", { ids });
+    return response.data;
+  }
+
   async valider(id, { decision, motif }) {
     const response = await api.post(`/certificats-medicaux/${id}/valider`, { decision, motif });
     return response.data;

@@ -110,6 +110,16 @@ router.delete(
   userController.deleteAccount.bind(userController),
 );
 
+// Suppression groupée — même rôle que la suppression unitaire ci-dessus
+// (voir UserController.bulkDelete : rejoue deleteAccount par id, pas un
+// delete SQL brut).
+router.post(
+  "/bulk-delete",
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  userController.bulkDelete.bind(userController),
+);
+
 router.get(
   "/created-by-me",
   AuthMiddleware.authenticate,

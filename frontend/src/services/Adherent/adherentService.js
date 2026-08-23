@@ -48,6 +48,11 @@ class AdherentService {
     return response.data;
   }
 
+  async bulkDelete(ids) {
+    const response = await api.post("/adherents/bulk-delete", { ids });
+    return response.data;
+  }
+
   async incrementPlongees(id) {
     const response = await api.patch(`/adherents/${id}/increment-plongees`);
     return response.data;

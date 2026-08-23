@@ -14,11 +14,15 @@ import {
   FiX,
   FiSearch,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { useReparations } from "../../hooks/Reparation/useReparations";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
+import { useSelection } from "../../hooks/useSelection";
 import { formatDate, formatCurrency } from "../../utils/helpers";
+import reparationService from "../../services/Reparation/reparationService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -30,10 +34,13 @@ const ReparationList = () => {
   const { data: materielsData, isLoading: loadingMateriels } =
     useGetAllMateriels();
   const remove = useRemove();
+  const selection = useSelection();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const materielMap = useMemo(() => {
     const map = {};
@@ -70,6 +77,21 @@ const ReparationList = () => {
       setDeleteModal(null);
     } catch (error) {
       // toast déjà géré par le hook useRemove
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await reparationService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -149,6 +171,21 @@ const ReparationList = () => {
         </div>
       </div>
 
+      <div className="flex items-center gap-2 px-1">
+        <input
+          type="checkbox"
+          checked={selection.allSelected(filteredReparations.map((r) => r.id_reparation))}
+          onChange={() => selection.toggleAll(filteredReparations.map((r) => r.id_reparation))}
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+        />
+        <span className="text-sm text-gray-500 dark:text-gray-400">Tout sélectionner</span>
+      </div>
+      <BulkActionBar
+        count={selection.selectedCount}
+        onClear={selection.clear}
+        onDelete={() => setBulkDeleteModal(true)}
+      />
+
       <AnimatePresence>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-3">
           {filteredReparations.map((reparation) => {
@@ -162,6 +199,12 @@ const ReparationList = () => {
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-4">
+                  <input
+                    type="checkbox"
+                    checked={selection.isSelected(reparation.id_reparation)}
+                    onChange={() => selection.toggle(reparation.id_reparation)}
+                    className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                  />
                   <div className="flex-shrink-0">
                     <div
                       className={`w-12 h-12 rounded-full flex items-center justify-center ${
@@ -248,6 +291,14 @@ const ReparationList = () => {
         message="Êtes-vous sûr de vouloir supprimer cette réparation ?"
         onCancel={() => setDeleteModal(null)}
         onConfirm={() => handleDelete(deleteModal)}
+      />
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} réparation(s) sélectionnée(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
       />
     </div>
   );

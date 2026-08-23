@@ -18,12 +18,17 @@ import {
   FiGrid,
   FiCalendar,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
+import { useSelection } from "../../hooks/useSelection";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import { CATEGORIE_MATERIEL_OPTIONS } from "../../utils/constants";
+import materielService from "../../services/Materiel/materielService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -31,11 +36,14 @@ const MaterielList = () => {
   const { useGetAll, useRemove } = useMateriels();
   const { data, isLoading, error, refetch } = useGetAll();
   const remove = useRemove();
+  const selection = useSelection();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [categorieFilter, setCategorieFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState("list");
@@ -82,6 +90,21 @@ const MaterielList = () => {
       console.error("Échec de la suppression du matériel :", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await materielService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -233,6 +256,24 @@ const MaterielList = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées */}
+      <div className="flex items-center gap-2 px-1">
+        <input
+          type="checkbox"
+          checked={selection.allSelected(paginatedMateriels.map((m) => m.num_inventaire))}
+          onChange={() => selection.toggleAll(paginatedMateriels.map((m) => m.num_inventaire))}
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+        />
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          Tout sélectionner (page courante)
+        </span>
+      </div>
+      <BulkActionBar
+        count={selection.selectedCount}
+        onClear={selection.clear}
+        onDelete={() => setBulkDeleteModal(true)}
+      />
+
       {/* Liste des matériels */}
       <AnimatePresence>
         {paginatedMateriels.length === 0 ? (
@@ -267,8 +308,14 @@ const MaterielList = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
+                    className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
                   >
+                    <input
+                      type="checkbox"
+                      checked={selection.isSelected(materiel.num_inventaire)}
+                      onChange={() => selection.toggle(materiel.num_inventaire)}
+                      className="absolute top-3 left-3 z-10 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
                     {/* Photo du matériel */}
                     <div className="relative h-40 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
                       {materiel.photo_path ? (
@@ -380,6 +427,12 @@ const MaterielList = () => {
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-4">
+                  <input
+                    type="checkbox"
+                    checked={selection.isSelected(materiel.num_inventaire)}
+                    onChange={() => selection.toggle(materiel.num_inventaire)}
+                    className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                  />
                   {/* Photo ou icône du matériel */}
                   <div className="flex-shrink-0">
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm overflow-hidden">
@@ -534,6 +587,14 @@ const MaterielList = () => {
           </motion.div>
         </ModalOverlay>
       )}
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} matériel(s) sélectionné(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };

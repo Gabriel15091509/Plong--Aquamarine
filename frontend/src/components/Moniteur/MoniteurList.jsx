@@ -17,12 +17,17 @@ import {
   FiX,
   FiSearch,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useUsers } from "../../hooks/User/useUsers";
+import { useSelection } from "../../hooks/useSelection";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
+import moniteurService from "../../services/Moniteur/moniteurService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -45,9 +50,12 @@ const MoniteurList = () => {
   const { data, isLoading, error, refetch } = useGetAll();
   const { data: usersData, isLoading: loadingUsers } = useGetAllUsers();
   const remove = useRemove();
+  const selection = useSelection();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState("list");
   const itemsPerPage = 10;
@@ -94,6 +102,21 @@ const MoniteurList = () => {
       setDeleteModal(null);
     } catch (err) {
       console.error("Échec de la suppression du moniteur :", err);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await moniteurService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -195,6 +218,24 @@ const MoniteurList = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées */}
+      <div className="flex items-center gap-2 px-1">
+        <input
+          type="checkbox"
+          checked={selection.allSelected(paginatedMoniteurs.map((m) => m.id_moniteur))}
+          onChange={() => selection.toggleAll(paginatedMoniteurs.map((m) => m.id_moniteur))}
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+        />
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          Tout sélectionner (page courante)
+        </span>
+      </div>
+      <BulkActionBar
+        count={selection.selectedCount}
+        onClear={selection.clear}
+        onDelete={() => setBulkDeleteModal(true)}
+      />
+
       {/* Liste des moniteurs */}
       <AnimatePresence>
         {paginatedMoniteurs.length === 0 ? (
@@ -228,8 +269,14 @@ const MoniteurList = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
+                    className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
                   >
+                    <input
+                      type="checkbox"
+                      checked={selection.isSelected(moniteur.id_moniteur)}
+                      onChange={() => selection.toggle(moniteur.id_moniteur)}
+                      className="absolute top-3 left-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
                     {user?.photo ? (
                       <img
                         src={photoUrl(user.photo)}
@@ -303,6 +350,12 @@ const MoniteurList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
+                    <input
+                      type="checkbox"
+                      checked={selection.isSelected(moniteur.id_moniteur)}
+                      onChange={() => selection.toggle(moniteur.id_moniteur)}
+                      className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
                     <div className="flex-shrink-0">
                       {user?.photo ? (
                         <img
@@ -468,6 +521,14 @@ const MoniteurList = () => {
           </motion.div>
         </ModalOverlay>
       )}
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} moniteur(s) sélectionné(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };

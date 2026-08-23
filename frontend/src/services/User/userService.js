@@ -80,6 +80,11 @@ class UserService {
     const response = await api.delete(`/users/${userId}`);
     return response.data;
   }
+
+  async bulkDelete(ids) {
+    const response = await api.post("/users/bulk-delete", { ids });
+    return response.data;
+  }
 }
 
 export default new UserService();

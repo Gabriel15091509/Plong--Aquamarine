@@ -16,11 +16,16 @@ import {
   FiX,
   FiSearch,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { useTresoriers } from "../../hooks/Tresorier/useTresoriers";
 import { useUsers } from "../../hooks/User/useUsers";
+import { useSelection } from "../../hooks/useSelection";
 import { photoUrl } from "../../utils/photoUrl";
+import tresorierService from "../../services/Tresorier/tresorierService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -32,9 +37,12 @@ const TresorierList = () => {
   const { data, isLoading, error, refetch } = useGetAll();
   const { data: usersData, isLoading: loadingUsers } = useGetAllUsers();
   const remove = useRemove();
+  const selection = useSelection();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState("list");
   const itemsPerPage = 10;
@@ -80,6 +88,21 @@ const TresorierList = () => {
       setDeleteModal(null);
     } catch (err) {
       console.error("Échec de la suppression du trésorier :", err);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await tresorierService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -181,6 +204,24 @@ const TresorierList = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées */}
+      <div className="flex items-center gap-2 px-1">
+        <input
+          type="checkbox"
+          checked={selection.allSelected(paginatedTresoriers.map((t) => t.id_tresorier))}
+          onChange={() => selection.toggleAll(paginatedTresoriers.map((t) => t.id_tresorier))}
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+        />
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          Tout sélectionner (page courante)
+        </span>
+      </div>
+      <BulkActionBar
+        count={selection.selectedCount}
+        onClear={selection.clear}
+        onDelete={() => setBulkDeleteModal(true)}
+      />
+
       {/* Liste des trésoriers */}
       <AnimatePresence>
         {paginatedTresoriers.length === 0 ? (
@@ -213,8 +254,14 @@ const TresorierList = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
+                    className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
                   >
+                    <input
+                      type="checkbox"
+                      checked={selection.isSelected(tresorier.id_tresorier)}
+                      onChange={() => selection.toggle(tresorier.id_tresorier)}
+                      className="absolute top-3 left-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
                     {user?.photo ? (
                       <img
                         src={photoUrl(user.photo)}
@@ -276,6 +323,12 @@ const TresorierList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
+                    <input
+                      type="checkbox"
+                      checked={selection.isSelected(tresorier.id_tresorier)}
+                      onChange={() => selection.toggle(tresorier.id_tresorier)}
+                      className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
                     <div className="flex-shrink-0">
                       {user?.photo ? (
                         <img
@@ -424,6 +477,14 @@ const TresorierList = () => {
           </motion.div>
         </ModalOverlay>
       )}
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} trésorier(s) sélectionné(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };

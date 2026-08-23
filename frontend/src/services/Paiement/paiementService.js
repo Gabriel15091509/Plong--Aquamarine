@@ -59,6 +59,11 @@ class PaiementService {
     return response.data;
   }
 
+  async bulkDelete(ids) {
+    const response = await api.post("/paiements/bulk-delete", { ids });
+    return response.data;
+  }
+
   async downloadRecu(id) {
     return downloadFile(`/paiements/${id}/recu`, `recu-paiement-${id}.pdf`);
   }

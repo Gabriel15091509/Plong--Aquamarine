@@ -77,4 +77,12 @@ router.delete(
   plongeeController.delete.bind(plongeeController),
 );
 
+// Suppression groupée — même rôle que la suppression unitaire ci-dessus.
+router.post(
+  "/bulk-delete",
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
+  plongeeController.bulkDelete.bind(plongeeController),
+);
+
 module.exports = router;

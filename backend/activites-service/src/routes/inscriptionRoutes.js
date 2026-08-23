@@ -52,4 +52,10 @@ router.delete('/:id',
   inscriptionController.delete.bind(inscriptionController)
 );
 
+// Suppression groupée — même garde que la suppression unitaire ci-dessus.
+router.post('/bulk-delete',
+  AuthMiddleware.authenticate,
+  inscriptionController.bulkDelete.bind(inscriptionController)
+);
+
 module.exports = router;

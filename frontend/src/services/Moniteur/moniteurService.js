@@ -40,6 +40,11 @@ class MoniteurService {
     const response = await api.delete(`/moniteurs/${id}`);
     return response.data;
   }
+
+  async bulkDelete(ids) {
+    const response = await api.post("/moniteurs/bulk-delete", { ids });
+    return response.data;
+  }
 }
 
 export default new MoniteurService();

@@ -73,6 +73,33 @@ class BaseController {
       next(withStatus(error, 400));
     }
   }
+
+  // Suppression groupée : { ids: [...] } dans le corps de la requête —
+  // voir BaseService.bulkDelete pour le comportement (résultat détaillé
+  // par id, jamais tout-ou-rien).
+  async bulkDelete(req, res, next) {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Le champ ids (tableau non vide) est requis",
+        });
+      }
+      const results = await this.service.bulkDelete(ids, req.user, req.headers.authorization);
+      const failed = results.filter((r) => !r.success);
+      res.json({
+        success: failed.length === 0,
+        data: results,
+        message:
+          failed.length === 0
+            ? `${results.length} élément(s) supprimé(s) avec succès`
+            : `${results.length - failed.length}/${results.length} supprimé(s), ${failed.length} échec(s)`,
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
 }
 
 module.exports = BaseController;

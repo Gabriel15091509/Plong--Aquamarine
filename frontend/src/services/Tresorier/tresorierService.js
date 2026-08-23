@@ -35,6 +35,11 @@ class TresorierService {
     const response = await api.delete(`/tresoriers/${id}`);
     return response.data;
   }
+
+  async bulkDelete(ids) {
+    const response = await api.post("/tresoriers/bulk-delete", { ids });
+    return response.data;
+  }
 }
 
 export default new TresorierService();

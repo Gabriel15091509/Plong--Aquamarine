@@ -62,6 +62,11 @@ class MaterielService {
     const response = await api.delete(`/materiels/${numInventaire}`);
     return response.data;
   }
+
+  async bulkDelete(ids) {
+    const response = await api.post("/materiels/bulk-delete", { ids });
+    return response.data;
+  }
 }
 
 export default new MaterielService();

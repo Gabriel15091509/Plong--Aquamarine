@@ -26,6 +26,11 @@ class InscriptionService {
     return response.data;
   }
 
+  async bulkDelete(ids) {
+    const response = await api.post("/inscriptions/bulk-delete", { ids });
+    return response.data;
+  }
+
   async confirm(id) {
     const response = await api.patch(`/inscriptions/${id}/confirm`);
     return response.data;

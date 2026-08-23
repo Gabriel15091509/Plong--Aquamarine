@@ -20,15 +20,20 @@ import {
   FiX,
   FiSearch,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { useFormations } from "../../hooks/Formation/useFormations";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useAuth } from "../../context/AuthContext";
+import { useSelection } from "../../hooks/useSelection";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
+import formationService from "../../services/Formation/formationService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -66,10 +71,13 @@ const FormationList = () => {
   const remove = useRemove();
   const complete = useComplete();
   const ajourner = useAjourner();
+  const selection = useSelection();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [completeModal, setCompleteModal] = useState(null);
   const [completeBrevet, setCompleteBrevet] = useState("");
   const [completeFfesm, setCompleteFfesm] = useState("");
@@ -174,6 +182,21 @@ const FormationList = () => {
       console.error("Échec de la suppression de la formation :", error);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await formationService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -342,6 +365,36 @@ const FormationList = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées (formations "Terminée" exclues :
+          non supprimables individuellement non plus) */}
+      {canManage && (() => {
+        const selectableIds = paginatedFormations
+          .filter((f) => f.statut !== "Terminée")
+          .map((f) => f.id_formation || f.id);
+        return (
+          <>
+            {selectableIds.length > 0 && (
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="checkbox"
+                  checked={selection.allSelected(selectableIds)}
+                  onChange={() => selection.toggleAll(selectableIds)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  Tout sélectionner (page courante)
+                </span>
+              </div>
+            )}
+            <BulkActionBar
+              count={selection.selectedCount}
+              onClear={selection.clear}
+              onDelete={() => setBulkDeleteModal(true)}
+            />
+          </>
+        );
+      })()}
+
       {/* Liste des formations */}
       <AnimatePresence>
         {paginatedFormations.length === 0 ? (
@@ -392,8 +445,16 @@ const FormationList = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
+                    className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
                   >
+                    {canManage && !isTerminee && (
+                      <input
+                        type="checkbox"
+                        checked={selection.isSelected(formationId)}
+                        onChange={() => selection.toggle(formationId)}
+                        className="absolute top-3 left-3 z-10 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                      />
+                    )}
                     {/* Photo de l'adhérent */}
                     <div className="relative h-40 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
                       {adherentInfo.photo ? (
@@ -547,6 +608,14 @@ const FormationList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
+                    {canManage && !isTerminee && (
+                      <input
+                        type="checkbox"
+                        checked={selection.isSelected(formationId)}
+                        onChange={() => selection.toggle(formationId)}
+                        className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                      />
+                    )}
                     {/* Photo en évidence */}
                     <div className="flex-shrink-0">
                       {adherentInfo.photo ? (
@@ -783,7 +852,7 @@ const FormationList = () => {
               <h3 className="text-lg font-bold">Terminer la formation</h3>
             </div>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Le niveau visé sera attribué à l'adhérent
+              Le niveau visé sera attribué à l&apos;adhérent
               {(() => {
                 const f = allFormations.find(
                   (x) => (x.id_formation || x.id) === completeModal,
@@ -858,7 +927,7 @@ const FormationList = () => {
               <h3 className="text-lg font-bold">Ajourner la formation</h3>
             </div>
             <p className="text-gray-600 dark:text-gray-400 mb-3">
-              L'adhérent ne passera pas le niveau visé, même si les séances et
+              L&apos;adhérent ne passera pas le niveau visé, même si les séances et
               compétences sont validées. Indiquez le motif :
             </p>
             <textarea
@@ -889,6 +958,15 @@ const FormationList = () => {
           </motion.div>
         </ModalOverlay>
       )}
+
+      {/* Modal de confirmation de suppression groupée */}
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} formation(s) sélectionnée(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };

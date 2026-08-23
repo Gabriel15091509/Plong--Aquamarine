@@ -31,4 +31,11 @@ router.delete('/:id',
   presidentController.delete.bind(presidentController)
 );
 
+// Suppression groupée — même rôle que la suppression unitaire ci-dessus.
+router.post('/bulk-delete',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  presidentController.bulkDelete.bind(presidentController)
+);
+
 module.exports = router;

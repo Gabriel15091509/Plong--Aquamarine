@@ -30,4 +30,11 @@ router.delete('/:id',
   tresorierController.delete.bind(tresorierController)
 );
 
+// Suppression groupée — même rôle que la suppression unitaire ci-dessus.
+router.post('/bulk-delete',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  tresorierController.bulkDelete.bind(tresorierController)
+);
+
 module.exports = router;

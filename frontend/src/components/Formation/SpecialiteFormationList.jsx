@@ -12,13 +12,18 @@ import {
   FiX,
   FiSearch,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
+import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { useSpecialitesFormation } from "../../hooks/Formation/useSpecialitesFormation";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { useSelection } from "../../hooks/useSelection";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
+import specialiteFormationService from "../../services/Formation/specialiteFormationService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -32,9 +37,12 @@ const SpecialiteFormationList = () => {
   const { data: moniteursData, isLoading: loadingMoniteurs } = useGetAllMoniteurs();
 
   const remove = useRemove();
+  const selection = useSelection();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
 
   const adherentMap = useMemo(() => {
@@ -78,6 +86,21 @@ const SpecialiteFormationList = () => {
       console.error("Échec de la suppression de la spécialité :", err);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await specialiteFormationService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -140,6 +163,21 @@ const SpecialiteFormationList = () => {
         </Link>
       </div>
 
+      <div className="flex items-center gap-2 px-1">
+        <input
+          type="checkbox"
+          checked={selection.allSelected(filtered.map((s) => s.id_specialite_formation))}
+          onChange={() => selection.toggleAll(filtered.map((s) => s.id_specialite_formation))}
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+        />
+        <span className="text-sm text-gray-500 dark:text-gray-400">Tout sélectionner</span>
+      </div>
+      <BulkActionBar
+        count={selection.selectedCount}
+        onClear={selection.clear}
+        onDelete={() => setBulkDeleteModal(true)}
+      />
+
       <AnimatePresence>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-3">
           {filtered.map((specialite) => {
@@ -156,6 +194,12 @@ const SpecialiteFormationList = () => {
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-4">
+                  <input
+                    type="checkbox"
+                    checked={selection.isSelected(specialiteId)}
+                    onChange={() => selection.toggle(specialiteId)}
+                    className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                  />
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm flex-shrink-0">
                     <FiUser className="w-6 h-6 text-indigo-500 dark:text-indigo-400" />
                   </div>
@@ -252,6 +296,14 @@ const SpecialiteFormationList = () => {
           </motion.div>
         </ModalOverlay>
       )}
+
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} spécialité(s) sélectionnée(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+      />
     </div>
   );
 };

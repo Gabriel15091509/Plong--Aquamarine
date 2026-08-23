@@ -35,6 +35,11 @@ class SpecialiteFormationService {
     const response = await api.delete(`/specialites-formation/${id}`);
     return response.data;
   }
+
+  async bulkDelete(ids) {
+    const response = await api.post("/specialites-formation/bulk-delete", { ids });
+    return response.data;
+  }
 }
 
 export default new SpecialiteFormationService();

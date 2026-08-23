@@ -17,13 +17,17 @@ import {
   FiX,
   FiSearch,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
+import BulkActionBar from "../Common/BulkActionBar";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
+import { useSelection } from "../../hooks/useSelection";
 import StatusBadge from "../Common/StatusBadge";
 import { photoUrl } from "../../utils/photoUrl";
 import { STATUT_ADHERENT_OPTIONS } from "../../utils/constants";
+import adherentService from "../../services/Adherent/adherentService";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -34,10 +38,13 @@ const AdherentList = () => {
   const { useGetAll, useRemove } = useAdherents();
   const { data, isLoading, error, refetch } = useGetAll();
   const remove = useRemove();
+  const selection = useSelection();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState("list");
   const itemsPerPage = 10;
@@ -78,6 +85,21 @@ const AdherentList = () => {
       setDeleteModal(null);
     } catch (error) {
       console.error("Échec de la suppression de l'adhérent :", error);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      const result = await adherentService.bulkDelete(Array.from(selection.selectedIds));
+      toast[result.success ? "success" : "error"](result.message);
+      selection.clear();
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteModal(false);
     }
   };
 
@@ -204,6 +226,28 @@ const AdherentList = () => {
         </div>
       </div>
 
+      {/* Sélection multiple / actions groupées */}
+      {canManageAdherent && (
+        <>
+          <div className="flex items-center gap-2 px-1">
+            <input
+              type="checkbox"
+              checked={selection.allSelected(paginatedAdherents.map((a) => a.num_adherent))}
+              onChange={() => selection.toggleAll(paginatedAdherents.map((a) => a.num_adherent))}
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+            />
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Tout sélectionner (page courante)
+            </span>
+          </div>
+          <BulkActionBar
+            count={selection.selectedCount}
+            onClear={selection.clear}
+            onDelete={() => setBulkDeleteModal(true)}
+          />
+        </>
+      )}
+
       {/* Liste des adhérents */}
       <AnimatePresence>
         {paginatedAdherents.length === 0 ? (
@@ -238,8 +282,16 @@ const AdherentList = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
+                    className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
                   >
+                    {canManageAdherent && (
+                      <input
+                        type="checkbox"
+                        checked={selection.isSelected(adherent.num_adherent)}
+                        onChange={() => selection.toggle(adherent.num_adherent)}
+                        className="absolute top-3 left-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                      />
+                    )}
                     {adherent.photo ? (
                       <img
                         src={photoUrl(adherent.photo)}
@@ -314,6 +366,14 @@ const AdherentList = () => {
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-4">
+                  {canManageAdherent && (
+                    <input
+                      type="checkbox"
+                      checked={selection.isSelected(adherent.num_adherent)}
+                      onChange={() => selection.toggle(adherent.num_adherent)}
+                      className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
+                  )}
                   {/* Photo / Avatar */}
                   <div className="flex-shrink-0">
                     {adherent.photo ? (
@@ -447,6 +507,15 @@ const AdherentList = () => {
         message="Êtes-vous sûr de vouloir supprimer cet adhérent ?"
         onCancel={() => setDeleteModal(null)}
         onConfirm={() => handleDelete(deleteModal)}
+      />
+
+      {/* Modal de confirmation de suppression groupée */}
+      <ConfirmModal
+        isOpen={bulkDeleteModal}
+        message={`Êtes-vous sûr de vouloir supprimer les ${selection.selectedCount} adhérent(s) sélectionné(s) ?`}
+        confirmLabel={isBulkDeleting ? "Suppression..." : "Supprimer"}
+        onCancel={() => setBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
       />
     </div>
   );
