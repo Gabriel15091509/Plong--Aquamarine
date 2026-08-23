@@ -310,12 +310,6 @@ const MaterielList = () => {
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
                   >
-                    <input
-                      type="checkbox"
-                      checked={selection.isSelected(materiel.num_inventaire)}
-                      onChange={() => selection.toggle(materiel.num_inventaire)}
-                      className="absolute top-3 left-3 z-10 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                    />
                     {/* Photo du matériel */}
                     <div className="relative h-40 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
                       {materiel.photo_path ? (
@@ -390,6 +384,13 @@ const MaterielList = () => {
                       </div>
 
                       <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={selection.isSelected(materiel.num_inventaire)}
+                          onChange={() => selection.toggle(materiel.num_inventaire)}
+                          className="mr-auto h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                          title="Sélectionner"
+                        />
                         <Link
                           to={`/materiels/${materiel.num_inventaire}`}
                           className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"

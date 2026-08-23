@@ -285,12 +285,6 @@ const PresidentList = () => {
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
                   >
-                    <input
-                      type="checkbox"
-                      checked={selection.isSelected(president.id_president)}
-                      onChange={() => selection.toggle(president.id_president)}
-                      className="absolute top-3 left-3 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                    />
                     {moniteur?.user?.photo ? (
                       <img
                         src={photoUrl(moniteur.user.photo)}
@@ -327,6 +321,13 @@ const PresidentList = () => {
                       </div>
                     )}
                     <div className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 w-full">
+                      <input
+                        type="checkbox"
+                        checked={selection.isSelected(president.id_president)}
+                        onChange={() => selection.toggle(president.id_president)}
+                        className="mr-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                        title="Sélectionner"
+                      />
                       <Link
                         to={`/presidents/${president.id_president}`}
                         className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"

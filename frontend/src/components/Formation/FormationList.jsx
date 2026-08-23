@@ -447,14 +447,6 @@ const FormationList = () => {
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
                   >
-                    {canManage && !isTerminee && (
-                      <input
-                        type="checkbox"
-                        checked={selection.isSelected(formationId)}
-                        onChange={() => selection.toggle(formationId)}
-                        className="absolute top-3 left-3 z-10 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                      />
-                    )}
                     {/* Photo de l'adhérent */}
                     <div className="relative h-40 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
                       {adherentInfo.photo ? (
@@ -512,6 +504,15 @@ const FormationList = () => {
                       </div>
 
                       <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        {canManage && !isTerminee && (
+                          <input
+                            type="checkbox"
+                            checked={selection.isSelected(formationId)}
+                            onChange={() => selection.toggle(formationId)}
+                            className="mr-auto h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                            title="Sélectionner"
+                          />
+                        )}
                         {canManage && formation.statut === "En cours" && (
                           <button
                             onClick={() => {
