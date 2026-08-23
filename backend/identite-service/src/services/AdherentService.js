@@ -248,29 +248,6 @@ class AdherentService extends BaseService {
     return adherent;
   }
 
-  // Exécute scripts/backfill-adherent-statut-formation.sql — même principe
-  // que FormationService.runSeancesCoherenceBackfill côté formation-service
-  // (contourne le même problème de connexion externe SSL à la base de
-  // production, réutilise la connexion Sequelize déjà en place). Réservé au
-  // président (route protégée) ; SQL idempotent, sûr à rejouer.
-  async runStatutFormationBackfill() {
-    const fs = require("fs");
-    const path = require("path");
-    const { sequelize } = require("../config/database");
-    const sqlPath = path.join(__dirname, "..", "..", "scripts", "backfill-adherent-statut-formation.sql");
-    const rawSql = fs.readFileSync(sqlPath, "utf8");
-    // `\encoding UTF8` est une méta-commande psql, invalide pour le driver
-    // "pg" utilisé par Sequelize — voir FormationService.runSeancesCoherenceBackfill
-    // pour le contexte complet (bug découvert et corrigé lors du premier
-    // backfill de ce type dans ce projet).
-    const sql = rawSql
-      .split("\n")
-      .filter((line) => !line.trim().startsWith("\\"))
-      .join("\n");
-    await sequelize.query(sql);
-    return { applied: true };
-  }
-
   async getAdherentStats() {
     const total = await this.repository.count();
     // Un invité (CDC 3.2.1) n'est pas un membre du club : exclu du décompte

@@ -1,5 +1,3 @@
-const fs = require("fs");
-const path = require("path");
 const BaseService = require("./BaseService");
 const FormationRepository = require("../repositories/FormationRepository");
 const CompetenceRepository = require("../repositories/CompetenceRepository");
@@ -11,7 +9,6 @@ const activitesClient = require("../utils/serviceClients/activitesClient");
 const { NIVEAU_ORDER, computeStatutPaiement } = require("../utils/roleScope");
 const { sendFormationPaymentEmail } = require("../utils/email");
 const { ForbiddenError } = require("../utils/errors");
-const { sequelize } = require("../config/database");
 
 // Prérequis indicatifs par niveau visé (niveau antérieur minimum, nombre de
 // plongées minimum, profondeur minimum déjà atteinte en mètres, âge minimum)
@@ -565,32 +562,6 @@ class FormationService extends BaseService {
     return await this.completeFormation(id_formation, authHeader);
   }
 
-  // Exécute scripts/backfill-seances-coherence.sql (résout les séances
-  // "Planifiée" orphelines d'une formation Terminée/Abandonnée, recalcule
-  // nb_seances_realisees pour toutes les formations) via la connexion DB
-  // déjà en place — contourne un problème de connexion externe SSL
-  // rencontré en tentant d'appliquer ce script directement contre la base
-  // de production depuis l'extérieur (psql, client Node "pg", et même un
-  // runner GitHub Actions échouaient tous de façon identique à la
-  // négociation SSL, alors que ce service, lui, se connecte sans
-  // problème — donc un souci propre à l'accès externe de cette instance
-  // Render, pas au code ni au réseau du poste). Réservé au président
-  // (route protégée) ; SQL idempotent, sûr à rejouer.
-  async runSeancesCoherenceBackfill() {
-    const sqlPath = path.join(__dirname, "..", "..", "scripts", "backfill-seances-coherence.sql");
-    const rawSql = fs.readFileSync(sqlPath, "utf8");
-    // Le fichier est écrit pour être joué via `psql -f` : la commande
-    // `\encoding UTF8` en tête est une méta-commande psql, pas du SQL — le
-    // driver "pg" (utilisé ici par Sequelize) la rejette telle quelle.
-    // Testé et confirmé en local avant ce correctif (SequelizeDatabaseError
-    // "erreur de syntaxe sur ou près de « \ »").
-    const sql = rawSql
-      .split("\n")
-      .filter((line) => !line.trim().startsWith("\\"))
-      .join("\n");
-    await sequelize.query(sql);
-    return { applied: true };
-  }
 }
 
 module.exports = FormationService;
