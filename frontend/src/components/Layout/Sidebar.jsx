@@ -433,6 +433,15 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
       icon: FiAward,
       label: "Formations",
       badge: formationsPretesATerminer,
+      children: canSeeMoniteurSousMenus
+        ? [
+            { path: "/formations", label: "Toutes les formations" },
+            {
+              path: "/formations?filtre=mes-formations-encadrees",
+              label: "Formations que j'encadre",
+            },
+          ]
+        : undefined,
     },
   ];
 
