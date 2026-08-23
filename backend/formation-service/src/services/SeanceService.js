@@ -37,6 +37,23 @@ class SeanceService extends BaseService {
       errors.push(`Type de séance invalide (attendu : ${TYPES_SEANCE.join(" ou ")})`);
     }
 
+    // Formation.nb_seances_prevues (cible connue à la création, nullable
+    // pour les formations existantes créées avant l'ajout de ce champ —
+    // voir Formation.js) : au-delà, une nouvelle séance n'a plus de sens,
+    // le décompte "Séances (n/nb_seances_prevues)" du frontend deviendrait
+    // trompeur. Miroir du garde-fou frontend (FormationSeances.jsx).
+    if (data.id_formation) {
+      const formation = await this.formationRepository.findById(data.id_formation);
+      if (formation?.nb_seances_prevues) {
+        const seancesExistantes = await this.seanceRepository.findByFormation(data.id_formation);
+        if (seancesExistantes.length >= formation.nb_seances_prevues) {
+          errors.push(
+            `Le nombre de séances prévues (${formation.nb_seances_prevues}) est déjà atteint pour cette formation`,
+          );
+        }
+      }
+    }
+
     // Une séance pratique se déroule en réalité lors d'une sortie : elle
     // doit être liée à une sortie existante, de type "Formation" (cf.
     // taxonomie des types d'activités).
