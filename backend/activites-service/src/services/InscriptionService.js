@@ -345,6 +345,17 @@ class InscriptionService extends BaseService {
       );
     }
 
+    // Une sortie reste "Planifiée" tant que personne ne l'a fait avancer
+    // manuellement (pas de cron qui bascule le statut au passage de la
+    // date) : le contrôle ci-dessus ne suffit donc pas à lui seul à bloquer
+    // une inscription après coup. Miroir du garde-fou frontend
+    // (SortiesPage.isPastSortie) — sans ce contrôle, l'API restait
+    // ouverte à l'inscription sur une sortie déjà passée en appelant la
+    // route directement.
+    if (new Date(sortie.date_heure) < new Date()) {
+      throw new Error("Cette sortie a déjà eu lieu : inscription impossible");
+    }
+
     // Les inscriptions autonomes ne sont ouvertes qu'à partir de la date
     // fixée sur la sortie (ex : 7 jours avant) ; le directeur technique/staff
     // (canManage) peut en revanche préinscrire un adhérent avant cette date.
