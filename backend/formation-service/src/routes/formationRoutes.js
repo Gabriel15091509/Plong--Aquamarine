@@ -74,4 +74,15 @@ router.delete(
   formationController.delete.bind(formationController),
 );
 
+// Maintenance ponctuelle, réservée au président — voir le commentaire de
+// FormationService.runSeancesCoherenceBackfill. À retirer une fois le
+// backfill appliqué en production (pas de risque à la laisser : SQL
+// idempotent, mais route à usage unique).
+router.post(
+  "/admin/backfill-seances-coherence",
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  formationController.backfillSeancesCoherence.bind(formationController),
+);
+
 module.exports = router;
