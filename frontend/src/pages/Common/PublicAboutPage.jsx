@@ -12,35 +12,37 @@ import AboutPage from "./AboutPage";
 // menu) reste la version consultée une fois connecté.
 const PublicAboutPage = () => {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between py-4 sm:py-6">
-          <Link to="/login" className="flex items-center gap-2">
-            <Logo size="md" />
-            <span className="hidden sm:inline font-bold text-gray-800 dark:text-white">
-              Plongée Club
-            </span>
-          </Link>
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-ocean-500 rounded-xl shadow-md hover:shadow-lg transition-shadow"
-          >
-            <FiLogIn className="w-4 h-4" />
-            Connexion
-          </Link>
-        </div>
+    // Pas de conteneur "max-w-*" central : même convention que Layout.jsx
+    // (main className="p-4 sm:p-6", sans plafond de largeur) pour que la
+    // page occupe tout l'écran plutôt que de laisser de grandes bandes
+    // vides sur les côtés en desktop large.
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
+      <div className="flex items-center justify-between pb-4 sm:pb-6">
+        <Link to="/login" className="flex items-center gap-2">
+          <Logo size="md" />
+          <span className="hidden sm:inline font-bold text-gray-800 dark:text-white">
+            Plongée Club
+          </span>
+        </Link>
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-ocean-500 rounded-xl shadow-md hover:shadow-lg transition-shadow"
+        >
+          <FiLogIn className="w-4 h-4" />
+          Connexion
+        </Link>
+      </div>
 
-        <AboutPage />
+      <AboutPage />
 
-        <div className="pb-10 text-center">
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-          >
-            <FiArrowLeft className="w-4 h-4" />
-            Retour à la connexion
-          </Link>
-        </div>
+      <div className="pt-10 text-center">
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+        >
+          <FiArrowLeft className="w-4 h-4" />
+          Retour à la connexion
+        </Link>
       </div>
     </div>
   );
