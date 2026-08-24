@@ -32,6 +32,7 @@ import ConfirmModal from "../Common/ConfirmModal";
 import StatusBadge from "../Common/StatusBadge";
 import SectionCard from "../Common/SectionCard";
 import InfoItem from "../Common/InfoItem";
+import { photoUrl } from "../../utils/photoUrl";
 import EcheancierCard from "../Echeancier/EcheancierCard";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 import adhesionService from "../../services/Adhesion/adhesionService";
@@ -468,7 +469,12 @@ const AdhesionDetails = () => {
       >
         {/* Informations adhérent */}
         <SectionCard title="Informations adhérent" icon={FiUser}>
-          <InfoItem icon={FiUser} label="Adhérent" highlight>
+          <InfoItem
+            icon={FiUser}
+            label="Adhérent"
+            highlight
+            avatarUrl={photoUrl(adherent?.photo)}
+          >
             {adherent ? (
               <div>
                 <p className="font-semibold text-gray-900 dark:text-white">
