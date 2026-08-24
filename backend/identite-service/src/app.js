@@ -122,12 +122,39 @@ app.use("/api", routes);
 app.use(ErrorHandler.notFound);
 app.use(ErrorHandler.handle);
 
+// Migrations additives légères, idempotentes (ADD COLUMN IF NOT EXISTS
+// uniquement — jamais de DROP/RENAME ici), appliquées automatiquement au
+// démarrage plutôt qu'à la main via psql : l'accès externe à la base
+// Render est bloqué par défaut (pas d'IP autorisée dans "Networking"),
+// donc un script scripts/migrate-*.sql laissé à exécuter manuellement
+// peut rester en attente indéfiniment — incident du 2026-08-24 (voir
+// git log autour de a4aee1a/9501ebe : reset_token_hash/reset_token_expires_at
+// avaient été ajoutées au modèle User avant que la migration soit
+// appliquée, cassant le login pour tout le monde). N'échoue jamais le
+// démarrage : une erreur ici laisse la fonctionnalité concernée
+// indisponible plutôt que de bloquer tout le service.
+const runPendingMigrations = async () => {
+  const schema = process.env.DB_SCHEMA || "identite";
+  try {
+    await sequelize.query(
+      `ALTER TABLE ${schema}.users ADD COLUMN IF NOT EXISTS reset_token_hash VARCHAR(255)`,
+    );
+    await sequelize.query(
+      `ALTER TABLE ${schema}.users ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMPTZ`,
+    );
+    logger.info("[identite-service] Migration reset_token_* vérifiée/appliquée");
+  } catch (error) {
+    logger.error("[identite-service] Échec migration reset_token_* :", error);
+  }
+};
+
 const initializeApp = async () => {
   const connected = await testConnection();
   if (!connected) {
     logger.error("[identite-service] Database connection failed");
     process.exit(1);
   }
+  await runPendingMigrations();
 };
 
 process.on("unhandledRejection", (err) => {
