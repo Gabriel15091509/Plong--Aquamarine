@@ -17,6 +17,8 @@ import Layout from "./components/Layout/Layout";
 import UserCreatePage from "./pages/User/UserCreatePage";
 import ChangePasswordPage from "./pages/Auth/ChangePasswordPage";
 import LoginPage from "./pages/Auth/LoginPage";
+import ForgotPasswordPage from "./pages/Auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/Auth/ResetPasswordPage";
 import DashboardPage from "./pages/Dashboard/DashboardPage";
 import AdherentsPage from "./pages/Adherent/AdherentsPage";
 import AdherentCreatePage from "./pages/Adherent/AdherentCreatePage";
@@ -108,6 +110,11 @@ function App() {
             <Routes>
               {/* Page de login - sans layout */}
               <Route path="/login" element={<LoginPage />} />
+
+              {/* "Mot de passe oublié ?" (lien de LoginPage.jsx) - sans
+                  layout, sans connexion requise, comme /login. */}
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
 
               {/* Vitrine publique "Découvrir le club" - sans layout, sans
                   connexion requise (lien depuis LoginPage). /about (plus

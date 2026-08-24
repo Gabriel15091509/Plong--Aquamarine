@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const { User } = require("../models");
+const { sendPasswordResetEmail } = require("../utils/email");
 // OTP président désactivé (2026-08-22, voir plus bas dans login()) : ces
 // deux imports/constantes ne servent plus qu'au bloc commenté, laissés en
 // commentaire eux aussi pour repartir tel quel à la réactivation.
@@ -8,6 +10,10 @@ const { User } = require("../models");
 
 // const OTP_VALIDITY_MINUTES = 5;
 const OTP_MAX_ATTEMPTS = 5;
+const RESET_TOKEN_VALIDITY_MINUTES = 60;
+
+const hashResetToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
 
 const getPermissionsForRole = (role) => {
   const permissions = {
@@ -200,6 +206,114 @@ class AuthController {
       res
         .status(500)
         .json({ success: false, message: "Erreur lors de la vérification" });
+    }
+  }
+
+  // "Mot de passe oublié ?" (LoginPage.jsx) — étape 1 : reçoit un email,
+  // envoie un lien à usage unique si un compte correspond. Répond toujours
+  // le même message générique, que le compte existe ou non (et même en cas
+  // d'erreur d'envoi d'email) : ne jamais laisser un visiteur non authentifié
+  // déduire quels emails ont un compte (énumération de comptes).
+  async forgotPassword(req, res) {
+    const genericResponse = () =>
+      res.json({
+        success: true,
+        message:
+          "Si un compte existe avec cet email, un lien de réinitialisation vient d'être envoyé.",
+      });
+
+    try {
+      const { email, resetUrlBase } = req.body;
+      if (!email) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Email requis" });
+      }
+
+      const user = await User.findOne({ where: { email } });
+      if (!user || !user.active) {
+        return genericResponse();
+      }
+
+      const token = crypto.randomBytes(32).toString("hex");
+      user.reset_token_hash = hashResetToken(token);
+      user.reset_token_expires_at = new Date(
+        Date.now() + RESET_TOKEN_VALIDITY_MINUTES * 60 * 1000,
+      );
+      await user.save();
+
+      const base = resetUrlBase || "http://localhost:3000";
+      const resetUrl = `${base}/reset-password?token=${token}`;
+
+      await sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        resetUrl,
+        validityMinutes: RESET_TOKEN_VALIDITY_MINUTES,
+      });
+
+      return genericResponse();
+    } catch (error) {
+      console.error("Erreur lors de la demande de réinitialisation :", error);
+      // Toujours le message générique, même en cas d'erreur serveur : ne
+      // pas révéler par la différence de réponse si l'email est en base.
+      return genericResponse();
+    }
+  }
+
+  // "Mot de passe oublié ?" — étape 2 : vérifie le jeton reçu par email et
+  // enregistre le nouveau mot de passe. Connecte directement l'utilisateur
+  // (même comportement que changePassword ci-dessous) plutôt que de le
+  // renvoyer se connecter avec le mot de passe qu'il vient de choisir.
+  async resetPassword(req, res) {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Jeton et nouveau mot de passe requis" });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: "Le nouveau mot de passe doit contenir au moins 6 caractères",
+        });
+      }
+
+      const user = await User.findOne({
+        where: { reset_token_hash: hashResetToken(token) },
+      });
+
+      if (
+        !user ||
+        !user.reset_token_expires_at ||
+        new Date() > user.reset_token_expires_at
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Lien de réinitialisation invalide ou expiré",
+        });
+      }
+
+      user.password = newPassword;
+      user.must_change_password = false;
+      user.reset_token_hash = null;
+      user.reset_token_expires_at = null;
+      user.last_login = new Date();
+      await user.save();
+
+      res.json({
+        success: true,
+        data: buildAuthResponse(user),
+        message: "Mot de passe réinitialisé avec succès",
+      });
+    } catch (error) {
+      console.error("Erreur lors de la réinitialisation du mot de passe :", error);
+      res.status(500).json({
+        success: false,
+        message: "Erreur lors de la réinitialisation du mot de passe",
+      });
     }
   }
 

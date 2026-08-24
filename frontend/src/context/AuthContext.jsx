@@ -117,6 +117,41 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // "Mot de passe oublié ?" (LoginPage.jsx) — étape 1 : demande un lien de
+  // réinitialisation. Le backend répond toujours le même message générique
+  // (compte trouvé ou non), donc pas de rejet possible à afficher ici —
+  // toute erreur réseau reste une exception normale.
+  const forgotPassword = async (email) => {
+    const response = await api.post("/auth/forgot-password", {
+      email,
+      // Le backend construit le lien de réinitialisation à partir de cette
+      // origine (même convention que loginUrl dans utils/welcomeEmail.js) :
+      // il n'a lui-même aucune notion fiable de l'URL publique du frontend.
+      resetUrlBase: window.location.origin,
+    });
+    return response.data;
+  };
+
+  // Étape 2 : jeton + nouveau mot de passe → connecte directement (comme
+  // verifyOtp) plutôt que de renvoyer vers /login.
+  const resetPassword = async (token, newPassword) => {
+    try {
+      const response = await api.post("/auth/reset-password", {
+        token,
+        newPassword,
+      });
+      if (!response.data.success) throw new Error("Réinitialisation impossible");
+
+      const { token: authToken, user } = response.data.data;
+      return completeSession(authToken, user);
+    } catch (error) {
+      const message =
+        error.response?.data?.message || "Lien de réinitialisation invalide ou expiré";
+      toast.error(message);
+      throw error;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -192,6 +227,8 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         verifyOtp,
+        forgotPassword,
+        resetPassword,
         logout,
         permissions,
         hasPermission,
