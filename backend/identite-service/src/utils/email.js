@@ -325,9 +325,72 @@ const sendOtpEmail = async ({ to, name, code }) => {
   });
 };
 
+// Mot de passe oublié : lien à usage unique (voir AuthController.forgotPassword),
+// même gabarit visuel que sendOtpEmail (bandeau + carte centrale) mais avec un
+// bouton plutôt qu'un code, puisque le jeton n'est pas destiné à être ressaisi
+// à la main.
+const sendPasswordResetEmail = async ({ to, name, resetUrl, validityMinutes = 60 }) => {
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Réinitialisation du mot de passe — Aquanature Plongée</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #eef1f4; margin: 0; padding: 40px 20px; line-height: 1.6; color: #1f2937; }
+    .container { max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 1px 3px rgba(15,23,42,0.08), 0 10px 30px rgba(15,23,42,0.06); overflow: hidden; }
+    .header { background: #0b3552; padding: 28px 40px; text-align: center; border-bottom: 3px solid #c9a227; }
+    .header .logo-badge { display: inline-block; width: 56px; height: 56px; border-radius: 50%; background: #ffffff; padding: 4px; margin-bottom: 10px; }
+    .header .logo-badge img { display: block; width: 100%; height: 100%; border-radius: 50%; }
+    .header .brand { color: #ffffff; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; }
+    .content { padding: 32px 40px; text-align: center; }
+    .eyebrow { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9a7817; background: #fdf6e3; padding: 4px 10px; border-radius: 4px; margin-bottom: 14px; }
+    .content p { color: #374151; font-size: 15px; }
+    .btn { display: inline-block; margin: 22px 0 6px; padding: 13px 36px; background: #0b3552; color: #fff !important; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; }
+    .fallback { color: #94a3b8; font-size: 12px; word-break: break-all; margin-top: 4px; }
+    .meta { color: #94a3b8; font-size: 13px; margin-top: 16px; }
+    .warning { background: #fef2f2; border-radius: 10px; padding: 14px 16px; margin-top: 18px; border-left: 3px solid #dc2626; text-align: left; }
+    .warning p { color: #991b1b; font-size: 13px; }
+    .footer { padding: 20px 40px; border-top: 1px solid #eef1f4; text-align: center; }
+    .footer p { color: #94a3b8; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo-badge"><img src="cid:${LOGO_CID}" width="48" height="48" alt="Aquanature Plongée" /></div>
+      <div class="brand">AQUANATURE PLONGÉE</div>
+    </div>
+    <div class="content">
+      <span class="eyebrow">Mot de passe oublié</span>
+      <p>Bonjour ${name},</p>
+      <p style="margin-top:8px;">Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :</p>
+      <a href="${resetUrl}" class="btn">Réinitialiser mon mot de passe</a>
+      <p class="fallback">Ou copiez ce lien dans votre navigateur : ${resetUrl}</p>
+      <p class="meta">Valable ${validityMinutes} minutes</p>
+      <div class="warning">
+        <p>Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email : votre mot de passe actuel reste inchangé.</p>
+      </div>
+    </div>
+    <div class="footer"><p>© ${new Date().getFullYear()} Aquanature Plongée — email automatique, ne pas répondre</p></div>
+  </div>
+</body>
+</html>`;
+
+  return sendEmail({
+    to,
+    subject: "Réinitialisation de votre mot de passe",
+    html: htmlContent,
+    text: `Bonjour ${name},\n\nPour choisir un nouveau mot de passe, ouvrez ce lien : ${resetUrl}\nValable ${validityMinutes} minutes.\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe actuel reste inchangé.`,
+  });
+};
+
 module.exports = {
   sendEmail,
   sendWelcomeEmail,
   sendCommunicationEmail,
   sendOtpEmail,
+  sendPasswordResetEmail,
 };

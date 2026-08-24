@@ -87,6 +87,18 @@ const User = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
+    // Mot de passe oublié (lien public de LoginPage.jsx) : jeton d'usage
+    // unique envoyé par email. reset_token_hash est un SHA-256 (pas bcrypt,
+    // voir migrate-reset-password.sql) pour permettre une recherche directe
+    // par égalité au lieu de comparer bcrypt contre chaque compte actif.
+    reset_token_hash: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    reset_token_expires_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     schema: process.env.DB_SCHEMA || "identite",

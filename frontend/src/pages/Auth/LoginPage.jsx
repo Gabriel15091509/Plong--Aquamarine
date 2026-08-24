@@ -483,12 +483,12 @@ const LoginPage = () => {
                   Se souvenir de moi
                 </span>
               </label>
-              <a
-                href="#"
+              <Link
+                to="/forgot-password"
                 className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium transition-colors"
               >
                 Mot de passe oublié ?
-              </a>
+              </Link>
             </motion.div>
 
             {/* Bouton de connexion */}
