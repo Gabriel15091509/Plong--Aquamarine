@@ -31,6 +31,7 @@ import ModalOverlay from "../Common/ModalOverlay";
 import StatusBadge from "../Common/StatusBadge";
 import SectionCard from "../Common/SectionCard";
 import InfoItem from "../Common/InfoItem";
+import { photoUrl } from "../../utils/photoUrl";
 import EcheancierCard from "../Echeancier/EcheancierCard";
 import { formatDate, formatDateTime, formatCurrency } from "../../utils/helpers";
 import { MODE_PAIEMENT_OPTIONS, STATUT_INSCRIPTION } from "../../utils/constants";
@@ -391,7 +392,12 @@ const InscriptionDetails = () => {
       >
         {/* Adhérent */}
         <SectionCard title="Informations adhérent" icon={FiUser}>
-          <InfoItem icon={FiUser} label="Adhérent" highlight>
+          <InfoItem
+            icon={FiUser}
+            label="Adhérent"
+            highlight
+            avatarUrl={photoUrl(adherent?.photo)}
+          >
             {adherent ? (
               <div>
                 <p className="font-semibold text-gray-900 dark:text-white">

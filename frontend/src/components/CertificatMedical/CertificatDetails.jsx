@@ -30,6 +30,7 @@ import ConfirmModal from "../Common/ConfirmModal";
 import StatusBadge from "../Common/StatusBadge";
 import SectionCard from "../Common/SectionCard";
 import InfoItem from "../Common/InfoItem";
+import { photoUrl } from "../../utils/photoUrl";
 import { formatDate } from "../../utils/helpers";
 import api from "../../services/api";
 
@@ -379,7 +380,12 @@ const CertificatDetails = () => {
       >
         {/* Informations adhérent */}
         <SectionCard title="Informations adhérent" icon={FiUser}>
-          <InfoItem icon={FiUser} label="Adhérent" highlight>
+          <InfoItem
+            icon={FiUser}
+            label="Adhérent"
+            highlight
+            avatarUrl={photoUrl(adherent?.photo)}
+          >
             {adherent ? (
               <div>
                 <p className="font-semibold text-gray-900 dark:text-white">
