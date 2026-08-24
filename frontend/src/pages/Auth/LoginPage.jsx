@@ -224,6 +224,22 @@ const LoginPage = () => {
         // pour le formulaire.
         className="relative z-20 w-full md:w-4/5 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
       >
+        {/* Découvrir le club - mobile uniquement : le bouton équivalent vit
+            dans le volet de marque (photo à droite), qui est "hidden
+            md:flex" — invisible en mobile, où seul le formulaire s'affiche.
+            Repris ici en haut à droite de la carte, sans la photo derrière,
+            donc un style plus discret (fond clair) plutôt que le bouton
+            plein blanc sur fond sombre du volet desktop. */}
+        {!transitioning && (
+          <Link
+            to="/decouvrir"
+            className="md:hidden absolute top-4 right-4 z-30 inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs font-semibold rounded-full shadow-sm border border-primary-100 dark:border-primary-800/40"
+          >
+            <FiCompass className="w-3.5 h-3.5" />
+            Découvrir le club
+          </Link>
+        )}
+
         {/* Partie gauche - Formulaire */}
         <motion.div
           variants={containerVariants}
