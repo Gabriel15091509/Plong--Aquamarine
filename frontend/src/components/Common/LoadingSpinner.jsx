@@ -9,6 +9,8 @@ import React from "react";
 //
 // variant :
 //   - "list"    : barre de filtres + lignes de tableau (pages de liste)
+//   - "grid"    : barre de filtres + cartes en grille (pages de liste en
+//                 vue grille par défaut, ex. SortiesPage)
 //   - "form"    : paires label/champ + boutons d'action (formulaires)
 //   - "details" : en-tête + sections d'informations (fiches détail)
 //   - "dashboard" (défaut) : cartes de statistiques + graphiques
@@ -29,6 +31,41 @@ const ListSkeleton = () => (
           </div>
           <div className="h-6 w-20 rounded-full bg-gray-100 dark:bg-gray-700 animate-pulse hidden sm:block flex-shrink-0" />
           <div className="h-8 w-16 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse hidden md:block flex-shrink-0" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Reprend la barre de filtres de ListSkeleton (même largeur/hauteur) puis
+// des cartes reflétant la forme réelle des cartes en grille (bandeau photo
+// h-40, lignes de titre/infos, barre d'actions en pied) — mêmes proportions
+// que la grille grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 des pages en vue
+// grille par défaut (ex. SortiesPage).
+const GridSkeleton = () => (
+  <div className="w-full space-y-4">
+    <div className="flex flex-wrap gap-3">
+      <div className="h-11 flex-1 min-w-[220px] rounded-xl bg-gray-100 dark:bg-gray-700 animate-pulse" />
+      <div className="h-11 w-32 rounded-xl bg-gray-100 dark:bg-gray-700 animate-pulse" />
+      <div className="h-11 w-32 rounded-xl bg-gray-100 dark:bg-gray-700 animate-pulse" />
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <div
+          key={i}
+          className="rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800"
+        >
+          <div className="h-40 bg-gray-100 dark:bg-gray-700 animate-pulse" />
+          <div className="p-4 space-y-2.5">
+            <div className="h-3.5 w-2/3 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
+            <div className="h-3 w-1/2 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
+            <div className="h-3 w-1/3 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
+            <div className="flex items-center gap-2 pt-2">
+              <div className="h-7 w-7 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse" />
+              <div className="h-7 w-7 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse" />
+              <div className="h-7 w-7 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse" />
+            </div>
+          </div>
         </div>
       ))}
     </div>
@@ -173,6 +210,7 @@ const DashboardSkeleton = () => (
 
 const VARIANTS = {
   list: ListSkeleton,
+  grid: GridSkeleton,
   form: FormSkeleton,
   details: DetailsSkeleton,
   dashboard: DashboardSkeleton,

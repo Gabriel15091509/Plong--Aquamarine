@@ -351,7 +351,7 @@ const SortiesPage = () => {
     );
   };
 
-  if (loadingSorties || loadingAdherents) return <LoadingSpinner variant="list" />;
+  if (loadingSorties || loadingAdherents) return <LoadingSpinner variant="grid" />;
 
   if (sortiesError) {
     return <ErrorState onRetry={refetch} />;
@@ -501,19 +501,10 @@ const SortiesPage = () => {
               Effacer
             </button>
           )}
+          {/* Grille en premier : c'est la vue par défaut de cette page
+              (voir viewMode initial ci-dessus), l'ordre des deux boutons
+              suit cette priorité plutôt que l'ordre alphabétique. */}
           <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              title="Vue liste"
-              className={`p-1.5 rounded-md transition-colors ${
-                viewMode === "list"
-                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              }`}
-            >
-              <FiList className="w-4 h-4" />
-            </button>
             <button
               type="button"
               onClick={() => setViewMode("grid")}
@@ -525,6 +516,18 @@ const SortiesPage = () => {
               }`}
             >
               <FiGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              title="Vue liste"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "list"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiList className="w-4 h-4" />
             </button>
           </div>
         </div>
