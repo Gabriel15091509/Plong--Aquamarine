@@ -87,18 +87,15 @@ const User = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
-    // Mot de passe oublié (lien public de LoginPage.jsx) : jeton d'usage
-    // unique envoyé par email. reset_token_hash est un SHA-256 (pas bcrypt,
-    // voir migrate-reset-password.sql) pour permettre une recherche directe
-    // par égalité au lieu de comparer bcrypt contre chaque compte actif.
-    reset_token_hash: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
-    reset_token_expires_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
+    // Mot de passe oublié : reset_token_hash/reset_token_expires_at
+    // RETIRÉS TEMPORAIREMENT (2026-08-24) — les définir ici fait que
+    // Sequelize les inclut dans le SELECT de TOUTE requête User (y compris
+    // le login), qui échoue tant que la migration
+    // (scripts/migrate-reset-password.sql) n'a pas été appliquée en
+    // production : ça a cassé la connexion de tous les comptes. À
+    // réactiver seulement une fois la migration confirmée appliquée — voir
+    // AuthController.forgotPassword/resetPassword, désactivés en
+    // attendant (503) pour éviter le même problème d'un autre endroit.
   },
   {
     schema: process.env.DB_SCHEMA || "identite",

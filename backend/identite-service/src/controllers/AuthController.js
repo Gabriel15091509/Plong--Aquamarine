@@ -11,6 +11,12 @@ const { sendPasswordResetEmail } = require("../utils/email");
 // const OTP_VALIDITY_MINUTES = 5;
 const OTP_MAX_ATTEMPTS = 5;
 const RESET_TOKEN_VALIDITY_MINUTES = 60;
+// Désactivé le temps que scripts/migrate-reset-password.sql soit appliqué
+// en production (voir models/User.js : reset_token_hash/reset_token_expires_at
+// ont dû être retirés du modèle pour ne pas casser le login) — repasser à
+// true une fois la migration confirmée, en même temps que les deux colonnes
+// sont réajoutées au modèle User.
+const RESET_PASSWORD_ENABLED = false;
 
 const hashResetToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
@@ -216,6 +222,13 @@ class AuthController {
   // l'existence du compte contre l'énumération ; accepté ici vu la taille
   // du club, au profit d'un retour plus clair pour l'utilisateur).
   async forgotPassword(req, res) {
+    if (!RESET_PASSWORD_ENABLED) {
+      return res.status(503).json({
+        success: false,
+        message:
+          "Réinitialisation temporairement indisponible, réessayez plus tard",
+      });
+    }
     try {
       const { email, resetUrlBase } = req.body;
       if (!email) {
@@ -272,6 +285,13 @@ class AuthController {
   // (même comportement que changePassword ci-dessous) plutôt que de le
   // renvoyer se connecter avec le mot de passe qu'il vient de choisir.
   async resetPassword(req, res) {
+    if (!RESET_PASSWORD_ENABLED) {
+      return res.status(503).json({
+        success: false,
+        message:
+          "Réinitialisation temporairement indisponible, réessayez plus tard",
+      });
+    }
     try {
       const { token, newPassword } = req.body;
 
