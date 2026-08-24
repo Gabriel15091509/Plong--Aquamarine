@@ -639,17 +639,22 @@ const LoginPage = () => {
               </motion.div>
             </motion.div>
 
-            {/* Texte de bienvenue */}
+            {/* Texte de bienvenue : même langage de badge/typo que le hero
+                de AboutPage.jsx (pastille verre dépoli + titre large en
+                drop-shadow, pour rester lisible sur la photo). */}
             <motion.div
-              className="text-center mt-6"
+              className="text-center mt-6 px-6"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: 0.25, ease: "easeOut" }}
             >
-              <h2 className="text-3xl font-bold text-white mb-2">
+              <span className="inline-block px-3 py-1 mb-3 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full text-[11px] font-semibold uppercase tracking-widest text-white/90">
+                Aquanature Plongée
+              </span>
+              <h2 className="text-4xl font-bold text-white mb-3 tracking-tight text-balance drop-shadow-sm">
                 Bienvenue dans le club
               </h2>
-              <p className="text-primary-100 text-sm">
+              <p className="text-white/80 text-base leading-relaxed max-w-xs mx-auto">
                 Gérez vos adhérents, sorties et plongées facilement
               </p>
             </motion.div>
