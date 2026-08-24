@@ -216,13 +216,11 @@ const LoginPage = () => {
             ? { duration: 0.4, ease: "easeOut" }
             : { duration: 0.3, ease: "easeOut" }
         }
-        // 80% de la largeur d'écran sur ordinateur (md+), quelle que soit sa
-        // taille réelle (petit laptop ou grand moniteur) — remplace l'ancien
-        // plafond fixe en pixels (max-w-6xl), qui paraissait minuscule sur
-        // un grand écran et presque plein écran sur un petit. Pleine largeur
-        // conservée en dessous de md (mobile) : 80% y serait trop étroit
-        // pour le formulaire.
-        className="relative z-20 w-full md:w-4/5 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
+        // 2/3 de la largeur d'écran sur ordinateur (md+), quelle que soit sa
+        // taille réelle (petit laptop ou grand moniteur) — réduit depuis
+        // 4/5, jugé trop large. Pleine largeur conservée en dessous de md
+        // (mobile) : 2/3 y serait trop étroit pour le formulaire.
+        className="relative z-20 w-full md:w-2/3 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
       >
         {/* Découvrir le club - mobile uniquement : le bouton équivalent vit
             dans le volet de marque (photo à droite), qui est "hidden
