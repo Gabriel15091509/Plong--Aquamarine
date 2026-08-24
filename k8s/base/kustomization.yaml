@@ -61,13 +61,13 @@ images:
   newTag: sha-a334047
 - name: ghcr.io/gabriel15091509/plong--aquamarine/frontend
   newName: ghcr.io/gabriel15091509/plong--aquamarine/frontend
-  newTag: sha-a4aee1a
+  newTag: sha-a75aeb9
 - name: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/gateway-service
   newTag: sha-b0f11ff
 - name: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/identite-service
-  newTag: sha-a4aee1a
+  newTag: sha-a75aeb9
 - name: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
   newName: ghcr.io/gabriel15091509/plong--aquamarine/materiel-service
   newTag: sha-8342a77
