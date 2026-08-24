@@ -9,6 +9,24 @@ class AttributionController extends BaseController {
     this.attributionService = service;
   }
 
+  async getById(req, res, next) {
+    try {
+      const result = await this.attributionService.getById(req.params.id, req.user);
+      if (!result) {
+        return res.status(404).json({
+          success: false,
+          message: "Attribution non trouvée",
+        });
+      }
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(withStatus(error, 403));
+    }
+  }
+
   async getByAdherent(req, res, next) {
     try {
       const { num_adherent } = req.params;
