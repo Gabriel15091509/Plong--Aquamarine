@@ -31,6 +31,21 @@ class AttributionService extends BaseService {
     );
   }
 
+  // Même garde que getByAdherent ci-dessus, mais pour l'accès direct par id
+  // (BaseService.getById hérité ne vérifiait rien : un adhérent pouvait
+  // consulter l'attribution — et la caution — de n'importe qui d'autre en
+  // changeant juste l'id dans l'URL).
+  async getById(id, user = null) {
+    const attribution = await this.attributionRepository.findById(id);
+    if (attribution) {
+      const adherent = await identiteClient.getAdherentForUser(user);
+      if (adherent && attribution.num_adherent !== adherent.num_adherent) {
+        throw new Error("Accès refusé à cette attribution");
+      }
+    }
+    return attribution;
+  }
+
   async getByMateriel(num_inventaire) {
     return await this.attributionRepository.findByMateriel(num_inventaire);
   }
