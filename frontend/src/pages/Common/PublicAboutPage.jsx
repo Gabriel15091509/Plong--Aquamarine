@@ -18,17 +18,17 @@ const PublicAboutPage = () => {
     // vides sur les côtés en desktop large.
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6">
       <div className="flex items-center justify-between pb-4 sm:pb-6">
-        <Link to="/login" className="flex items-center gap-2">
-          <Logo size="md" />
-          <span className="hidden sm:inline font-bold text-gray-800 dark:text-white">
+        <Link to="/login" className="flex items-center gap-3">
+          <Logo size="lg" />
+          <span className="hidden sm:inline text-xl font-bold text-gray-800 dark:text-white">
             Plongée Club
           </span>
         </Link>
         <Link
           to="/login"
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-primary-500 to-ocean-500 rounded-xl shadow-md hover:shadow-lg transition-shadow"
+          className="inline-flex items-center gap-2 px-6 py-3 text-base font-semibold text-white bg-gradient-to-r from-primary-500 to-ocean-500 rounded-xl shadow-md hover:shadow-lg transition-shadow"
         >
-          <FiLogIn className="w-4 h-4" />
+          <FiLogIn className="w-5 h-5" />
           Connexion
         </Link>
       </div>
