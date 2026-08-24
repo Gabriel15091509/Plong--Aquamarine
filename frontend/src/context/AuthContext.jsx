@@ -118,9 +118,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   // "Mot de passe oublié ?" (LoginPage.jsx) — étape 1 : demande un lien de
-  // réinitialisation. Le backend répond toujours le même message générique
-  // (compte trouvé ou non), donc pas de rejet possible à afficher ici —
-  // toute erreur réseau reste une exception normale.
+  // réinitialisation. Le backend vérifie explicitement l'email et rejette
+  // (404/403) si aucun compte actif ne correspond — laissé remonter tel
+  // quel, géré par l'appelant (ForgotPasswordPage.jsx).
   const forgotPassword = async (email) => {
     const response = await api.post("/auth/forgot-password", {
       email,

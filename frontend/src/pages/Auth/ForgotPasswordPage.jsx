@@ -27,12 +27,15 @@ const ForgotPasswordPage = () => {
     setLoading(true);
     try {
       await forgotPassword(email);
-      // Le backend répond toujours le même message générique (compte
-      // trouvé ou non) : on passe systématiquement à l'état "envoyé",
-      // jamais d'erreur affichée ici sur une simple absence de compte.
       setSent(true);
-    } catch {
-      setError("Une erreur est survenue, réessayez dans un instant");
+    } catch (err) {
+      // Le backend vérifie désormais explicitement que l'email correspond
+      // à un compte avant d'envoyer quoi que ce soit (ex. "Aucun compte
+      // n'est associé à cet email") : on relaie directement son message.
+      setError(
+        err.response?.data?.message ||
+          "Une erreur est survenue, réessayez dans un instant",
+      );
     } finally {
       setLoading(false);
     }
@@ -75,12 +78,11 @@ const ForgotPasswordPage = () => {
               Email envoyé
             </h2>
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Si un compte existe avec l&apos;adresse{" "}
+              Un lien de réinitialisation vient d&apos;être envoyé à{" "}
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 {email}
               </span>
-              , un lien de réinitialisation vient de lui être envoyé.
-              Vérifiez aussi vos courriers indésirables.
+              . Vérifiez aussi vos courriers indésirables.
             </p>
           </motion.div>
         ) : (

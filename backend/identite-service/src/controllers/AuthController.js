@@ -210,18 +210,12 @@ class AuthController {
   }
 
   // "Mot de passe oublié ?" (LoginPage.jsx) — étape 1 : reçoit un email,
-  // envoie un lien à usage unique si un compte correspond. Répond toujours
-  // le même message générique, que le compte existe ou non (et même en cas
-  // d'erreur d'envoi d'email) : ne jamais laisser un visiteur non authentifié
-  // déduire quels emails ont un compte (énumération de comptes).
+  // vérifie qu'un compte actif existe AVANT d'envoyer quoi que ce soit, et
+  // répond explicitement dans les deux cas (demande explicite, 2026-08-24 —
+  // remplace la réponse générique précédente qui masquait volontairement
+  // l'existence du compte contre l'énumération ; accepté ici vu la taille
+  // du club, au profit d'un retour plus clair pour l'utilisateur).
   async forgotPassword(req, res) {
-    const genericResponse = () =>
-      res.json({
-        success: true,
-        message:
-          "Si un compte existe avec cet email, un lien de réinitialisation vient d'être envoyé.",
-      });
-
     try {
       const { email, resetUrlBase } = req.body;
       if (!email) {
@@ -231,8 +225,16 @@ class AuthController {
       }
 
       const user = await User.findOne({ where: { email } });
-      if (!user || !user.active) {
-        return genericResponse();
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "Aucun compte n'est associé à cet email",
+        });
+      }
+      if (!user.active) {
+        return res
+          .status(403)
+          .json({ success: false, message: "Compte désactivé" });
       }
 
       const token = crypto.randomBytes(32).toString("hex");
@@ -252,12 +254,16 @@ class AuthController {
         validityMinutes: RESET_TOKEN_VALIDITY_MINUTES,
       });
 
-      return genericResponse();
+      return res.json({
+        success: true,
+        message: "Un lien de réinitialisation vient d'être envoyé à votre adresse email.",
+      });
     } catch (error) {
       console.error("Erreur lors de la demande de réinitialisation :", error);
-      // Toujours le message générique, même en cas d'erreur serveur : ne
-      // pas révéler par la différence de réponse si l'email est en base.
-      return genericResponse();
+      return res.status(500).json({
+        success: false,
+        message: "Erreur lors de l'envoi du lien de réinitialisation",
+      });
     }
   }
 
