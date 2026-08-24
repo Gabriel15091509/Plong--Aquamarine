@@ -77,7 +77,7 @@ const SortiesPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteModal, setDeleteModal] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState("list");
+  const [viewMode, setViewMode] = useState("grid");
   // Sous-menu sidebar "Mes sorties" (?filtre=mes-sorties, voir Sidebar.jsx) —
   // même pattern que showValidationOnly dans AdhesionList/CertificatList.
   const [mesSortiesOnly, setMesSortiesOnly] = useState(
@@ -97,7 +97,7 @@ const SortiesPage = () => {
     );
     setCurrentPage(1);
   }, [searchParams]);
-  const itemsPerPage = 10;
+  const itemsPerPage = 12;
 
   const {
     data: sortiesData,
