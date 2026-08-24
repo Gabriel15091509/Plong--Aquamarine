@@ -246,11 +246,7 @@ const LoginPage = () => {
           initial="hidden"
           animate={transitioning ? { opacity: 0, x: "-100%" } : "visible"}
           transition={transitioning ? { duration: 0.4, ease: "easeIn" } : undefined}
-          // Volet formulaire un peu plus étroit que la moitié (5/12 ≈ 42%)
-          // pour laisser plus de place au volet de marque à droite — split
-          // asymétrique plus posé/pro qu'un 50/50 strict, padding réduit en
-          // conséquence pour ne pas paraître comprimé.
-          className="w-full md:w-5/12 p-8 md:p-10 lg:p-12 dark:bg-gray-800/50"
+          className="w-full md:w-1/2 p-8 md:p-12 lg:p-16 dark:bg-gray-800/50"
         >
           {/* Logo */}
           <motion.div variants={itemVariants} className="flex items-center gap-3 mb-8">
@@ -558,7 +554,7 @@ const LoginPage = () => {
               ? { duration: 0.4, ease: "easeIn" }
               : { duration: 0.3, delay: 0.1, ease: "easeOut" }
           }
-          className="hidden md:flex w-7/12 relative bg-primary-900 p-8 overflow-hidden items-center justify-center"
+          className="hidden md:flex w-1/2 relative bg-primary-900 p-8 overflow-hidden items-center justify-center"
         >
           {/* Photo de fond (plongeur en eau bleue) : remplace l'ancien
               aplat "tout dégradé" par une image de notre domaine, plus
