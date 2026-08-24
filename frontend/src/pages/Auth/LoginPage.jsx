@@ -259,19 +259,6 @@ const LoginPage = () => {
             </p>
           </motion.div>
 
-          {/* Accès public, sans connexion (voir PublicAboutPage.jsx / route
-              /decouvrir) — visible quel que soit l'état (formulaire, OTP,
-              déjà connecté), pas seulement au premier écran. */}
-          <motion.div variants={itemVariants} className="mb-8">
-            <Link
-              to="/decouvrir"
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
-            >
-              Découvrir le club
-              <FiArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </motion.div>
-
           {alreadyLoggedIn ? (
             /* Session encore valide (retour arrière du navigateur, onglet
                resté ouvert...) : proposer de continuer plutôt que de se
@@ -551,8 +538,22 @@ const LoginPage = () => {
               ? { duration: 0.4, ease: "easeIn" }
               : { duration: 0.3, delay: 0.1, ease: "easeOut" }
           }
-          className="hidden md:flex w-1/2 relative bg-gradient-to-br from-primary-600 via-primary-700 to-ocean-800 p-8 overflow-hidden items-center justify-center"
+          className="hidden md:flex w-1/2 relative bg-primary-900 p-8 overflow-hidden items-center justify-center"
         >
+          {/* Photo de fond (plongeur en eau bleue) : remplace l'ancien
+              aplat "tout dégradé" par une image de notre domaine, plus
+              proche d'un site vitrine que d'un simple fond de couleur —
+              même photo/traitement que le hero de AboutPage.jsx. */}
+          <img
+            src="https://images.unsplash.com/photo-1761145586920-8eb35f3c7c9b?w=1600&q=75&auto=format&fit=crop"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          {/* Voile dégradé aux couleurs de la marque, pour garder le logo et
+              le texte lisibles par-dessus la photo. */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary-900/85 via-primary-800/75 to-ocean-900/85" />
+
           {/* Vague décorative (statique) */}
           <div className="absolute inset-0">
             <svg
@@ -566,6 +567,25 @@ const LoginPage = () => {
               />
             </svg>
           </div>
+
+          {/* Découvrir le club : mis en évidence en haut à droite, visible
+              sans avoir à se connecter (voir PublicAboutPage.jsx). Bouton
+              plein (blanc/opaque) plutôt qu'un lien discret, pour qu'il
+              ressorte nettement sur la photo. */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2, ease: "easeOut" }}
+            className="absolute top-6 right-6 z-20"
+          >
+            <Link
+              to="/decouvrir"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-primary-700 text-sm font-semibold rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-100 transition-all duration-200"
+            >
+              <FiCompass className="w-4 h-4" />
+              Découvrir le club
+            </Link>
+          </motion.div>
 
           {/* Logo au centre */}
           <div className="relative z-10 flex flex-col items-center justify-center h-full">
