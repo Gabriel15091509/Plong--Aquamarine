@@ -11,7 +11,9 @@ const InfoItem = ({ icon: Icon, label, value, highlight = false, children }) => 
   <motion.div
     variants={fadeInUp}
     className={`flex items-start gap-4 p-4 rounded-xl transition-colors duration-150 ${
-      highlight ? "" : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
+      highlight
+        ? "bg-cyan-50/70 dark:bg-cyan-950/20"
+        : "hover:bg-gray-50 dark:hover:bg-gray-800/30"
     }`}
   >
     <div
