@@ -34,6 +34,7 @@ import FormationsPage from "./pages/Formation/FormationsPage";
 import SpecialitesFormationPage from "./pages/Formation/SpecialitesFormationPage";
 import CalendrierPage from "./pages/Common/CalendrierPage";
 import AboutPage from "./pages/Common/AboutPage";
+import PublicAboutPage from "./pages/Common/PublicAboutPage";
 import PrivacyPolicyPage from "./pages/Common/PrivacyPolicyPage";
 import UsersPage from "./pages/User/UsersPage";
 import NotFoundPage from "./pages/Common/NotFoundPage";
@@ -107,6 +108,12 @@ function App() {
             <Routes>
               {/* Page de login - sans layout */}
               <Route path="/login" element={<LoginPage />} />
+
+              {/* Vitrine publique "Découvrir le club" - sans layout, sans
+                  connexion requise (lien depuis LoginPage). /about (plus
+                  bas) reste la version protégée, accessible depuis le menu
+                  une fois connecté. */}
+              <Route path="/decouvrir" element={<PublicAboutPage />} />
 
               {/* Routes protégées - avec layout */}
               <Route
