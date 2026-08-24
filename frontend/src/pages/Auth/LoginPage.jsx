@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   FiMail,
   FiLock,
@@ -257,6 +257,19 @@ const LoginPage = () => {
                   ? `Saisissez le code envoyé à ${otpEmail}`
                   : "Connectez-vous pour accéder à votre espace de gestion"}
             </p>
+          </motion.div>
+
+          {/* Accès public, sans connexion (voir PublicAboutPage.jsx / route
+              /decouvrir) — visible quel que soit l'état (formulaire, OTP,
+              déjà connecté), pas seulement au premier écran. */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <Link
+              to="/decouvrir"
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
+            >
+              Découvrir le club
+              <FiArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </motion.div>
 
           {alreadyLoggedIn ? (
