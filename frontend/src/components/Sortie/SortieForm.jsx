@@ -90,7 +90,14 @@ const SortieForm = () => {
     duree_estimee: "01:00",
     statut: "Planifiée",
     description_site: "",
-    date_ouverture_inscriptions: "",
+    // Pré-rempli à aujourd'hui dès l'ouverture du formulaire de création
+    // (plutôt que vide) : tant que la date/heure de la sortie n'est pas
+    // encore choisie, le calcul à J-7 n'a rien à calculer, mais laisser le
+    // champ vide donnait l'impression que "le pré-remplissage" annoncé par
+    // l'indication sous le champ ne marchait pas. Dès que la date/heure est
+    // saisie, la logique de handleChange ci-dessous recalcule cette valeur
+    // à J-7 (sauf si le staff a déjà modifié ce champ à la main).
+    date_ouverture_inscriptions: formatDateForInput(new Date()),
     condition_affectation: "",
     tarif_adherent: 0,
     tarif_non_adherent: "",
