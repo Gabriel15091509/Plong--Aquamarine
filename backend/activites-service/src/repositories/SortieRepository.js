@@ -187,6 +187,24 @@ class SortieRepository extends BaseRepository {
     });
   }
 
+  // Fait passer automatiquement "Planifiée" -> "En cours" toute sortie dont
+  // l'heure de départ est atteinte — jusqu'ici un passage 100% manuel (et en
+  // pratique jamais fait : aucun bouton dédié dans l'UI, seul le champ
+  // générique "Statut" du formulaire de modification permettait de le faire,
+  // uniquement tant que la sortie était encore "Planifiée"). Voir
+  // SortieService.demarrerSortiesEchues (appelée en tâche de fond,
+  // app.js:startBackgroundJobs). Ne touche jamais "Terminée"/"Annulée", qui
+  // restent des décisions humaines (cf. l'alerte needsStatusUpdate de
+  // SortieDetails.jsx).
+  async demarrerSortiesEchues() {
+    const now = new Date();
+    const [count] = await this.model.update(
+      { statut: "En cours" },
+      { where: { date_heure: { [Op.lte]: now }, statut: "Planifiée" } },
+    );
+    return count;
+  }
+
   async countInPeriod(dateField, start, end) {
     return await this.model.count({
       where: { [dateField]: { [Op.gte]: start, [Op.lte]: end } },
