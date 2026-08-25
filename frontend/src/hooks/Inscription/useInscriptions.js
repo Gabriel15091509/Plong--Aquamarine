@@ -99,14 +99,25 @@ export const useInscriptions = () => {
     });
   };
 
+  // Régression : `useGetById` ci-dessus met sa fiche en cache sous la clé
+  // SINGULIER ["inscription", id] (voir InscriptionDetails.jsx), distincte
+  // de la clé PLURIEL ["inscriptions", ...] utilisée par la liste/les stats/
+  // la capacité — invalider seulement ["inscriptions"] ne touche donc jamais
+  // ["inscription", id] (ce ne sont pas des préfixes communs). useUpdate et
+  // useEnregistrerPaiement plus bas invalidaient déjà les deux clés
+  // correctement ; useConfirm/useCancel les oubliaient, laissant la page de
+  // détail d'une inscription affichée son ancien statut ("En attente" au
+  // lieu de "Confirmée"/"Annulée") tant que la page n'était pas rechargée
+  // manuellement.
   const useConfirm = () => {
     return useMutation({
       mutationFn: async (id) => {
         const response = await inscriptionService.confirm(id);
         return response;
       },
-      onSuccess: () => {
+      onSuccess: (data, id) => {
         queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
+        queryClient.invalidateQueries({ queryKey: ["inscription", id] });
         queryClient.invalidateQueries({ queryKey: ["inscriptions", "stats"] });
         queryClient.invalidateQueries({ queryKey: ["inscriptions", "capacity"] });
       },
@@ -119,8 +130,9 @@ export const useInscriptions = () => {
         const response = await inscriptionService.cancel(id);
         return response;
       },
-      onSuccess: () => {
+      onSuccess: (data, id) => {
         queryClient.invalidateQueries({ queryKey: ["inscriptions"] });
+        queryClient.invalidateQueries({ queryKey: ["inscription", id] });
         queryClient.invalidateQueries({ queryKey: ["inscriptions", "stats"] });
         queryClient.invalidateQueries({ queryKey: ["inscriptions", "capacity"] });
       },
