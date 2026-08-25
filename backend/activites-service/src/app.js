@@ -142,6 +142,50 @@ const runPendingMigrations = async () => {
   }
 };
 
+// Correction de données ponctuelle (pas un changement de schéma) : aligne
+// profondeur_max sur le max théorique du niveau requis (voir
+// PROFONDEUR_MAX_PAR_NIVEAU, utils/roleScope.js) pour les sorties encore
+// "Planifiée" dont la profondeur ne correspond pas à cette grille — demande
+// explicite du 2026-08-25, les deux champs étaient jusqu'ici totalement
+// déconnectés (ex. Baptême par défaut avec 20 m de profondeur affichée).
+// Volontairement limité aux sorties "Planifiée" : l'historique (Terminée/
+// Annulée) peut légitimement refléter une profondeur réellement atteinte
+// plus faible que le max théorique du niveau, et ne doit pas être réécrit.
+// Idempotent (WHERE ... != cible : plus aucune ligne à corriger dès la
+// première exécution réussie), donc sûr à rejouer à chaque démarrage comme
+// runPendingMigrations ci-dessus — mêmes garanties (accès DB interne
+// toujours disponible, échec non bloquant pour le démarrage du service).
+const PROFONDEUR_MAX_PAR_NIVEAU_SQL = {
+  "Baptême": 6,
+  "Niveau 1": 20,
+  "Niveau 2": 40,
+  "Niveau 3": 60,
+  "Niveau 4": 60,
+  Moniteur: 60,
+};
+
+const corrigerProfondeurMaxPlanifiees = async () => {
+  const schema = process.env.DB_SCHEMA || "activites";
+  try {
+    let totalCorrigees = 0;
+    for (const [niveau, profondeur] of Object.entries(PROFONDEUR_MAX_PAR_NIVEAU_SQL)) {
+      const [, metadata] = await sequelize.query(
+        `UPDATE ${schema}.sorties SET profondeur_max = :profondeur
+           WHERE statut = 'Planifiée' AND niveau_requis = :niveau AND profondeur_max != :profondeur`,
+        { replacements: { niveau, profondeur } },
+      );
+      totalCorrigees += metadata?.rowCount || 0;
+    }
+    if (totalCorrigees > 0) {
+      logger.info(
+        `[activites-service] profondeur_max corrigée pour ${totalCorrigees} sortie(s) "Planifiée" (grille par niveau requis)`,
+      );
+    }
+  } catch (error) {
+    logger.error("[activites-service] Échec correction profondeur_max :", error);
+  }
+};
+
 const initializeApp = async () => {
   const connected = await testConnection();
   if (!connected) {
@@ -149,6 +193,7 @@ const initializeApp = async () => {
     process.exit(1);
   }
   await runPendingMigrations();
+  await corrigerProfondeurMaxPlanifiees();
 };
 
 // Jobs de fond : volontairement séparés de initializeApp() et jamais

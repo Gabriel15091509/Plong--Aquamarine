@@ -28,6 +28,7 @@ import {
   TYPE_SORTIE_OPTIONS,
   STATUT_SORTIE_OPTIONS,
   NIVEAU_OPTIONS,
+  PROFONDEUR_MAX_PAR_NIVEAU,
 } from "../../utils/constants";
 import {
   formatDateForInput,
@@ -78,6 +79,10 @@ const SortieForm = () => {
   // volontaire), pour que la règle soit respectée par défaut plutôt que de
   // dépendre d'un calcul manuel à chaque création.
   const dateOuvertureTouchedRef = useRef(false);
+  // Même principe que dateOuvertureTouchedRef ci-dessus, pour
+  // profondeur_max : auto-rempli à partir de PROFONDEUR_MAX_PAR_NIVEAU tant
+  // que le staff n'a pas modifié le champ à la main (voir handleChange).
+  const profondeurMaxTouchedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     date_heure: "",
@@ -86,7 +91,7 @@ const SortieForm = () => {
     type: "Plongée d'exploration",
     niveau_requis: "Baptême",
     nb_places: 10,
-    profondeur_max: 20,
+    profondeur_max: PROFONDEUR_MAX_PAR_NIVEAU["Baptême"],
     duree_estimee: "01:00",
     statut: "Planifiée",
     description_site: "",
@@ -113,6 +118,10 @@ const SortieForm = () => {
       // le staff à l'époque) : ne jamais l'écraser via l'auto-calcul si la
       // date/heure est retouchée en édition.
       dateOuvertureTouchedRef.current = true;
+      // Une sortie existante a déjà sa propre profondeur_max (voulue par le
+      // staff, potentiellement inférieure au max théorique du niveau pour
+      // ce site précis) : ne jamais l'écraser via l'auto-calcul en édition.
+      profondeurMaxTouchedRef.current = true;
       setFormData({
         date_heure: formatDateTimeForInput(s.date_heure),
         lieu: s.lieu || "",
@@ -120,7 +129,10 @@ const SortieForm = () => {
         type: s.type || "Plongée d'exploration",
         niveau_requis: s.niveau_requis || "Débutant",
         nb_places: s.nb_places || 10,
-        profondeur_max: s.profondeur_max || 20,
+        profondeur_max:
+          s.profondeur_max ||
+          PROFONDEUR_MAX_PAR_NIVEAU[s.niveau_requis] ||
+          20,
         duree_estimee: s.duree_estimee || "01:00",
         statut: s.statut || "Planifiée",
         description_site: s.description_site || "",
@@ -145,6 +157,12 @@ const SortieForm = () => {
       // ce champ pour ce formulaire, même si date_heure change ensuite.
       dateOuvertureTouchedRef.current = true;
     }
+    if (name === "profondeur_max") {
+      // Idem : dès que le staff touche directement ce champ, on arrête de
+      // le réécrire quand "Niveau requis" change ensuite (le staff a
+      // délibérément choisi une profondeur différente du max théorique).
+      profondeurMaxTouchedRef.current = true;
+    }
 
     setFormData((prev) => {
       const next = { ...prev, [name]: value };
@@ -154,6 +172,13 @@ const SortieForm = () => {
           ouverture.setDate(ouverture.getDate() - 7);
           next.date_ouverture_inscriptions = formatDateForInput(ouverture);
         }
+      }
+      if (
+        name === "niveau_requis" &&
+        !profondeurMaxTouchedRef.current &&
+        PROFONDEUR_MAX_PAR_NIVEAU[value] != null
+      ) {
+        next.profondeur_max = PROFONDEUR_MAX_PAR_NIVEAU[value];
       }
       return next;
     });
@@ -449,9 +474,14 @@ const SortieForm = () => {
               className={inputClasses("profondeur_max")}
               min="0"
             />
-            {errors.profondeur_max && (
+            {errors.profondeur_max ? (
               <p className="mt-1.5 text-sm text-red-500">
                 {errors.profondeur_max}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                Pré-rempli selon le niveau requis ({PROFONDEUR_MAX_PAR_NIVEAU[formData.niveau_requis] ?? "—"}
+                &nbsp;m), modifiable si le site est moins profond.
               </p>
             )}
           </motion.div>

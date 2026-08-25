@@ -14,6 +14,26 @@ const NIVEAU_ORDER = [
   "Moniteur",
 ];
 
+// Profondeur max encadrée standard par niveau (norme FFESM — les sorties
+// club sont toujours encadrées par un moniteur/DP) : utilisée par
+// SortieService.create pour pré-remplir profondeur_max quand l'appelant ne
+// l'a pas fourni explicitement, au lieu de laisser ce champ totalement
+// déconnecté du niveau requis choisi. Même grille côté frontend, voir
+// frontend/src/utils/constants.js PROFONDEUR_MAX_PAR_NIVEAU — à faire
+// évoluer en même temps si jamais modifiée.
+const PROFONDEUR_MAX_PAR_NIVEAU = {
+  "Baptême": 6,
+  "Niveau 1": 20,
+  "Niveau 2": 40,
+  "Niveau 3": 60,
+  "Niveau 4": 60,
+  Moniteur: 60,
+};
+
+function profondeurMaxPourNiveau(niveau) {
+  return PROFONDEUR_MAX_PAR_NIVEAU[niveau] ?? null;
+}
+
 const ROLES = {
   PRESIDENT_ONLY: ["president"],
   PRESIDENT_MONITEUR: ["president", "moniteur"],
@@ -45,7 +65,9 @@ module.exports = {
   isStaff,
   isNiveauCompatible,
   computeStatutPaiement,
+  profondeurMaxPourNiveau,
   STAFF_ROLES,
   NIVEAU_ORDER,
+  PROFONDEUR_MAX_PAR_NIVEAU,
   ROLES,
 };
