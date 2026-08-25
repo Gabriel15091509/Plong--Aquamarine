@@ -8,6 +8,7 @@ import {
   formatDuration,
   formatPhoneNumber,
   isSortieSelectionnable,
+  isNiveauCompatible,
   joursRestants,
   formatCompteARebours,
 } from "./helpers";
@@ -108,6 +109,29 @@ describe("isSortieSelectionnable", () => {
     expect(isSortieSelectionnable({ statut: "Terminée" })).toBe(false);
     expect(isSortieSelectionnable({ statut: "En cours" })).toBe(false);
     expect(isSortieSelectionnable({ statut: "Annulée" })).toBe(false);
+  });
+});
+
+describe("isNiveauCompatible", () => {
+  it("accepte un adhérent dont le niveau est strictement supérieur au niveau requis", () => {
+    expect(isNiveauCompatible("Niveau 3", "Niveau 1")).toBe(true);
+  });
+
+  it("accepte un adhérent dont le niveau égale exactement le niveau requis", () => {
+    expect(isNiveauCompatible("Niveau 2", "Niveau 2")).toBe(true);
+  });
+
+  it("refuse un adhérent dont le niveau est inférieur au niveau requis", () => {
+    expect(isNiveauCompatible("Baptême", "Niveau 3")).toBe(false);
+  });
+
+  it("accepte tout le monde quand aucun niveau n'est requis", () => {
+    expect(isNiveauCompatible("Baptême", null)).toBe(true);
+    expect(isNiveauCompatible("Baptême", undefined)).toBe(true);
+  });
+
+  it("accepte par défaut un niveau requis inconnu de la grille (fail-open, cohérent avec le backend)", () => {
+    expect(isNiveauCompatible("Baptême", "Niveau inconnu")).toBe(true);
   });
 });
 
