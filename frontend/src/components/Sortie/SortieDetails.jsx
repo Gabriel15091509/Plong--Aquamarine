@@ -45,7 +45,11 @@ import InfoItem from "../Common/InfoItem";
 import PalanqueesManager from "../Palanquee/PalanqueesManager";
 import MaPalanqueeCard from "../Palanquee/MaPalanqueeCard";
 import SortieRouteMap from "./SortieRouteMap";
-import { formatDateTime } from "../../utils/helpers";
+import {
+  formatDateTime,
+  getFinEstimeeSortie,
+  sortieDoitEtreCloturee,
+} from "../../utils/helpers";
 import { STATUT_SORTIE } from "../../utils/constants";
 
 // Animations
@@ -149,12 +153,15 @@ const SortieDetails = () => {
     (idMoniteur) => moniteurMap[idMoniteur] || `Moniteur #${idMoniteur}`,
   );
 
-  // La date de la sortie est passée mais son statut n'a pas été mis à
-  // jour manuellement : on alerte le staff pour qu'il clôture/annule.
-  const needsStatusUpdate =
-    sortie &&
-    new Date(sortie.date_heure) < new Date() &&
-    [STATUT_SORTIE.PLANIFIEE, STATUT_SORTIE.EN_COURS].includes(sortie.statut);
+  // Durée estimée dépassée mais le statut n'a pas été mis à jour
+  // manuellement : on alerte le staff pour qu'il clôture/annule. Basé sur
+  // date_heure + duree_estimee (pas juste date_heure) : le passage à "En
+  // cours" est désormais automatique dès le départ (SortieService
+  // .demarrerSortiesEchues), donc une sortie qui vient tout juste de
+  // démarrer ne doit pas être signalée comme "à terminer" — voir
+  // utils/helpers.js:sortieDoitEtreCloturee.
+  const needsStatusUpdate = !!sortie && sortieDoitEtreCloturee(sortie);
+  const finEstimee = sortie ? getFinEstimeeSortie(sortie) : null;
   const isTerminee = sortie?.statut === STATUT_SORTIE.TERMINEE;
   // Verrouillé côté serveur (SortieService.update/delete) dès que la sortie
   // a quitté "Planifiée" — pas seulement une fois "Terminée".
@@ -366,9 +373,9 @@ const SortieDetails = () => {
           <div className="flex items-center gap-3">
             <FiAlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
             <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-              Cette sortie est passée le {formatDateTime(sortie.date_heure)}
-              mais son statut est toujours « {sortie.statut} ». Pensez à le
-              mettre à jour.
+              La durée estimée de cette sortie est dépassée (fin prévue vers{" "}
+              {formatDateTime(finEstimee)}) mais son statut est toujours «{" "}
+              {sortie.statut} ». Pensez à le mettre à jour.
             </p>
           </div>
           <div className="flex gap-2 w-full sm:w-auto sm:flex-shrink-0">
