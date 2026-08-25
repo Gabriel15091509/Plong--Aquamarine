@@ -7,10 +7,27 @@ class AlerteRepository extends BaseRepository {
     super(Alerte);
   }
 
-  async findUnread(where = {}) {
+  // `limit` optionnel : le dropdown de notifications (Header.jsx) n'a
+  // besoin que des toutes dernières alertes non lues, pas de l'historique
+  // complet — sans lui, un club avec beaucoup d'adhérents/alertes finissait
+  // par charger (et faire tenir en mémoire côté navigateur) des centaines
+  // de lignes à chaque ouverture du dropdown.
+  async findUnread(where = {}, { limit } = {}) {
     return await this.model.findAll({
       where: { ...where, read: false },
-      order: [['date_envoi', 'DESC']]
+      order: [['date_envoi', 'DESC']],
+      ...(limit ? { limit } : {}),
+    });
+  }
+
+  // Pagination réelle (offset/limit + total via findAndCountAll) pour la
+  // page "Toutes les notifications" — voir AlerteService.getAllPaginated.
+  async findAllPaginated(where = {}, { limit = 20, offset = 0 } = {}) {
+    return await this.model.findAndCountAll({
+      where,
+      order: [['date_envoi', 'DESC']],
+      limit,
+      offset,
     });
   }
 

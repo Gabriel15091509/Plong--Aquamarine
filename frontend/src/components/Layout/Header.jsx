@@ -10,13 +10,10 @@ import {
   FiUserPlus,
   FiMail,
   FiCalendar,
-  FiDollarSign,
-  FiAward,
   FiX,
   FiChevronRight,
   FiSun,
   FiMoon,
-  FiAlertCircle,
   FiCheckCircle,
   FiKey,
 } from "react-icons/fi";
@@ -27,6 +24,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useAlertes } from "../../hooks/Alerte/useAlertes";
 import { formatRelativeTime } from "../../utils/helpers";
+import { getAlertIcon, getAlertDescription } from "../../utils/alerteDisplay";
 import { photoUrl } from "../../utils/photoUrl";
 import Logo from "../Common/Logo";
 import AlerteDetailsModal from "../Alerte/AlerteDetailsModal";
@@ -45,15 +43,20 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
   const profileButtonRef = useRef(null);
 
   // Récupération des alertes
-  const { useGetUnread, useMarkAsRead, useMarkAllAsRead, useRemove } =
+  const { useGetUnread, useGetStats, useMarkAsRead, useMarkAllAsRead, useRemove } =
     useAlertes();
   const { data: unreadData, isLoading: loadingUnread } = useGetUnread();
+  const { data: statsData } = useGetStats();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
   const remove = useRemove();
 
   const notifications = unreadData?.data || [];
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  // Compteur réel (pas juste la longueur de `notifications`, plafonnée à 20
+  // côté backend pour ne pas alourdir le dropdown — voir useGetUnread) :
+  // repose sur /alertes/stats, jamais tronqué.
+  const unreadCount = statsData?.data?.unreadCount ?? notifications.length;
+  const autresNonLues = Math.max(unreadCount - notifications.length, 0);
 
   // Fermer les menus quand on clique ailleurs
   useEffect(() => {
@@ -77,73 +80,6 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const getAlertIcon = (type) => {
-    const icons = {
-      "Certificat expiré": {
-        icon: FiAlertCircle,
-        color: "text-red-500",
-        bg: "bg-red-50 dark:bg-red-900/30",
-      },
-      "Certificat expire bientot": {
-        icon: FiCalendar,
-        color: "text-amber-500",
-        bg: "bg-amber-50 dark:bg-amber-900/30",
-      },
-      "Adhésion expirée": {
-        icon: FiAlertCircle,
-        color: "text-orange-500",
-        bg: "bg-orange-50 dark:bg-orange-900/30",
-      },
-      "Adhesion expire bientot": {
-        icon: FiCalendar,
-        color: "text-orange-500",
-        bg: "bg-orange-50 dark:bg-orange-900/30",
-      },
-      "Paiement en retard": {
-        icon: FiDollarSign,
-        color: "text-yellow-500",
-        bg: "bg-yellow-50 dark:bg-yellow-900/30",
-      },
-      Formation: {
-        icon: FiAward,
-        color: "text-blue-500",
-        bg: "bg-blue-50 dark:bg-blue-900/30",
-      },
-      "Materiel en retard": {
-        icon: FiAlertCircle,
-        color: "text-purple-500",
-        bg: "bg-purple-50 dark:bg-purple-900/30",
-      },
-      "Inactivite plongee": {
-        icon: FiCalendar,
-        color: "text-gray-500",
-        bg: "bg-gray-50 dark:bg-gray-700",
-      },
-    };
-    return (
-      icons[type] || {
-        icon: FiBell,
-        color: "text-gray-500",
-        bg: "bg-gray-50 dark:bg-gray-700",
-      }
-    );
-  };
-
-  const getAlertDescription = (alerte) => {
-    const descriptions = {
-      "Certificat expiré": "Le certificat médical a expiré",
-      "Certificat expire bientot":
-        "Le certificat médical expire dans moins de 30 jours",
-      "Adhésion expirée": "L'adhésion est arrivée à expiration",
-      "Adhesion expire bientot": "L'adhésion expire dans moins de 30 jours",
-      "Paiement en retard": "Un paiement est en attente",
-      Formation: "Une formation est disponible",
-      "Materiel en retard": "Du matériel emprunté n'a pas été retourné à temps",
-      "Inactivite plongee": "Aucune plongée enregistrée depuis longtemps",
-    };
-    return descriptions[alerte.type] || alerte.type;
-  };
 
   const handleMarkAsRead = async (id) => {
     await markAsRead.mutateAsync(id);
@@ -343,15 +279,25 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                     )}
                   </div>
 
-                  {/* Footer notifications */}
-                  {notifications.length > 0 && (
-                    <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 dark:bg-gray-700/50 dark:border-gray-700">
-                      <button className="w-full text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors flex items-center justify-center gap-1 dark:text-primary-400 dark:hover:text-primary-300">
-                        Voir toutes les notifications
-                        <FiChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+                  {/* Footer notifications — le dropdown ne montre que les
+                  quelques dernières non lues (voir useGetUnread) : ce lien
+                  donne accès à l'historique complet, paginé. */}
+                  <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 dark:bg-gray-700/50 dark:border-gray-700">
+                    {autresNonLues > 0 && (
+                      <p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+                        + {autresNonLues} autre{autresNonLues > 1 ? "s" : ""} non lue
+                        {autresNonLues > 1 ? "s" : ""}
+                      </p>
+                    )}
+                    <Link
+                      to="/notifications"
+                      onClick={() => setIsNotificationOpen(false)}
+                      className="w-full text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors flex items-center justify-center gap-1 dark:text-primary-400 dark:hover:text-primary-300"
+                    >
+                      Voir toutes les notifications
+                      <FiChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

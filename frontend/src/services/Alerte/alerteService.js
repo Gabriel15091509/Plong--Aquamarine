@@ -16,8 +16,18 @@ class AlerteService {
     return response.data;
   }
 
-  async getUnread() {
-    const response = await api.get('/alertes/unread');
+  async getUnread(params = {}) {
+    const response = await api.get('/alertes/unread', { params });
+    return response.data;
+  }
+
+  async getAllPaginated(params = {}) {
+    const response = await api.get('/alertes/paginated', { params });
+    return response.data;
+  }
+
+  async getStats() {
+    const response = await api.get('/alertes/stats');
     return response.data;
   }
 

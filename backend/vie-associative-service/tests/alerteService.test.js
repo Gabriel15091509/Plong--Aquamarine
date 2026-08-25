@@ -62,6 +62,75 @@ describe("AlerteService.upsertAutomaticAlerte — déduplication par référence
   });
 });
 
+// Régression : le dropdown de notifications (Header.jsx côté frontend)
+// chargeait TOUTES les alertes non lues sans limite, faisant grimper le ram
+// du navigateur pour un club avec beaucoup d'alertes. getUnread plafonne
+// désormais la liste ; getAllPaginated donne accès à l'historique complet,
+// paginé, pour la page "Toutes les notifications".
+describe("AlerteService.getUnread — plafond du dropdown", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("transmet la limite par défaut (20) au repository", async () => {
+    jest.spyOn(service, "syncExpirationAlertes").mockResolvedValue();
+    const findUnreadSpy = jest.spyOn(service.alerteRepository, "findUnread").mockResolvedValue([]);
+
+    await service.getUnread({ role: "president" }, null);
+
+    expect(findUnreadSpy).toHaveBeenCalledWith(expect.any(Object), { limit: 20 });
+  });
+
+  test("transmet une limite explicite au repository", async () => {
+    jest.spyOn(service, "syncExpirationAlertes").mockResolvedValue();
+    const findUnreadSpy = jest.spyOn(service.alerteRepository, "findUnread").mockResolvedValue([]);
+
+    await service.getUnread({ role: "president" }, null, { limit: 5 });
+
+    expect(findUnreadSpy).toHaveBeenCalledWith(expect.any(Object), { limit: 5 });
+  });
+});
+
+describe("AlerteService.getAllPaginated", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("calcule offset/limit à partir de page et pageSize, renvoie le total", async () => {
+    jest.spyOn(service, "syncExpirationAlertes").mockResolvedValue();
+    const findAllPaginatedSpy = jest
+      .spyOn(service.alerteRepository, "findAllPaginated")
+      .mockResolvedValue({ rows: [], count: 45 });
+
+    const result = await service.getAllPaginated({ page: 3, pageSize: 10 }, { role: "president" }, null);
+
+    expect(findAllPaginatedSpy).toHaveBeenCalledWith(expect.any(Object), { limit: 10, offset: 20 });
+    expect(result).toEqual({ data: [], total: 45, page: 3, pageSize: 10, totalPages: 5 });
+  });
+
+  test("retombe sur la page 1 / taille par défaut si non fournis", async () => {
+    jest.spyOn(service, "syncExpirationAlertes").mockResolvedValue();
+    const findAllPaginatedSpy = jest
+      .spyOn(service.alerteRepository, "findAllPaginated")
+      .mockResolvedValue({ rows: [], count: 0 });
+
+    await service.getAllPaginated({}, { role: "president" }, null);
+
+    expect(findAllPaginatedSpy).toHaveBeenCalledWith(expect.any(Object), { limit: 20, offset: 0 });
+  });
+
+  test("plafonne pageSize à 100 même si une valeur plus grande est demandée", async () => {
+    jest.spyOn(service, "syncExpirationAlertes").mockResolvedValue();
+    const findAllPaginatedSpy = jest
+      .spyOn(service.alerteRepository, "findAllPaginated")
+      .mockResolvedValue({ rows: [], count: 0 });
+
+    await service.getAllPaginated({ page: 1, pageSize: 500 }, { role: "president" }, null);
+
+    expect(findAllPaginatedSpy).toHaveBeenCalledWith(expect.any(Object), { limit: 100, offset: 0 });
+  });
+});
+
 const baseAlerte = {
   id_alerte: 1,
   num_adherent: "ADH-2026-0001",
