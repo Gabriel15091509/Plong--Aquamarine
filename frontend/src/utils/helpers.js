@@ -14,6 +14,36 @@ const STATUTS_SORTIE_NON_SELECTIONNABLES = [
 export const isSortieSelectionnable = (sortie) =>
   !STATUTS_SORTIE_NON_SELECTIONNABLES.includes(sortie?.statut);
 
+// Heure de fin estimée = date_heure + duree_estimee (colonne TIME, servie
+// en "HH:MM" ou "HH:MM:SS" selon qu'elle vient du formulaire ou de l'API) —
+// utilisée pour savoir quand proposer de clôturer une sortie ("À terminer"),
+// plus fiable que l'heure de départ seule (une sortie qui vient de démarrer
+// ne doit pas être signalée comme "à terminer").
+export const getFinEstimeeSortie = (sortie) => {
+  if (!sortie?.date_heure) return null;
+  const debut = new Date(sortie.date_heure);
+  if (Number.isNaN(debut.getTime())) return null;
+  const [heures = 0, minutes = 0] = (sortie.duree_estimee || "00:00")
+    .split(":")
+    .map(Number);
+  return new Date(debut.getTime() + (heures * 60 + minutes) * 60 * 1000);
+};
+
+// "À terminer" (SortiesPage.jsx, SortieDetails.jsx) : la durée estimée est
+// dépassée mais le statut n'a pas été mis à jour manuellement — passage
+// "Planifiée" -> "En cours" désormais automatique (SortieService
+// .demarrerSortiesEchues, backend), mais "En cours" -> "Terminée" reste une
+// décision humaine (l'heure estimée n'est qu'une estimation, pas une
+// certitude que la plongée est bien finie).
+export const sortieDoitEtreCloturee = (sortie) => {
+  const finEstimee = getFinEstimeeSortie(sortie);
+  if (!finEstimee) return false;
+  return (
+    finEstimee < new Date() &&
+    [STATUT_SORTIE.PLANIFIEE, STATUT_SORTIE.EN_COURS].includes(sortie?.statut)
+  );
+};
+
 export const formatRelativeTime = (date) => {
   if (!date) return "-";
   try {

@@ -41,7 +41,12 @@ import ErrorState from "../../components/Common/ErrorState";
 import { useSelection } from "../../hooks/useSelection";
 import sortieService from "../../services/Sortie/sortieService";
 
-import { formatDateTime, joursRestants, formatCompteARebours } from "../../utils/helpers";
+import {
+  formatDateTime,
+  joursRestants,
+  formatCompteARebours,
+  sortieDoitEtreCloturee,
+} from "../../utils/helpers";
 import { TYPE_SORTIE_OPTIONS } from "../../utils/constants";
 
 // Configuration des statuts de sortie
@@ -594,12 +599,13 @@ const SortiesPage = () => {
             {paginatedSorties.map((sortie) => {
               const sortieId = sortie.id_sortie || sortie.id;
               const isPastSortie = new Date(sortie.date_heure) < new Date();
-              // Sortie dont la date est passée mais toujours "Planifiée" :
-              // rien ne fait avancer son statut tout seul (voir
-              // InscriptionService.createInscription), il faut que
-              // l'organisateur la clôture manuellement (bouton "Terminer",
-              // même bandeau ambre que SortieDetails).
-              const aTerminer = sortie.statut === "Planifiée" && isPastSortie;
+              // Durée estimée dépassée mais toujours "Planifiée"/"En cours" :
+              // le passage à "En cours" est automatique (voir
+              // SortieService.demarrerSortiesEchues), mais "Terminée" reste
+              // une décision humaine — l'organisateur doit clôturer
+              // manuellement (bouton "Terminer", même bandeau ambre que
+              // SortieDetails). Voir utils/helpers.js:sortieDoitEtreCloturee.
+              const aTerminer = sortieDoitEtreCloturee(sortie);
               const isFull =
                 (sortie.nb_places || 0) <= (sortie.nb_inscrits || 0);
               const canInscribe =
