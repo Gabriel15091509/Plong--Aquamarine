@@ -162,9 +162,27 @@ const startBackgroundJobs = () => {
   cron.schedule("0 7 * * *", runAlerterInactifs);
   logger.info("Planification des alertes matériel/plongée active (quotidien 07:00)");
 
+  // Passage automatique "Planifiée" -> "En cours" à l'heure de départ : un
+  // premier passage immédiat au démarrage, puis toutes les 5 minutes (les
+  // autres jobs de ce fichier sont quotidiens, mais celui-ci doit réagir
+  // dans les minutes qui suivent l'heure réelle de la sortie, pas une fois
+  // par jour).
+  const sortieService = new SortieService();
+  const runDemarrerSortiesEchues = () =>
+    sortieService
+      .demarrerSortiesEchues()
+      .then((nbDemarrees) => {
+        if (nbDemarrees > 0) {
+          logger.info(`${nbDemarrees} sortie(s) passée(s) "En cours" (heure de départ atteinte)`);
+        }
+      })
+      .catch((err) => logger.error("Échec du passage automatique à \"En cours\" :", err));
+  runDemarrerSortiesEchues();
+  cron.schedule("*/5 * * * *", runDemarrerSortiesEchues);
+  logger.info("Passage automatique des sorties à \"En cours\" actif (toutes les 5 minutes)");
+
   // Rappel 24h avant sortie (3.2.2) : un premier passage immédiat au
   // démarrage, puis tous les jours à 18h.
-  const sortieService = new SortieService();
   const runEnvoyerRappels = () =>
     sortieService
       .envoyerRappels(getSystemAuthHeader())

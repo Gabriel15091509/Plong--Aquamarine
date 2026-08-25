@@ -584,6 +584,15 @@ class SortieService extends BaseService {
     return totalPlaces > 0 ? Math.round((totalInscrits / totalPlaces) * 100) : 0;
   }
 
+  // Passage automatique "Planifiée" -> "En cours" dès que l'heure de départ
+  // est atteinte (demande explicite, 2026-08-25 : jusqu'ici purement
+  // manuel, et en pratique jamais fait faute de bouton dédié dans l'UI).
+  // Appelé par un cron toutes les 5 minutes (voir app.js) — ne touche jamais
+  // "Terminée"/"Annulée", qui restent décidés par le staff.
+  async demarrerSortiesEchues() {
+    return await this.sortieRepository.demarrerSortiesEchues();
+  }
+
   // Rappel 24h avant sortie (CDC 3.2.2), envoyé aux inscrits Confirmée des
   // sorties du lendemain. Appelé par un cron (voir app.js) — best-effort,
   // un email en échec n'interrompt pas les autres.

@@ -559,3 +559,20 @@ describe("SortieService.alerterSortiesSansInscription (jamais d'annulation autom
     expect(result).toBe(0);
   });
 });
+
+describe("SortieService.demarrerSortiesEchues", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("délègue au repository et renvoie le nombre de sorties démarrées", async () => {
+    const repoSpy = jest
+      .spyOn(service.sortieRepository, "demarrerSortiesEchues")
+      .mockResolvedValue(3);
+
+    const result = await service.demarrerSortiesEchues();
+
+    expect(repoSpy).toHaveBeenCalled();
+    expect(result).toBe(3);
+  });
+});

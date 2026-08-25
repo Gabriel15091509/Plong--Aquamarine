@@ -29,6 +29,7 @@ import {
   FiZap,
   FiActivity,
   FiUserCheck,
+  FiPlayCircle,
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useIncidents } from "../../hooks/Incident/useIncidents";
@@ -216,6 +217,8 @@ const SortieDetails = () => {
     const colors = {
       [STATUT_SORTIE.PLANIFIEE]:
         "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
+      [STATUT_SORTIE.EN_COURS]:
+        "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800",
       Confirmée:
         "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
       [STATUT_SORTIE.ANNULEE]:
@@ -231,6 +234,7 @@ const SortieDetails = () => {
   const getStatutIcon = (statut) => {
     const icons = {
       [STATUT_SORTIE.PLANIFIEE]: FiCalendar,
+      [STATUT_SORTIE.EN_COURS]: FiPlayCircle,
       Confirmée: FiCheckCircle,
       [STATUT_SORTIE.ANNULEE]: FiXCircle,
       [STATUT_SORTIE.TERMINEE]: FiTrendingUp,
@@ -242,6 +246,7 @@ const SortieDetails = () => {
   const getStatutText = (statut) => {
     const texts = {
       [STATUT_SORTIE.PLANIFIEE]: "La sortie est planifiée et en attente",
+      [STATUT_SORTIE.EN_COURS]: "La sortie est en cours",
       Confirmée: "La sortie est confirmée et prête",
       [STATUT_SORTIE.ANNULEE]: "La sortie a été annulée",
       [STATUT_SORTIE.TERMINEE]: "La sortie est terminée",
