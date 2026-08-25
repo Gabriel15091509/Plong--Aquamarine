@@ -12,6 +12,7 @@ jest.mock("../../src/utils/email", () => ({
   sendPropositionsReprogrammationEmail: jest.fn(),
   sendAlerteMeteoDouteuseEmail: jest.fn(),
   sendSortieSansInscriptionEmail: jest.fn(),
+  sendSortieSousRemplieEmail: jest.fn(),
 }));
 
 const SortieService = require("../../src/services/SortieService");
@@ -21,6 +22,7 @@ const {
   sendSortieAnnuleeMeteoEmail,
   sendAlerteMeteoDouteuseEmail,
   sendSortieSansInscriptionEmail,
+  sendSortieSousRemplieEmail,
 } = require("../../src/utils/email");
 
 const service = new SortieService();
@@ -556,6 +558,89 @@ describe("SortieService.alerterSortiesSansInscription (jamais d'annulation autom
     const result = await service.alerterSortiesSansInscription();
 
     expect(sendSortieSansInscriptionEmail).not.toHaveBeenCalled();
+    expect(result).toBe(0);
+  });
+});
+
+describe("SortieService.alerterSortiesSousRemplies (jamais d'annulation automatique)", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
+  const sortieDemain = {
+    id_sortie: 31,
+    date_heure: dansNJours(1),
+    created_by: 5,
+    nb_places: 8,
+    inscriptions: [],
+  };
+
+  test("alerte l'organisateur et marque la sortie comme signalée sous 50 % de remplissage", async () => {
+    jest
+      .spyOn(service.sortieRepository, "findPlanifieesSansAlerteRemplissageAvant")
+      .mockResolvedValue([{ ...sortieDemain, inscriptions: [{ statut: "Confirmée" }] }]);
+    const updateSpy = jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+    identiteClient.getUserBasicById.mockResolvedValue({ email: "organisateur@test.fr", name: "Léa" });
+
+    const result = await service.alerterSortiesSousRemplies();
+
+    expect(updateSpy).toHaveBeenCalledWith(31, { alerte_remplissage_envoyee: true });
+    expect(sendSortieSousRemplieEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "organisateur@test.fr",
+        id_sortie: 31,
+        nbInscrits: 1,
+        nbPlaces: 8,
+        tauxPourcent: 13,
+      }),
+    );
+    expect(result).toBe(1);
+  });
+
+  test("ne fait rien si le remplissage atteint déjà le seuil de 50 %", async () => {
+    jest.spyOn(service.sortieRepository, "findPlanifieesSansAlerteRemplissageAvant").mockResolvedValue([
+      {
+        ...sortieDemain,
+        inscriptions: [{ statut: "Confirmée" }, { statut: "Confirmée" }, { statut: "Confirmée" }, { statut: "Confirmée" }],
+      },
+    ]);
+    const updateSpy = jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+
+    const result = await service.alerterSortiesSousRemplies();
+
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(sendSortieSousRemplieEmail).not.toHaveBeenCalled();
+    expect(result).toBe(0);
+  });
+
+  test("ne compte pas les inscriptions en liste d'attente ou annulées comme remplissage", async () => {
+    jest.spyOn(service.sortieRepository, "findPlanifieesSansAlerteRemplissageAvant").mockResolvedValue([
+      {
+        ...sortieDemain,
+        inscriptions: [{ statut: "En attente" }, { statut: "Annulée" }],
+      },
+    ]);
+    jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+    identiteClient.getUserBasicById.mockResolvedValue({ email: "organisateur@test.fr", name: "Léa" });
+
+    const result = await service.alerterSortiesSousRemplies();
+
+    expect(sendSortieSousRemplieEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ nbInscrits: 0, nbPlaces: 8 }),
+    );
+    expect(result).toBe(1);
+  });
+
+  test("ne fait rien si la sortie n'a pas d'organisateur connu (created_by absent)", async () => {
+    jest.spyOn(service.sortieRepository, "findPlanifieesSansAlerteRemplissageAvant").mockResolvedValue([
+      { ...sortieDemain, created_by: null },
+    ]);
+    jest.spyOn(service.sortieRepository, "update").mockResolvedValue({});
+
+    const result = await service.alerterSortiesSousRemplies();
+
+    expect(sendSortieSousRemplieEmail).not.toHaveBeenCalled();
     expect(result).toBe(0);
   });
 });

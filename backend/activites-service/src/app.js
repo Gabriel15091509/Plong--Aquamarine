@@ -123,12 +123,32 @@ app.use("/api", routes);
 app.use(ErrorHandler.notFound);
 app.use(ErrorHandler.handle);
 
+// Migration additive légère, idempotente (ADD COLUMN IF NOT EXISTS
+// uniquement), appliquée automatiquement au démarrage plutôt qu'à la main via
+// psql — même motif que identite-service/src/app.js (incident du
+// 2026-08-24 : une colonne ajoutée au modèle avant que la migration soit
+// appliquée en base avait cassé le login pour tout le monde). N'échoue
+// jamais le démarrage : une erreur ici laisse la fonctionnalité concernée
+// indisponible plutôt que de bloquer tout le service.
+const runPendingMigrations = async () => {
+  const schema = process.env.DB_SCHEMA || "activites";
+  try {
+    await sequelize.query(
+      `ALTER TABLE ${schema}.sorties ADD COLUMN IF NOT EXISTS alerte_remplissage_envoyee BOOLEAN NOT NULL DEFAULT false`,
+    );
+    logger.info("[activites-service] Migration alerte_remplissage_envoyee vérifiée/appliquée");
+  } catch (error) {
+    logger.error("[activites-service] Échec migration alerte_remplissage_envoyee :", error);
+  }
+};
+
 const initializeApp = async () => {
   const connected = await testConnection();
   if (!connected) {
     logger.error("[activites-service] Database connection failed");
     process.exit(1);
   }
+  await runPendingMigrations();
 };
 
 // Jobs de fond : volontairement séparés de initializeApp() et jamais
@@ -218,6 +238,20 @@ const startBackgroundJobs = () => {
   runAlerterSortiesSansInscription();
   cron.schedule("0 8 * * *", runAlerterSortiesSansInscription);
   logger.info("Planification de l'alerte sortie sans inscription active (quotidien 08:00)");
+
+  // Alerte (jamais d'annulation automatique) à l'organisateur d'une sortie
+  // encore sous le seuil de remplissage (50 % de nb_places) à J-1/J-0 —
+  // décision humaine, voir SortieService.alerterSortiesSousRemplies. Décalé
+  // de 10 minutes par rapport à l'alerte "sans inscription" ci-dessus pour
+  // ne pas les lancer strictement en même temps. Un premier passage
+  // immédiat au démarrage, puis tous les jours à 8h10.
+  const runAlerterSortiesSousRemplies = () =>
+    sortieService
+      .alerterSortiesSousRemplies()
+      .catch((err) => logger.error("Échec de l'alerte sortie sous-remplie :", err));
+  runAlerterSortiesSousRemplies();
+  cron.schedule("10 8 * * *", runAlerterSortiesSousRemplies);
+  logger.info("Planification de l'alerte sortie sous-remplie active (quotidien 08:10)");
 };
 
 process.on("unhandledRejection", (err) => {

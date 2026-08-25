@@ -335,6 +335,36 @@ const sendSortieSansInscriptionEmail = async ({
   });
 };
 
+// Alerte "sortie sous-remplie" (voir SortieService.alerterSortiesSousRemplies)
+// : envoyée une seule fois par sortie (Sortie.alerte_remplissage_envoyee), à
+// J-1/J-0, si le taux de remplissage (inscriptions Confirmée / nb_places)
+// reste sous le seuil (50 %). Distincte de sendSortieSansInscriptionEmail
+// (qui part plus tôt, à J-3, uniquement s'il n'y a STRICTEMENT aucune
+// inscription) : une sortie à 1 inscrit sur 8 places peut très bien avoir
+// déjà reçu cette première alerte sans que la seconde soit redondante — la
+// situation à J-1 mérite son propre rappel, plus urgent. Jamais d'annulation
+// automatique — même logique que les autres alertes de ce fichier : un fait
+// qui appelle une décision humaine.
+const sendSortieSousRemplieEmail = async ({
+  to,
+  organisateurName,
+  sortieLabel,
+  id_sortie,
+  nbInscrits,
+  nbPlaces,
+  tauxPourcent,
+}) => {
+  const introHtml = `<p>Bonjour ${organisateurName},</p><p>La sortie "<strong>${sortieLabel}</strong>" approche (demain ou aujourd'hui) et n'a que <strong>${nbInscrits} inscrit${nbInscrits > 1 ? "s" : ""}</strong> sur ${nbPlaces} places (${tauxPourcent} % de remplissage).</p><p>Ce n'est pas une annulation automatique : à vous de décider s'il faut relancer les adhérents, maintenir la sortie telle quelle, ou l'annuler manuellement.</p>`;
+  return sendEmail({
+    to,
+    subject: `Sortie peu remplie — décision à prendre (#${id_sortie})`,
+    html: buildSimpleEmailHtml("Sortie sous-remplie — à vous de décider", introHtml, [
+      { label: "Sortie", value: sortieLabel },
+      { label: "Remplissage", value: `${nbInscrits} / ${nbPlaces} (${tauxPourcent} %)` },
+    ]),
+  });
+};
+
 module.exports = {
   sendEmail,
   sendInscriptionConfirmationEmail,
@@ -345,4 +375,5 @@ module.exports = {
   sendPropositionsReprogrammationEmail,
   sendAlerteMeteoDouteuseEmail,
   sendSortieSansInscriptionEmail,
+  sendSortieSousRemplieEmail,
 };

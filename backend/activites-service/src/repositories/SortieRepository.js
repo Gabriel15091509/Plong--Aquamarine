@@ -172,6 +172,30 @@ class SortieRepository extends BaseRepository {
     });
   }
 
+  // Sorties "Planifiée" dans les `withinDays` prochains jours, pas encore
+  // signalées comme sous-remplies (alerte_remplissage_envoyee) — voir
+  // SortieService.alerterSortiesSousRemplies. Même construction que
+  // findPlanifieesSansAlerteInscriptionAvant ci-dessus (le calcul du taux de
+  // remplissage réel se fait côté service via attachCapacity, pas ici).
+  async findPlanifieesSansAlerteRemplissageAvant(withinDays) {
+    const now = new Date();
+    const limite = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+    return await this.model.findAll({
+      where: {
+        statut: "Planifiée",
+        date_heure: { [Op.gte]: now, [Op.lte]: limite },
+        alerte_remplissage_envoyee: false,
+      },
+      include: [
+        {
+          model: Inscription,
+          as: "inscriptions",
+        },
+      ],
+      order: [["date_heure", "ASC"]],
+    });
+  }
+
   // Toutes les sorties non annulées autres que `id_sortie_exclue`, allégé
   // aux seuls champs nécessaires au test de chevauchement horaire
   // (sortieOverlap.sortiesSeChevauchent) — utilisé pour proposer des dates

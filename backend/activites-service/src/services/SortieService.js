@@ -10,6 +10,7 @@ const {
   sendPropositionsReprogrammationEmail,
   sendAlerteMeteoDouteuseEmail,
   sendSortieSansInscriptionEmail,
+  sendSortieSousRemplieEmail,
 } = require("../utils/email");
 const { getForecastForDate, evaluerDanger } = require("../utils/meteoClient");
 const { sortiesSeChevauchent } = require("../utils/sortieOverlap");
@@ -44,6 +45,16 @@ const FENETRE_METEO_JOURS = JOURS_TEST_1 + 1;
 // fenêtre ET reste sans aucune inscription, une seule fois (voir
 // Sortie.alerte_sans_inscription_envoyee).
 const JOURS_ALERTE_SANS_INSCRIPTION = 3;
+// Délai + seuil de l'alerte "sortie sous-remplie" (voir
+// alerterSortiesSousRemplies) : fenêtre volontairement courte (J-1/J-0,
+// contrairement aux 3 jours de l'alerte "sans inscription" ci-dessus) — plus
+// on se rapproche du départ, plus un faible remplissage devient un signal
+// fort plutôt qu'un simple "les gens s'inscrivent tard". SEUIL_REMPLISSAGE
+// exprimé en fraction de nb_places (0.5 = 50 %), pas en nombre absolu
+// d'inscrits : une sortie à 2 places avec 1 inscrit (50 %) n'est pas dans
+// la même situation qu'une sortie à 8 places avec 1 inscrit (12 %).
+const JOURS_ALERTE_REMPLISSAGE = 1;
+const SEUIL_REMPLISSAGE = 0.5;
 // Champ booléen + libellé associé pour chacune des 3 étapes auto, dans
 // l'ordre où elles doivent être jouées.
 const ETAPES_TEST_AUTO = [
@@ -663,6 +674,60 @@ class SortieService extends BaseService {
       } catch (error) {
         console.error(
           `Erreur alerte sortie sans inscription (sortie ${sortie.id_sortie}):`,
+          error.message,
+        );
+      }
+    }
+    return alertees;
+  }
+
+  // Alerte l'organisateur qu'une sortie encore "Planifiée" reste sous le
+  // seuil de remplissage (SEUIL_REMPLISSAGE, en fraction de nb_places) à
+  // l'approche du départ (JOURS_ALERTE_REMPLISSAGE = J-1/J-0) — inclut aussi
+  // bien "1 seul inscrit sur 8 places" que "0 inscrit", contrairement à
+  // alerterSortiesSansInscription (ci-dessus) qui ne couvre que le cas
+  // strictement 0 inscrit, plus tôt (J-3). Les deux alertes peuvent donc se
+  // déclencher pour la même sortie, à des moments différents — ce n'est pas
+  // un doublon : la première est un heads-up précoce, la seconde un rappel
+  // plus urgent juste avant le départ. Jamais d'annulation automatique ici
+  // non plus : décision entièrement humaine. Un seul envoi par sortie
+  // (alerte_remplissage_envoyee), comme alerterSortiesSansInscription.
+  // Appelé par un cron quotidien (voir app.js) — best-effort par sortie.
+  async alerterSortiesSousRemplies() {
+    const sorties = await this.sortieRepository.findPlanifieesSansAlerteRemplissageAvant(
+      JOURS_ALERTE_REMPLISSAGE,
+    );
+    let alertees = 0;
+
+    for (const sortie of sorties) {
+      const { nb_inscrits, nb_places } = this.attachCapacity(sortie);
+      if (!nb_places || nb_inscrits / nb_places >= SEUIL_REMPLISSAGE) continue;
+
+      try {
+        // Marqué avant l'envoi (comme alerterSortiesSansInscription) : un
+        // échec d'email ne doit pas faire rejouer indéfiniment la même
+        // alerte chaque jour tant que la sortie reste sous le seuil.
+        await this.sortieRepository.update(sortie.id_sortie, {
+          alerte_remplissage_envoyee: true,
+        });
+
+        if (!sortie.created_by) continue;
+        const organisateur = await identiteClient.getUserBasicById(sortie.created_by);
+        if (!organisateur?.email) continue;
+
+        await sendSortieSousRemplieEmail({
+          to: organisateur.email,
+          organisateurName: organisateur.name,
+          sortieLabel: formatSortieLabel(sortie),
+          id_sortie: sortie.id_sortie,
+          nbInscrits: nb_inscrits,
+          nbPlaces: nb_places,
+          tauxPourcent: Math.round((nb_inscrits / nb_places) * 100),
+        });
+        alertees += 1;
+      } catch (error) {
+        console.error(
+          `Erreur alerte sortie sous-remplie (sortie ${sortie.id_sortie}):`,
           error.message,
         );
       }
