@@ -58,11 +58,20 @@ export const usePalanquees = () => {
     });
   };
 
-  const invalidateAll = (idSortie) => {
+  // Régression : le paramètre `idSortie` n'était jamais transmis par aucun
+  // appelant ci-dessous (tous appellent invalidateAll() sans argument), donc
+  // la branche conditionnelle qui invalidait `["attributions", "palanquee"]`
+  // ne s'exécutait jamais — après ajout/retrait d'un membre ou un retour de
+  // matériel (qui, côté backend, met bien à jour la ligne Attribution
+  // correspondante, voir PalanqueeService.retournerMateriel), la liste de
+  // matériel attribué affichée par PalanqueeCard.jsx (useGetByPalanquee)
+  // restait périmée jusqu'à un rechargement manuel de la page. Invalidation
+  // désormais inconditionnelle : coût négligeable (une requête déjà montée
+  // qui se re-fetch), et couvre toutes les mutations de ce hook sans qu'un
+  // appelant ait à se souvenir de passer le bon argument.
+  const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["palanquees"] });
-    if (idSortie) {
-      queryClient.invalidateQueries({ queryKey: ["attributions", "palanquee"] });
-    }
+    queryClient.invalidateQueries({ queryKey: ["attributions"] });
   };
 
   const useCreate = () => {
