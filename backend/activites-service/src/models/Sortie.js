@@ -136,6 +136,15 @@ const Sortie = sequelize.define(
       allowNull: false,
       defaultValue: false,
     },
+    // Un seul envoi par sortie (voir SortieService.
+    // alerterSortiesSousRemplies) : sortie encore sous le seuil de
+    // remplissage (< 50 % de nb_places) à J-1/J-0 — même principe que
+    // alerte_sans_inscription_envoyee, jamais remis à false ensuite.
+    alerte_remplissage_envoyee: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     // Plus de FK Postgres vers `president` (identite-service, autre
     // schéma) : reste une colonne applicative, non validée en base.
     created_by: {
