@@ -110,6 +110,55 @@ describe("SortieService.validateSortieData", () => {
   });
 });
 
+// Régression : profondeur_max et niveau_requis étaient totalement
+// déconnectés (aucun lien entre le niveau choisi et la profondeur par
+// défaut) — create() déduit désormais profondeur_max du niveau requis
+// quand l'appelant ne le fournit pas explicitement (voir
+// PROFONDEUR_MAX_PAR_NIVEAU, roleScope.js). Le formulaire web pré-remplit
+// déjà ce champ côté frontend ; ce filet côté service couvre tout autre
+// appelant de l'API (script, client mobile...).
+describe("SortieService.create — profondeur_max déduite du niveau requis", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("déduit profondeur_max du niveau requis quand il est absent", async () => {
+    const createSpy = jest
+      .spyOn(service.sortieRepository, "create")
+      .mockImplementation(async (data) => ({ id_sortie: 1, ...data }));
+
+    await service.create({ ...validData, niveau_requis: "Niveau 2" });
+
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ niveau_requis: "Niveau 2", profondeur_max: 40 }),
+    );
+  });
+
+  test("ne modifie jamais une profondeur_max explicitement fournie", async () => {
+    const createSpy = jest
+      .spyOn(service.sortieRepository, "create")
+      .mockImplementation(async (data) => ({ id_sortie: 1, ...data }));
+
+    await service.create({ ...validData, niveau_requis: "Niveau 2", profondeur_max: 25 });
+
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ profondeur_max: 25 }),
+    );
+  });
+
+  test("laisse profondeur_max absente si le niveau requis est aussi absent/inconnu", async () => {
+    const createSpy = jest
+      .spyOn(service.sortieRepository, "create")
+      .mockImplementation(async (data) => ({ id_sortie: 1, ...data }));
+
+    await service.create({ ...validData, niveau_requis: "Niveau inconnu" });
+
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.not.objectContaining({ profondeur_max: expect.anything() }),
+    );
+  });
+});
+
 describe("SortieService.assertSortiePlanifiee", () => {
   test("ne lève pas pour une sortie Planifiée", () => {
     expect(() => service.assertSortiePlanifiee({ statut: "Planifiée" })).not.toThrow();

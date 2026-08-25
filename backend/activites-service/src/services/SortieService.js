@@ -2,7 +2,7 @@ const BaseService = require("./BaseService");
 const SortieRepository = require("../repositories/SortieRepository");
 const InscriptionRepository = require("../repositories/InscriptionRepository");
 const identiteClient = require("../utils/serviceClients/identiteClient");
-const { isNiveauCompatible } = require("../utils/roleScope");
+const { isNiveauCompatible, profondeurMaxPourNiveau } = require("../utils/roleScope");
 const { withAdherent } = require("../utils/enrichAdherents");
 const {
   sendSortieReminderEmail,
@@ -283,8 +283,20 @@ class SortieService extends BaseService {
     return capacity;
   }
 
+  // profondeur_max défensif : le formulaire web le pré-remplit déjà (voir
+  // PROFONDEUR_MAX_PAR_NIVEAU côté frontend), mais un appelant direct de
+  // l'API (script, autre client) peut l'omettre — dans ce cas seulement, on
+  // le déduit du niveau requis plutôt que de laisser la valeur non fournie
+  // échouer sur la contrainte NOT NULL du modèle. Une valeur explicitement
+  // fournie n'est jamais écrasée (un site précis peut être moins profond
+  // que le max théorique du niveau).
   async create(data) {
-    return await this.sortieRepository.create(data);
+    const payload = { ...data };
+    if (payload.profondeur_max == null && payload.niveau_requis) {
+      const suggestion = profondeurMaxPourNiveau(payload.niveau_requis);
+      if (suggestion != null) payload.profondeur_max = suggestion;
+    }
+    return await this.sortieRepository.create(payload);
   }
 
   // Une fois qu'une sortie a quitté le statut "Planifiée" (passage manuel à

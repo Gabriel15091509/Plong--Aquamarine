@@ -13,6 +13,22 @@ export const NIVEAU_OPTIONS = [
   'Moniteur'
 ];
 
+// Profondeur max encadrée standard par niveau (norme FFESM — les sorties
+// club sont toujours encadrées par un moniteur/DP) : utilisée par
+// SortieForm.jsx pour pré-remplir "Profondeur max" dès que "Niveau requis"
+// est choisi/changé, au lieu de laisser les deux champs totalement
+// déconnectés. Le champ reste modifiable ensuite (un site précis peut être
+// moins profond que le max théorique du niveau). Même grille côté backend,
+// voir activites-service/src/utils/roleScope.js.
+export const PROFONDEUR_MAX_PAR_NIVEAU = {
+  'Baptême': 6,
+  'Niveau 1': 20,
+  'Niveau 2': 40,
+  'Niveau 3': 60,
+  'Niveau 4': 60,
+  'Moniteur': 60,
+};
+
 export const STATUT_ADHERENT_OPTIONS = [
   'Actif',
   'En formation',
