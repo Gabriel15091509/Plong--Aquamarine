@@ -1,6 +1,6 @@
 import { format, formatDistance, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
-import { STATUT_SORTIE } from "./constants";
+import { STATUT_SORTIE, NIVEAU_OPTIONS } from "./constants";
 
 // Une sortie déjà en cours, terminée ou annulée ne doit plus pouvoir être
 // choisie dans un select (inscription, séance, attribution, incident,
@@ -13,6 +13,23 @@ const STATUTS_SORTIE_NON_SELECTIONNABLES = [
 
 export const isSortieSelectionnable = (sortie) =>
   !STATUTS_SORTIE_NON_SELECTIONNABLES.includes(sortie?.statut);
+
+// Même règle que isNiveauCompatible côté backend (activites-service/src/
+// utils/roleScope.js NIVEAU_ORDER — ordre identique à NIVEAU_OPTIONS ici) :
+// un adhérent peut s'inscrire à une sortie dont le niveau requis est
+// inférieur ou égal au sien. Utilisé par InscriptionForm.jsx pour ne
+// proposer, dans le select "Sortie", que celles compatibles avec
+// l'adhérent concerné (soi-même, ou celui choisi par le président/moniteur)
+// — le backend reste l'autorité finale (rejette toute incompatibilité à la
+// création), ceci n'est qu'un filtre d'affichage pour éviter de proposer un
+// choix qui sera de toute façon refusé.
+export const isNiveauCompatible = (adherentNiveau, niveauRequis) => {
+  if (!niveauRequis) return true;
+  const requisIdx = NIVEAU_OPTIONS.indexOf(niveauRequis);
+  if (requisIdx === -1) return true;
+  const possedeIdx = NIVEAU_OPTIONS.indexOf(adherentNiveau);
+  return possedeIdx >= requisIdx;
+};
 
 // Heure de fin estimée = date_heure + duree_estimee (colonne TIME, servie
 // en "HH:MM" ou "HH:MM:SS" selon qu'elle vient du formulaire ou de l'API) —

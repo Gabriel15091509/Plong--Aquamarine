@@ -16,7 +16,7 @@ import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
-import { isSortieSelectionnable } from "../../utils/helpers";
+import { isSortieSelectionnable, isNiveauCompatible } from "../../utils/helpers";
 
 const INSCRIPTION_STATUS = [
   "En attente",
@@ -90,16 +90,35 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
     );
   }, [formData.id_sortie, sortiesData]);
 
+  // Adhérent concerné par le filtre de niveau ci-dessous : soi-même pour un
+  // adhérent qui s'inscrit, ou celui actuellement choisi dans le select
+  // "Adhérent" quand c'est le président/moniteur qui inscrit quelqu'un —
+  // dans ce second cas c'est bien le niveau de la PERSONNE INSCRITE qui
+  // compte, jamais celui du gestionnaire qui remplit le formulaire.
+  const adherentConcerne = useMemo(() => {
+    if (isAdherent) return currentAdherent;
+    if (!formData.num_adherent || !adherentsData?.data) return null;
+    return adherentsData.data.find(
+      (a) => a.num_adherent === formData.num_adherent,
+    );
+  }, [isAdherent, currentAdherent, formData.num_adherent, adherentsData]);
+
   // Une sortie déjà en cours ou terminée ne doit plus être proposée, sauf si
-  // c'est déjà la sortie liée à l'inscription en cours de modification.
+  // c'est déjà la sortie liée à l'inscription en cours de modification. Le
+  // niveau requis doit aussi être compatible avec l'adhérent concerné (voir
+  // adherentConcerne ci-dessus) — pas de filtre tant qu'aucun adhérent n'est
+  // encore choisi (le président/moniteur peut sélectionner la sortie avant
+  // l'adhérent, l'ordre des champs n'est pas imposé).
   const sortiesSelectionnables = useMemo(
     () =>
       (sortiesData?.data || []).filter(
         (s) =>
-          isSortieSelectionnable(s) ||
-          String(s.id_sortie) === String(formData.id_sortie),
+          (isSortieSelectionnable(s) ||
+            String(s.id_sortie) === String(formData.id_sortie)) &&
+          (!adherentConcerne ||
+            isNiveauCompatible(adherentConcerne.niveau, s.niveau_requis)),
       ),
-    [sortiesData, formData.id_sortie],
+    [sortiesData, formData.id_sortie, adherentConcerne],
   );
 
   useEffect(() => {
@@ -309,6 +328,17 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
               <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
                 Sortie pré-sélectionnée : {selectedSortie.type} -{" "}
                 {selectedSortie.lieu}
+              </p>
+            )}
+            {adherentConcerne && (
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                {sortiesSelectionnables.length === 0
+                  ? `Aucune sortie ouverte ne correspond à ${
+                      isAdherent ? "votre niveau" : "son niveau"
+                    } (${adherentConcerne.niveau || "niveau inconnu"}).`
+                  : `Filtré selon ${
+                      isAdherent ? "votre niveau" : "son niveau"
+                    } (${adherentConcerne.niveau || "niveau inconnu"}).`}
               </p>
             )}
           </motion.div>
