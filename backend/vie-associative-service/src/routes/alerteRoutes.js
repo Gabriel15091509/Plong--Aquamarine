@@ -24,6 +24,12 @@ router.get(
 );
 
 router.get(
+  "/paginated",
+  AuthMiddleware.authenticate,
+  alerteController.getAllPaginated.bind(alerteController),
+);
+
+router.get(
   "/adherent/:num_adherent",
   AuthMiddleware.authenticate,
   alerteController.getByAdherent.bind(alerteController),

@@ -42,6 +42,7 @@ import UsersPage from "./pages/User/UsersPage";
 import NotFoundPage from "./pages/Common/NotFoundPage";
 import UnauthorizedPage from "./pages/Auth/UnauthorizedPage";
 import ProfilePage from "./pages/Common/ProfilePage";
+import NotificationsPage from "./pages/Notification/NotificationsPage";
 import SortiePointage from "./pages/Sortie/SortiePointage";
 import MoniteursPage from "./pages/Moniteur/MoniteursPage";
 import PresidentsPage from "./pages/President/PresidentsPage";
@@ -153,6 +154,20 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <ProfilePage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Notifications - accessible à tous, chacun ne voit que les
+              siennes (scope appliqué côté backend, voir AlerteService.
+              getScopeForUser) */}
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <NotificationsPage />
                     </Layout>
                   </ProtectedRoute>
                 }

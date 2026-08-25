@@ -24,12 +24,32 @@ class AlerteController extends BaseController {
 
   async getUnread(req, res, next) {
     try {
-      const results = await this.alerteService.getUnread(req.user, req.headers.authorization);
+      const limit = req.query.limit ? parseInt(req.query.limit, 10) : undefined;
+      const results = await this.alerteService.getUnread(
+        req.user,
+        req.headers.authorization,
+        limit ? { limit } : undefined,
+      );
       res.json({
         success: true,
         data: results,
         count: results.length
       });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
+  // Page "Toutes les notifications" (bouton du dropdown, Header.jsx) : liste
+  // complète (lues + non lues), paginée — voir AlerteService.getAllPaginated.
+  async getAllPaginated(req, res, next) {
+    try {
+      const result = await this.alerteService.getAllPaginated(
+        { page: req.query.page, pageSize: req.query.pageSize },
+        req.user,
+        req.headers.authorization,
+      );
+      res.json({ success: true, ...result });
     } catch (error) {
       next(withStatus(error, 500));
     }

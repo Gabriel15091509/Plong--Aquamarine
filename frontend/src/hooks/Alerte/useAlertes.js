@@ -14,12 +14,39 @@ export const useAlertes = () => {
     });
   };
 
-  const useGetUnread = () => {
+  // `limit` plafonne la liste renvoyée pour le dropdown de notifications
+  // (défaut 20 côté backend, voir AlerteService.getUnread) — sans lui, un
+  // club avec beaucoup d'alertes non lues charge (et garde en mémoire côté
+  // navigateur) l'historique complet à chaque ouverture du dropdown.
+  const useGetUnread = (params = {}) => {
     return useQuery({
-      queryKey: ['alertes', 'unread'],
-      queryFn: () => alerteService.getUnread(),
+      queryKey: ['alertes', 'unread', params],
+      queryFn: () => alerteService.getUnread(params),
       staleTime: 30 * 1000,
       refetchInterval: 30 * 1000, // Rafraîchir toutes les 30 secondes
+    });
+  };
+
+  // Liste complète (lues + non lues), paginée — page "Toutes les
+  // notifications" (voir pages/Notification/NotificationsPage.jsx).
+  const useGetAllPaginated = ({ page = 1, pageSize = 20 } = {}) => {
+    return useQuery({
+      queryKey: ['alertes', 'paginated', page, pageSize],
+      queryFn: () => alerteService.getAllPaginated({ page, pageSize }),
+      staleTime: 30 * 1000,
+      keepPreviousData: true,
+    });
+  };
+
+  // Compteur réel d'alertes non lues (indépendant de la limite de
+  // useGetUnread) — c'est lui qui doit alimenter le badge du dropdown,
+  // pas la longueur de la liste plafonnée.
+  const useGetStats = () => {
+    return useQuery({
+      queryKey: ['alertes', 'stats'],
+      queryFn: () => alerteService.getStats(),
+      staleTime: 30 * 1000,
+      refetchInterval: 30 * 1000,
     });
   };
 
@@ -112,6 +139,8 @@ export const useAlertes = () => {
   return {
     useGetAll,
     useGetUnread,
+    useGetAllPaginated,
+    useGetStats,
     useGetByAdherent,
     useCreate,
     useMarkAsRead,

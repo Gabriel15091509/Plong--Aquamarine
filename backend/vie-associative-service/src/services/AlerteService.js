@@ -8,6 +8,15 @@ const { sendAlerteRelanceEmail } = require("../utils/email");
 const { sendSms } = require("../utils/smsClient");
 const { NotFoundError, ForbiddenError } = require("../utils/errors");
 
+// Nombre d'alertes non lues renvoyées au dropdown de notifications
+// (Header.jsx) — voir getUnread. La liste complète reste accessible, paginée,
+// via getAllPaginated ("Voir toutes les notifications").
+const LIMITE_DROPDOWN_NOTIFICATIONS = 20;
+// Taille de page par défaut/maximale de getAllPaginated — le max protège le
+// backend même si un appelant demande un pageSize excessif.
+const PAGE_SIZE_DEFAUT = 20;
+const PAGE_SIZE_MAX = 100;
+
 const ALERT_TYPES = {
   adhesionExpiring: {
     preferred: "Adhesion expire bientot",
@@ -110,11 +119,35 @@ class AlerteService extends BaseService {
     return await withAdherentNames(results, authHeader);
   }
 
-  async getUnread(user = null, authHeader = null) {
+  async getUnread(user = null, authHeader = null, { limit = LIMITE_DROPDOWN_NOTIFICATIONS } = {}) {
     await this.syncExpirationAlertes();
     const scope = await this.getScopeForUser(user);
-    const results = await this.alerteRepository.findUnread(scope);
+    const results = await this.alerteRepository.findUnread(scope, { limit });
     return await withAdherentNames(results, authHeader);
+  }
+
+  // Liste complète, paginée (page "Toutes les notifications" côté
+  // frontend) — contrairement à getUnread ci-dessus (plafonné, pour le
+  // dropdown), couvre aussi bien les alertes lues que non lues, avec un
+  // vrai total (findAndCountAll) pour afficher "Page X / Y".
+  async getAllPaginated({ page = 1, pageSize = PAGE_SIZE_DEFAUT } = {}, user = null, authHeader = null) {
+    await this.syncExpirationAlertes();
+    const scope = await this.getScopeForUser(user);
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const size = Math.min(Math.max(parseInt(pageSize, 10) || PAGE_SIZE_DEFAUT, 1), PAGE_SIZE_MAX);
+
+    const { rows, count } = await this.alerteRepository.findAllPaginated(scope, {
+      limit: size,
+      offset: (pageNum - 1) * size,
+    });
+
+    return {
+      data: await withAdherentNames(rows, authHeader),
+      total: count,
+      page: pageNum,
+      pageSize: size,
+      totalPages: Math.max(Math.ceil(count / size), 1),
+    };
   }
 
   async getByAdherent(num_adherent, user = null, authHeader = null) {
