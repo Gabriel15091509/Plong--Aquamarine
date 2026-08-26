@@ -40,6 +40,8 @@ import BulkActionBar from "../../components/Common/BulkActionBar";
 import ErrorState from "../../components/Common/ErrorState";
 import { useSelection } from "../../hooks/useSelection";
 import sortieService from "../../services/Sortie/sortieService";
+import SortieRouteMapMini from "../../components/Sortie/SortieRouteMapMini";
+import SortieRouteModal from "../../components/Sortie/SortieRouteModal";
 
 import {
   formatDateTime,
@@ -81,6 +83,7 @@ const SortiesPage = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteModal, setDeleteModal] = useState(null);
+  const [routeModal, setRouteModal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState("grid");
   // Sous-menu sidebar "Mes sorties" (?filtre=mes-sorties, voir Sidebar.jsx) —
@@ -637,6 +640,14 @@ const SortiesPage = () => {
               const jours = joursRestants(sortie.date_heure);
               const showCompteARebours =
                 sortie.statut === "Planifiée" && jours >= 0 && jours <= 30;
+              // Coordonnées du site (saisies via SortieLocationPicker à la
+              // création) : quand elles existent et qu'aucune photo n'a été
+              // définie, la vignette grille montre un aperçu de l'itinéraire
+              // (SortieRouteMapMini) plutôt que l'icône générique — cliquer
+              // dessus ouvre l'itinéraire complet en modale.
+              const siteLat = sortie.latitude != null ? Number(sortie.latitude) : null;
+              const siteLng = sortie.longitude != null ? Number(sortie.longitude) : null;
+              const hasCoords = Number.isFinite(siteLat) && Number.isFinite(siteLng);
 
               if (viewMode === "grid") {
                 return (
@@ -648,13 +659,36 @@ const SortiesPage = () => {
                     className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow flex flex-col"
                   >
                     {/* Photo / bandeau de la sortie */}
-                    <div className="relative h-40 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center">
+                    <div
+                      className={`relative h-40 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center ${
+                        !sortie.image && hasCoords ? "cursor-pointer" : ""
+                      }`}
+                      onClick={
+                        !sortie.image && hasCoords
+                          ? () =>
+                              setRouteModal({
+                                lat: siteLat,
+                                lng: siteLng,
+                                name: sortie.site || sortie.lieu,
+                              })
+                          : undefined
+                      }
+                      title={
+                        !sortie.image && hasCoords
+                          ? "Voir l'itinéraire vers ce site"
+                          : undefined
+                      }
+                    >
                       {sortie.image ? (
                         <img
                           src={sortie.image}
                           alt={sortie.lieu}
                           className="absolute inset-0 w-full h-full object-cover"
                         />
+                      ) : hasCoords ? (
+                        <div className="absolute inset-0 pointer-events-none">
+                          <SortieRouteMapMini siteLat={siteLat} siteLng={siteLng} />
+                        </div>
                       ) : (
                         <FiAnchor className="w-12 h-12 text-indigo-400 dark:text-indigo-500" />
                       )}
@@ -1136,6 +1170,14 @@ const SortiesPage = () => {
           </motion.div>
         </ModalOverlay>
       )}
+
+      <SortieRouteModal
+        isOpen={!!routeModal}
+        onClose={() => setRouteModal(null)}
+        siteLat={routeModal?.lat}
+        siteLng={routeModal?.lng}
+        siteName={routeModal?.name}
+      />
 
       <ConfirmModal
         isOpen={bulkDeleteModal}
