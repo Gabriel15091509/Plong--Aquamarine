@@ -26,20 +26,6 @@
     overflow-x: hidden;
   }
 
-  /* Leaflet pose ses propres z-index internes (jusqu'à 700 pour les popups,
-     800 pour les contrôles) sur .leaflet-pane/.leaflet-top/.leaflet-bottom —
-     bien au-dessus du z-50 utilisé par toutes les modales de l'app
-     (ConfirmModal, SortieRouteModal...). Sans isolation, une carte Leaflet
-     encore montée à l'écran (ex: les vignettes d'itinéraire de la liste en
-     grille des sorties, SortieRouteMapMini) s'affichait par-dessus n'importe
-     quelle modale ouverte en même temps. `isolation: isolate` crée un
-     contexte d'empilement local sans toucher au z-index visible de l'élément
-     lui-même : les z-index internes de Leaflet restent contenus dans ce
-     conteneur au lieu de se comparer à ceux du reste de la page. */
-  .leaflet-container {
-    isolation: isolate;
-  }
-
   /* Taille des champs de saisie sur mobile : Safari iOS zoome
      automatiquement toute la page dès qu'on touche un input/select/
      textarea affichant moins de 16px — quelle que soit sa taille visuelle
@@ -238,4 +224,27 @@
   background: linear-gradient(-45deg, #3b82f6, #60a5fa, #0ea5e9, #38bdf8);
   background-size: 400% 400%;
   animation: gradient-shift 15s ease infinite;
+}
+
+/* Leaflet pose ses propres z-index internes (jusqu'à 700 pour les popups,
+   800 pour les contrôles) sur .leaflet-pane/.leaflet-top/.leaflet-bottom —
+   bien au-dessus du z-50 utilisé par toutes les modales de l'app
+   (ConfirmModal, SortieRouteModal...). Sans isolation, une carte Leaflet
+   encore montée à l'écran (ex: les vignettes d'itinéraire de la liste en
+   grille des sorties, SortieRouteMapMini) s'affichait par-dessus n'importe
+   quelle modale ouverte en même temps. `isolation: isolate` crée un
+   contexte d'empilement local sans toucher au z-index visible de l'élément
+   lui-même : les z-index internes de Leaflet restent contenus dans ce
+   conteneur au lieu de se comparer à ceux du reste de la page.
+   Placée hors `@layer` (contrairement à un premier essai dans
+   `@layer base`) : le purge Tailwind supprime silencieusement tout
+   sélecteur de classe déclaré dans un `@layer` qui n'apparaît pas
+   littéralement dans le code JS/JSX scanné — `.leaflet-container` n'y
+   figure jamais puisque cette classe est posée à l'exécution par la
+   librairie Leaflet elle-même, pas écrite en dur dans un className.
+   Vérifié : absente du CSS buildé quand elle était dans `@layer base`,
+   présente une fois sortie de tout `@layer` (même traitement que
+   .gradient-animate ci-dessus). */
+.leaflet-container {
+  isolation: isolate;
 }
