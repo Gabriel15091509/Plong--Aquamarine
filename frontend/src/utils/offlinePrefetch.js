@@ -6,6 +6,18 @@ import plongeeService from "../services/Plongee/plongeeService";
 import adhesionService from "../services/Adhesion/adhesionService";
 import certificatService from "../services/CertificatMedical/certificatService";
 import inscriptionService from "../services/Inscription/inscriptionService";
+import competenceService from "../services/Formation/competenceService";
+import specialiteFormationService from "../services/Formation/specialiteFormationService";
+import palanqueeService from "../services/Palanquee/palanqueeService";
+import attributionService from "../services/Attribution/attributionService";
+import incidentService from "../services/Incident/incidentService";
+import moniteurService from "../services/Moniteur/moniteurService";
+import paiementService from "../services/Paiement/paiementService";
+import presidentService from "../services/President/presidentService";
+import reparationService from "../services/Reparation/reparationService";
+import tresorierService from "../services/Tresorier/tresorierService";
+import userService from "../services/User/userService";
+import dashboardService from "../services/Dashboard/dashboardService";
 
 // Après connexion (ou au chargement si déjà connecté), on va chercher les
 // listes principales en arrière-plan pour qu'elles soient déjà en cache
@@ -16,6 +28,14 @@ import inscriptionService from "../services/Inscription/inscriptionService";
 // liste (403) ne doit pas bloquer les autres. `key` doit correspondre à
 // l'URL préchargée ("/api/<key>") — à garder synchronisé avec
 // OFFLINE_DATASET_PATHS dans sw.js.
+//
+// Couvre toutes les entités "liste complète, pas de paramètre requis" du
+// frontend, pour que chaque module reste consultable hors-ligne — à
+// l'exception volontaire des alertes/notifications : leur volume ("c'est
+// très nombreux") a justifié une pagination dédiée côté serveur
+// (AlerteService.getAllPaginated, page /notifications) précisément pour
+// éviter de charger la liste complète d'un coup ; les reprécharger ici en
+// entier réintroduirait le problème que cette pagination a résolu.
 const PREFETCH_ENTRIES = [
   { key: "adherents", call: () => adherentService.getAll() },
   { key: "sorties", call: () => sortieService.getAll() },
@@ -25,6 +45,19 @@ const PREFETCH_ENTRIES = [
   { key: "adhesions", call: () => adhesionService.getAll() },
   { key: "certificats-medicaux", call: () => certificatService.getAll() },
   { key: "inscriptions", call: () => inscriptionService.getAll() },
+  { key: "competences", call: () => competenceService.getAll() },
+  { key: "specialites-formation", call: () => specialiteFormationService.getAll() },
+  { key: "palanquees", call: () => palanqueeService.getAll() },
+  { key: "attributions", call: () => attributionService.getAll() },
+  { key: "incidents", call: () => incidentService.getAll() },
+  { key: "moniteurs", call: () => moniteurService.getAll() },
+  { key: "paiements", call: () => paiementService.getAll() },
+  { key: "president", call: () => presidentService.getAll() },
+  { key: "reparations", call: () => reparationService.getAll() },
+  { key: "tresoriers", call: () => tresorierService.getAll() },
+  { key: "users", call: () => userService.getAll() },
+  { key: "dashboard/trends", call: () => dashboardService.getTrends() },
+  { key: "dashboard/indicateurs", call: () => dashboardService.getIndicateurs() },
 ];
 
 // Horodatage/succès du dernier préchargement par entité, persisté pour
