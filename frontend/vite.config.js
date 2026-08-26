@@ -25,8 +25,17 @@ export default defineConfig({
         // précache du service worker ; le bundle principal dépasse
         // légèrement la limite par défaut (2 Mo) et a juste besoin d'un peu
         // de marge pour rester précaché.
-        globIgnores: ["**/vendor/opencv.js"],
+        // pwa-192.png/pwa-512.png sont déjà injectées séparément par
+        // vite-plugin-pwa (déclarées dans `manifest.icons` ci-dessous) : les
+        // exclure ici évite une entrée en double dans le précache (même
+        // fichier, même révision, ajouté deux fois pour rien).
+        globIgnores: ["**/vendor/opencv.js", "**/pwa-192.png", "**/pwa-512.png"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        // Par défaut, injectManifest ne précache que js/css/html : le logo
+        // (src/assets/aqua.png, ~1,5 Mo, référencé par Logo.jsx) n'était donc
+        // jamais mis en cache et disparaissait (icône cassée) une fois
+        // hors-ligne, alors que tout le reste de l'app shell restait servi.
+        globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
       },
       manifest: {
         name: "Plongée Club",
