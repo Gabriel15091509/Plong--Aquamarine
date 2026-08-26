@@ -359,6 +359,27 @@ const SortiesPage = () => {
     );
   };
 
+  // Variante des badges pour la vignette en grille : contrairement à
+  // getStatutColor (utilisé sur une ligne de tableau, surface plane), ces
+  // badges flottent en overlay sur la bannière de la carte — un fond de
+  // couleur photo OU la mini-carte d'itinéraire (SortieRouteMapMini, dont
+  // les tuiles OSM restent claires quel que soit le thème). Les teintes
+  // semi-transparentes (/30, /40) utilisées ailleurs en mode sombre
+  // deviennent illisibles une fois mélangées à ce fond clair — d'où des
+  // fonds opaques ici, indépendants de ce qu'il y a en dessous.
+  const getStatutOverlayColor = (statut) => {
+    const colors = {
+      Planifiée: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+      "En cours":
+        "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+      Terminée: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+      Annulée: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+    };
+    return (
+      colors[statut] || "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+    );
+  };
+
   if (loadingSorties || loadingAdherents) return <LoadingSpinner variant="grid" />;
 
   if (sortiesError) {
@@ -694,24 +715,24 @@ const SortiesPage = () => {
                       )}
                       <div className="absolute inset-x-0 top-0 p-3 flex items-center justify-between gap-1.5">
                         <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${getStatutColor(sortie.statut)}`}
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm ${getStatutOverlayColor(sortie.statut)}`}
                         >
                           {sortie.statut || "Planifiée"}
                         </span>
                         <div className="flex items-center gap-1.5">
                           {aTerminer && (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 shadow-sm">
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 shadow-sm">
                               À terminer
                             </span>
                           )}
                           {showCompteARebours && (
-                            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm">
+                            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 shadow-sm">
                               <FiClock className="w-3 h-3 flex-shrink-0" />
                               {formatCompteARebours(jours)}
                             </span>
                           )}
                           {isFull && (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 shadow-sm">
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 shadow-sm">
                               Complet
                             </span>
                           )}
