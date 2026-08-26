@@ -16,6 +16,7 @@ import {
   FiCompass,
   FiChevronRight,
 } from "react-icons/fi";
+import { CLUB_LOCATION } from "../../utils/constants";
 
 // Photos libres de droits (licence Unsplash — usage commercial libre, sans
 // attribution obligatoire) : ce dépôt ne contient aucune photothèque propre
@@ -92,6 +93,7 @@ const AboutPage = () => {
       value: "Mercredi, Samedi, Dimanche (selon météo)",
     },
     { icon: FiSun, label: "Saison forte", value: "Juin-Septembre (baleines)" },
+    { icon: FiMapPin, label: "Adresse", value: CLUB_LOCATION.address },
   ];
 
   const features = [
@@ -121,6 +123,32 @@ const AboutPage = () => {
       color: "purple",
     },
   ];
+
+  // Classes complètes et littérales par couleur (et non construites à la
+  // volée via `border-${value.color}-100`) : le scanner de contenu de
+  // Tailwind ne lit que le texte brut des fichiers, pas la valeur réelle
+  // des variables JS — une classe assemblée par interpolation de chaîne
+  // n'apparaît donc jamais telle quelle dans le code source et se fait
+  // silencieusement purger du CSS final (même défaut que le correctif
+  // isolation/Leaflet). Les cartes "Nos Valeurs" perdaient ainsi bordure,
+  // fond d'icône et couleur d'icône en production.
+  const valueStyles = {
+    primary: {
+      border: "border-primary-100 dark:border-primary-800/30",
+      iconBg: "bg-primary-100 dark:bg-primary-900/30",
+      iconText: "text-primary-600 dark:text-primary-400",
+    },
+    green: {
+      border: "border-green-100 dark:border-green-800/30",
+      iconBg: "bg-green-100 dark:bg-green-900/30",
+      iconText: "text-green-600 dark:text-green-400",
+    },
+    purple: {
+      border: "border-purple-100 dark:border-purple-800/30",
+      iconBg: "bg-purple-100 dark:bg-purple-900/30",
+      iconText: "text-purple-600 dark:text-purple-400",
+    },
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -292,6 +320,9 @@ const AboutPage = () => {
         className="bg-white dark:bg-gray-800 rounded-2xl shadow-card border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-xl transition-shadow duration-300 grid grid-cols-1 md:grid-cols-2"
       >
         <div className="p-6 sm:p-8 flex flex-col justify-center order-2 md:order-1">
+          <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-primary-500 dark:text-primary-400 mb-2">
+            Depuis 2008
+          </p>
           <div className="flex items-center gap-2 mb-3">
             <FiCompass className="w-5 h-5 text-primary-500 dark:text-primary-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -349,7 +380,7 @@ const AboutPage = () => {
           </motion.div>
           Infos pratiques
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {practicalInfo.map((info, index) => (
             <motion.div
               key={info.label}
@@ -410,6 +441,9 @@ const AboutPage = () => {
         viewport={{ once: true }}
         className="bg-white dark:bg-gray-800 rounded-2xl shadow-card p-6 border border-gray-100 dark:border-gray-700"
       >
+        <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-primary-500 dark:text-primary-400 mb-1">
+          Ce que nous proposons
+        </p>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <motion.div
             animate={{ rotate: [0, 10, -10, 0] }}
@@ -561,6 +595,9 @@ const AboutPage = () => {
         viewport={{ once: true }}
         className="bg-gradient-to-r from-primary-50 to-ocean-50 dark:from-primary-900/20 dark:to-ocean-900/20 rounded-2xl p-6 border border-primary-100 dark:border-primary-800/30"
       >
+        <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-primary-500 dark:text-primary-400 mb-1">
+          Notre état d&apos;esprit
+        </p>
         <div className="flex items-center gap-3 mb-4">
           <motion.div
             animate={{ rotate: [0, 20, -20, 0] }}
@@ -573,27 +610,30 @@ const AboutPage = () => {
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {values.map((value, index) => (
-            <motion.div
-              key={value.label}
-              initial={{ opacity: 0, y: 30, rotate: -5 }}
-              whileInView={{ opacity: 1, y: 0, rotate: 0 }}
-              transition={{ delay: index * 0.2, type: "spring", stiffness: 200 }}
-              viewport={{ once: true }}
-              whileHover={{ y: -5, scale: 1.02 }}
-              className={`text-center p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-xl border border-${value.color}-100 dark:border-${value.color}-800/30 shadow-lg cursor-default`}
-            >
+          {values.map((value, index) => {
+            const style = valueStyles[value.color];
+            return (
               <motion.div
-                whileHover={{ rotate: 360, scale: 1.2 }}
-                transition={{ duration: 0.6 }}
-                className={`w-14 h-14 bg-${value.color}-100 dark:bg-${value.color}-900/30 rounded-full flex items-center justify-center mx-auto mb-3`}
+                key={value.label}
+                initial={{ opacity: 0, y: 30, rotate: -5 }}
+                whileInView={{ opacity: 1, y: 0, rotate: 0 }}
+                transition={{ delay: index * 0.2, type: "spring", stiffness: 200 }}
+                viewport={{ once: true }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                className={`text-center p-4 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-xl border ${style.border} shadow-lg cursor-default`}
               >
-                <value.icon className={`w-7 h-7 text-${value.color}-600 dark:text-${value.color}-400`} />
+                <motion.div
+                  whileHover={{ rotate: 360, scale: 1.2 }}
+                  transition={{ duration: 0.6 }}
+                  className={`w-14 h-14 ${style.iconBg} rounded-full flex items-center justify-center mx-auto mb-3`}
+                >
+                  <value.icon className={`w-7 h-7 ${style.iconText}`} />
+                </motion.div>
+                <p className="font-semibold text-gray-900 dark:text-white">{value.label}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{value.desc}</p>
               </motion.div>
-              <p className="font-semibold text-gray-900 dark:text-white">{value.label}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{value.desc}</p>
-            </motion.div>
-          ))}
+            );
+          })}
         </div>
       </motion.div>
 
