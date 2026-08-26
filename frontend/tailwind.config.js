@@ -8,6 +8,26 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      // Inter est déjà chargée (@import Google Fonts dans index.css) mais
+      // sans ceci, `font-sans` retombait sur la pile système par défaut de
+      // Tailwind (ui-sans-serif...) — la police était donc téléchargée pour
+      // rien, jamais réellement appliquée. Pile de repli conservée en
+      // totalité pour un rendu correct tant qu'Inter charge (connexion
+      // lente, hors-ligne avant mise en cache).
+      fontFamily: {
+        sans: [
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
+          "Roboto",
+          '"Helvetica Neue"',
+          "Arial",
+          "sans-serif",
+        ],
+      },
       colors: {
         primary: {
           50: '#eff6ff',
