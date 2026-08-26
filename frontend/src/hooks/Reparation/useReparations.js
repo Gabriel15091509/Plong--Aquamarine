@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import reparationService from "../../services/Reparation/reparationService";
 import toast from "react-hot-toast";
+import { getByIdWithOfflineFallback } from "../../utils/offlineDetailFallback";
 
 export const useReparations = () => {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export const useReparations = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ["reparations", id],
-      queryFn: () => reparationService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(reparationService, id, 'id_reparation'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

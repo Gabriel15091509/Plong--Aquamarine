@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import adherentService from "../../services/Adherent/adherentService";
 import toast from "react-hot-toast";
+import { getByIdWithOfflineFallback } from "../../utils/offlineDetailFallback";
 
 export const useAdherents = () => {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export const useAdherents = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ['adherents', id],
-      queryFn: () => adherentService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(adherentService, id, 'num_adherent'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

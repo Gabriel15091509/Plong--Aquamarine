@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import certificatService from '../../services/CertificatMedical/certificatService';
 import toast from 'react-hot-toast';
+import { getByIdWithOfflineFallback } from '../../utils/offlineDetailFallback';
 
 export const useCertificats = () => {
   const queryClient = useQueryClient();
@@ -17,7 +18,7 @@ export const useCertificats = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ['certificats', id],
-      queryFn: () => certificatService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(certificatService, id, 'id_certificat'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

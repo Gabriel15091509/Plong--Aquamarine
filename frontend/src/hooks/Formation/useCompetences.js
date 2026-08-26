@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import competenceService from "../../services/Formation/competenceService";
 import toast from "react-hot-toast";
+import { getByIdWithOfflineFallback } from "../../utils/offlineDetailFallback";
 
 export const useCompetences = () => {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export const useCompetences = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ["competences", id],
-      queryFn: () => competenceService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(competenceService, id, 'id_competence'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });
