@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import palanqueeService from "../../services/Palanquee/palanqueeService";
 import toast from "react-hot-toast";
+import { getByIdWithOfflineFallback } from "../../utils/offlineDetailFallback";
 
 export const usePalanquees = () => {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export const usePalanquees = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ["palanquees", id],
-      queryFn: () => palanqueeService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(palanqueeService, id, 'id_palanquee'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import materielService from '../../services/Materiel/materielService';
 import toast from 'react-hot-toast';
+import { getByIdWithOfflineFallback } from '../../utils/offlineDetailFallback';
 
 export const useMateriels = () => {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export const useMateriels = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ['materiels', id],
-      queryFn: () => materielService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(materielService, id, 'num_inventaire'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import paiementService from "../../services/Paiement/paiementService";
 import toast from "react-hot-toast";
+import { getByIdWithOfflineFallback } from "../../utils/offlineDetailFallback";
 
 export const usePaiements = () => {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export const usePaiements = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ["paiements", id],
-      queryFn: () => paiementService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(paiementService, id, 'id_paiement'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import plongeeService from '../../services/Plongee/plongeeService';
 import toast from 'react-hot-toast';
+import { getByIdWithOfflineFallback } from '../../utils/offlineDetailFallback';
 
 export const usePlongees = () => {
   const queryClient = useQueryClient();
@@ -17,7 +18,7 @@ export const usePlongees = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ['plongees', id],
-      queryFn: () => plongeeService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(plongeeService, id, 'id_plongee'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

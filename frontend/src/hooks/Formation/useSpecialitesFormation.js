@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import specialiteFormationService from "../../services/Formation/specialiteFormationService";
 import toast from "react-hot-toast";
+import { getByIdWithOfflineFallback } from "../../utils/offlineDetailFallback";
 
 export const useSpecialitesFormation = () => {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export const useSpecialitesFormation = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ["specialites-formation", id],
-      queryFn: () => specialiteFormationService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(specialiteFormationService, id, 'id_specialite_formation'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

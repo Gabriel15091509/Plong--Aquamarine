@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import adhesionService from '../../services/Adhesion/adhesionService';
 import toast from 'react-hot-toast';
+import { getByIdWithOfflineFallback } from '../../utils/offlineDetailFallback';
 
 export const useAdhesions = () => {
   const queryClient = useQueryClient();
@@ -17,7 +18,7 @@ export const useAdhesions = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ['adhesions', id],
-      queryFn: () => adhesionService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(adhesionService, id, 'id_adhesion'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

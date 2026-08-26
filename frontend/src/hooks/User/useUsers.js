@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import userService from '../../services/User/userService';
 import toast from 'react-hot-toast';
+import { getByIdWithOfflineFallback } from '../../utils/offlineDetailFallback';
 
 export const useUsers = () => {
   const queryClient = useQueryClient();
@@ -21,7 +22,7 @@ export const useUsers = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ['users', id],
-      queryFn: () => userService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(userService, id, 'id'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

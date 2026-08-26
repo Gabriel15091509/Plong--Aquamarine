@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import attributionService from "../../services/Attribution/attributionService";
 import toast from "react-hot-toast";
+import { getByIdWithOfflineFallback } from "../../utils/offlineDetailFallback";
 
 export const useAttributions = () => {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export const useAttributions = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ["attributions", id],
-      queryFn: () => attributionService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(attributionService, id, 'id_attribution'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

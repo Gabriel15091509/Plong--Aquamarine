@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import inscriptionService from "../../services/Inscription/inscriptionService";
 import toast from "react-hot-toast";
+import { getByIdWithOfflineFallback } from "../../utils/offlineDetailFallback";
 
 export const useInscriptions = () => {
   const queryClient = useQueryClient();
@@ -19,10 +20,7 @@ export const useInscriptions = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ["inscription", id],
-      queryFn: async () => {
-        const response = await inscriptionService.getById(id);
-        return response;
-      },
+      queryFn: () => getByIdWithOfflineFallback(inscriptionService, id, 'id_inscription'),
       enabled: !!id,
     });
   };

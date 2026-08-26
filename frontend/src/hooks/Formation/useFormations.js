@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import formationService from "../../services/Formation/formationService";
 import toast from "react-hot-toast";
+import { getByIdWithOfflineFallback } from "../../utils/offlineDetailFallback";
 
 export const useFormations = () => {
   const queryClient = useQueryClient();
@@ -17,7 +18,7 @@ export const useFormations = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ["formations", id],
-      queryFn: () => formationService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(formationService, id, 'id_formation'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });

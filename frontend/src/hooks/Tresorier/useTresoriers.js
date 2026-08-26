@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import tresorierService from '../../services/Tresorier/tresorierService';
 import toast from 'react-hot-toast';
+import { getByIdWithOfflineFallback } from '../../utils/offlineDetailFallback';
 
 export const useTresoriers = () => {
   const queryClient = useQueryClient();
@@ -16,7 +17,7 @@ export const useTresoriers = () => {
   const useGetById = (id) => {
     return useQuery({
       queryKey: ['tresoriers', id],
-      queryFn: () => tresorierService.getById(id),
+      queryFn: () => getByIdWithOfflineFallback(tresorierService, id, 'id_tresorier'),
       enabled: !!id,
       staleTime: 5 * 60 * 1000,
     });
