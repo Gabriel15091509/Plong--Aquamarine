@@ -2,7 +2,10 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "../services/api";
 import toast from "react-hot-toast";
-import { prefetchForOffline } from "../utils/offlinePrefetch";
+import {
+  prefetchForOffline,
+  registerOfflinePrefetchOnReconnect,
+} from "../utils/offlinePrefetch";
 
 const AuthContext = createContext();
 
@@ -17,6 +20,8 @@ export const AuthProvider = ({ children }) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    registerOfflinePrefetchOnReconnect();
+
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
 
