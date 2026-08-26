@@ -23,13 +23,19 @@ registerRoute(
   }),
 );
 
-// Jeux de données complets préchargés par utils/offlinePrefetch.js (mêmes
-// URLs, sans paramètre) : cache séparé du cache générique ci-dessous, avec
-// une expiration bien plus longue (7 jours au lieu de 24h) et non partagée
-// avec les 300 entrées "accessoires" (détails, listes filtrées...) — sans
-// ça, ces listes préchargées pouvaient être évincées ou expirer avant que
-// l'utilisateur ne rouvre l'app, alors qu'elles sont justement censées
-// couvrir la consultation hors-ligne des pages jamais visitées. À garder
+// Jeux de données complets préchargés par utils/offlinePrefetch.js : cache
+// séparé du cache générique ci-dessous, avec une expiration bien plus
+// longue (7 jours au lieu de 24h) et non partagée avec les 300 entrées
+// "accessoires" (détails ponctuels...) — sans ça, ces listes préchargées
+// pouvaient être évincées ou expirer avant que l'utilisateur ne rouvre
+// l'app, alors qu'elles sont justement censées couvrir la consultation
+// hors-ligne des pages jamais visitées. Matché sur le chemin seul (pas sur
+// l'absence de query string) : `userService.getAll()` envoie par exemple
+// "/api/users?" (query string vide mais présente) quand aucun filtre n'est
+// choisi, et une même liste appelée avec un filtre simple (ex.
+// "/api/sorties?statut=Planifiée") mérite tout autant ce cache longue durée
+// — chaque variante d'URL reste mise en cache séparément (comportement par
+// défaut de Workbox), seule la politique d'expiration change. À garder
 // synchronisée avec PREFETCH_ENTRIES dans utils/offlinePrefetch.js.
 const OFFLINE_DATASET_PATHS = new Set([
   "/api/adherents",
@@ -40,19 +46,33 @@ const OFFLINE_DATASET_PATHS = new Set([
   "/api/plongees",
   "/api/adhesions",
   "/api/certificats-medicaux",
+  "/api/competences",
+  "/api/specialites-formation",
+  "/api/palanquees",
+  "/api/attributions",
+  "/api/incidents",
+  "/api/moniteurs",
+  "/api/paiements",
+  "/api/president",
+  "/api/reparations",
+  "/api/tresoriers",
+  "/api/users",
+  "/api/dashboard/trends",
+  "/api/dashboard/indicateurs",
 ]);
 
 registerRoute(
-  ({ url, request }) =>
-    request.method === "GET" &&
-    url.search === "" &&
-    OFFLINE_DATASET_PATHS.has(url.pathname),
+  ({ url, request }) => request.method === "GET" && OFFLINE_DATASET_PATHS.has(url.pathname),
   new NetworkFirst({
     cacheName: "api-offline-dataset",
     networkTimeoutSeconds: 5,
     plugins: [
       new CacheableResponsePlugin({ statuses: [0, 200] }),
-      new ExpirationPlugin({ maxEntries: 20, maxAgeSeconds: 7 * 24 * 60 * 60 }),
+      // maxEntries plus généreux qu'avant (60 au lieu de 20) : sans le
+      // filtre "sans query string", chaque variante filtrée d'une même
+      // liste (ex. plusieurs pages visitées avec des filtres différents)
+      // compte comme une entrée séparée.
+      new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 7 * 24 * 60 * 60 }),
     ],
   }),
 );

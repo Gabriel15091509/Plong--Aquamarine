@@ -8,6 +8,20 @@ vi.mock("../services/Plongee/plongeeService", () => ({ default: { getAll: vi.fn(
 vi.mock("../services/Adhesion/adhesionService", () => ({ default: { getAll: vi.fn() } }));
 vi.mock("../services/CertificatMedical/certificatService", () => ({ default: { getAll: vi.fn() } }));
 vi.mock("../services/Inscription/inscriptionService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/Formation/competenceService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/Formation/specialiteFormationService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/Palanquee/palanqueeService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/Attribution/attributionService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/Incident/incidentService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/Moniteur/moniteurService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/Paiement/paiementService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/President/presidentService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/Reparation/reparationService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/Tresorier/tresorierService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/User/userService", () => ({ default: { getAll: vi.fn() } }));
+vi.mock("../services/Dashboard/dashboardService", () => ({
+  default: { getTrends: vi.fn(), getIndicateurs: vi.fn() },
+}));
 
 import adherentService from "../services/Adherent/adherentService";
 import sortieService from "../services/Sortie/sortieService";
@@ -17,13 +31,26 @@ import plongeeService from "../services/Plongee/plongeeService";
 import adhesionService from "../services/Adhesion/adhesionService";
 import certificatService from "../services/CertificatMedical/certificatService";
 import inscriptionService from "../services/Inscription/inscriptionService";
+import competenceService from "../services/Formation/competenceService";
+import specialiteFormationService from "../services/Formation/specialiteFormationService";
+import palanqueeService from "../services/Palanquee/palanqueeService";
+import attributionService from "../services/Attribution/attributionService";
+import incidentService from "../services/Incident/incidentService";
+import moniteurService from "../services/Moniteur/moniteurService";
+import paiementService from "../services/Paiement/paiementService";
+import presidentService from "../services/President/presidentService";
+import reparationService from "../services/Reparation/reparationService";
+import tresorierService from "../services/Tresorier/tresorierService";
+import userService from "../services/User/userService";
+import dashboardService from "../services/Dashboard/dashboardService";
 import {
   prefetchForOffline,
   getPrefetchStatus,
   registerOfflinePrefetchOnReconnect,
 } from "./offlinePrefetch";
 
-const ALL_SERVICES = [
+// Tous les services à un seul point d'entrée getAll().
+const SINGLE_CALL_SERVICES = [
   adherentService,
   sortieService,
   formationService,
@@ -32,6 +59,17 @@ const ALL_SERVICES = [
   adhesionService,
   certificatService,
   inscriptionService,
+  competenceService,
+  specialiteFormationService,
+  palanqueeService,
+  attributionService,
+  incidentService,
+  moniteurService,
+  paiementService,
+  presidentService,
+  reparationService,
+  tresorierService,
+  userService,
 ];
 
 // Laisse les .then()/.catch() de prefetchForOffline s'exécuter avant
@@ -40,7 +78,9 @@ const ALL_SERVICES = [
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const resolveAll = () => {
-  for (const service of ALL_SERVICES) service.getAll.mockResolvedValue({});
+  for (const service of SINGLE_CALL_SERVICES) service.getAll.mockResolvedValue({});
+  dashboardService.getTrends.mockResolvedValue({});
+  dashboardService.getIndicateurs.mockResolvedValue({});
 };
 
 describe("offlinePrefetch", () => {
@@ -56,7 +96,7 @@ describe("offlinePrefetch", () => {
     expect(adherentService.getAll).not.toHaveBeenCalled();
   });
 
-  it("enregistre un succès horodaté par entité", async () => {
+  it("enregistre un succès horodaté par entité, y compris les nouvelles entités ajoutées", async () => {
     resolveAll();
 
     prefetchForOffline();
@@ -65,8 +105,10 @@ describe("offlinePrefetch", () => {
     const status = getPrefetchStatus();
     expect(status.adherents.ok).toBe(true);
     expect(typeof status.adherents.at).toBe("number");
-    expect(status.sorties.ok).toBe(true);
-    expect(status.inscriptions.ok).toBe(true);
+    expect(status.paiements.ok).toBe(true);
+    expect(status.users.ok).toBe(true);
+    expect(status["dashboard/trends"].ok).toBe(true);
+    expect(status["dashboard/indicateurs"].ok).toBe(true);
   });
 
   it("conserve le dernier horodatage de succès connu quand un appel échoue ensuite", async () => {
