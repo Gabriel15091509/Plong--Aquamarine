@@ -26,6 +26,20 @@
     overflow-x: hidden;
   }
 
+  /* Leaflet pose ses propres z-index internes (jusqu'à 700 pour les popups,
+     800 pour les contrôles) sur .leaflet-pane/.leaflet-top/.leaflet-bottom —
+     bien au-dessus du z-50 utilisé par toutes les modales de l'app
+     (ConfirmModal, SortieRouteModal...). Sans isolation, une carte Leaflet
+     encore montée à l'écran (ex: les vignettes d'itinéraire de la liste en
+     grille des sorties, SortieRouteMapMini) s'affichait par-dessus n'importe
+     quelle modale ouverte en même temps. `isolation: isolate` crée un
+     contexte d'empilement local sans toucher au z-index visible de l'élément
+     lui-même : les z-index internes de Leaflet restent contenus dans ce
+     conteneur au lieu de se comparer à ceux du reste de la page. */
+  .leaflet-container {
+    isolation: isolate;
+  }
+
   /* Taille des champs de saisie sur mobile : Safari iOS zoome
      automatiquement toute la page dès qu'on touche un input/select/
      textarea affichant moins de 16px — quelle que soit sa taille visuelle
