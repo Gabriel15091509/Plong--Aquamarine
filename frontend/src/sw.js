@@ -23,8 +23,45 @@ registerRoute(
   }),
 );
 
+// Jeux de données complets préchargés par utils/offlinePrefetch.js (mêmes
+// URLs, sans paramètre) : cache séparé du cache générique ci-dessous, avec
+// une expiration bien plus longue (7 jours au lieu de 24h) et non partagée
+// avec les 300 entrées "accessoires" (détails, listes filtrées...) — sans
+// ça, ces listes préchargées pouvaient être évincées ou expirer avant que
+// l'utilisateur ne rouvre l'app, alors qu'elles sont justement censées
+// couvrir la consultation hors-ligne des pages jamais visitées. À garder
+// synchronisée avec PREFETCH_ENTRIES dans utils/offlinePrefetch.js.
+const OFFLINE_DATASET_PATHS = new Set([
+  "/api/adherents",
+  "/api/sorties",
+  "/api/inscriptions",
+  "/api/formations",
+  "/api/materiels",
+  "/api/plongees",
+  "/api/adhesions",
+  "/api/certificats-medicaux",
+]);
+
+registerRoute(
+  ({ url, request }) =>
+    request.method === "GET" &&
+    url.search === "" &&
+    OFFLINE_DATASET_PATHS.has(url.pathname),
+  new NetworkFirst({
+    cacheName: "api-offline-dataset",
+    networkTimeoutSeconds: 5,
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxEntries: 20, maxAgeSeconds: 7 * 24 * 60 * 60 }),
+    ],
+  }),
+);
+
 // Lecture API : réseau en priorité, secours sur le dernier résultat mis en
 // cache si hors-ligne (consultation adhérents/sorties/carnet sans réseau).
+// Ne couvre plus les URLs ci-dessus (interceptées par la route précédente,
+// Workbox priorise la première route qui matche) : reste pour les détails,
+// listes filtrées/paginées et tout le reste.
 registerRoute(
   ({ url, request }) => url.pathname.startsWith("/api/") && request.method === "GET",
   new NetworkFirst({
