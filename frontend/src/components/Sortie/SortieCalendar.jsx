@@ -177,11 +177,7 @@ const SortieCalendar = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <LoadingSpinner variant="list" />
-      </div>
-    );
+    return <LoadingSpinner variant="calendar" />;
   }
 
   if (error) {
