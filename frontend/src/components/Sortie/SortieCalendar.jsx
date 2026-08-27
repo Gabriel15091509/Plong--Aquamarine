@@ -132,6 +132,26 @@ const SortieCalendar = () => {
     return icons[statut] || FiCalendar;
   };
 
+  // Badge de statut de l'agenda du jour (dayAgenda) : fonds pleins en mode
+  // sombre (dark:bg-*-950), pas de variante /30 semi-transparente — même
+  // raison que le correctif des badges de vignette de SortiesPage : un
+  // badge posé sur un fond de carte peut se permettre une teinte
+  // translucide, mais rien ne garantit ici un fond suffisamment sombre
+  // pour rester lisible, autant utiliser d'emblée un fond opaque.
+  const getStatusBadgeColor = (statut) => {
+    const colors = {
+      Planifiée: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+      "En cours":
+        "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
+      Terminée: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300",
+      Annulée: "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300",
+    };
+    return (
+      colors[statut] ||
+      "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+    );
+  };
+
   const getStatusLabel = (statut) => {
     const labels = {
       Planifiée: "Planifiée",
@@ -637,54 +657,83 @@ const SortieCalendar = () => {
               className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 bg-cyan-600 p-4 flex items-center justify-between">
-                <div className="text-white">
-                  <p className="text-xs text-white/80 capitalize">
-                    {format(dayAgenda.date, "EEEE d MMMM yyyy", { locale: fr })}
+              {/* Poignée du tiroir (mobile) : simple affordance visuelle,
+                  n'a pas de rôle interactif propre. */}
+              <div className="sm:hidden flex justify-center pt-2.5 pb-1">
+                <div className="h-1.5 w-10 rounded-full bg-gray-200 dark:bg-gray-600" />
+              </div>
+
+              <div className="sticky top-0 bg-white dark:bg-gray-800 px-5 pt-3 sm:pt-5 pb-4 flex items-start justify-between border-b border-gray-100 dark:border-gray-700">
+                <div>
+                  <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-primary-600 dark:text-primary-400">
+                    {format(dayAgenda.date, "EEEE", { locale: fr })}
                   </p>
-                  <h3 className="text-lg font-semibold">
+                  <div className="flex items-baseline gap-1.5 mt-0.5">
+                    <span className="text-2xl font-bold text-gray-900 dark:text-white leading-none">
+                      {format(dayAgenda.date, "d")}
+                    </span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 capitalize">
+                      {format(dayAgenda.date, "MMMM yyyy", { locale: fr })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
                     {dayAgenda.sorties.length} sortie
-                    {dayAgenda.sorties.length > 1 ? "s" : ""}
-                  </h3>
+                    {dayAgenda.sorties.length > 1 ? "s" : ""} ce jour-là
+                  </p>
                 </div>
                 <button
                   onClick={() => setDayAgenda(null)}
-                  className="p-2 hover:bg-white/20 rounded-xl transition-colors text-white"
+                  className="p-2 -mr-1.5 -mt-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500 transition-colors"
+                  aria-label="Fermer"
                 >
-                  <FiX className="w-5 h-5" />
+                  <FiX className="w-4.5 h-4.5" />
                 </button>
               </div>
 
-              <div className="p-3 space-y-2">
-                {dayAgenda.sorties.map((sortie) => {
-                  const StatusIcon = getStatusIcon(sortie.statut);
-                  return (
-                    <button
-                      key={sortie.id_sortie}
-                      type="button"
-                      onClick={() => {
-                        setDayAgenda(null);
-                        handleSortieClick(sortie);
-                      }}
-                      className={`w-full flex items-center gap-3 text-left p-3 rounded-xl border-l-4 ${getStatusColor(
-                        sortie.statut,
-                      )} bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors`}
-                    >
-                      <div className="p-2 rounded-lg bg-white dark:bg-gray-800 shadow-sm flex-shrink-0">
-                        <StatusIcon className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 dark:text-white truncate">
+              {/* Agenda du jour : l'horaire ancre chaque ligne à gauche
+                  (ce sont des événements ordonnés dans le temps, pas une
+                  simple liste), le statut se lit par une puce discrète +
+                  un badge, plutôt qu'un pictogramme générique dans un
+                  carré et une barre de couleur verticale. */}
+              <div className="px-5 py-1">
+                {dayAgenda.sorties.map((sortie) => (
+                  <button
+                    key={sortie.id_sortie}
+                    type="button"
+                    onClick={() => {
+                      setDayAgenda(null);
+                      handleSortieClick(sortie);
+                    }}
+                    className="w-full flex items-start gap-3 text-left py-3.5 border-b border-gray-100 dark:border-gray-700/60 last:border-0 group"
+                  >
+                    <div className="flex flex-col items-center flex-shrink-0 w-11 pt-0.5">
+                      <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 tabular-nums">
+                        {format(new Date(sortie.date_heure), "HH:mm")}
+                      </span>
+                      <span
+                        className={`mt-1.5 w-2 h-2 rounded-full ${getStatusBgColor(sortie.statut)}`}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm text-gray-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                           {sortie.type}
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {sortie.lieu} · {format(new Date(sortie.date_heure), "HH:mm")} ·{" "}
+                        <span
+                          className={`flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusBadgeColor(
+                            sortie.statut,
+                          )}`}
+                        >
                           {getStatusLabel(sortie.statut)}
-                        </p>
+                        </span>
                       </div>
-                    </button>
-                  );
-                })}
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                        {sortie.lieu}
+                        {sortie.site ? ` · ${sortie.site}` : ""}
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
             </motion.div>
           </ModalOverlay>
