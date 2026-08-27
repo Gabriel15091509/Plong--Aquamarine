@@ -416,6 +416,235 @@ const packages = {
   ],
 };
 
+// ── Méthodes par classe ───────────────────────────────────────────────────────
+// Dérivées des vraies méthodes des contrôleurs/services de chaque entité
+// (backend/*/src/controllers/*.js) : le CRUD de base commun à
+// BaseController.js (create/getAll/getById/update/delete — absent quand
+// l'entité n'a pas son propre contrôleur, ex. Brevet/Echeance, gérées comme
+// sous-ressources d'Adherent/Echeancier) + la logique métier propre à
+// chaque contrôleur spécialisé (Sortie.enregistrerPointage,
+// Attribution.retourner, CertificatMedical.valider...). Les multiples
+// variantes de requête (getByXxx redondants) ne sont pas toutes reprises :
+// seules les opérations qui changent un état ou représentent une règle
+// métier réelle, pour rester lisible sur le diagramme.
+// Chaque entrée : [nom, [[nomParam, type], ...], typeRetour]
+// type/typeRetour ∈ primitiveTypes | "void" | "self" (instance de la classe
+// elle-même, résolu à la génération).
+const methodsByClass = {
+  User: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["id", "Integer"]], "self"],
+    ["update", [["id", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["id", "Integer"]], "void"],
+    ["login", [["email", "String"], ["password", "String"]], "String"],
+    ["verifyOtp", [["email", "String"], ["code", "String"]], "Boolean"],
+    ["changePassword", [["oldPassword", "String"], ["newPassword", "String"]], "Boolean"],
+    ["changeRole", [["role", "String"]], "void"],
+    ["disableAccount", [["id", "Integer"]], "void"],
+    ["enableAccount", [["id", "Integer"]], "void"],
+  ],
+  Adherent: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["numAdherent", "String"]], "self"],
+    ["update", [["numAdherent", "String"], ["data", "String"]], "self"],
+    ["delete", [["numAdherent", "String"]], "void"],
+    ["incrementPlongees", [["numAdherent", "String"]], "void"],
+    ["updateNiveau", [["numAdherent", "String"], ["niveau", "String"]], "void"],
+    ["sendCommunication", [["subject", "String"], ["message", "String"]], "void"],
+    ["getStats", [], "String"],
+  ],
+  Moniteur: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idMoniteur", "Integer"]], "self"],
+    ["update", [["idMoniteur", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["idMoniteur", "Integer"]], "void"],
+    ["getDisponibles", [], "self"],
+  ],
+  President: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idPresident", "Integer"]], "self"],
+    ["update", [["idPresident", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["idPresident", "Integer"]], "void"],
+    ["getCurrent", [], "self"],
+  ],
+  Tresorier: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idTresorier", "Integer"]], "self"],
+    ["update", [["idTresorier", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["idTresorier", "Integer"]], "void"],
+  ],
+  Brevet: [
+    ["getAll", [], "self"],
+    ["getById", [["idBrevet", "Integer"]], "self"],
+  ],
+
+  Sortie: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idSortie", "Integer"]], "self"],
+    ["update", [["idSortie", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["idSortie", "Integer"]], "void"],
+    ["getUpcomingSorties", [], "self"],
+    ["getTauxRemplissage", [["idSortie", "Integer"]], "Decimal"],
+    ["enregistrerPointage", [["idSortie", "Integer"], ["data", "String"]], "void"],
+    ["annulerPointage", [["idSortie", "Integer"]], "void"],
+  ],
+  Inscription: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idInscription", "Integer"]], "self"],
+    ["update", [["idInscription", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["idInscription", "Integer"]], "void"],
+    ["confirmInscription", [["idInscription", "Integer"]], "void"],
+    ["cancelInscription", [["idInscription", "Integer"]], "void"],
+    ["enregistrerPaiement", [["idInscription", "Integer"], ["montant", "Decimal"]], "void"],
+    ["getWaitlist", [["idSortie", "Integer"]], "self"],
+  ],
+  Plongee: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idPlongee", "Integer"]], "self"],
+    ["update", [["idPlongee", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["idPlongee", "Integer"]], "void"],
+    ["validatePlongee", [["idPlongee", "Integer"]], "void"],
+    ["getCarnetPdf", [["numAdherent", "String"]], "String"],
+  ],
+  Palanquee: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idPalanquee", "Integer"]], "self"],
+    ["update", [["idPalanquee", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["idPalanquee", "Integer"]], "void"],
+    ["addMembre", [["idPalanquee", "Integer"], ["numAdherent", "String"]], "void"],
+    ["removeMembre", [["idPalanquee", "Integer"], ["numAdherent", "String"]], "void"],
+    ["cloturer", [["idPalanquee", "Integer"]], "void"],
+    ["enregistrerDonneesPlongee", [["idPalanquee", "Integer"], ["data", "String"]], "void"],
+  ],
+  Composer: [
+    ["create", [["data", "String"]], "self"],
+    ["getByAdherent", [["numAdherent", "String"]], "self"],
+  ],
+  Attribution: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idAttribution", "Integer"]], "self"],
+    ["retourner", [["idAttribution", "Integer"], ["etatRetour", "String"]], "void"],
+    ["enregistrerCaution", [["idAttribution", "Integer"], ["montant", "Decimal"]], "void"],
+    ["restituerCaution", [["idAttribution", "Integer"]], "void"],
+    ["traiterDeterioration", [["idAttribution", "Integer"], ["constat", "String"]], "void"],
+  ],
+  Incident: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idIncident", "Integer"]], "self"],
+    ["cloturer", [["idIncident", "Integer"], ["mesuresPrises", "String"]], "void"],
+    ["getNonClotures", [], "self"],
+  ],
+
+  Formation: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idFormation", "Integer"]], "self"],
+    ["update", [["idFormation", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["idFormation", "Integer"]], "void"],
+    ["completeFormation", [["idFormation", "Integer"]], "void"],
+    ["ajourner", [["idFormation", "Integer"], ["motif", "String"]], "void"],
+    ["enregistrerPaiement", [["idFormation", "Integer"], ["montant", "Decimal"]], "void"],
+  ],
+  Seance: [
+    ["getByFormation", [["idFormation", "Integer"]], "self"],
+    ["updateStatut", [["idSeance", "Integer"], ["statut", "String"]], "void"],
+    ["update", [["idSeance", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["idSeance", "Integer"]], "void"],
+  ],
+  Competence: [
+    ["getByFormation", [["idFormation", "Integer"]], "self"],
+    ["valider", [["idCompetence", "Integer"], ["valideePar", "String"]], "void"],
+    ["update", [["idCompetence", "Integer"], ["data", "String"]], "self"],
+    ["delete", [["idCompetence", "Integer"]], "void"],
+  ],
+  FormationSpecialite: [
+    ["create", [["data", "String"]], "self"],
+    ["getByAdherent", [["numAdherent", "String"]], "self"],
+    ["getByMoniteur", [["idMoniteur", "Integer"]], "self"],
+  ],
+
+  Paiement: [
+    ["create", [["data", "String"]], "self"],
+    ["createLinked", [["referenceId", "String"], ["typePaiement", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idPaiement", "Integer"]], "self"],
+    ["processPayment", [["idPaiement", "Integer"]], "void"],
+    ["cancelPayment", [["idPaiement", "Integer"]], "void"],
+    ["marquerRembourse", [["idPaiement", "Integer"]], "void"],
+    ["getRecu", [["idPaiement", "Integer"]], "String"],
+  ],
+  Echeancier: [
+    ["create", [["data", "String"]], "self"],
+    ["getByReference", [["referenceId", "String"]], "self"],
+    ["getByAdherent", [["numAdherent", "String"]], "self"],
+    ["payerEcheance", [["idEcheance", "Integer"], ["montant", "Decimal"]], "void"],
+  ],
+  Echeance: [
+    ["getAll", [], "self"],
+    ["getById", [["idEcheance", "Integer"]], "self"],
+  ],
+
+  Materiel: [
+    ["getAll", [], "self"],
+    ["getById", [["numInventaire", "String"]], "self"],
+    ["update", [["numInventaire", "String"], ["data", "String"]], "self"],
+    ["delete", [["numInventaire", "String"]], "void"],
+    ["getAvailableMateriel", [], "self"],
+    ["getNeedingMaintenance", [], "self"],
+    ["updateEtat", [["numInventaire", "String"], ["etat", "String"]], "void"],
+    ["updateLocalisation", [["numInventaire", "String"], ["localisation", "String"]], "void"],
+    ["checkAvailability", [["numInventaire", "String"], ["dateDebut", "Date"], ["dateFin", "Date"]], "Boolean"],
+  ],
+  Reparation: [
+    ["create", [["data", "String"]], "self"],
+    ["getByMateriel", [["numInventaire", "String"]], "self"],
+    ["getEnCours", [], "self"],
+    ["terminer", [["idReparation", "Integer"], ["dateRetour", "Date"]], "void"],
+  ],
+
+  Adhesion: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idAdhesion", "Integer"]], "self"],
+    ["getActiveAdhesions", [], "self"],
+    ["getExpiringAdhesions", [], "self"],
+    ["enregistrerPaiement", [["idAdhesion", "Integer"], ["montant", "Decimal"]], "void"],
+    ["valider", [["idAdhesion", "Integer"]], "void"],
+    ["getAttestation", [["idAdhesion", "Integer"]], "String"],
+  ],
+  CertificatMedical: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idCertificat", "Integer"]], "self"],
+    ["getValidCertificates", [], "self"],
+    ["getExpiringSoon", [], "self"],
+    ["checkStatus", [["idCertificat", "Integer"]], "String"],
+    ["valider", [["idCertificat", "Integer"]], "void"],
+    ["downloadDocument", [["idCertificat", "Integer"]], "String"],
+  ],
+  Alerte: [
+    ["create", [["data", "String"]], "self"],
+    ["getAll", [], "self"],
+    ["getById", [["idAlerte", "Integer"]], "self"],
+    ["getUnread", [["numAdherent", "String"]], "self"],
+    ["markAsRead", [["idAlerte", "Integer"]], "void"],
+    ["markAllAsRead", [["numAdherent", "String"]], "void"],
+    ["relancer", [["idAlerte", "Integer"]], "void"],
+    ["delete", [["idAlerte", "Integer"]], "void"],
+  ],
+};
+
 // ── Associations réelles (FK + Sequelize association intra-service) ─────────
 const associations = [
   { from: "User", to: "Adherent", fromRole: "utilisateur", toRole: "adherent", fromMult: "1", toMult: "0..1", name: "possède" },
@@ -521,6 +750,24 @@ for (const [pkgName, classes] of Object.entries(packages)) {
       packagesXml += `          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="${nextId("lv")}" value="${lower}"/>\n`;
       packagesXml += `          <upperValue xmi:type="uml:LiteralInteger" xmi:id="${nextId("uv")}" value="1"/>\n`;
       packagesXml += `        </ownedAttribute>\n`;
+    });
+    // Résout un type de paramètre/retour ("String"|"Integer"|...|"self") en
+    // xmi:id — "self" ne peut être résolu qu'ici, une fois classId connu
+    // (une méthode peut retourner/recevoir une instance de sa propre classe,
+    // ex. Sortie.update(...): Sortie).
+    const resolveOpType = (t) => (t === "self" ? classId : typeIds[t]);
+    (methodsByClass[cls.name] || []).forEach(([opName, params, returnType]) => {
+      const opId = nextId("op");
+      packagesXml += `        <ownedOperation xmi:type="uml:Operation" xmi:id="${opId}" name="${esc(opName)}" visibility="public">\n`;
+      params.forEach(([paramName, paramType]) => {
+        const paramId = nextId("param");
+        packagesXml += `          <ownedParameter xmi:type="uml:Parameter" xmi:id="${paramId}" name="${esc(paramName)}" type="${resolveOpType(paramType)}" direction="in"/>\n`;
+      });
+      if (returnType !== "void") {
+        const retId = nextId("param");
+        packagesXml += `          <ownedParameter xmi:type="uml:Parameter" xmi:id="${retId}" name="return" type="${resolveOpType(returnType)}" direction="return"/>\n`;
+      }
+      packagesXml += `        </ownedOperation>\n`;
     });
     packagesXml += `      </packagedElement>\n`;
   });
