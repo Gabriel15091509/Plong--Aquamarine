@@ -56,6 +56,19 @@ const Inscription = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    // Posé par SortieService.replanifier quand une inscription "Confirmée"
+    // est remise "En attente" suite à une replanification météo (nouvelle
+    // date, la place n'est plus garantie) — seul cas où l'adhérent peut
+    // reconfirmer lui-même via InscriptionService.confirmInscription (voir
+    // son garde-fou) : il récupère une place qu'il avait déjà, pas une
+    // auto-confirmation initiale (toujours réservée à un gestionnaire, voir
+    // createInscription). Remis à false dès qu'il reconfirme ou qu'un
+    // gestionnaire tranche autrement (confirme/annule).
+    reconfirmation_requise: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     date_inscription: {
       type: DataTypes.DATE,
       allowNull: true,

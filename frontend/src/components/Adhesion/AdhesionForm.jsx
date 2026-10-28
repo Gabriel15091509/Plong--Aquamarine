@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FiUser,
@@ -19,6 +19,7 @@ import {
   FiAlertTriangle,
 } from "react-icons/fi";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
@@ -28,6 +29,7 @@ import {
   TYPE_ADHESION_OPTIONS,
   STATUT_PAIEMENT_OPTIONS,
   MODE_PAIEMENT_OPTIONS,
+  STATUTS_ADHERENT_EXCLUS_SELECTION,
 } from "../../utils/constants";
 
 const fadeInUp = {
@@ -37,7 +39,9 @@ const fadeInUp = {
 };
 
 const AdhesionForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte si elle
+  // vient de là, sinon sur la liste des adhésions — voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/adhesions");
   const { id } = useParams();
   const editMode = !!id;
   const { user } = useAuth();
@@ -64,6 +68,7 @@ const AdhesionForm = () => {
   const [photoAnalysis, setPhotoAnalysis] = useState(null);
   const submittingRef = useRef(false);
   const fileInputRef = useRef(null);
+  const fileInputRefVerso = useRef(null);
   // Distingue "champ vide" de "champ modifié par l'utilisateur", pour ne
   // jamais écraser sa saisie avec l'auto-remplissage OCR, et pour savoir
   // quels champs vider si la photo est retirée.
@@ -87,7 +92,27 @@ const AdhesionForm = () => {
   const [documentFile, setDocumentFile] = useState(null);
   const [existingDocumentPath, setExistingDocumentPath] = useState(null);
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
-  const [showWebcam, setShowWebcam] = useState(false);
+  // Verso facultatif du même document (voir models/Adhesion.js côté
+  // vie-associative-service, document_path_verso) : indépendant du recto,
+  // jamais analysé par l'OCR (analysePhoto ci-dessous ne porte que sur le
+  // recto, seule face qui contient l'identité/n° de licence à vérifier).
+  const [documentFileVerso, setDocumentFileVerso] = useState(null);
+  const [existingDocumentPathVerso, setExistingDocumentPathVerso] = useState(null);
+  const [filePreviewUrlVerso, setFilePreviewUrlVerso] = useState(null);
+  // null (fermé) | "recto" | "verso" — une seule instance de
+  // WebcamCaptureModal, réutilisée pour les deux faces (voir handleSubmit
+  // plus bas pour le détail du choix).
+  const [webcamTarget, setWebcamTarget] = useState(null);
+
+  // Un adhérent "Ancien"/"Suspendu" ne doit plus pouvoir être choisi pour
+  // une NOUVELLE adhésion (voir STATUTS_ADHERENT_EXCLUS_SELECTION), sauf
+  // celui déjà lié à l'adhésion en cours de modification. Sans effet sur
+  // isSelfSubmission, qui n'utilise pas ce SearchableSelect.
+  const adherentsSelectionnables = (adherentsData?.data || []).filter(
+    (a) =>
+      !STATUTS_ADHERENT_EXCLUS_SELECTION.includes(a.statut) ||
+      String(a.num_adherent) === String(formData.num_adherent),
+  );
 
   // Auto-sélectionne l'adhérent connecté comme seul "adhérent" possible
   // (le backend, côté identite-service, ne renvoie de toute façon que sa
@@ -149,6 +174,7 @@ const AdhesionForm = () => {
         annee_adhesion: adhesion.annee_adhesion || new Date().getFullYear(),
       });
       setExistingDocumentPath(adhesion.document_path || null);
+      setExistingDocumentPathVerso(adhesion.document_path_verso || null);
     }
   }, [editMode, id, adhesionData]);
 
@@ -206,6 +232,39 @@ const AdhesionForm = () => {
       if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
     };
   }, [filePreviewUrl]);
+
+  // Verso : même principe que applyDocumentFile/handleFileChange/
+  // handleWebcamCapture/handleRemoveDocument ci-dessus, en plus simple —
+  // pas d'OCR sur cette face (photoAnalysis reste celle du recto), donc
+  // rien à réinitialiser côté champs auto-remplis en la retirant.
+  const applyDocumentFileVerso = (file) => {
+    setDocumentFileVerso(file);
+    setFilePreviewUrlVerso((prevUrl) => {
+      if (prevUrl) URL.revokeObjectURL(prevUrl);
+      return file && file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : null;
+    });
+  };
+
+  const handleFileChangeVerso = (e) => {
+    applyDocumentFileVerso(e.target.files?.[0] || null);
+  };
+
+  const handleWebcamCaptureVerso = (file) => {
+    applyDocumentFileVerso(file);
+  };
+
+  const handleRemoveDocumentVerso = () => {
+    applyDocumentFileVerso(null);
+    if (fileInputRefVerso.current) fileInputRefVerso.current.value = "";
+  };
+
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrlVerso) URL.revokeObjectURL(filePreviewUrlVerso);
+    };
+  }, [filePreviewUrlVerso]);
 
   // Vérification "un peu" de cohérence, non bloquante : dès qu'une photo
   // (webcam ou import) et l'adhérent sont renseignés, on lance l'OCR en
@@ -315,19 +374,23 @@ const AdhesionForm = () => {
     setLoading(true);
     try {
       let payload = formData;
-      if (documentFile) {
+      if (documentFile || documentFileVerso) {
         payload = new FormData();
         Object.entries(formData).forEach(([key, value]) => {
           payload.append(key, value);
         });
-        payload.append("document", documentFile);
+        if (documentFile) payload.append("document", documentFile);
+        // Verso facultatif et indépendant (voir champ "document_verso" côté
+        // uploadAdhesionDocument) : rien n'empêche de l'envoyer seul, sans
+        // recto, si c'est ce que l'utilisateur a choisi.
+        if (documentFileVerso) payload.append("document_verso", documentFileVerso);
       }
       if (editMode && id) {
         await update.mutateAsync({ id, data: payload });
       } else {
         await create.mutateAsync(payload);
       }
-      navigate("/adhesions");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement de l'adhésion :", error);
     } finally {
@@ -352,38 +415,7 @@ const AdhesionForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      {/* En-tête */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode
-                ? "Modifier l'adhésion"
-                : isSelfSubmission
-                  ? "Soumettre ma licence / assurance"
-                  : "Nouvelle adhésion"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {editMode
-                ? "Mettez à jour les informations d'adhésion"
-                : isSelfSubmission
-                  ? "En attente de validation par le président/trésorier avant d'être prise en compte."
-                  : "Ajoutez une nouvelle adhésion au club"}
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiCreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
         {isSelfSubmission && (
@@ -423,7 +455,7 @@ const AdhesionForm = () => {
                   if (errors.num_adherent)
                     setErrors((prev) => ({ ...prev, num_adherent: "" }));
                 }}
-                options={adherentsData?.data || []}
+                options={adherentsSelectionnables}
                 getOptionLabel={(a) =>
                   `${a.civilite} ${a.nom} ${a.prenom} - ${a.email}`
                 }
@@ -663,126 +695,209 @@ const AdhesionForm = () => {
                 Photo / scan du document (facultatif)
               </span>
             </label>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,application/pdf"
-                onChange={handleFileChange}
-                className={`${inputClasses("document")} flex-1`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowWebcam(true)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors whitespace-nowrap"
-              >
-                <FiCamera className="w-4 h-4" />
-                Prendre une photo
-              </button>
-            </div>
-            {documentFile ? (
-              <div className="mt-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 truncate">
-                    <FiFile className="w-3.5 h-3.5 flex-shrink-0" />
-                    {documentFile.name}
-                  </p>
+            {/* Recto/verso indépendants (ex. carte d'identité, licence FFESM
+                imprimée sur les deux faces) : le verso est facultatif même
+                si un recto est fourni, voir models/Adhesion.js
+                document_path_verso côté vie-associative-service. Seul le
+                recto passe par l'OCR de cohérence (analysePhoto plus haut) —
+                c'est la face qui porte l'identité/n° de licence à vérifier. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">
+                  Recto
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleFileChange}
+                    className={`${inputClasses("document")} flex-1`}
+                  />
                   <button
                     type="button"
-                    onClick={handleRemoveDocument}
-                    title="Retirer le document"
-                    className="p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0 transition-colors"
+                    onClick={() => setWebcamTarget("recto")}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors whitespace-nowrap"
                   >
-                    <FiX className="w-3.5 h-3.5" />
+                    <FiCamera className="w-4 h-4" />
+                    Prendre une photo
                   </button>
                 </div>
-                {filePreviewUrl && (
-                  <div className="relative mt-2 inline-block">
-                    <img
-                      src={filePreviewUrl}
-                      alt="Aperçu du document"
-                      className="max-h-48 rounded-lg border border-gray-200 dark:border-gray-600 object-contain"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleRemoveDocument}
-                      title="Retirer la photo"
-                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-                    >
-                      <FiX className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
-                {analysePhoto.isPending && (
-                  <div className="mt-2 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-gray-400 border-t-transparent" />
-                    Vérification de la cohérence de la photo...
-                  </div>
-                )}
-                {photoAnalysis && !analysePhoto.isPending && (
-                  <div
-                    className={`mt-2 p-3 rounded-lg border text-sm ${
-                      photoAnalysis.coherent
-                        ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
-                        : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400"
-                    }`}
-                  >
-                    {photoAnalysis.coherent ? (
-                      <p className="flex items-center gap-1.5 font-medium">
-                        <FiCheckCircle className="w-4 h-4 flex-shrink-0" />
-                        La photo semble cohérente avec les informations saisies.
+                {documentFile ? (
+                  <div className="mt-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 truncate">
+                        <FiFile className="w-3.5 h-3.5 flex-shrink-0" />
+                        {documentFile.name}
                       </p>
-                    ) : (
-                      <div>
-                        <p className="flex items-center gap-1.5 font-medium">
-                          <FiAlertTriangle className="w-4 h-4 flex-shrink-0" />À
-                          vérifier avant d&apos;enregistrer :
-                        </p>
-                        <ul className="mt-1 ml-5 list-disc space-y-0.5">
-                          {photoAnalysis.avertissements.map((message) => (
-                            <li key={message}>{message}</li>
-                          ))}
-                        </ul>
-                        <p className="mt-1.5 text-xs opacity-80">
-                          Vérification automatique indicative (lecture par OCR)
-                          — vous pouvez enregistrer quand même si le document
-                          est correct.
-                        </p>
+                      <button
+                        type="button"
+                        onClick={handleRemoveDocument}
+                        title="Retirer le document"
+                        className="p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0 transition-colors"
+                      >
+                        <FiX className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {filePreviewUrl && (
+                      <div className="relative mt-2 inline-block">
+                        <img
+                          src={filePreviewUrl}
+                          alt="Aperçu du document (recto)"
+                          className="max-h-48 rounded-lg border border-gray-200 dark:border-gray-600 object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRemoveDocument}
+                          title="Retirer la photo"
+                          className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                        >
+                          <FiX className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    {analysePhoto.isPending && (
+                      <div className="mt-2 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-gray-400 border-t-transparent" />
+                        Vérification de la cohérence de la photo...
+                      </div>
+                    )}
+                    {photoAnalysis && !analysePhoto.isPending && (
+                      <div
+                        className={`mt-2 p-3 rounded-lg border text-sm ${
+                          photoAnalysis.coherent
+                            ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
+                            : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400"
+                        }`}
+                      >
+                        {photoAnalysis.coherent ? (
+                          <p className="flex items-center gap-1.5 font-medium">
+                            <FiCheckCircle className="w-4 h-4 flex-shrink-0" />
+                            La photo semble cohérente avec les informations saisies.
+                          </p>
+                        ) : (
+                          <div>
+                            <p className="flex items-center gap-1.5 font-medium">
+                              <FiAlertTriangle className="w-4 h-4 flex-shrink-0" />À
+                              vérifier avant d&apos;enregistrer :
+                            </p>
+                            <ul className="mt-1 ml-5 list-disc space-y-0.5">
+                              {photoAnalysis.avertissements.map((message) => (
+                                <li key={message}>{message}</li>
+                              ))}
+                            </ul>
+                            <p className="mt-1.5 text-xs opacity-80">
+                              Vérification automatique indicative (lecture par
+                              OCR) — vous pouvez enregistrer quand même si le
+                              document est correct.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
+                ) : (
+                  existingDocumentPath && (
+                    <a
+                      href={existingDocumentPath}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
+                    >
+                      <FiFile className="w-3.5 h-3.5" />
+                      Voir le document actuel
+                    </a>
+                  )
                 )}
               </div>
-            ) : (
-              existingDocumentPath && (
-                <a
-                  href={existingDocumentPath}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
-                >
-                  <FiFile className="w-3.5 h-3.5" />
-                  Voir le document actuel
-                </a>
-              )
-            )}
+
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">
+                  Verso (facultatif)
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    ref={fileInputRefVerso}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleFileChangeVerso}
+                    className={`${inputClasses("document_verso")} flex-1`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setWebcamTarget("verso")}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors whitespace-nowrap"
+                  >
+                    <FiCamera className="w-4 h-4" />
+                    Prendre une photo
+                  </button>
+                </div>
+                {documentFileVerso ? (
+                  <div className="mt-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5 truncate">
+                        <FiFile className="w-3.5 h-3.5 flex-shrink-0" />
+                        {documentFileVerso.name}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleRemoveDocumentVerso}
+                        title="Retirer le document"
+                        className="p-1 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0 transition-colors"
+                      >
+                        <FiX className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {filePreviewUrlVerso && (
+                      <div className="relative mt-2 inline-block">
+                        <img
+                          src={filePreviewUrlVerso}
+                          alt="Aperçu du document (verso)"
+                          className="max-h-48 rounded-lg border border-gray-200 dark:border-gray-600 object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRemoveDocumentVerso}
+                          title="Retirer la photo"
+                          className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                        >
+                          <FiX className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  existingDocumentPathVerso && (
+                    <a
+                      href={existingDocumentPathVerso}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5"
+                    >
+                      <FiFile className="w-3.5 h-3.5" />
+                      Voir le document actuel (verso)
+                    </a>
+                  )
+                )}
+              </div>
+            </div>
           </motion.div>
         </div>
       </div>
 
-      {showWebcam && (
+      {webcamTarget && (
         <WebcamCaptureModal
-          title={`Photo — ${TYPE_ADHESION_OPTIONS.find((opt) => opt.value === formData.type)?.label || "document"}`}
-          onCapture={handleWebcamCapture}
-          onClose={() => setShowWebcam(false)}
+          title={`Photo — ${TYPE_ADHESION_OPTIONS.find((opt) => opt.value === formData.type)?.label || "document"}${webcamTarget === "verso" ? " (verso)" : ""}`}
+          onCapture={webcamTarget === "verso" ? handleWebcamCaptureVerso : handleWebcamCapture}
+          onClose={() => setWebcamTarget(null)}
         />
       )}
 
       {/* Pied de page */}
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/adhesions")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -806,7 +921,7 @@ const AdhesionForm = () => {
               : "Créer l'adhésion"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

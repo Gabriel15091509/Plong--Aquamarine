@@ -66,6 +66,17 @@ class AttributionRepository extends BaseRepository {
     });
   }
 
+  // Plusieurs sorties à la fois — vue moniteur (AttributionService.getAll) :
+  // "matériel attribué pour les sorties que j'encadre", en un seul aller-
+  // retour plutôt que findBySortie appelé en boucle sur chaque id.
+  async findBySorties(idSorties) {
+    if (!idSorties || idSorties.length === 0) return [];
+    return await this.model.findAll({
+      where: { id_sortie: { [Op.in]: idSorties } },
+      order: [['date_attribution', 'DESC']],
+    });
+  }
+
   // Adherent (identite-service) a quitté ce schéma : plus d'include
   // Sequelize possible ici — voir AttributionService.getByPalanquee qui
   // recompose `.adherent` via identiteClient après cet appel.

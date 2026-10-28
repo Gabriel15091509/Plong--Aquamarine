@@ -67,6 +67,7 @@ const ALERT_DESCRIPTIONS = {
   Formation: "Une formation est disponible",
   "Materiel en retard": "Du matériel emprunté n'a pas été retourné à temps",
   "Inactivite plongee": "Aucune plongée enregistrée depuis longtemps",
+  "Sortie modifiée": "Une sortie où vous êtes inscrit(e) a été modifiée",
 };
 
 class AlerteService extends BaseService {
@@ -113,14 +114,12 @@ class AlerteService extends BaseService {
   }
 
   async getAll(options = {}, user = null, authHeader = null) {
-    await this.syncExpirationAlertes();
     const scope = await this.getScopeForUser(user);
     const results = await super.getAll({ ...options, where: { ...options.where, ...scope } });
     return await withAdherentNames(results, authHeader);
   }
 
   async getUnread(user = null, authHeader = null, { limit = LIMITE_DROPDOWN_NOTIFICATIONS } = {}) {
-    await this.syncExpirationAlertes();
     const scope = await this.getScopeForUser(user);
     const results = await this.alerteRepository.findUnread(scope, { limit });
     return await withAdherentNames(results, authHeader);
@@ -131,7 +130,6 @@ class AlerteService extends BaseService {
   // dropdown), couvre aussi bien les alertes lues que non lues, avec un
   // vrai total (findAndCountAll) pour afficher "Page X / Y".
   async getAllPaginated({ page = 1, pageSize = PAGE_SIZE_DEFAUT } = {}, user = null, authHeader = null) {
-    await this.syncExpirationAlertes();
     const scope = await this.getScopeForUser(user);
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
     const size = Math.min(Math.max(parseInt(pageSize, 10) || PAGE_SIZE_DEFAUT, 1), PAGE_SIZE_MAX);
@@ -151,7 +149,6 @@ class AlerteService extends BaseService {
   }
 
   async getByAdherent(num_adherent, user = null, authHeader = null) {
-    await this.syncExpirationAlertes();
     const scope = await this.getScopeForUser(user);
     if (scope.num_adherent && scope.num_adherent !== num_adherent) {
       throw new Error("Accès refusé à ces alertes");
@@ -266,13 +263,11 @@ class AlerteService extends BaseService {
   }
 
   async getStats(user = null) {
-    await this.syncExpirationAlertes();
     const scope = await this.getScopeForUser(user);
     return await this.alerteRepository.getStats(scope);
   }
 
   async getUnreadCount(user = null) {
-    await this.syncExpirationAlertes();
     const scope = await this.getScopeForUser(user);
     return await this.alerteRepository.getUnreadCount(scope);
   }
@@ -291,6 +286,20 @@ class AlerteService extends BaseService {
     });
   }
 
+  // Job de fond (voir app.js:startBackgroundJobs — un passage immédiat au
+  // démarrage, puis tous les jours à 6h), PAS appelé depuis getAll/getUnread/
+  // getAllPaginated/getByAdherent/getStats/getUnreadCount ci-dessus : ça a
+  // longtemps été le cas ("au cas où", pour garantir des alertes toujours à
+  // jour à la lecture), mais ce parcours re-scanne intégralement Adhesion +
+  // CertificatMedical PUIS boucle en série (un `await` par ligne, jamais en
+  // parallèle) sur upsertAutomaticAlerte pour chacune. Sur un club avec de
+  // l'historique, mesuré à lui seul entre 2 et 6 secondes — et Header.jsx
+  // interroge getUnread/getStats en polling (30s) sur TOUTE page de l'appli,
+  // ce qui ralentissait donc chaque navigation, pas seulement la page
+  // Notifications. Une fraîcheur quotidienne suffit largement : ces alertes
+  // ne portent que sur des dates (adhésion/certificat expirant sous 30
+  // jours), rien qui puisse changer plus vite qu'un cron journalier ne le
+  // capture.
   async syncExpirationAlertes(days = 30) {
     const today = this.startOfDay(new Date());
     const limit = this.endOfDay(this.addDays(today, days));
@@ -443,6 +452,7 @@ class AlerteService extends BaseService {
       "Formation",
       "Materiel en retard",
       "Inactivite plongee",
+      "Sortie modifiée",
     ];
     if (data.type && !validTypes.includes(data.type)) {
       errors.push("Type d'alerte invalide");

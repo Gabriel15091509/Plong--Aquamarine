@@ -8,6 +8,12 @@ const path = require("path");
 const emailCache = new Map();
 const LOGO_PATH = path.join(__dirname, "../assets/logo.png");
 const LOGO_CID = "logo-aquanature";
+// Base de l'appli frontend (Cloudflare Pages en prod, voir render.yaml —
+// gateway-service porte déjà cette variable pour son CORS ; ajoutée ici
+// pour construire un lien cliquable dans un email, une première pour ce
+// fichier). Fallback local cohérent avec le reste du repo (Vite sert le
+// front sur ce port en dev).
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 const createTransporter = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
@@ -365,12 +371,71 @@ const sendSortieSousRemplieEmail = async ({
   });
 };
 
+// Envoyé à chaque inscrit non annulé (voir SortieService.
+// notifierModificationSortie) quand une sortie encore "Planifiée" est
+// modifiée sur au moins un champ de logistique (date/heure, lieu, site...).
+// Le sujet inclut un horodatage : sans lui, deux modifications successives
+// de la MÊME sortie généreraient le même sujet pour le même destinataire, et
+// la seconde serait silencieusement bloquée par le cache anti-doublon de
+// sendEmail (clé (destinataire, sujet), jamais vidé en cours de process —
+// contrairement à sendSortieReminderEmail, qui n'a besoin de distinguer que
+// des sorties différentes, pas plusieurs envois pour la même).
+const sendSortieModifieeEmail = async ({
+  to,
+  adherentName,
+  sortieLabel,
+  champsModifies = [],
+}) => {
+  const detailsHtml = champsModifies.length
+    ? `<ul>${champsModifies.map((c) => `<li>${c}</li>`).join("")}</ul>`
+    : "";
+  const introHtml = `<p>Bonjour ${adherentName},</p><p>La sortie "<strong>${sortieLabel}</strong>" à laquelle vous êtes inscrit(e) vient d'être modifiée.</p>${detailsHtml}<p>Merci de vérifier les nouvelles informations sur votre espace adhérent.</p>`;
+  return sendEmail({
+    to,
+    subject: `Sortie modifiée — ${sortieLabel} (${new Date().toLocaleString("fr-FR")})`,
+    html: buildSimpleEmailHtml("Sortie modifiée", introHtml, [
+      { label: "Sortie", value: sortieLabel },
+      ...(champsModifies.length ? [{ label: "Modifié", value: champsModifies.join(", ") }] : []),
+    ]),
+  });
+};
+
+// Envoyé aux inscrits dont l'inscription était "Confirmée" au moment où la
+// sortie a été annulée météo, puis replanifiée à une nouvelle date (voir
+// SortieService.replanifier) : leur place n'est plus garantie (repassée "En
+// attente", Inscription.reconfirmation_requise) — à la différence de
+// sendSortieModifieeEmail ci-dessus (simple information), celui-ci porte un
+// lien cliquable vers leur inscription, seul endroit où confirmInscription
+// accepte désormais une auto-confirmation (cf. son garde-fou). Sujet
+// horodaté pour la même raison que sendSortieModifieeEmail (cache anti-
+// doublon de sendEmail).
+const sendReconfirmationInscriptionEmail = async ({
+  to,
+  adherentName,
+  sortieLabel,
+  nouvelleDate,
+  id_inscription,
+}) => {
+  const lien = `${FRONTEND_URL}/inscriptions/${id_inscription}`;
+  const introHtml = `<p>Bonjour ${adherentName},</p><p>La sortie "<strong>${sortieLabel}</strong>" a été annulée pour cause météorologique, puis replanifiée au <strong>${formatDateFr(nouvelleDate)}</strong>.</p><p>Votre place n'étant plus garantie à cette nouvelle date, merci de <strong>reconfirmer votre inscription</strong> dès que possible (dans la limite des places disponibles) :</p><p style="text-align:center;margin:24px 0;"><a href="${lien}" style="display:inline-block;background:#0b3552;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:8px;">Reconfirmer mon inscription</a></p><p>Si vous ne pouvez plus participer, aucune action n'est requise : votre place sera proposée à un autre adhérent.</p>`;
+  return sendEmail({
+    to,
+    subject: `Sortie replanifiée — reconfirmez votre inscription — ${sortieLabel} (${new Date().toLocaleString("fr-FR")})`,
+    html: buildSimpleEmailHtml("Reconfirmation requise", introHtml, [
+      { label: "Sortie", value: sortieLabel },
+      { label: "Nouvelle date", value: formatDateFr(nouvelleDate) },
+    ]),
+  });
+};
+
 module.exports = {
   sendEmail,
   sendInscriptionConfirmationEmail,
   sendInscriptionPaymentEmail,
   sendWaitlistPromotedEmail,
   sendSortieReminderEmail,
+  sendSortieModifieeEmail,
+  sendReconfirmationInscriptionEmail,
   sendSortieAnnuleeMeteoEmail,
   sendPropositionsReprogrammationEmail,
   sendAlerteMeteoDouteuseEmail,

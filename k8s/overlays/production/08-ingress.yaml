@@ -142,6 +142,18 @@ spec:
               service:
                 name: identite-service
                 port: { number: 5014 }
+          # Volontairement absent de 17-ingress-public.yaml (voir son
+          # commentaire d'en-tête) : une restauration écrase la base en
+          # direct pour TOUS les services, un cran de risque au-dessus des
+          # autres routes admin déjà ouvertes publiquement — réservé au
+          # réseau local même si l'accès applicatif (JWT + rôle président)
+          # protège déjà cette route.
+          - path: /api/backups
+            pathType: Prefix
+            backend:
+              service:
+                name: identite-service
+                port: { number: 5014 }
           - path: /api/moniteurs
             pathType: Prefix
             backend:

@@ -2,6 +2,7 @@ const BaseService = require('./BaseService');
 const MoniteurRepository = require('../repositories/MoniteurRepository');
 const UserService = require('./UserService');
 const { isNiveauCompatible } = require('../utils/roleScope');
+const { NotFoundError, ForbiddenError, ValidationError } = require('../utils/errors');
 
 const NIVEAU_MIN_MONITEUR = 'Niveau 4';
 
@@ -19,9 +20,9 @@ class MoniteurService extends BaseService {
   async create(data) {
     let user_id = data.user_id;
     let welcomeEmail = null;
+    const { User } = require('../models');
 
     if (!user_id) {
-      const { User } = require('../models');
       const existingUser = await User.findOne({ where: { email: data.email } });
 
       if (existingUser) {
@@ -51,6 +52,20 @@ class MoniteurService extends BaseService {
         );
         user_id = user.id;
         welcomeEmail = { to: user.email, name: user.name, role: user.role, tempPassword };
+      }
+    } else {
+      // Compte explicitement lié (ex. un adhérent Niveau 4+ choisi dans
+      // "Lier un compte existant", voir MoniteurForm.jsx) dont le rôle
+      // n'est pas encore "moniteur" : le promouvoir ici. Sans ça, la fiche
+      // moniteur existerait mais le compte resterait bloqué aux
+      // permissions "adherent" — c'est le rôle, pas la présence d'une
+      // fiche, qui gouverne les accès (voir authMiddleware). C'est
+      // désormais la seule voie de promotion vers "moniteur" (le
+      // changement de rôle libre a été retiré du menu ⚙️ de gestion de
+      // compte, AccountActionsMenu.jsx côté frontend).
+      const linkedUser = await User.findByPk(user_id);
+      if (linkedUser && linkedUser.role !== 'moniteur') {
+        await this.userService.changeRole(user_id, 'moniteur');
       }
     }
 
@@ -83,6 +98,42 @@ class MoniteurService extends BaseService {
 
   async getDisponibles(jour) {
     return await this.moniteurRepository.findDisponibles(jour);
+  }
+
+  // Toggle "disponible pour être désigné encadrant" + motif — distinct de
+  // la mise à jour générale (PUT /:id, présidence uniquement) : un moniteur
+  // doit pouvoir se déclarer indisponible lui-même (congés, arrêt...) sans
+  // dépendre du président, mais seulement sur SA PROPRE fiche — d'où le
+  // contrôle self-or-président ici plutôt qu'un simple rôle sur la route
+  // (voir moniteurRoutes.js : ROLES.PRESIDENT_MONITEUR, trop large seul).
+  async updateDisponibilite(id, { disponible, cause }, requestingUser) {
+    const moniteur = await this.moniteurRepository.findById(id);
+    if (!moniteur) {
+      throw new NotFoundError("Moniteur non trouvé");
+    }
+
+    if (
+      requestingUser?.role === "moniteur" &&
+      moniteur.user_id !== requestingUser.id
+    ) {
+      throw new ForbiddenError(
+        "Vous ne pouvez modifier que votre propre disponibilité",
+      );
+    }
+
+    const dispo = !!disponible;
+    if (!dispo && !cause?.trim()) {
+      throw new ValidationError(
+        "Un motif est requis pour se déclarer indisponible",
+      );
+    }
+
+    return await this.moniteurRepository.update(id, {
+      disponible: dispo,
+      // Motif vidé dès que le moniteur redevient disponible : jamais
+      // affiché comme "raison" d'une indisponibilité qui n'existe plus.
+      cause_indisponibilite: dispo ? null : cause.trim(),
+    });
   }
 
   async validateMoniteurData(data) {

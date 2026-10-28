@@ -54,6 +54,15 @@ class UserService {
     return response.data;
   }
 
+  // Édition admin (président) du nom/email/téléphone d'un autre compte —
+  // distinct de updateProfile ci-dessus (self-service uniquement). Utilisé
+  // par les formulaires Modifier de Moniteur/Président/Trésorier pour
+  // compléter les informations du compte lié.
+  async updateInfo(userId, data) {
+    const response = await api.put(`/users/${userId}`, data);
+    return response.data;
+  }
+
   async changeNiveau(userId, niveau) {
     const response = await api.put(`/users/${userId}/niveau`, { niveau });
     return response.data;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import {
@@ -17,9 +17,9 @@ import {
   FiCamera,
   FiSave,
   FiX,
-  FiUserPlus,
 } from "react-icons/fi";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import { useUsers } from "../../hooks/User/useUsers";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import { sendWelcomeEmailIfNeeded } from "../../utils/welcomeEmail";
@@ -39,7 +39,10 @@ const fadeInUp = {
 };
 
 const AdherentForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte (ex.
+  // UserCreatePage) si elle vient de là, sinon sur la liste des adhérents —
+  // voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/adherents");
   const { id } = useParams();
   const editMode = !!id;
 
@@ -184,7 +187,7 @@ const AdherentForm = () => {
           formData: photoFormData,
         });
       }
-      navigate("/adherents");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement de l'adhérent :", error);
       toast.error(
@@ -213,32 +216,7 @@ const AdherentForm = () => {
   const isBapteme = formData.niveau === "Baptême";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      {/* En-tête */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier l'adhérent" : "Nouvel adhérent"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {editMode
-                ? "Mettez à jour les informations de l'adhérent"
-                : "Ajoutez un nouveau membre au club"}
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiUserPlus className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
         {editMode && (
@@ -660,10 +638,10 @@ const AdherentForm = () => {
       </div>
 
       {/* Pied de page */}
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/adherents")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -683,7 +661,7 @@ const AdherentForm = () => {
           {editMode ? "Mettre à jour" : "Créer l'adhérent"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

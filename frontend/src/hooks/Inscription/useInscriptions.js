@@ -17,6 +17,24 @@ export const useInscriptions = () => {
     });
   };
 
+  // Badge Sidebar.jsx ("nouvelles inscriptions") : queryKey préfixée
+  // ["inscriptions", ...] comme le reste de ce hook, pour rester invalidée
+  // par les mêmes mutations (create/update/remove/confirm/cancel) sans
+  // avoir à les modifier une à une (invalidateQueries(["inscriptions"])
+  // matche déjà ce préfixe par défaut). staleTime généreux : un compteur de
+  // badge n'a pas besoin d'être seconde-par-seconde à jour.
+  const useGetPendingCount = (options = {}) => {
+    return useQuery({
+      queryKey: ["inscriptions", "pending-count"],
+      queryFn: async () => {
+        const response = await inscriptionService.getPendingCount();
+        return response;
+      },
+      staleTime: 60 * 1000,
+      ...options,
+    });
+  };
+
   const useGetById = (id) => {
     return useQuery({
       queryKey: ["inscription", id],
@@ -204,6 +222,7 @@ export const useInscriptions = () => {
 
   return {
     useGetAll,
+    useGetPendingCount,
     useGetById,
     useGetByAdherent,
     useGetStats, // AJOUTÉ

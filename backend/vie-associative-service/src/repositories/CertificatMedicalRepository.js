@@ -51,6 +51,14 @@ class CertificatMedicalRepository extends BaseRepository {
     });
   }
 
+  // Badge Sidebar ("certificats en attente de validation") : COUNT léger
+  // côté serveur — même motif que InscriptionRepository.countPending.
+  async countEnAttenteValidation() {
+    return await this.model.count({
+      where: { soumis_par_adherent: true, statut_validation: 'En attente' },
+    });
+  }
+
   // Corrige en base les certificats dont `statut` est resté "Valide" alors
   // que leur date de validité est dépassée — `statut` est saisi manuellement
   // (par le moniteur/président) et ne se recalcule jamais tout seul sinon.

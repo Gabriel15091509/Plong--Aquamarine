@@ -1,5 +1,5 @@
 import api from '../api';
-import { downloadFile } from '../../utils/downloadFile';
+import { fetchPdfBlobUrl } from '../../utils/downloadFile';
 
 class AdhesionService {
   async getAll(params = {}) {
@@ -32,6 +32,13 @@ class AdhesionService {
     return response.data;
   }
 
+  // COUNT léger pour le badge Sidebar — voir inscriptionService.
+  // getPendingCount, même motif.
+  async getEnAttenteValidationCount() {
+    const response = await api.get('/adhesions/en-attente-validation-count');
+    return response.data;
+  }
+
   async create(data) {
     const isFormData = data instanceof FormData;
     const response = await api.post('/adhesions', data, isFormData
@@ -48,8 +55,13 @@ class AdhesionService {
     return response.data;
   }
 
-  async getDossierStatus(numAdherent) {
-    const response = await api.get(`/adhesions/adherent/${numAdherent}/dossier-status`);
+  // `requiredTypes` : dossier allégé pour un Baptême (["Club"] uniquement —
+  // pas encore licencié FFESM ni assuré à l'année, voir AdhesionService.
+  // checkDossierValidity côté backend). Sans ce paramètre, le backend exige
+  // par défaut Club + FFESM + Assurance RC pour tout le monde.
+  async getDossierStatus(numAdherent, requiredTypes) {
+    const params = requiredTypes?.length ? { types: requiredTypes.join(",") } : undefined;
+    const response = await api.get(`/adhesions/adherent/${numAdherent}/dossier-status`, { params });
     return response.data;
   }
 
@@ -58,8 +70,10 @@ class AdhesionService {
     return response.data;
   }
 
-  async downloadAttestation(numAdherent, annee) {
-    return downloadFile(
+  // Aperçu (PdfPreviewModal), jamais un téléchargement direct — voir le même
+  // commentaire dans plongeeService.previewCarnet.
+  async previewAttestation(numAdherent, annee) {
+    return fetchPdfBlobUrl(
       `/adhesions/adherent/${numAdherent}/attestation?annee=${annee}`,
       `attestation-adhesion-${numAdherent}-${annee}.pdf`,
     );

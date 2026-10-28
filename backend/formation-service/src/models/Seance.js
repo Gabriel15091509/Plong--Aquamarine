@@ -41,6 +41,16 @@ const Seance = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    // Note /20 attribuée au pointage de présence (SeanceService.updateStatut)
+    // — jamais pour une séance "Absence" (voir la garde côté service).
+    // Facultative : sert à calculer une moyenne indicative une fois toutes
+    // les séances réalisées (voir FormationService/utils/helpers.js
+    // computeNoteMoyenneSeances), simple suggestion pour l'appréciation
+    // finale — le moniteur reste seul décisionnaire de celle-ci.
+    note: {
+      type: DataTypes.DECIMAL(4, 2),
+      allowNull: true,
+    },
   },
   {
     tableName: "seances",

@@ -81,6 +81,18 @@ router.put(
   userController.changeRole.bind(userController),
 );
 
+// Édition admin nom/email/téléphone d'un autre compte (voir
+// UserController.updateUserInfo) — complète les formulaires Modifier de
+// Moniteur/Président/Trésorier. Sans conflit avec PUT /profile
+// ci-dessus (chemin littéral, déjà déclaré et donc prioritaire) ni avec
+// DELETE /:id plus bas (méthode différente).
+router.put(
+  "/:id",
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),
+  userController.updateUserInfo.bind(userController),
+);
+
 router.put(
   "/:id/photo",
   AuthMiddleware.authenticate,

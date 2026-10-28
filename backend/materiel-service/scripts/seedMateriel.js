@@ -55,12 +55,29 @@ async function seed() {
   }
   console.log(`[materiel] ${materielIds.length} matériels créés`);
 
+  // Un même matériel ne peut pas avoir deux réparations "En cours"
+  // simultanées (il n'est pas à l'atelier deux fois à la fois) — suivi via
+  // un Set, même motif que tirerAdhesionUnique dans seedVieAssociative.js :
+  // jusqu'à 20 nouveaux tirages avant d'abandonner la ligne plutôt que de
+  // boucler indéfiniment. Les réparations "Terminée", elles, peuvent tout à
+  // fait s'accumuler sur un même matériel (historique de réparations).
+  const materielAvecReparationActive = new Set();
   const reparations = [];
   for (let i = 0; i < CONFIG.REPARATIONS; i++) {
     const dateConstat = pastDate(1);
     const termine = Math.random() > 0.3;
+    let numInventaire = pick(materielIds);
+    if (!termine) {
+      let tentative = 0;
+      while (materielAvecReparationActive.has(numInventaire) && tentative < 20) {
+        numInventaire = pick(materielIds);
+        tentative++;
+      }
+      if (materielAvecReparationActive.has(numInventaire)) continue;
+      materielAvecReparationActive.add(numInventaire);
+    }
     reparations.push({
-      num_inventaire: pick(materielIds),
+      num_inventaire: numInventaire,
       date_constat: dateConstat,
       description_panne: pick([
         "Fuite au niveau du premier étage",
@@ -79,7 +96,30 @@ async function seed() {
   await Reparation.bulkCreate(reparations);
   console.log(`[materiel] ${reparations.length} réparations créées`);
 
-  writeSeedData("materiel", { materielIds });
+  // etat/localisation ont été tirés au hasard AVANT de savoir quels
+  // matériels partiraient en réparation active ci-dessus — un matériel ne
+  // peut pourtant pas rester "Bon"/"Neuf"/"Local" pendant que sa réparation
+  // est "En cours" (voir MaterielService.assertPasDeReparationActive, qui
+  // l'interdit désormais en usage réel). Réalignés ici exactement comme le
+  // ferait ReparationService.create().
+  if (materielAvecReparationActive.size > 0) {
+    await Materiel.update(
+      { etat: "À réparer", localisation: "En réparation" },
+      { where: { num_inventaire: Array.from(materielAvecReparationActive) } },
+    );
+    console.log(
+      `[materiel] état/localisation alignés sur ${materielAvecReparationActive.size} matériel(s) en réparation active`,
+    );
+  }
+
+  // Partagé avec seedActivites.js (readSeedData("materiel")) pour qu'il
+  // n'attribue pas en prêt actif un matériel déjà signalé en réparation ici
+  // — sans ça, un matériel pourrait se retrouver à la fois "En réparation"
+  // (ce script) et prêté/non rendu (Attribution, autre service/schéma).
+  writeSeedData("materiel", {
+    materielIds,
+    materielEnReparationIds: Array.from(materielAvecReparationActive),
+  });
 
   console.log("[materiel] seed terminé");
   process.exit(0);

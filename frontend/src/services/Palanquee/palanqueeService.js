@@ -11,6 +11,16 @@ class PalanqueeService {
     return response.data;
   }
 
+  // Libellés seuls (id/nom/sortie/statut) — voir PalanqueeService.getAllLight
+  // côté backend. À préférer à getAll() quand seul le nom de la palanquée
+  // est nécessaire (ex. regroupement de PlongeeList.jsx) : getAll() charge
+  // aussi les membres et les enrichit un par un via identite-service, ce qui
+  // devient très lent dès que le club a un peu d'historique.
+  async getAllLight() {
+    const response = await api.get('/palanquees/light');
+    return response.data;
+  }
+
   async getByPlongee(idPlongee) {
     const response = await api.get(`/palanquees/plongee/${idPlongee}`);
     return response.data;

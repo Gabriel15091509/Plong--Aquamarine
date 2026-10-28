@@ -1,6 +1,7 @@
 const BaseService = require("./BaseService");
 const UserRepository = require("../repositories/UserRepository");
 const { ForbiddenError, ValidationError } = require("../utils/errors");
+const { assertStrongPassword } = require("../utils/passwordPolicy");
 
 // Chaque rôle métier a une fiche métier avec des champs obligatoires que le
 // formulaire générique "Utilisateurs → Nouvel utilisateur" ne collecte pas
@@ -118,6 +119,8 @@ class UserService extends BaseService {
     if (!isValid) {
       throw new Error("Ancien mot de passe incorrect");
     }
+
+    assertStrongPassword(newPassword);
 
     // Mot de passe en clair ici : le hook beforeUpdate du modèle User le
     // hashe déjà à la sauvegarde (le hasher ici en plus produirait un

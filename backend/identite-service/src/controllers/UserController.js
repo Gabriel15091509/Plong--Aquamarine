@@ -243,6 +243,34 @@ class UserController extends BaseController {
     }
   }
 
+  // Édition admin (président) du nom/email/téléphone d'UN AUTRE compte —
+  // distinct de updateProfile ci-dessus qui est self-service uniquement
+  // (req.user.id). Complète les formulaires Modifier de Moniteur/
+  // Président/Trésorier, qui délèguent ces champs au compte de connexion
+  // (contrairement à Adherent, qui les stocke lui-même). Réutilise le même
+  // UserService.updateProfile, déjà générique sur l'id fourni.
+  async updateUserInfo(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { email, phone, name } = req.body;
+
+      const result = await this.userService.updateProfile(id, {
+        email,
+        phone,
+        name,
+      });
+
+      const { password, ...safeUser } = result.toJSON();
+      res.json({
+        success: true,
+        data: safeUser,
+        message: "Informations mises à jour avec succès",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   // RGPD (droit d'accès/portabilité, exigence 4.4) : export JSON des
   // données personnelles du compte connecté.
   async exportMyData(req, res, next) {

@@ -16,6 +16,13 @@ class CertificatService {
     return response.data;
   }
 
+  // COUNT léger pour le badge Sidebar — voir inscriptionService.
+  // getPendingCount, même motif.
+  async getEnAttenteValidationCount() {
+    const response = await api.get('/certificats-medicaux/en-attente-validation-count');
+    return response.data;
+  }
+
   async getExpired() {
     const response = await api.get('/certificats-medicaux/expired');
     return response.data;

@@ -1,22 +1,18 @@
 import React, { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import ModalLink from "../Common/ModalLink";
 import {
   FiUser,
   FiFileText,
   FiCalendar,
   FiEdit,
-  FiArrowLeft,
   FiBriefcase,
   FiAward,
   FiTrash2,
   FiClock,
   FiCheckCircle,
   FiXCircle,
-  FiInfo,
   FiFile,
   FiHeart,
-  FiUserCheck,
   FiPaperclip,
   FiAlertCircle,
 } from "react-icons/fi";
@@ -24,41 +20,35 @@ import toast from "react-hot-toast";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
+import { useDetailsModal } from "../../hooks/useFormModal";
+import DetailsModal from "../Common/DetailsModal";
+import PdfPreviewModal from "../Common/PdfPreviewModal";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
 import ConfirmModal from "../Common/ConfirmModal";
 import StatusBadge from "../Common/StatusBadge";
-import SectionCard from "../Common/SectionCard";
 import InfoItem from "../Common/InfoItem";
 import { photoUrl } from "../../utils/photoUrl";
 import { formatDate } from "../../utils/helpers";
 import api from "../../services/api";
 
-// Animations
-const staggerContainer = {
-  initial: { opacity: 0 },
-  animate: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.04,
-      delayChildren: 0.05,
-    },
-  },
-};
-
+// Fiche certificat médical, modale par-dessus la liste (voir
+// MoniteurDetails.jsx pour le prototype d'origine et DetailsModal.jsx pour
+// la coquille commune).
 const CertificatDetails = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const modal = useDetailsModal("/certificats");
+  const { id } = modal;
   const { hasRole } = useAuth();
   const canManageCertificat = hasRole(["president"]);
   const { useGetById, useRemove, useValider } = useCertificats();
   const { useGetAll } = useAdherents();
   const { data, isLoading } = useGetById(id);
-  const { data: adherentsData } = useGetAll();
+  const { data: adherentsData } = useGetAll({}, { enabled: !!id });
   const remove = useRemove();
   const valider = useValider();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [openingDocument, setOpeningDocument] = useState(false);
+  const [documentPreview, setDocumentPreview] = useState(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectMotif, setRejectMotif] = useState("");
 
@@ -70,7 +60,8 @@ const CertificatDetails = () => {
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      navigate("/certificats");
+      setShowDeleteModal(false);
+      modal.close();
     } catch (error) {
       // toast déjà géré par le hook
     }
@@ -96,38 +87,26 @@ const CertificatDetails = () => {
   };
 
   // Document chiffré au repos, jamais accessible via une URL statique : on
-  // le récupère par la route authentifiée puis on l'ouvre depuis un blob.
-  // L'onglet doit être ouvert de façon synchrone, dans le même tick que le
-  // clic — un `window.open` appelé après un `await` n'est plus rattaché au
-  // geste utilisateur et se fait bloquer silencieusement par le navigateur
-  // (pas d'erreur, juste rien qui s'affiche).
+  // le récupère par la route authentifiée puis on l'affiche dans
+  // PdfPreviewModal (voir AdhesionDetails.jsx pour le même principe sur
+  // l'attestation d'adhésion) — plus besoin du contournement "onglet ouvert
+  // de façon synchrone" qu'exigeait l'ancien window.open (bloqué par les
+  // navigateurs s'il n'est plus rattaché au geste utilisateur après un
+  // `await`) : le document reste dans l'appli, dans une modale par-dessus
+  // la fiche.
   const handleViewDocument = async () => {
-    // Sans "noopener"/"noreferrer" ici (contrairement à un <a target="_blank">
-    // classique) : ces deux flags forcent window.open() à renvoyer null (pas
-    // de référence vers l'onglet créé), ce qui empêchait justement la ligne
-    // `tab.location.href = url` plus bas de s'exécuter — l'onglet ouvert
-    // restait sur about:blank indéfiniment (page blanche, sans la moindre
-    // erreur ni toast). Confirmé en testant directement window.open() dans
-    // Chromium. Pas de risque ici : l'onglet ne navigue jamais vers une URL
-    // fournie par un tiers, seulement vers un blob qu'on vient de créer.
-    const tab = window.open("", "_blank");
     setOpeningDocument(true);
     try {
       const response = await api.get(
         `/certificats-medicaux/${certificat.id_certificat}/document`,
         { responseType: "blob" },
       );
-      const url = URL.createObjectURL(response.data);
-      if (tab) {
-        tab.location.href = url;
-      } else {
-        toast.error(
-          "Le navigateur a bloqué l'ouverture de l'onglet. Autorisez les pop-ups pour ce site.",
-        );
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      const blobUrl = URL.createObjectURL(response.data);
+      setDocumentPreview({
+        blobUrl,
+        filename: `Certificat - ${certificat.type_certificat}`,
+      });
     } catch (error) {
-      if (tab) tab.close();
       toast.error(
         error.response?.data?.message || "Impossible d'ouvrir le document",
       );
@@ -136,38 +115,63 @@ const CertificatDetails = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <LoadingSpinner variant="details" />
-      </div>
-    );
-  }
+  const closeDocumentPreview = () => {
+    if (documentPreview?.blobUrl) URL.revokeObjectURL(documentPreview.blobUrl);
+    setDocumentPreview(null);
+  };
 
-  if (!certificat) {
+  const headerExtra = certificat && canManageCertificat && (
+    <>
+      {/* Verrouillé côté serveur une fois validé, mais seulement pour une
+          soumission adhérent (voir CertificatMedicalService.update/delete) —
+          un certificat créé par le staff reste modifiable comme avant. */}
+      {!(certificat.soumis_par_adherent && certificat.statut_validation === "Validé") && (
+        <>
+          {certificat.statut_validation !== "En attente" && (
+            <ModalLink
+              to={`/certificats/edit/${certificat.id_certificat}`}
+              className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-colors"
+              title="Modifier"
+            >
+              <FiEdit className="w-4 h-4" />
+            </ModalLink>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+            title="Supprimer"
+          >
+            <FiTrash2 className="w-4 h-4" />
+          </button>
+        </>
+      )}
+    </>
+  );
+
+  if (isLoading || !certificat) {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="text-center py-16"
-      >
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800/50 mb-6">
-          <FiInfo className="w-10 h-10 text-gray-400" />
-        </div>
-        <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-          Certificat non trouvé
-        </h3>
-        <p className="text-gray-500 dark:text-gray-400">
-          Le certificat que vous recherchez n'existe pas ou a été supprimé.
-        </p>
-        <button
-          onClick={() => navigate("/certificats")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-        >
-          <FiArrowLeft className="w-4 h-4" />
-          Retour à la liste
-        </button>
-      </motion.div>
+      <DetailsModal
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        title={isLoading ? "Chargement…" : "Certificat non trouvé"}
+        icon={FiFile}
+        pages={[
+          {
+            label: "",
+            content: isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <LoadingSpinner variant="details" />
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">
+                Le certificat que vous recherchez n&apos;existe pas ou a été
+                supprimé.
+              </p>
+            ),
+          },
+        ]}
+      />
     );
   }
 
@@ -175,9 +179,7 @@ const CertificatDetails = () => {
     certificat.date_validite && new Date(certificat.date_validite) < new Date();
   const isRejected = certificat.statut_validation === "Rejeté";
   // Tant que le président n'a pas validé la soumission, "À jour"/"Expiré"
-  // n'a pas de sens : ce n'est pas encore un certificat accepté par le club,
-  // juste un document déposé par l'adhérent. Idem pour "Modifier" plus bas :
-  // le corriger directement court-circuiterait le circuit rejet/resoumission.
+  // n'a pas de sens : ce n'est pas encore un certificat accepté par le club.
   const isPending = certificat.statut_validation === "En attente";
 
   const daysUntilExpiry = () => {
@@ -185,65 +187,27 @@ const CertificatDetails = () => {
     const today = new Date();
     const expiry = new Date(certificat.date_validite);
     const diffTime = expiry - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
   const daysLeft = daysUntilExpiry();
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6 px-4"
-    >
-      {/* En-tête */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-      >
-        <div className="flex items-center gap-4">
-          
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
-                <FiFile className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+  const pages = [
+    {
+      label: "Détails",
+      icon: FiFileText,
+      content: (
+        <div className="space-y-4">
+          {canManageCertificat && isPending && (
+            <div className="rounded-xl p-3 border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-between gap-3 flex-wrap">
+              <span className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                Soumission en attente de décision
               </span>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                  {certificat.type_certificat}
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
-                  <span className="flex items-center gap-1 text-sm">
-                    <FiFileText className="w-3.5 h-3.5" />
-                    N°{certificat.id_certificat}
-                  </span>
-                  <span className="text-gray-300 dark:text-gray-600">•</span>
-                  <span className="flex items-center gap-1 text-sm">
-                    <FiBriefcase className="w-3.5 h-3.5" />
-                    {certificat.medecin || "Médecin non renseigné"}
-                  </span>
-                  <span className="text-gray-300 dark:text-gray-600">•</span>
-                  <span className="flex items-center gap-1 text-sm">
-                    <FiUser className="w-3.5 h-3.5" />
-                    {adherent
-                      ? `${adherent.nom} ${adherent.prenom}`
-                      : `N°${certificat.num_adherent}`}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        {canManageCertificat && (
-          <div className="flex gap-2 flex-wrap">
-            {certificat.statut_validation === "En attente" && (
-              <>
+              <div className="flex gap-2">
                 <button
                   onClick={handleValider}
                   disabled={valider.isPending}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors duration-150 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors duration-150 disabled:opacity-60"
                 >
                   <FiCheckCircle className="w-4 h-4" />
                   Valider
@@ -251,290 +215,156 @@ const CertificatDetails = () => {
                 <button
                   onClick={() => setShowRejectModal(true)}
                   disabled={valider.isPending}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-xl transition-colors duration-150 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-xl transition-colors duration-150 disabled:opacity-60"
                 >
                   <FiAlertCircle className="w-4 h-4" />
                   Rejeter
                 </button>
-              </>
-            )}
-            {/* Verrouillé côté serveur une fois validé, mais seulement pour
-                une soumission adhérent (voir CertificatMedicalService.
-                update/delete) — un certificat créé par le staff reste
-                modifiable comme avant. */}
-            {!(certificat.soumis_par_adherent && certificat.statut_validation === "Validé") && (
-              <>
-                {/* Tant que la soumission est en attente, la corriger
-                    directement n'a pas sa place ici : c'est Valider/Rejeter
-                    ci-dessus qui tranche, pas une modification silencieuse du
-                    dossier de l'adhérent. */}
-                {!isPending && (
-                  <Link
-                    to={`/certificats/edit/${certificat.id_certificat}`}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-                  >
-                    <FiEdit className="w-4 h-4" />
-                    Modifier
-                  </Link>
-                )}
-                <button
-                  onClick={() => setShowDeleteModal(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
-                >
-                  <FiTrash2 className="w-4 h-4" />
-                  Supprimer
-                </button>
-              </>
-            )}
-          </div>
-        )}
-      </motion.div>
+              </div>
+            </div>
+          )}
 
-      {/* Carte récapitulative - Statut */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${
-          isRejected || isExpired
-            ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-            : isPending
-              ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
-              : daysLeft && daysLeft <= 30
-                ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
-                : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-        }`}
-      >
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div>
-            <p className="text-sm font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-              Statut du certificat
-            </p>
-            <div className="flex items-center gap-3 mt-2">
-              {/* Un document rejeté n'a jamais été accepté, et un document
-                  encore en attente n'a pas encore été examiné : "À jour"/
-                  "Expiré" n'a de sens que pour un certificat validé (motif de
-                  rejet ou décision en attente détaillés plus bas). */}
-              {isRejected ? (
+          {!isPending && (
+            <div
+              className={`rounded-xl p-3 border flex items-center gap-3 flex-wrap justify-between ${
+                isRejected || isExpired
+                  ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                  : daysLeft && daysLeft <= 30
+                    ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
+                    : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {isRejected || isExpired ? (
+                  <FiXCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                ) : (
+                  <FiCheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                )}
+                <span className="font-bold text-gray-900 dark:text-white">
+                  {isRejected ? "Rejeté" : isExpired ? "Expiré" : "À jour"}
+                </span>
+                {isRejected && certificat.motif_rejet && (
+                  <span className="text-sm text-red-600 dark:text-red-400 italic">
+                    — Motif : {certificat.motif_rejet}
+                  </span>
+                )}
+              </div>
+              {!isRejected && daysLeft !== null && !isExpired && (
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  {daysLeft} jour{daysLeft > 1 ? "s" : ""} restant
+                  {daysLeft > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+            <div className="space-y-1">
+              <InfoItem
+                icon={FiUser}
+                label="Adhérent"
+                highlight
+                avatarUrl={photoUrl(adherent?.photo)}
+              >
+                {adherent ? (
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {adherent.civilite} {adherent.nom} {adherent.prenom}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      N°{adherent.num_adherent}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="font-semibold text-gray-900 dark:text-white">
+                    N°{certificat.num_adherent}
+                  </p>
+                )}
+              </InfoItem>
+              {adherent && (
                 <>
-                  <FiXCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
-                  <span className="text-xl font-bold text-gray-900 dark:text-white">Rejeté</span>
-                </>
-              ) : isPending ? (
-                <>
-                  <FiClock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
-                  <span className="text-xl font-bold text-gray-900 dark:text-white">En attente de validation</span>
-                </>
-              ) : isExpired ? (
-                <>
-                  <FiXCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
-                  <span className="text-xl font-bold text-gray-900 dark:text-white">Expiré</span>
-                </>
-              ) : (
-                <>
-                  <FiCheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-                  <span className="text-xl font-bold text-gray-900 dark:text-white">À jour</span>
+                  <InfoItem
+                    icon={FiAward}
+                    label="Niveau"
+                    value={adherent.niveau || "Non défini"}
+                  />
+                  <InfoItem
+                    icon={FiHeart}
+                    label="Contact d'urgence"
+                    value={adherent.contact_urgence || "Non renseigné"}
+                  />
                 </>
               )}
             </div>
-          </div>
-          <div className="flex items-center gap-8 flex-wrap">
-            {!isRejected && !isPending && (
-              <>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                    {daysLeft !== null ? (isExpired ? "0" : daysLeft) : "-"}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                    {isExpired ? "Expiré" : "Jours restants"}
-                  </p>
-                </div>
-                <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
-              </>
-            )}
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatDate(certificat.date_validite)}
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                Date d'expiration
-              </p>
-            </div>
-            {!isRejected && !isPending && (
-              <>
-                <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
-                <div className="text-center">
-                  <StatusBadge status={certificat.statut} />
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Grille d'informations */}
-      <motion.div
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-      >
-        {/* Informations adhérent */}
-        <SectionCard title="Informations adhérent" icon={FiUser}>
-          <InfoItem
-            icon={FiUser}
-            label="Adhérent"
-            highlight
-            avatarUrl={photoUrl(adherent?.photo)}
-          >
-            {adherent ? (
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {adherent.civilite} {adherent.nom} {adherent.prenom}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  N°{adherent.num_adherent}
-                </p>
-              </div>
-            ) : (
-              <p className="font-semibold text-gray-900 dark:text-white">
-                N°{certificat.num_adherent}
-              </p>
-            )}
-          </InfoItem>
-          {adherent && (
-            <>
+            <div className="space-y-1">
               <InfoItem
-                icon={FiAward}
-                label="Niveau"
-                value={adherent.niveau || "Non défini"}
+                icon={FiFileText}
+                label="Type de certificat"
+                value={certificat.type_certificat}
+                highlight
               />
               <InfoItem
                 icon={FiCalendar}
-                label="Date d'adhésion"
-                value={formatDate(adherent.date_adhesion)}
+                label="Date de validité"
+                value={formatDate(certificat.date_validite)}
               />
               <InfoItem
-                icon={FiHeart}
-                label="Contact d'urgence"
-                value={adherent.contact_urgence || "Non renseigné"}
+                icon={FiClock}
+                label="Date de délivrance"
+                value={
+                  certificat.date_delivrance
+                    ? formatDate(certificat.date_delivrance)
+                    : "Non renseignée"
+                }
               />
-            </>
-          )}
-        </SectionCard>
+              <InfoItem
+                icon={FiBriefcase}
+                label="Médecin traitant"
+                value={certificat.medecin || "Non renseigné"}
+              />
+              {certificat.statut_validation !== "Validé" && !isPending && (
+                <InfoItem
+                  icon={FiAlertCircle}
+                  label="Validation"
+                  value={<StatusBadge status={certificat.statut_validation} />}
+                />
+              )}
+              {certificat.document_path && (
+                <InfoItem icon={FiPaperclip} label="Document">
+                  <button
+                    type="button"
+                    onClick={handleViewDocument}
+                    disabled={openingDocument}
+                    className="font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-block disabled:opacity-50"
+                  >
+                    {openingDocument ? "Ouverture..." : "Voir le document"}
+                  </button>
+                </InfoItem>
+              )}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+  ];
 
-        {/* Informations certificat */}
-        <SectionCard title="Informations certificat" icon={FiFileText}>
-          <InfoItem
-            icon={FiFileText}
-            label="Type de certificat"
-            value={certificat.type_certificat}
-            highlight
-          />
-          <InfoItem
-            icon={FiCalendar}
-            label="Date de validité"
-            value={formatDate(certificat.date_validite)}
-          />
-          <InfoItem
-            icon={FiClock}
-            label="Date de délivrance"
-            value={
-              certificat.date_delivrance
-                ? formatDate(certificat.date_delivrance)
-                : "Non renseignée"
-            }
-          />
-          <InfoItem
-            icon={FiBriefcase}
-            label="Médecin traitant"
-            value={certificat.medecin || "Non renseigné"}
-          />
-          {/* Rejeté ou en attente : "À jour"/"Expiré" ne veut rien dire pour
-              un document pas (encore) accepté — seule la section
-              "Validation" ci-dessous (rejet + motif, ou décision en attente)
-              compte, pas la peine de la répéter deux fois avec un autre mot. */}
-          {!isRejected && !isPending && (
-            <InfoItem
-              icon={FiAward}
-              label="Statut"
-              value={<StatusBadge status={certificat.statut} />}
-            />
-          )}
-          {certificat.statut_validation !== "Validé" && (
-            <InfoItem
-              icon={FiAlertCircle}
-              label="Validation"
-              value={
-                <div>
-                  <StatusBadge status={certificat.statut_validation} />
-                  {isRejected && certificat.motif_rejet && (
-                    <p className="text-sm text-red-600 dark:text-red-400 mt-1 italic">
-                      Motif : {certificat.motif_rejet}
-                    </p>
-                  )}
-                </div>
-              }
-            />
-          )}
-          {!isRejected && (
-            <InfoItem
-              icon={isExpired ? FiXCircle : FiCheckCircle}
-              label="Validité"
-              value={
-                <span
-                  className={`font-semibold ${
-                    isExpired
-                      ? "text-red-600 dark:text-red-400"
-                      : "text-green-600 dark:text-green-400"
-                  }`}
-                >
-                  {isExpired ? "Expiré" : "À jour"}
-                </span>
-              }
-            />
-          )}
-          {!isRejected && daysLeft !== null && !isExpired && (
-            <InfoItem
-              icon={FiClock}
-              label="Jours restants"
-              value={
-                <span
-                  className={`font-semibold ${
-                    daysLeft <= 7
-                      ? "text-red-600 dark:text-red-400"
-                      : daysLeft <= 30
-                        ? "text-orange-500 dark:text-orange-400"
-                        : "text-green-600 dark:text-green-400"
-                  }`}
-                >
-                  {daysLeft} jour{daysLeft > 1 ? "s" : ""}
-                </span>
-              }
-            />
-          )}
-          {certificat.document_path && (
-            <InfoItem icon={FiPaperclip} label="Document">
-              <button
-                type="button"
-                onClick={handleViewDocument}
-                disabled={openingDocument}
-                className="font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-0.5 inline-block disabled:opacity-50"
-              >
-                {openingDocument ? "Ouverture..." : "Voir le document"}
-              </button>
-            </InfoItem>
-          )}
-        </SectionCard>
-      </motion.div>
+  return (
+    <>
+      <DetailsModal
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        title={certificat.type_certificat}
+        subtitle={`N°${certificat.id_certificat} • ${
+          adherent ? `${adherent.nom} ${adherent.prenom}` : `N°${certificat.num_adherent}`
+        }`}
+        icon={FiFile}
+        headerExtra={headerExtra}
+        pages={pages}
+      />
 
-      {/* Modal de rejet */}
       {showRejectModal && (
         <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl"
-          >
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               Rejeter cette soumission
             </h3>
@@ -566,7 +396,7 @@ const CertificatDetails = () => {
                 Rejeter
               </button>
             </div>
-          </motion.div>
+          </div>
         </ModalOverlay>
       )}
 
@@ -584,7 +414,14 @@ const CertificatDetails = () => {
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteModal(false)}
       />
-    </motion.div>
+
+      <PdfPreviewModal
+        isOpen={!!documentPreview}
+        onClose={closeDocumentPreview}
+        blobUrl={documentPreview?.blobUrl}
+        filename={documentPreview?.filename}
+      />
+    </>
   );
 };
 

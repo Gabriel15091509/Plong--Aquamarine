@@ -1,11 +1,13 @@
 import React, { useMemo } from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import ModalLink from "../Common/ModalLink";
 import { FiAnchor, FiMapPin, FiCalendar, FiArrowRight } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { useAuth } from "../../context/AuthContext";
 import { joursRestants } from "../../utils/helpers";
+import SortieWeatherBadge from "../Sortie/SortieWeatherBadge";
 
 const formatDateLongue = (date) =>
   new Date(date).toLocaleDateString("fr-FR", {
@@ -19,6 +21,7 @@ const formatDateLongue = (date) =>
 // naviguer. La source diffère selon le rôle :
 //   - staff (président/moniteur/trésorier) : la prochaine sortie du club,
 //     toutes confondues (voir SortieService.getUpcomingSorties).
+//     Pour un moniteur : la prochaine sortie qu'il encadre (Sortie.encadrants).
 //   - adhérent : SA prochaine sortie, et seulement si son inscription est
 //     "Confirmée" — une sortie où il est juste en attente/liste d'attente
 //     n'est pas encore acquise, ça n'aurait pas de sens de lancer un compte
@@ -26,9 +29,20 @@ const formatDateLongue = (date) =>
 const ProchaineSortieCard = () => {
   const { user } = useAuth();
   const isAdherent = user?.role === "adherent";
+  const isMoniteur = user?.role === "moniteur";
 
   const { useGetUpcoming } = useSorties();
   const { useGetAll: useGetAllInscriptions } = useInscriptions();
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
+  const { data: moniteursData, isLoading: loadingMoniteurs } = useGetAllMoniteurs(
+    {},
+    { enabled: isMoniteur },
+  );
+  const currentMoniteurId = useMemo(
+    () =>
+      moniteursData?.data?.find((m) => m.user?.email === user?.email)?.id_moniteur ?? null,
+    [moniteursData, user],
+  );
 
   // Scopée à l'adhérent connecté côté backend (InscriptionService.getAll) —
   // un seul appel, filtré/trié ci-dessous, plutôt qu'un endpoint dédié.
@@ -38,7 +52,8 @@ const ProchaineSortieCard = () => {
   const { data: inscriptionsData, isLoading: loadingInscriptions } =
     useGetAllInscriptions({ enabled: isAdherent });
 
-  const isLoading = isAdherent ? loadingInscriptions : loadingUpcoming;
+  const isLoading =
+    (isAdherent ? loadingInscriptions : loadingUpcoming) || (isMoniteur && loadingMoniteurs);
 
   const prochaine = useMemo(() => {
     if (isAdherent) {
@@ -54,9 +69,14 @@ const ProchaineSortieCard = () => {
         .sort((a, b) => new Date(a.sortie.date_heure) - new Date(b.sortie.date_heure));
       return confirmees[0]?.sortie || null;
     }
-    const sorties = upcomingData?.data || [];
+    let sorties = upcomingData?.data || [];
+    if (isMoniteur) {
+      sorties = sorties.filter(
+        (s) => currentMoniteurId != null && s.encadrants?.includes(currentMoniteurId),
+      );
+    }
     return sorties.length > 0 ? sorties[0] : null;
-  }, [isAdherent, inscriptionsData, upcomingData]);
+  }, [isAdherent, isMoniteur, currentMoniteurId, inscriptionsData, upcomingData]);
 
   if (isLoading) {
     return (
@@ -72,7 +92,7 @@ const ProchaineSortieCard = () => {
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            {isAdherent ? "Aucune sortie confirmée à venir" : "Aucune sortie à venir"}
+            {isAdherent ? "Aucune sortie confirmée à venir" : isMoniteur ? "Aucune sortie à encadrer" : "Aucune sortie à venir"}
           </h3>
           <p className="text-xs text-slate-400 dark:text-slate-500">
             {isAdherent
@@ -88,6 +108,11 @@ const ProchaineSortieCard = () => {
   const compteARebours =
     jours <= 0 ? "Aujourd'hui" : jours === 1 ? "Demain" : `${jours}`;
   const compteARebourSuffixe = jours > 1 ? "jours restants" : "";
+  // Même seuil que SortiesPage.jsx (showWeatherBadge) : une sortie si proche
+  // qu'elle a un compte à rebours ici mérite un repère météo rapide — voir
+  // SortieWeatherBadge, qui se charge lui-même de ne rien afficher si aucune
+  // position n'est renseignée pour cette sortie.
+  const showWeatherBadge = jours >= 0 && jours <= 3;
 
   return (
     <motion.div
@@ -95,7 +120,7 @@ const ProchaineSortieCard = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
     >
-      <Link
+      <ModalLink
         to={`/sorties/${prochaine.id_sortie}`}
         // Couleur pleine (pas de dégradé arc-en-ciel) : bleu marine profond,
         // cohérent avec l'identité "plongée" (voir l'en-tête des emails OTP,
@@ -123,6 +148,13 @@ const ProchaineSortieCard = () => {
                 <FiMapPin className="w-3.5 h-3.5" />
                 {prochaine.lieu}
               </span>
+              {showWeatherBadge && (
+                <SortieWeatherBadge
+                  idSortie={prochaine.id_sortie}
+                  variant="inline"
+                  toneClaire
+                />
+              )}
             </div>
           </div>
         </div>
@@ -145,7 +177,7 @@ const ProchaineSortieCard = () => {
           </div>
           <FiArrowRight className="w-4 h-4 text-slate-500 group-hover:translate-x-1 group-hover:text-cyan-400 transition-all duration-300 hidden sm:block" />
         </div>
-      </Link>
+      </ModalLink>
     </motion.div>
   );
 };

@@ -2,12 +2,19 @@ import React from "react";
 import { motion } from "framer-motion";
 import { useIncidents } from "../../hooks/Incident/useIncidents";
 import IncidentList from "../../components/Incident/IncidentList";
+import TabBar from "../../components/Common/TabBar";
+import { useSortieTabs } from "../../hooks/Sortie/useSortieTabs";
 
 import ErrorState from "../../components/Common/ErrorState";
 
 const IncidentsPage = () => {
   const { useGetAll } = useIncidents();
   const { data, isLoading, error } = useGetAll();
+  // "Incidents" a rejoint le groupe Sorties (ex-section sidebar "Sécurité",
+  // voir Sidebar.jsx + useSortieTabs.js) : même barre d'onglets que
+  // SortiesPage.jsx/SortieCartePage.jsx, pour naviguer entre les deux sans
+  // repasser par la sidebar.
+  const sortieTabs = useSortieTabs();
 
   const incidents = data?.data || [];
 
@@ -33,7 +40,9 @@ const IncidentsPage = () => {
         </div>
       </div>
 
-      <div>
+      <TabBar tabs={sortieTabs} />
+
+      <div className="mt-4">
         <IncidentList />
       </div>
     </motion.div>

@@ -5,12 +5,14 @@ const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
 const client = require("prom-client");
+const cron = require("node-cron");
 require("dotenv").config();
 
 const routes = require("./routes");
 const ErrorHandler = require("./middlewares/errorHandler");
 const logger = require("./utils/logger");
 const { sequelize, testConnection } = require("./config/database");
+const BackupService = require("./services/BackupService");
 
 const app = express();
 
@@ -146,6 +148,47 @@ const runPendingMigrations = async () => {
   } catch (error) {
     logger.error("[identite-service] Échec migration reset_token_* :", error);
   }
+
+  // Sauvegarde/restauration de la base (voir BackupService, ParametresPage.jsx
+  // côté frontend) : schéma + table dédiés, additifs et idempotents comme la
+  // migration ci-dessus — jamais de DROP/RENAME. Dans un try/catch séparé
+  // pour qu'un échec ici n'empêche pas la migration reset_token_* (et
+  // inversement) de s'appliquer.
+  try {
+    await sequelize.query(`CREATE SCHEMA IF NOT EXISTS backup`);
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS backup.snapshots (
+        id SERIAL PRIMARY KEY,
+        type VARCHAR(20) NOT NULL,
+        taille_octets BIGINT NOT NULL,
+        contenu JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+    logger.info("[identite-service] Schéma/table backup.snapshots vérifié(e)/créé(e)");
+  } catch (error) {
+    logger.error("[identite-service] Échec migration backup.snapshots :", error);
+  }
+
+  // Disponibilité ponctuelle d'un moniteur (toggle + motif) — voir
+  // models/Moniteur.js. Bloc séparé des deux précédents (même raisonnement :
+  // un échec ici ne doit pas empêcher les autres migrations de s'appliquer).
+  try {
+    await sequelize.query(
+      `ALTER TABLE ${schema}.moniteurs ADD COLUMN IF NOT EXISTS disponible BOOLEAN NOT NULL DEFAULT true`,
+    );
+    await sequelize.query(
+      `ALTER TABLE ${schema}.moniteurs ADD COLUMN IF NOT EXISTS cause_indisponibilite TEXT`,
+    );
+    logger.info(
+      "[identite-service] Migration moniteurs.disponible/cause_indisponibilite vérifiée/appliquée",
+    );
+  } catch (error) {
+    logger.error(
+      "[identite-service] Échec migration moniteurs.disponible/cause_indisponibilite :",
+      error,
+    );
+  }
 };
 
 const initializeApp = async () => {
@@ -155,6 +198,30 @@ const initializeApp = async () => {
     process.exit(1);
   }
   await runPendingMigrations();
+};
+
+// Sauvegarde automatique quotidienne (voir BackupService.creer) : démarrée
+// seulement APRÈS que le serveur écoute déjà (voir server.js, même motif
+// qu'activites-service/src/app.js) — jamais au boot lui-même, ni immédiate
+// à l'appel comme les autres jobs de ce dépôt : un instantané complet de
+// toute la base est plus lourd qu'une simple requête d'alerte, et le
+// rejouer à chaque redémarrage/redéploiement (fréquents sur le plan
+// gratuit Render) empilerait des sauvegardes quasi identiques pour rien.
+const startBackgroundJobs = () => {
+  const backupService = new BackupService();
+  const runSauvegardeAutomatique = () =>
+    backupService
+      .creer("automatique")
+      .then((snapshot) =>
+        logger.info(
+          `[identite-service] Sauvegarde automatique créée (id ${snapshot.id}, ${snapshot.taille_octets} octets)`,
+        ),
+      )
+      .catch((err) =>
+        logger.error("[identite-service] Échec de la sauvegarde automatique :", err),
+      );
+  cron.schedule("55 23 * * *", runSauvegardeAutomatique);
+  logger.info("[identite-service] Sauvegarde automatique quotidienne planifiée (23:55)");
 };
 
 process.on("unhandledRejection", (err) => {
@@ -167,4 +234,4 @@ process.on("uncaughtException", (err) => {
   process.exit(1);
 });
 
-module.exports = { app, initializeApp, sequelize };
+module.exports = { app, initializeApp, startBackgroundJobs, sequelize };

@@ -8,6 +8,8 @@ const moniteurRoutes = require("./moniteurRoutes");
 const presidentRoutes = require("./presidentRoutes");
 const tresorierRoutes = require("./tresorierRoutes");
 const emailRoutes = require("./emailRoutes");
+const brevetRoutes = require("./brevetRoutes");
+const backupRoutes = require("./backupRoutes");
 
 router.use("/auth", authRoutes);
 router.use("/", adherentRoutes); // adherentRoutes.js définit déjà "/adherents/..."
@@ -16,6 +18,8 @@ router.use("/moniteurs", moniteurRoutes);
 router.use("/president", presidentRoutes);
 router.use("/tresoriers", tresorierRoutes);
 router.use("/email", emailRoutes);
+router.use("/brevets", brevetRoutes);
+router.use("/backups", backupRoutes);
 
 router.get("/", (req, res) => {
   res.json({
@@ -30,6 +34,8 @@ router.get("/", (req, res) => {
       president: "/api/president",
       tresoriers: "/api/tresoriers",
       email: "/api/email",
+      brevets: "/api/brevets",
+      backups: "/api/backups",
     },
   });
 });

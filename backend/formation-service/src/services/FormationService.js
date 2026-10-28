@@ -107,6 +107,28 @@ class FormationService extends BaseService {
     return await this.formationRepository.getStats();
   }
 
+  // Une formation clôturée ("Terminée" : niveau déjà attribué à l'adhérent,
+  // "Abandonnée" : parcours définitivement arrêté) ne doit plus pouvoir être
+  // modifiée ni supprimée — même principe que PlongeeService.
+  // assertPlongeeModifiable (verrou une fois l'état final atteint). Le
+  // frontend désactive déjà les boutons Modifier/Supprimer en conséquence
+  // (FormationList.jsx) ; ce garde-fou évite qu'un appel API direct
+  // contourne cette restriction purement visuelle. "Ajournée"/"Suspendue"
+  // restent volontairement modifiables : ce sont des pauses, pas des fins de
+  // parcours (l'adhérent peut reprendre).
+  assertFormationModifiable(formation) {
+    if (formation.statut === "Terminée" || formation.statut === "Abandonnée") {
+      throw new Error(
+        `Cette formation est ${formation.statut === "Terminée" ? "terminée" : "abandonnée"} : elle n'est plus modifiable.`,
+      );
+    }
+  }
+
+  // Badge Sidebar : voir FormationRepository.countPretesATerminer.
+  async getPretesATerminerCount() {
+    return await this.formationRepository.countPretesATerminer();
+  }
+
   // Même calcul que DashboardService.countTrend dans le monolithe — dupliqué
   // ici pour que formation-service reste seul propriétaire de ses données ;
   // exposé via `GET /formations/trend` pour que le dashboard (qui vit encore
@@ -345,6 +367,22 @@ class FormationService extends BaseService {
   // (voir "biggest risk" du plan) : on encaisse d'abord la confirmation de
   // finance-service (source de vérité du doublon), puis on met à jour notre
   // propre solde.
+  // Le règlement d'une formation se fait AVANT son début : une fois la
+  // formation commencée (ou terminée), l'adhérent a déjà bénéficié des
+  // séances et acquis les compétences — encaisser après coup n'a plus de
+  // sens. Le jour de début lui-même reste accepté (comparaison à la date,
+  // pas à l'heure). Utilisé par enregistrerPaiement et par la création
+  // avec un montant déjà versé.
+  assertPaiementAvantDebut(formation, now = new Date()) {
+    const debut = new Date(formation.date_debut);
+    const finDuJourDebut = new Date(debut.getFullYear(), debut.getMonth(), debut.getDate() + 1);
+    if (formation.statut === "Terminée" || formation.statut === "Annulée" || now >= finDuJourDebut) {
+      throw new Error(
+        "Le paiement d'une formation doit être effectué avant son début : cette formation a déjà commencé.",
+      );
+    }
+  }
+
   async enregistrerPaiement(id_formation, { montant, mode, description }, user = null, authHeader = null) {
     if (!montant || montant <= 0) throw new Error("Le montant doit être supérieur à 0");
 
@@ -353,6 +391,7 @@ class FormationService extends BaseService {
     if (!formation.montant_total) {
       throw new Error("Cette formation n'a pas de tarif à régler");
     }
+    this.assertPaiementAvantDebut(formation);
 
     const id_tresorier = await identiteClient.getTresorierIdForUser(user);
     const { isDuplicate } = await paiementClient.createLinkedPayment({
@@ -387,6 +426,7 @@ class FormationService extends BaseService {
     const formation = await this.formationRepository.findById(id);
     if (!formation) throw new Error("Formation non trouvée");
     await this.assertCanModifyFormation(formation, user);
+    this.assertFormationModifiable(formation);
 
     const nextStatut = data.statut !== undefined ? data.statut : formation.statut;
     const nextMontantTotal =
@@ -515,6 +555,7 @@ class FormationService extends BaseService {
     const formation = await this.formationRepository.findById(id);
     if (!formation) throw new Error("Formation non trouvée");
     await this.assertCanModifyFormation(formation, user);
+    this.assertFormationModifiable(formation);
     const result = await this.formationRepository.delete(id);
     if (formation.statut === "En cours") {
       await this.syncAdherentStatutFormation(formation.num_adherent, authHeader);
@@ -565,3 +606,9 @@ class FormationService extends BaseService {
 }
 
 module.exports = FormationService;
+// Exposé en propriété statique (et non via un second export nommé, pour ne
+// pas changer la forme `module.exports = FormationService` attendue par tous
+// les `require("./FormationService")` existants) — réutilisé par
+// SeanceService pour vérifier la cohérence de niveau d'une séance pratique
+// sans dupliquer cette grille de prérequis.
+module.exports.PREREQUIS_FORMATION = PREREQUIS_FORMATION;

@@ -66,10 +66,12 @@ const Plongee = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
-    lien_photos: {
-      type: DataTypes.STRING(200),
-      allowNull: true,
-    },
+    // lien_photos (lien photo unique par plongée individuelle) déplacé vers
+    // Sortie.photos (partagées par toute la sortie, plusieurs à la fois,
+    // visibles seulement des participants) — colonne DB laissée en place
+    // (non-destructif, voir les migrations ADD COLUMN IF NOT EXISTS
+    // ailleurs dans ce service) mais plus mappée ici : Sequelize ne la lit
+    // ni ne l'écrit plus.
     // Référence applicative (pas de FK Postgres, autre service/schéma) vers la
     // séance pratique de formation-service que cette plongée fait progresser.
     id_seance: {

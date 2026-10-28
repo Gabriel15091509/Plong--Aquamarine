@@ -142,6 +142,15 @@ class PlongeeController extends BaseController {
     }
   }
 
+  async getAValiderCount(req, res, next) {
+    try {
+      const count = await this.plongeeService.getAValiderCount();
+      res.json({ success: true, data: { count } });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async getNbInactifs(req, res, next) {
     try {
       const inactifs = await this.plongeeService.getInactifs();
@@ -196,11 +205,56 @@ class PlongeeController extends BaseController {
         req.params.id,
         id_moniteur,
         req.headers.authorization,
+        req.user,
       );
       res.json({
         success: true,
         data: result,
         message: 'Plongée validée avec succès'
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  // Surcharges de BaseController.create/update/delete : celles-ci ne
+  // transmettaient jamais req.user au service (aucun contrôleur n'en avait
+  // besoin avant ce garde-fou), or PlongeeService.create/update/delete en
+  // ont désormais besoin pour vérifier que l'appelant est bien encadrant
+  // désigné de la sortie de la plongée (voir PlongeeService.
+  // assertCanManagePlongee).
+  async create(req, res, next) {
+    try {
+      const result = await this.plongeeService.create(req.body, req.user);
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: 'Créé avec succès',
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  async update(req, res, next) {
+    try {
+      const result = await this.plongeeService.update(req.params.id, req.body, req.user);
+      res.json({
+        success: true,
+        data: result,
+        message: 'Mis à jour avec succès',
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  async delete(req, res, next) {
+    try {
+      await this.plongeeService.delete(req.params.id, req.user);
+      res.json({
+        success: true,
+        message: 'Supprimé avec succès',
       });
     } catch (error) {
       next(withStatus(error, 400));

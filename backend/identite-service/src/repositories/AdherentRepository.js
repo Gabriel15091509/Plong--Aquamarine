@@ -52,10 +52,25 @@ class AdherentRepository extends BaseRepository {
   async generateNumAdherent() {
     const year = new Date().getFullYear();
     const prefix = `ADH-${year}-`;
-    const count = await this.model.count({
+    // MAX() sur la plus grande séquence déjà attribuée cette année, jamais
+    // COUNT()+1 : un COUNT() se trompe dès qu'un adhérent a été supprimé
+    // entre-temps (le compte baisse, mais le plus grand numéro déjà
+    // attribué, lui, ne redescend jamais) — il finit par réutiliser un
+    // num_adherent déjà attribué à un adhérent supprimé, dont les données
+    // (formations, inscriptions, paiements...) traînent encore dans les
+    // autres services (aucune suppression en cascade inter-services dans
+    // cette architecture microservices) : elles réapparaissent alors comme
+    // si elles appartenaient au nouvel adhérent (constaté et nettoyé le
+    // 2026-09-11 pour ADH-2026-0119, réattribué par erreur de cette façon).
+    // Comparaison lexicale valable tant que la séquence reste sur 4
+    // chiffres zero-paddés (comme aujourd'hui) : "0099" < "0100".
+    const maxNumAdherent = await this.model.max("num_adherent", {
       where: { num_adherent: { [Op.like]: `${prefix}%` } },
     });
-    const sequence = String(count + 1).padStart(4, "0");
+    const nextSequence = maxNumAdherent
+      ? parseInt(maxNumAdherent.slice(prefix.length), 10) + 1
+      : 1;
+    const sequence = String(nextSequence).padStart(4, "0");
     return `${prefix}${sequence}`;
   }
 

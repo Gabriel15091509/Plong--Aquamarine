@@ -77,6 +77,23 @@ export const useMoniteurs = () => {
     });
   };
 
+  const useUpdateDisponibilite = () => {
+    return useMutation({
+      mutationFn: ({ id, disponible, cause }) =>
+        moniteurService.updateDisponibilite(id, { disponible, cause }),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['moniteurs']);
+        toast.success(response.message || 'Disponibilité mise à jour');
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message ||
+            'Erreur lors de la mise à jour de la disponibilité',
+        );
+      },
+    });
+  };
+
   const useRemove = () => {
     return useMutation({
       mutationFn: (id) => moniteurService.delete(id),
@@ -98,6 +115,7 @@ export const useMoniteurs = () => {
     useGetByUserId,
     useCreate,
     useUpdate,
+    useUpdateDisponibilite,
     useRemove,
   };
 };

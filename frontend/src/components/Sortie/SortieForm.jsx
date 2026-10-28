@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FiCalendar,
@@ -21,19 +21,48 @@ import {
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SortieLocationPicker from "./SortieLocationPicker";
 import LieuAutocompleteInput from "./LieuAutocompleteInput";
 import {
   TYPE_SORTIE_OPTIONS,
   STATUT_SORTIE_OPTIONS,
+  STATUT_SORTIE,
   NIVEAU_OPTIONS,
   PROFONDEUR_MAX_PAR_NIVEAU,
 } from "../../utils/constants";
 import {
   formatDateForInput,
   formatDateTimeForInput,
+  formatDateTime,
+  isTypeNiveauCompatible,
 } from "../../utils/helpers";
+
+// Détection de chevauchement d'horaires, même sémantique que
+// sortieOverlap.js côté backend (intervalle semi-ouvert [date_heure,
+// date_heure + duree_estimee[) — dupliquée ici faute de code partagé entre
+// front et back : sert à repérer, parmi les moniteurs, ceux déjà désignés
+// encadrants d'une AUTRE sortie dont le créneau chevauche celui en cours de
+// saisie, pour ne pas laisser le président les désigner en double sans s'en
+// rendre compte.
+function dureeEnMs(duree_estimee) {
+  if (!duree_estimee) return 0;
+  const [h = 0, m = 0, s = 0] = String(duree_estimee).split(":").map(Number);
+  return ((h * 60 + m) * 60 + s) * 1000;
+}
+
+function getSortieInterval(sortie) {
+  const debut = new Date(sortie.date_heure).getTime();
+  return { debut, fin: debut + dureeEnMs(sortie.duree_estimee) };
+}
+
+function sortiesSeChevauchent(sortieA, sortieB) {
+  const a = getSortieInterval(sortieA);
+  const b = getSortieInterval(sortieB);
+  if (Number.isNaN(a.debut) || Number.isNaN(b.debut)) return false;
+  return a.debut < b.fin && b.debut < a.fin;
+}
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -54,11 +83,14 @@ const isJourSortieInhabituel = (dateHeure) => {
 };
 
 const SortieForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte si elle
+  // vient de là, sinon sur la liste des sorties — voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/sorties");
   const { id } = useParams();
   const editMode = !!id;
 
-  const { useGetById, useCreate, useUpdate } = useSorties();
+  const { useGetAll: useGetAllSorties, useGetById, useCreate, useUpdate } =
+    useSorties();
   const { data, isLoading: loadingData } = useGetById(id);
   const create = useCreate();
   const update = useUpdate();
@@ -70,6 +102,13 @@ const SortieForm = () => {
   const { data: moniteursData, isLoading: loadingMoniteurs } =
     useGetAllMoniteurs();
   const moniteurs = moniteursData?.data || [];
+  // Toutes les sorties existantes, pour repérer les moniteurs déjà occupés
+  // (voir moniteursIndisponibles ci-dessous) sur le créneau en cours de
+  // saisie — pas de endpoint dédié "disponibilité", ce calcul se fait donc
+  // côté client à partir de la liste complète (déjà chargée sans pagination
+  // par SortieController.getAll).
+  const { data: sortiesData } = useGetAllSorties();
+  const autresSorties = useMemo(() => sortiesData?.data || [], [sortiesData]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [focused, setFocused] = useState(null);
@@ -83,15 +122,23 @@ const SortieForm = () => {
   // profondeur_max : auto-rempli à partir de PROFONDEUR_MAX_PAR_NIVEAU tant
   // que le staff n'a pas modifié le champ à la main (voir handleChange).
   const profondeurMaxTouchedRef = useRef(false);
+  // Même principe encore, pour les tarifs : une sortie "Nettoyage" est par
+  // convention gratuite (aucune règle serveur ne l'impose, voir
+  // tarifRules.computeMontantDu), donc on le suggère par défaut dès que ce
+  // type est choisi — sans écraser une saisie déjà faite à la main.
+  const tarifsTouchedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     date_heure: "",
     lieu: "",
     site: "",
     type: "Plongée d'exploration",
-    niveau_requis: "Baptême",
+    // Compatible avec le type par défaut ci-dessus (voir
+    // NIVEAU_MIN_PAR_TYPE_SORTIE : "Plongée d'exploration" exige au moins
+    // "Niveau 1", "Baptême" n'y serait pas proposé par le select filtré).
+    niveau_requis: "Niveau 1",
     nb_places: 10,
-    profondeur_max: PROFONDEUR_MAX_PAR_NIVEAU["Baptême"],
+    profondeur_max: PROFONDEUR_MAX_PAR_NIVEAU["Niveau 1"],
     duree_estimee: "01:00",
     statut: "Planifiée",
     description_site: "",
@@ -105,7 +152,13 @@ const SortieForm = () => {
     date_ouverture_inscriptions: formatDateForInput(new Date()),
     condition_affectation: "",
     tarif_adherent: 0,
-    tarif_non_adherent: "",
+    // 0 par défaut, comme tarif_adherent (0 = gratuit) — à la création
+    // uniquement : en modification (voir l'useEffect ci-dessous), une
+    // sortie existante dont ce champ est vide (null en base) garde ce vide,
+    // pour ne pas basculer silencieusement un invité de "même tarif que
+    // l'adhérent" (repli serveur, voir tarifRules.computeMontantDu) à
+    // "gratuit" au premier enregistrement suivant une modification.
+    tarif_non_adherent: 0,
     latitude: "",
     longitude: "",
     encadrants: [],
@@ -122,6 +175,10 @@ const SortieForm = () => {
       // staff, potentiellement inférieure au max théorique du niveau pour
       // ce site précis) : ne jamais l'écraser via l'auto-calcul en édition.
       profondeurMaxTouchedRef.current = true;
+      // Idem pour les tarifs : une sortie existante a déjà ses propres
+      // tarifs (même un "Nettoyage" facturé exceptionnellement) — ne jamais
+      // les écraser via la suggestion automatique en édition.
+      tarifsTouchedRef.current = true;
       setFormData({
         date_heure: formatDateTimeForInput(s.date_heure),
         lieu: s.lieu || "",
@@ -141,6 +198,12 @@ const SortieForm = () => {
         ),
         condition_affectation: s.condition_affectation || "",
         tarif_adherent: s.tarif_adherent ?? 0,
+        // Volontairement `?? ""` et non `?? 0` (contrairement au défaut de
+        // création ci-dessus) : une sortie existante avec ce champ non
+        // renseigné (null) applique le tarif adhérent aux invités (repli
+        // serveur) — si on affichait 0 ici, enregistrer la moindre autre
+        // modification de cette sortie la rendrait gratuite pour eux sans
+        // que le staff l'ait décidé.
         tarif_non_adherent: s.tarif_non_adherent ?? "",
         latitude: s.latitude ?? "",
         longitude: s.longitude ?? "",
@@ -163,6 +226,12 @@ const SortieForm = () => {
       // délibérément choisi une profondeur différente du max théorique).
       profondeurMaxTouchedRef.current = true;
     }
+    if (name === "tarif_adherent" || name === "tarif_non_adherent") {
+      // Le staff a lui-même choisi un tarif (y compris pour un
+      // "Nettoyage" exceptionnellement facturé) : ne plus jamais le
+      // réécrire automatiquement ensuite.
+      tarifsTouchedRef.current = true;
+    }
 
     setFormData((prev) => {
       const next = { ...prev, [name]: value };
@@ -179,6 +248,31 @@ const SortieForm = () => {
         PROFONDEUR_MAX_PAR_NIVEAU[value] != null
       ) {
         next.profondeur_max = PROFONDEUR_MAX_PAR_NIVEAU[value];
+      }
+      // "Nettoyage" est par convention gratuit (voir tarifsTouchedRef
+      // ci-dessus) : suggestion, pas un verrou — les champs restent
+      // modifiables juste après si le club veut exceptionnellement facturer.
+      if (name === "type" && value === "Nettoyage" && !tarifsTouchedRef.current) {
+        next.tarif_adherent = 0;
+        next.tarif_non_adherent = 0;
+      }
+      // Un type n'est pas compatible avec n'importe quel niveau requis (ex.
+      // "Plongée technique" exige un minimum d'autonomie, "Baptême" est
+      // réservé aux non-plongeurs — voir isTypeNiveauCompatible/
+      // NIVEAU_MIN_PAR_TYPE_SORTIE). Le select "Niveau requis" ci-dessous ne
+      // propose déjà que les valeurs compatibles, mais un niveau requis
+      // choisi AVANT de changer le type peut devenir incompatible : recalé
+      // ici sur le minimum compatible du nouveau type, plutôt que de laisser
+      // une valeur qui ne serait de toute façon plus dans le select.
+      if (name === "type" && !isTypeNiveauCompatible(value, next.niveau_requis)) {
+        next.niveau_requis =
+          NIVEAU_OPTIONS.find((n) => isTypeNiveauCompatible(value, n)) || next.niveau_requis;
+        if (
+          !profondeurMaxTouchedRef.current &&
+          PROFONDEUR_MAX_PAR_NIVEAU[next.niveau_requis] != null
+        ) {
+          next.profondeur_max = PROFONDEUR_MAX_PAR_NIVEAU[next.niveau_requis];
+        }
       }
       return next;
     });
@@ -226,12 +320,73 @@ const SortieForm = () => {
     });
   };
 
+  // id_moniteur -> sortie en conflit, pour chaque moniteur déjà désigné
+  // encadrant d'une autre sortie (statut différent d'"Annulée" : une sortie
+  // annulée ne mobilise plus personne) dont le créneau chevauche celui
+  // choisi ici. Exclut la sortie elle-même en modification, sinon toute
+  // édition d'une sortie déjà planifiée grisait ses propres encadrants.
+  // Vide tant que date_heure n'est pas encore renseignée : rien à comparer.
+  const moniteursIndisponibles = useMemo(() => {
+    const map = new Map();
+    if (!formData.date_heure) return map;
+    const candidate = {
+      date_heure: formData.date_heure,
+      duree_estimee: formData.duree_estimee,
+    };
+    for (const autre of autresSorties) {
+      if (editMode && String(autre.id_sortie) === String(id)) continue;
+      if (autre.statut === STATUT_SORTIE.ANNULEE) continue;
+      if (!Array.isArray(autre.encadrants) || autre.encadrants.length === 0) continue;
+      if (!sortiesSeChevauchent(candidate, autre)) continue;
+      for (const idMoniteur of autre.encadrants) {
+        if (!map.has(idMoniteur)) map.set(idMoniteur, autre);
+      }
+    }
+    return map;
+  }, [autresSorties, formData.date_heure, formData.duree_estimee, editMode, id]);
+
+  // id_moniteur -> motif, pour chaque moniteur qui s'est déclaré (ou a été
+  // déclaré par le président) indisponible pour encadrer (voir
+  // MoniteurAvailabilityToggle.jsx) — distinct de moniteursIndisponibles
+  // ci-dessus (conflit d'horaire ponctuel) : celui-ci ne dépend d'aucun
+  // créneau, c'est une indisponibilité déclarée jusqu'à nouvel ordre.
+  const moniteursNonDisponibles = useMemo(() => {
+    const map = new Map();
+    // Dépend de moniteursData (référence stable tant que la requête ne
+    // ré-émet pas), pas de `moniteurs` : ce dernier retombe sur un `[]`
+    // recréé à chaque rendu tant que la requête n'a pas encore de données,
+    // ce qui ferait tourner ce useMemo en boucle (react-hooks/exhaustive-deps).
+    for (const moniteur of moniteursData?.data || []) {
+      if (moniteur.disponible === false) {
+        map.set(
+          moniteur.id_moniteur,
+          moniteur.cause_indisponibilite || "Indisponibilité déclarée",
+        );
+      }
+    }
+    return map;
+  }, [moniteursData]);
+
   const validate = () => {
     const newErrors = {};
     if (!formData.date_heure) newErrors.date_heure = "La date est requise";
     if (!formData.lieu) newErrors.lieu = "Le lieu est requis";
     if (!formData.site) newErrors.site = "Le site est requis";
     if (!formData.type) newErrors.type = "Le type est requis";
+    // Filet de sécurité : le select "Niveau requis" ne propose déjà que les
+    // valeurs compatibles (voir isTypeNiveauCompatible ci-dessus), mais
+    // couvre aussi une valeur restée en mémoire avant un changement de type
+    // qui n'aurait pas déclenché le recalage automatique.
+    if (
+      formData.type &&
+      formData.niveau_requis &&
+      !isTypeNiveauCompatible(formData.type, formData.niveau_requis)
+    ) {
+      newErrors.niveau_requis =
+        formData.type === "Baptême"
+          ? 'Une sortie "Baptême" doit avoir "Baptême" comme niveau requis'
+          : `Niveau requis incompatible avec le type "${formData.type}"`;
+    }
     if (!formData.nb_places || formData.nb_places < 1)
       newErrors.nb_places = "Minimum 1 place";
     // RG4 : 12 plongeurs max par sortie (réglementation).
@@ -257,7 +412,7 @@ const SortieForm = () => {
       } else {
         await create.mutateAsync(formData);
       }
-      navigate("/sorties");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement de la sortie :", error);
     } finally {
@@ -280,32 +435,7 @@ const SortieForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      {/* En-tête */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier la sortie" : "Nouvelle sortie"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {editMode
-                ? "Mettez à jour les informations de la sortie"
-                : "Planifiez une nouvelle sortie de plongée"}
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiMapPin className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -426,12 +556,28 @@ const SortieForm = () => {
               onBlur={handleBlur}
               className={inputClasses("niveau_requis")}
             >
-              {NIVEAU_OPTIONS.map((opt) => (
+              {/* Ne propose que les niveaux compatibles avec le type choisi
+                  (voir isTypeNiveauCompatible) — ex. "Baptême" n'affiche que
+                  "Baptême", "Plongée technique" masque Baptême/Niveau 1. La
+                  valeur ACTUELLE reste toujours affichée même si elle
+                  devient incompatible (sortie existante en modification,
+                  combinaison historique antérieure à ce garde-fou) : sinon
+                  le <select> n'aurait plus d'<option> correspondant à
+                  formData.niveau_requis, et l'affichage divergerait
+                  silencieusement de l'état réel (voir aussi validate()
+                  ci-dessus, qui bloque la sauvegarde tant que ce n'est pas
+                  corrigé). */}
+              {NIVEAU_OPTIONS.filter(
+                (opt) => opt === formData.niveau_requis || isTypeNiveauCompatible(formData.type, opt),
+              ).map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
               ))}
             </select>
+            {errors.niveau_requis && (
+              <p className="mt-1.5 text-sm text-red-500">{errors.niveau_requis}</p>
+            )}
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -524,7 +670,9 @@ const SortieForm = () => {
               min="0"
             />
             <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-              Montant dû par chaque adhérent inscrit à cette sortie (0 = gratuit).
+              {formData.type === "Nettoyage"
+                ? "Une sortie « Nettoyage » est gratuite par défaut, modifiable si besoin."
+                : "Montant dû par chaque adhérent inscrit à cette sortie (0 = gratuit)."}
             </p>
           </motion.div>
 
@@ -544,9 +692,13 @@ const SortieForm = () => {
               onFocus={() => handleFocus("tarif_non_adherent")}
               onBlur={handleBlur}
               className={inputClasses("tarif_non_adherent")}
-              placeholder="Facultatif"
+              placeholder="0.00"
               min="0"
             />
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+              Montant dû par un invité non-adhérent (0 = gratuit). Laissé
+              vide, le tarif adhérent ci-dessus s&apos;applique par défaut.
+            </p>
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -617,29 +769,73 @@ const SortieForm = () => {
               </p>
             ) : (
               <div className="flex flex-wrap gap-3 pt-1 max-h-48 overflow-y-auto pr-1">
-                {moniteurs.map((moniteur) => (
-                  <label
-                    key={moniteur.id_moniteur}
-                    className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={formData.encadrants.includes(moniteur.id_moniteur)}
-                      onChange={() => toggleEncadrant(moniteur.id_moniteur)}
-                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                    />
-                    {moniteur.user?.name || `Moniteur #${moniteur.id_moniteur}`}
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                      ({moniteur.niveau})
-                    </span>
-                  </label>
-                ))}
+                {moniteurs.map((moniteur) => {
+                  const selectionne = formData.encadrants.includes(
+                    moniteur.id_moniteur,
+                  );
+                  const conflit = moniteursIndisponibles.get(moniteur.id_moniteur);
+                  const causeIndispo = moniteursNonDisponibles.get(
+                    moniteur.id_moniteur,
+                  );
+                  // Grisé et non cochable seulement si PAS déjà sélectionné :
+                  // décocher un moniteur en conflit/indisponible doit
+                  // toujours rester possible (c'est justement la façon de
+                  // résoudre le conflit ou de le remplacer), jamais bloqué
+                  // par son propre statut occupé.
+                  const indisponible = (!!conflit || !!causeIndispo) && !selectionne;
+                  return (
+                    <label
+                      key={moniteur.id_moniteur}
+                      title={
+                        causeIndispo
+                          ? `Indisponible : ${causeIndispo}`
+                          : conflit
+                            ? `Déjà encadrant de "${conflit.lieu || conflit.site || "une autre sortie"}" le ${formatDateTime(conflit.date_heure)}`
+                            : undefined
+                      }
+                      className={`inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+                        indisponible
+                          ? "text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed"
+                          : "text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectionne}
+                        disabled={indisponible}
+                        onChange={() => toggleEncadrant(moniteur.id_moniteur)}
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed"
+                      />
+                      {moniteur.user?.name || `Moniteur #${moniteur.id_moniteur}`}
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                        ({moniteur.niveau})
+                      </span>
+                      {causeIndispo ? (
+                        <span className="text-xs text-red-600 dark:text-red-400">
+                          Indisponible
+                        </span>
+                      ) : (
+                        conflit && (
+                          <span className="text-xs text-amber-600 dark:text-amber-400">
+                            Indisponible
+                          </span>
+                        )
+                      )}
+                    </label>
+                  );
+                })}
               </div>
             )}
             <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-              Moniteurs pressentis pour encadrer cette sortie — facultatif à
-              ce stade, l&apos;encadrant de chaque palanquée se choisit
-              séparément une fois les palanquées constituées.
+              {formData.date_heure
+                ? "Les moniteurs déjà encadrants d'une autre sortie qui chevauche cet horaire sont grisés (survolez pour voir laquelle)."
+                : "Renseignez d'abord la date et l'heure pour repérer les moniteurs déjà occupés sur ce créneau."}
+              {" "}Un moniteur déclaré indisponible (voir sa fiche ou son
+              profil) est grisé de la même façon et ne peut pas être
+              nouvellement désigné.
+              {" "}Facultatif à ce stade, l&apos;encadrant de chaque
+              palanquée se choisit séparément une fois les palanquées
+              constituées.
             </p>
           </motion.div>
 
@@ -666,7 +862,7 @@ const SortieForm = () => {
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
                 <FiInfo className="w-4 h-4 text-gray-400" />
-                Conditions d'affectation
+                Conditions d&apos;affectation
               </span>
             </label>
             <textarea
@@ -702,10 +898,10 @@ const SortieForm = () => {
       </div>
 
       {/* Pied de page */}
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/sorties")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -725,7 +921,7 @@ const SortieForm = () => {
           {editMode ? "Mettre à jour" : "Créer la sortie"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

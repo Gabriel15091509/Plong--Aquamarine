@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 import { FiSend, FiX, FiUsers, FiCalendar, FiTag, FiMessageSquare } from "react-icons/fi";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import { NIVEAU_OPTIONS } from "../../utils/constants";
 
 const fadeInUp = {
@@ -13,8 +13,11 @@ const fadeInUp = {
 
 // Communication ciblée (CDC 3.6.1) : message libre envoyé par email à un
 // segment d'adhérents Actifs, filtré par niveau et/ou ancienneté minimale.
+// Rendu à l'intérieur d'AdherentCommunicationModal.jsx (FormModal fournit
+// déjà en-tête/icône/titre + fond + défilement) — ce composant ne garde que
+// le corps du formulaire et son pied, même convention qu'AdherentForm.jsx.
 const CommunicationForm = () => {
-  const navigate = useNavigate();
+  const closeModal = useCloseFormModal("/adherents");
   const { useSendCommunication } = useAdherents();
   const send = useSendCommunication();
 
@@ -56,21 +59,8 @@ const CommunicationForm = () => {
     "w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all";
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 p-6 md:p-8 space-y-6"
-    >
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-          Communication ciblée
-        </h1>
-        <p className="text-sm text-gray-400 mt-1">
-          Envoie un email à tous les adhérents actifs correspondant aux critères ci-dessous.
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit}>
+      <div className="p-6 space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <motion.div {...fadeInUp}>
             <label className={labelClasses}>
@@ -152,27 +142,27 @@ const CommunicationForm = () => {
             <p className="mt-1.5 text-sm text-red-500">{errors.message}</p>
           )}
         </motion.div>
+      </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => navigate("/adherents")}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-xl transition-all"
-          >
-            <FiX className="w-4 h-4" />
-            Annuler
-          </button>
-          <button
-            type="submit"
-            disabled={send.isLoading}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 disabled:opacity-60"
-          >
-            <FiSend className="w-4 h-4" />
-            Envoyer
-          </button>
-        </div>
-      </form>
-    </motion.div>
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-slate-700/30 border-t border-gray-200 dark:border-slate-700 flex flex-col sm:flex-row justify-end gap-3">
+        <button
+          type="button"
+          onClick={closeModal}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-xl transition-all"
+        >
+          <FiX className="w-4 h-4" />
+          Annuler
+        </button>
+        <button
+          type="submit"
+          disabled={send.isLoading}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-700 hover:via-blue-700 hover:to-indigo-700 rounded-xl transition-all duration-300 shadow-lg shadow-blue-500/25 disabled:opacity-60"
+        >
+          <FiSend className="w-4 h-4" />
+          Envoyer
+        </button>
+      </div>
+    </form>
   );
 };
 

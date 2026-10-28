@@ -1,16 +1,16 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 import {
   FiUserPlus,
   FiShield,
   FiAward,
   FiDollarSign,
   FiUser,
-  FiArrowLeft,
   FiArrowRight,
 } from "react-icons/fi";
 import ProtectedRoute from "../../components/Common/ProtectedRoute";
+import { useModalNavigate } from "../../hooks/useModalNavigate";
+import Breadcrumb from "../../components/Common/Breadcrumb";
 
 // Chaque rôle a sa propre fiche métier (Adherent, Moniteur, Trésorier,
 // Président) avec des champs obligatoires que ce choix ne collecte pas.
@@ -57,7 +57,10 @@ const ROLE_CARDS = [
 ];
 
 const UserCreatePage = () => {
-  const navigate = useNavigate();
+  // Chaque carte ouvre la modale "création" de l'entité choisie PAR-DESSUS
+  // cette page (voir ModalLink/useModalNavigate) plutôt que de naviguer
+  // vers la liste de cette entité.
+  const modalNavigate = useModalNavigate();
 
   return (
     <ProtectedRoute requiredPermission="manage_users">
@@ -66,29 +69,23 @@ const UserCreatePage = () => {
         animate={{ opacity: 1 }}
         className="space-y-6 p-4"
       >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-              <FiUserPlus className="w-6 h-6 text-cyan-500" />
-              Nouveau compte
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
-              Quel type de compte souhaitez-vous créer ?
-            </p>
-          </div>
-          <button
-            onClick={() => navigate("/users")}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-300"
-          >
-            <FiArrowLeft className="w-4 h-4" /> Retour
-          </button>
+        <Breadcrumb current="Créer un utilisateur" />
+
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+            <FiUserPlus className="w-6 h-6 text-cyan-500" />
+            Nouveau compte
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            Quel type de compte souhaitez-vous créer ?
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {ROLE_CARDS.map(({ role, label, description, icon: Icon, color, bg, to }) => (
             <button
               key={role}
-              onClick={() => navigate(to)}
+              onClick={() => modalNavigate(to)}
               className="text-left bg-white dark:bg-gray-800 rounded-2xl shadow-card border border-gray-100 dark:border-gray-700 p-5 hover:border-cyan-400 dark:hover:border-cyan-500 hover:shadow-lg transition-all duration-200 group"
             >
               <div className="flex items-start gap-4">

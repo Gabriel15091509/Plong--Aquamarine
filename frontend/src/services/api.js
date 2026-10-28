@@ -13,12 +13,20 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
   timeout: 30000,
-  // L'adaptateur XHR par défaut d'axios ne repasse pas de façon fiable par
-  // le service worker (src/sw.js) sous Chromium en émulation hors-ligne :
-  // le cache NetworkFirst des lectures /api/* ne servait jamais son
-  // fallback (confirmé : un fetch() direct passait, un appel axios/XHR
-  // identique échouait). L'adaptateur fetch résout ça.
-  adapter: "fetch",
+  // adapter: "fetch" a été retiré. Il avait été introduit pour un problème
+  // de service worker (src/sw.js) qui n'existe plus du tout dans ce projet
+  // (retiré, voir vite.config.js et main.jsx qui désinstalle même les
+  // anciennes installations) — la justification n'a donc plus lieu d'être.
+  // Gardé, cet adaptateur restait une source connue de comportements fragiles
+  // avec l'annulation de requêtes (AbortController) : react-query annule
+  // automatiquement les requêtes d'une page quittée en pleine navigation
+  // (plusieurs requêtes simultanées côté "Mes plongées" : plongées,
+  // adhérents, moniteurs, sorties, palanquées), ce qui correspond exactement
+  // au symptôme observé (cliquer "Voir" depuis cette page laissait ensuite
+  // TOUTE requête suivante, même vers une autre route, ne plus jamais
+  // partir — cohérent avec une instance axios partagée mise dans un état
+  // cassé par une requête annulée, plutôt qu'un bug isolé à une page).
+  // L'adaptateur XHR par défaut n'a pas ce risque.
 });
 
 // Ajouter pour les notifications en temps réel
@@ -70,7 +78,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Un 401 sur /auth/login ou /auth/verify-otp est une réponse
+    // normale du formulaire (email/mot de passe incorrect, code OTP
+    // invalide), pas une session expirée — le traiter comme les autres
+    // 401 videait le token (déjà absent à ce stade) et rechargeait la
+    // page de connexion par-dessus elle-même, effaçant le toast
+    // d'erreur avant que l'utilisateur ait pu le lire. Seul un 401 sur
+    // une route déjà authentifiée doit purger la session.
+    const isAuthAttempt = ["/auth/login", "/auth/verify-otp"].some((path) =>
+      error.config?.url?.startsWith(path),
+    );
+    if (error.response?.status === 401 && !isAuthAttempt) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";

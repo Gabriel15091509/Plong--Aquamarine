@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FiUser,
@@ -12,6 +12,7 @@ import {
   FiClock,
 } from "react-icons/fi";
 import { usePaiements } from "../../hooks/Paiement/usePaiements";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
 import { useAttributions } from "../../hooks/Attribution/useAttributions";
@@ -19,12 +20,19 @@ import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { useFormations } from "../../hooks/Formation/useFormations";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
+import StatusBadge from "../Common/StatusBadge";
 import {
   MODE_PAIEMENT_OPTIONS,
-  STATUT_PAIEMENT_OPTIONS,
   TYPE_PAIEMENT_OPTIONS,
   STATUT_PAIEMENT,
 } from "../../utils/constants";
+
+// États terminaux d'un paiement : jamais recalculés automatiquement (voir
+// l'effet de calcul du statut plus bas), ce sont des décisions humaines
+// prises ailleurs (bouton "Annuler" de PaiementList, remboursement de
+// caution via AttributionService) — rouvrir ce formulaire en édition ne doit
+// pas les écraser silencieusement.
+const STATUTS_TERMINAUX = [STATUT_PAIEMENT.ANNULE, "Remboursé"];
 
 // Types de paiement pour lesquels la référence pointe vers un enregistrement
 // existant lié à l'adhérent (par opposition à "Autre", saisie libre).
@@ -37,7 +45,9 @@ const fadeInUp = {
 };
 
 const PaiementForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte si elle
+  // vient de là, sinon sur la liste des paiements — voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/paiements");
   const { id } = useParams();
   const editMode = !!id;
 
@@ -69,7 +79,7 @@ const PaiementForm = () => {
     montant: "",
     mode: "Espèces",
     type_paiement: "",
-    statut: "En attente",
+    statut: STATUT_PAIEMENT.PAYE,
     reference_id: "",
     description: "",
   });
@@ -82,7 +92,7 @@ const PaiementForm = () => {
         montant: p.montant ?? "",
         mode: p.mode || "Espèces",
         type_paiement: p.type_paiement || "",
-        statut: p.statut || "En attente",
+        statut: p.statut || STATUT_PAIEMENT.PAYE,
         reference_id: p.reference_id || "",
         description: p.description || "",
       });
@@ -210,6 +220,38 @@ const PaiementForm = () => {
     }
   }, [formData.num_adherent, formData.type_paiement, editMode]);
 
+  // Statut calculé automatiquement à partir du montant réglé, plutôt que
+  // choisi à la main : un élément référencé (adhésion, sortie, formation...)
+  // porte le solde restant AVANT ce paiement (referenceOptions[].montant,
+  // voir plus haut) — montant saisi >= ce solde signifie que ce paiement
+  // solde l'élément (Payé), sinon il ne fait que le réduire (Partiel). Sans
+  // référence (type "Autre", ou référence pas encore choisie), il n'y a pas
+  // de solde à comparer : l'argent est considéré reçu au moment de la
+  // saisie (Payé). "Annulé"/"Remboursé" restent des décisions humaines
+  // (voir STATUTS_TERMINAUX) jamais recalculées ici.
+  useEffect(() => {
+    if (STATUTS_TERMINAUX.includes(formData.statut)) return;
+
+    let auto = STATUT_PAIEMENT.PAYE;
+    if (referenceEnabled && formData.reference_id) {
+      const option = referenceOptions.find((o) => o.value === formData.reference_id);
+      if (option) {
+        const soldeAvant = Number(option.montant) || 0;
+        const montantSaisi = Number(formData.montant) || 0;
+        if (soldeAvant > 0 && montantSaisi < soldeAvant) {
+          auto = STATUT_PAIEMENT.PARTIEL;
+        }
+      }
+    }
+
+    setFormData((prev) => (prev.statut === auto ? prev : { ...prev, statut: auto }));
+    // formData.statut volontairement absent des deps : c'est ce que cet
+    // effet écrit, l'y ajouter reboucle sans rien changer (le garde
+    // d'égalité ci-dessus l'empêcherait de toute façon, mais autant ne pas
+    // le lister comme dépendance de ce qu'il produit lui-même).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.montant, formData.reference_id, referenceEnabled, referenceOptions]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -256,7 +298,7 @@ const PaiementForm = () => {
       } else {
         await create.mutateAsync(formData);
       }
-      navigate("/paiements");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement du paiement :", error);
     } finally {
@@ -281,32 +323,7 @@ const PaiementForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      {/* En-tête */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier le paiement" : "Nouveau paiement"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {editMode
-                ? "Mettez à jour les informations du paiement"
-                : "Enregistrez un nouveau paiement"}
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiDollarSign className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -414,20 +431,21 @@ const PaiementForm = () => {
                 Statut
               </span>
             </label>
-            <select
-              name="statut"
-              value={formData.statut}
-              onChange={handleChange}
-              onFocus={() => handleFocus("statut")}
-              onBlur={handleBlur}
-              className={inputClasses("statut")}
-            >
-              {STATUT_PAIEMENT_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+            {/* Calculé automatiquement (montant vs solde dû), plus saisi à
+                la main — voir l'effet plus haut qui tient formData.statut à
+                jour. "Annulé"/"Remboursé" restent affichés tels quels : ces
+                décisions se prennent ailleurs (liste des paiements,
+                restitution de caution), pas dans ce formulaire. */}
+            <div className="flex items-center h-[42px]">
+              <StatusBadge status={formData.statut} />
+            </div>
+            {!STATUTS_TERMINAUX.includes(formData.statut) && (
+              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                {formData.statut === STATUT_PAIEMENT.PARTIEL
+                  ? "Calculé automatiquement : le montant saisi ne couvre pas tout le solde dû."
+                  : "Calculé automatiquement à partir du montant réglé."}
+              </p>
+            )}
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -516,10 +534,10 @@ const PaiementForm = () => {
       </div>
 
       {/* Pied de page */}
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/paiements")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -539,7 +557,7 @@ const PaiementForm = () => {
           {editMode ? "Mettre à jour" : "Créer le paiement"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

@@ -25,6 +25,7 @@ const Alerte = sequelize.define(
         "Formation",
         "Materiel en retard",
         "Inactivite plongee",
+        "Sortie modifiée",
       ),
       allowNull: false,
     },

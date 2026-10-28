@@ -31,6 +31,13 @@ class FormationService {
     return response.data;
   }
 
+  // COUNT léger pour le badge Sidebar — voir inscriptionService.
+  // getPendingCount, même motif.
+  async getPretesATerminerCount() {
+    const response = await api.get('/formations/pretes-a-terminer-count');
+    return response.data;
+  }
+
   async create(data) {
     const response = await api.post('/formations', data);
     return response.data;

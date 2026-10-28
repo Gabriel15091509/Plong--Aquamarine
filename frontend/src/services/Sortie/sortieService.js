@@ -42,6 +42,21 @@ class SortieService {
     return response.data;
   }
 
+  async annulerPourMeteo(id) {
+    const response = await api.post(`/sorties/${id}/annuler-meteo`);
+    return response.data;
+  }
+
+  async getPropositionsReprogrammation(id) {
+    const response = await api.get(`/sorties/${id}/propositions-reprogrammation`);
+    return response.data;
+  }
+
+  async replanifier(id, data) {
+    const response = await api.post(`/sorties/${id}/replanifier`, data);
+    return response.data;
+  }
+
   async create(data) {
     const response = await api.post("/sorties", data);
     return response.data;
@@ -82,6 +97,24 @@ class SortieService {
 
   async annulerPointage(id_inscription) {
     const response = await api.delete(`/sorties/pointage/${id_inscription}`);
+    return response.data;
+  }
+
+  // Photos de la sortie — réservées aux participants côté backend (voir
+  // SortieService.assertCanAccessPhotos), jamais renvoyées par getById
+  // ci-dessus.
+  async getPhotos(id) {
+    const response = await api.get(`/sorties/${id}/photos`);
+    return response.data;
+  }
+
+  async addPhotos(id, urls) {
+    const response = await api.post(`/sorties/${id}/photos`, { urls });
+    return response.data;
+  }
+
+  async removePhoto(id, photoId) {
+    const response = await api.delete(`/sorties/${id}/photos/${photoId}`);
     return response.data;
   }
 }

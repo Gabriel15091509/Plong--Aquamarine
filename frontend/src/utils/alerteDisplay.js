@@ -4,6 +4,7 @@ import {
   FiCalendar,
   FiDollarSign,
   FiAward,
+  FiAnchor,
 } from "react-icons/fi";
 
 // Icône/couleur et description associées à chaque type d'Alerte — centralisé
@@ -51,6 +52,11 @@ const ALERT_ICONS = {
     color: "text-gray-500",
     bg: "bg-gray-50 dark:bg-gray-700",
   },
+  "Sortie modifiée": {
+    icon: FiAnchor,
+    color: "text-indigo-500",
+    bg: "bg-indigo-50 dark:bg-indigo-900/30",
+  },
 };
 
 const ALERT_DEFAULT_ICON = {
@@ -70,6 +76,7 @@ const ALERT_DESCRIPTIONS = {
   Formation: "Une formation est disponible",
   "Materiel en retard": "Du matériel emprunté n'a pas été retourné à temps",
   "Inactivite plongee": "Aucune plongée enregistrée depuis longtemps",
+  "Sortie modifiée": "Une sortie où vous êtes inscrit(e) a été modifiée",
 };
 
 export const getAlertDescription = (alerte) =>

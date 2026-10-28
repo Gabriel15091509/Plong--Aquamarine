@@ -32,16 +32,28 @@ async function checkCertificateStatus(num_adherent, authHeader) {
 }
 
 // Utilisé par les crons d'alerte (attribution en retard, inactivité carnet de
-// plongée) qui n'ont pas de requête utilisateur/authHeader à disposition —
-// authentifié via un jeton interne signé avec le JWT_SECRET partagé.
-async function createAlerte(num_adherent, type) {
+// plongée, modification d'une sortie) qui n'ont pas de requête utilisateur/
+// authHeader à disposition — authentifié via un jeton interne signé avec le
+// JWT_SECRET partagé. `detail` (libellé complémentaire, ex. quels champs ont
+// changé) et `referenceType`/`referenceId` (ligne source, ex. la sortie
+// modifiée — sert de clé de dédup côté AlerteService.upsertAutomaticAlerte
+// et permet au frontend de rediriger vers la bonne fiche, voir
+// AlerteDetailsModal.jsx) sont optionnels, omis du corps envoyé si absents.
+async function createAlerte(num_adherent, type, { detail, referenceType, referenceId } = {}) {
   const response = await fetch(`${BASE_URL}/alertes`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: getSystemAuthHeader(),
     },
-    body: JSON.stringify({ num_adherent, type, canal: "Notification" }),
+    body: JSON.stringify({
+      num_adherent,
+      type,
+      canal: "Notification",
+      ...(detail ? { detail } : {}),
+      ...(referenceType ? { reference_type: referenceType } : {}),
+      ...(referenceId != null ? { reference_id: referenceId } : {}),
+    }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

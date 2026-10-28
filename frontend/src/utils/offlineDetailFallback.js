@@ -1,11 +1,9 @@
-// Secours hors-ligne pour useGetById : une fiche jamais consultée
-// individuellement (donc jamais mise en cache HTTP en tant que telle) reste
-// malgré tout affichable hors-ligne, à partir de la LISTE complète déjà
-// préchargée et mise en cache durablement (voir utils/offlinePrefetch.js et
-// sw.js, cache "api-offline-dataset") — contrairement au cache React Query
-// (en mémoire, vidé à chaque rechargement), ce cache HTTP survit à un
-// rechargement de page : ça fonctionne donc même en arrivant directement
-// sur une fiche jamais visitée pendant cette session.
+// Secours pour useGetById : si la requête ciblée échoue pour une raison
+// purement réseau (timeout, service momentanément injoignable...) mais que
+// la LISTE complète, elle, répond, on retrouve la fiche dedans plutôt que
+// d'échouer complètement. Ne couvre plus la consultation hors-ligne à
+// proprement parler (le service worker qui mettait ces listes en cache
+// durable a été retiré) — juste un filet de sécurité ponctuel.
 //
 // Ne s'active que sur un vrai échec réseau (pas de réponse HTTP du tout,
 // error.response absent — voir l'intercepteur de services/api.js) : une

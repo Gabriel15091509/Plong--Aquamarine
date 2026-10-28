@@ -24,6 +24,15 @@ class AdhesionController extends BaseController {
     }
   }
 
+  async getEnAttenteValidationCount(req, res, next) {
+    try {
+      const count = await this.adhesionService.getEnAttenteValidationCount();
+      res.json({ success: true, data: { count } });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async getById(req, res, next) {
     try {
       const result = await this.adhesionService.getById(req.params.id, req.user);
@@ -111,6 +120,29 @@ class AdhesionController extends BaseController {
         success: true,
         data: result,
         message: "Adhésion créée avec succès",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  // Appelé exclusivement par identite-service via un jeton interne (voir
+  // AdherentService.updateNiveau côté identite-service et internalAuth.js)
+  // quand un adhérent passe de "Baptême" à "Niveau 1" — jamais depuis le
+  // frontend. Best-effort côté appelant : une erreur ici ne doit jamais
+  // faire échouer la mise à jour du niveau elle-même.
+  async creerLicenceAutomatique(req, res, next) {
+    try {
+      const { num_adherent } = req.params;
+      const { date_obtention } = req.body;
+      const result = await this.adhesionService.creerLicenceAutomatique(
+        num_adherent,
+        date_obtention ? new Date(date_obtention) : undefined,
+      );
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: "Licence FFESM et assurance RC créées (en attente de validation)",
       });
     } catch (error) {
       next(withStatus(error, 400));

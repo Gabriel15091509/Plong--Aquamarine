@@ -11,16 +11,23 @@ import {
   FiCalendar,
   FiClock,
   FiCheck,
-  FiAlertCircle,
   FiX,
   FiSearch,
+  FiFilter,
   FiLock,
+  FiList,
+  FiGrid,
+  FiRefreshCw,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
 import ConfirmModal from "../Common/ConfirmModal";
 import BulkActionBar from "../Common/BulkActionBar";
+import Pagination from "../Common/Pagination";
+import ModalLink from "../Common/ModalLink";
+import TabBar from "../Common/TabBar";
+import { DOSSIER_TABS } from "../../constants/dossierTabs";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
@@ -29,11 +36,12 @@ import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import certificatService from "../../services/CertificatMedical/certificatService";
+import CertificatFormModal from "./CertificatFormModal";
+import CertificatDetails from "./CertificatDetails";
 
 import ErrorState from "../Common/ErrorState";
 
 // Fonctions utilitaires hors du composant
-const isExpired = (date) => new Date(date) < new Date();
 const getDaysRemaining = (date) => {
   const diffTime = new Date(date) - new Date();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -49,7 +57,7 @@ const CertificatList = () => {
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
   const { data, isLoading, error, refetch } = useGetAll();
-  const { data: adherentsData, isLoading: loadingAdherents } =
+  const { data: adherentsData } =
     useGetAllAdherents();
   const remove = useRemove();
   const valider = useValider();
@@ -66,6 +74,7 @@ const CertificatList = () => {
   // ci-dessous reste distinct : il porte sur `statut` (Valide/Expiré, la
   // péremption, pas la validation par le président).
   const [searchParams] = useSearchParams();
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [showValidationOnly, setShowValidationOnly] = useState(
@@ -82,9 +91,18 @@ const CertificatList = () => {
   const [deleteModal, setDeleteModal] = useState(null);
   const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  // Clé de l'action en cours (`delete-<id>`, `validate-<id>`, `reject-<id>`) :
+  // seule l'icône de la ligne concernée passe en spinner (même motif que
+  // InscriptionList.jsx).
+  const [actionLoading, setActionLoading] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
   const [rejectMotif, setRejectMotif] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  // Vue grille par défaut (cartes verticales, comme SortiesPage/AdherentList)
+  // : mieux adapté au mobile que les lignes horizontales de la vue liste.
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "grid" : "list",
+  );
   const itemsPerPage = 10;
 
   // Map des adhérents avec toutes leurs infos
@@ -104,6 +122,30 @@ const CertificatList = () => {
 
   const allCertificats = data?.data || [];
 
+  // Onglets remplaçant l'ancien sous-menu dépliable "Validation" de la
+  // Sidebar (voir Sidebar.jsx, canSeeCertificatValidationMenu — mêmes
+  // rôles, trésorier exclu contrairement à Adhésion) : basculer entre les
+  // deux vues sans quitter la page. Badge recalculé depuis les données
+  // déjà chargées ci-dessus, jamais via un nouvel appel réseau dédié.
+  // Fusionné avec DOSSIER_TABS (Adhésions/Certificats, désormais une seule
+  // entrée Sidebar — voir constants/dossierTabs.js) : un seul et même
+  // TabBar sert les deux usages plutôt que d'en empiler deux (même
+  // principe que formationTabs, voir FormationList.jsx).
+  const certificatTabs = [
+    ...DOSSIER_TABS,
+    ...(hasRole(["president", "adherent"])
+      ? [
+          {
+            to: "/certificats?validation=soumis",
+            label: "Validation",
+            badge: allCertificats.filter(
+              (c) => c.soumis_par_adherent && c.statut_validation !== "Validé",
+            ).length,
+          },
+        ]
+      : []),
+  ];
+
   const filteredCertificats = useMemo(() => {
     return allCertificats.filter((c) => {
       const adherentInfo = adherentMap[c.num_adherent] || {
@@ -113,11 +155,11 @@ const CertificatList = () => {
       const adherentName = adherentInfo.nom;
 
       if (filter !== "all" && c.statut !== filter) return false;
-      // "Tous les certificats" et "Validation" sont deux files distinctes,
+      // "Certificats" et "Validation" sont deux files distinctes,
       // sans doublon : une auto-soumission (soumis_par_adherent) relève de
       // "Validation" tant qu'elle attend une décision ou vient d'être
       // rejetée (En attente/Rejeté) — une fois validée, elle n'a plus rien à
-      // y faire et rejoint "Tous les certificats" comme n'importe quel
+      // y faire et rejoint "Certificats" comme n'importe quel
       // dossier accepté.
       const enFileDeValidation =
         c.soumis_par_adherent && c.statut_validation !== "Validé";
@@ -144,12 +186,17 @@ const CertificatList = () => {
   );
 
   const handleDelete = async (id) => {
+    // Ferme la modale dès le lancement : elle masquerait sinon le spinner
+    // de la ligne pendant la requête.
+    setDeleteModal(null);
+    setActionLoading(`delete-${id}`);
     try {
       await remove.mutateAsync(id);
-      refetch();
-      setDeleteModal(null);
+      await refetch();
     } catch (error) {
       console.error("Échec de la suppression du certificat médical :", error);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -169,31 +216,56 @@ const CertificatList = () => {
   };
 
   const handleValider = async (id) => {
+    setActionLoading(`validate-${id}`);
     try {
       await valider.mutateAsync({ id, decision: "Validé" });
-      refetch();
+      await refetch();
     } catch (error) {
       console.error("Échec de la validation du certificat médical :", error);
+    } finally {
+      setActionLoading(null);
     }
   };
 
   const handleRejeter = async () => {
     if (!rejectModal || !rejectMotif.trim()) return;
+    const id = rejectModal;
+    const motif = rejectMotif.trim();
+    // Ferme la modale dès le lancement : elle masquerait sinon le spinner
+    // de la ligne pendant la requête.
+    setRejectModal(null);
+    setRejectMotif("");
+    setActionLoading(`reject-${id}`);
     try {
-      await valider.mutateAsync({ id: rejectModal, decision: "Rejeté", motif: rejectMotif.trim() });
-      refetch();
-      setRejectModal(null);
-      setRejectMotif("");
+      await valider.mutateAsync({ id, decision: "Rejeté", motif });
+      await refetch();
     } catch (error) {
       console.error("Échec du rejet du certificat médical :", error);
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
+  // N'attend que la propre liste : adherentsData ne sert qu'aux noms
+  // affichés (adherentMap), avec repli "#<num_adherent>" déjà prévu tant
+  // qu'il n'est pas encore chargé — chargement progressif, pas de blocage.
+  if (isLoading) return <LoadingSpinner variant="list" />;
   if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredCertificats.length === 0) {
+    // Un vrai critère de recherche/filtre est actif — distinct de
+    // showValidationOnly, qui n'est pas un filtre réglable mais la vue
+    // "Validation" elle-même (voir commentaire plus haut). Sans cette
+    // distinction, une file de validation simplement vide (rien à valider,
+    // aucune recherche tapée) affichait quand même "Réinitialiser la
+    // recherche" — et ce bouton désactivait showValidationOnly, faisant
+    // brutalement basculer vers "Certificats" alors qu'il n'y avait
+    // rien à réinitialiser : confusion pour l'utilisateur qui n'avait rien
+    // cherché (même correctif que AdhesionList.jsx).
+    const rechercheOuFiltreActif = searchTerm || filter !== "all";
     return (
+      <div className="space-y-4">
+      <TabBar tabs={certificatTabs} />
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -206,17 +278,18 @@ const CertificatList = () => {
           Aucun certificat trouvé
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {searchTerm || filter !== "all" || showValidationOnly
+          {rechercheOuFiltreActif
             ? "Aucun résultat pour vos critères"
-            : "Commencez par créer un nouveau certificat"}
+            : showValidationOnly
+              ? "Aucune soumission en attente de validation"
+              : "Commencez par créer un nouveau certificat"}
         </p>
-        {(searchTerm || filter !== "all" || showValidationOnly) && (
+        {rechercheOuFiltreActif && (
           <button
             type="button"
             onClick={() => {
               setSearchTerm("");
               setFilter("all");
-              setShowValidationOnly(false);
               setCurrentPage(1);
             }}
             className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -225,22 +298,37 @@ const CertificatList = () => {
           </button>
         )}
         {(canManageCertificat || canSubmitOwn) && (
-          <Link
+          <ModalLink
             to="/certificats/create"
             className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
           >
             <FiPlus className="w-4 h-4" />
             {canManageCertificat ? "Nouveau certificat" : "Soumettre mon certificat"}
-          </Link>
+          </ModalLink>
         )}
+        <CertificatFormModal />
+        <CertificatDetails />
       </motion.div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Barre de recherche et filtres */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <TabBar tabs={certificatTabs} />
+            {/* Bouton "Filtres" (mobile uniquement) : recherche + filtres
+          repliés par défaut pour ne pas encombrer l'écran — un tap les
+          affiche. Toujours visibles à partir de sm (recherche fréquente
+          sur grand écran, pas besoin de la cacher). */}
+      <button
+        type="button"
+        onClick={() => setShowFilters((v) => !v)}
+        className="sm:hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+      >
+        {showFilters ? <FiX className="w-4 h-4" /> : <FiFilter className="w-4 h-4" />}
+        Filtres
+      </button>
+      <div className={`${showFilters ? "flex" : "hidden"} flex-col gap-3 sm:flex sm:flex-row`}>
         <div className="relative flex-1">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -268,14 +356,40 @@ const CertificatList = () => {
             <option value="Expiré">Expirés</option>
           </select>
           {(canManageCertificat || canSubmitOwn) && (
-            <Link
+            <ModalLink
               to="/certificats/create"
               className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700 sm:w-auto"
             >
               <FiPlus className="w-4 h-4" />
               {canManageCertificat ? "Nouveau" : "Soumettre"}
-            </Link>
+            </ModalLink>
           )}
+          <div className="col-span-2 flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-100 p-1 dark:border-gray-700 dark:bg-gray-800 sm:col-auto">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              title="Vue grille"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "grid"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              title="Vue liste"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "list"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiList className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -331,9 +445,174 @@ const CertificatList = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid gap-3"
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                : "grid gap-3"
+            }
           >
-            {paginatedCertificats.map((certificat) => {
+            {viewMode === "grid"
+              ? paginatedCertificats.map((certificat) => {
+                  const adherentInfo = adherentMap[certificat.num_adherent] || {
+                    nom: `#${certificat.num_adherent}`,
+                    photo: null,
+                  };
+                  const adherentName = adherentInfo.nom;
+                  const daysRemaining = getDaysRemaining(certificat.date_validite);
+                  const verrouille =
+                    certificat.soumis_par_adherent && certificat.statut_validation === "Validé";
+
+                  return (
+                    <motion.div
+                      key={certificat.id_certificat}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
+                    >
+                      <div
+                        className="w-24 h-16 rounded-lg bg-gray-100 dark:bg-gray-700 flex flex-col items-center justify-center gap-0.5 border-2 border-gray-200 dark:border-gray-600"
+                        title={
+                          certificat.document_path
+                            ? "Document protégé — voir la fiche pour le consulter"
+                            : "Aucun document"
+                        }
+                      >
+                        {certificat.document_path ? (
+                          <>
+                            <FiLock className="w-5 h-5 text-gray-400" />
+                            <span className="text-[9px] font-medium text-gray-400 uppercase tracking-wide">
+                              Protégé
+                            </span>
+                          </>
+                        ) : (
+                          <FiFileText className="w-6 h-6 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-3 w-full justify-center">
+                        {adherentInfo.photo ? (
+                          <img
+                            src={photoUrl(adherentInfo.photo)}
+                            alt={adherentName}
+                            className="w-8 h-8 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm flex-shrink-0">
+                            <FiUser className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+                          </div>
+                        )}
+                        <h3 className="font-semibold text-gray-900 dark:text-white break-words min-w-0">
+                          {adherentName}
+                        </h3>
+                      </div>
+                      <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mt-1">
+                        {certificat.type_certificat}
+                      </p>
+                      <p className="flex items-center justify-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
+                        {formatDate(certificat.date_validite)}
+                      </p>
+                      {certificat.medecin && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                          Médecin: {certificat.medecin}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
+                        {certificat.statut_validation === "Validé" &&
+                          daysRemaining <= 30 &&
+                          daysRemaining > 0 && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                              <FiClock className="w-3.5 h-3.5 flex-shrink-0" />
+                              {daysRemaining} {daysRemaining === 1 ? "jour" : "jours"}
+                            </span>
+                          )}
+                        {certificat.statut_validation === "Validé" && (
+                          <StatusBadge status={certificat.statut} />
+                        )}
+                        {certificat.statut_validation !== "Validé" && (
+                          <StatusBadge status={certificat.statut_validation} />
+                        )}
+                      </div>
+                      {certificat.statut_validation === "Rejeté" && certificat.motif_rejet && (
+                        <p className="text-xs text-red-500 dark:text-red-400 italic mt-1">
+                          ({certificat.motif_rejet})
+                        </p>
+                      )}
+                      <div className="flex items-center justify-center flex-wrap gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 w-full">
+                        {canManageCertificat && !verrouille && (
+                          <input
+                            type="checkbox"
+                            checked={selection.isSelected(certificat.id_certificat)}
+                            onChange={() => selection.toggle(certificat.id_certificat)}
+                            className="mr-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                            title="Sélectionner"
+                          />
+                        )}
+                        <Link
+                          to={`/certificats/${certificat.id_certificat}`}
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title="Voir"
+                        >
+                          <FiEye className="w-4 h-4" />
+                        </Link>
+                        {canManageCertificat && certificat.statut_validation === "En attente" && (
+                          <>
+                            <button
+                              onClick={() => handleValider(certificat.id_certificat)}
+                              disabled={(actionLoading === `validate-${certificat.id_certificat}` || actionLoading === `reject-${certificat.id_certificat}` || actionLoading === `delete-${certificat.id_certificat}`)}
+                              className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Valider"
+                            >
+                              {actionLoading === `validate-${certificat.id_certificat}` ? (
+                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FiCheck className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => setRejectModal(certificat.id_certificat)}
+                              disabled={(actionLoading === `validate-${certificat.id_certificat}` || actionLoading === `reject-${certificat.id_certificat}` || actionLoading === `delete-${certificat.id_certificat}`)}
+                              className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Rejeter"
+                            >
+                              {actionLoading === `reject-${certificat.id_certificat}` ? (
+                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FiX className="w-4 h-4" />
+                              )}
+                            </button>
+                          </>
+                        )}
+                        {canManageCertificat && !verrouille && (
+                          <>
+                            {certificat.statut_validation !== "En attente" && (
+                              <ModalLink
+                                to={`/certificats/edit/${certificat.id_certificat}`}
+                                className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                title="Modifier"
+                              >
+                                <FiEdit className="w-4 h-4" />
+                              </ModalLink>
+                            )}
+                            <button
+                              onClick={() => setDeleteModal(certificat.id_certificat)}
+                              disabled={actionLoading === `delete-${certificat.id_certificat}`}
+                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Supprimer"
+                            >
+                              {actionLoading === `delete-${certificat.id_certificat}` ? (
+                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FiTrash2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })
+              : paginatedCertificats.map((certificat) => {
               const adherentInfo = adherentMap[certificat.num_adherent] || {
                 nom: `#${certificat.num_adherent}`,
                 photo: null,
@@ -407,9 +686,6 @@ const CertificatList = () => {
                             <FiUser className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
                           </div>
                         )}
-                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                          #{certificat.num_adherent}
-                        </span>
                       </div>
                     </div>
 
@@ -418,7 +694,7 @@ const CertificatList = () => {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                            <h3 className="font-semibold text-gray-900 dark:text-white break-words">
                               {adherentName}
                             </h3>
                             <span className="text-sm text-gray-400 dark:text-gray-500">
@@ -494,19 +770,27 @@ const CertificatList = () => {
                             <>
                               <button
                                 onClick={() => handleValider(certificat.id_certificat)}
-                                disabled={valider.isPending}
+                                disabled={(actionLoading === `validate-${certificat.id_certificat}` || actionLoading === `reject-${certificat.id_certificat}` || actionLoading === `delete-${certificat.id_certificat}`)}
                                 className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50"
                                 title="Valider"
                               >
-                                <FiCheck className="w-4 h-4" />
+                                {actionLoading === `validate-${certificat.id_certificat}` ? (
+                                  <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <FiCheck className="w-4 h-4" />
+                                )}
                               </button>
                               <button
                                 onClick={() => setRejectModal(certificat.id_certificat)}
-                                disabled={valider.isPending}
+                                disabled={(actionLoading === `validate-${certificat.id_certificat}` || actionLoading === `reject-${certificat.id_certificat}` || actionLoading === `delete-${certificat.id_certificat}`)}
                                 className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors disabled:opacity-50"
                                 title="Rejeter"
                               >
-                                <FiX className="w-4 h-4" />
+                                {actionLoading === `reject-${certificat.id_certificat}` ? (
+                                  <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <FiX className="w-4 h-4" />
+                                )}
                               </button>
                             </>
                           )}
@@ -522,22 +806,27 @@ const CertificatList = () => {
                                   pas une correction silencieuse du dossier
                                   soumis par l'adhérent. */}
                               {certificat.statut_validation !== "En attente" && (
-                                <Link
+                                <ModalLink
                                   to={`/certificats/edit/${certificat.id_certificat}`}
                                   className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
                                   title="Modifier"
                                 >
                                   <FiEdit className="w-4 h-4" />
-                                </Link>
+                                </ModalLink>
                               )}
                               <button
                                 onClick={() =>
                                   setDeleteModal(certificat.id_certificat)
                                 }
-                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                disabled={actionLoading === `delete-${certificat.id_certificat}`}
+                                className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                                 title="Supprimer"
                               >
-                                <FiTrash2 className="w-4 h-4" />
+                                {actionLoading === `delete-${certificat.id_certificat}` ? (
+                                  <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <FiTrash2 className="w-4 h-4" />
+                                )}
                               </button>
                             </>
                           )}
@@ -552,34 +841,11 @@ const CertificatList = () => {
         )}
       </AnimatePresence>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
-        >
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Précédent
-          </button>
-          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Suivant
-          </button>
-        </motion.div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Modal de confirmation de suppression */}
       {deleteModal && (
@@ -656,7 +922,7 @@ const CertificatList = () => {
               </button>
               <button
                 onClick={handleRejeter}
-                disabled={!rejectMotif.trim() || valider.isPending}
+                disabled={!rejectMotif.trim()}
                 className="px-5 py-2.5 text-sm font-semibold text-white bg-orange-600 hover:bg-orange-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Rejeter
@@ -673,6 +939,9 @@ const CertificatList = () => {
         onCancel={() => setBulkDeleteModal(false)}
         onConfirm={handleBulkDelete}
       />
+
+      <CertificatFormModal />
+      <CertificatDetails />
     </div>
   );
 };

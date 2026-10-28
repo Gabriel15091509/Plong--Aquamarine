@@ -24,6 +24,17 @@ export const useAdhesions = () => {
     });
   };
 
+  // Badge Sidebar : COUNT léger côté serveur plutôt que useGetAll() filtré
+  // côté client — voir usePlongees.useGetAValiderCount, même motif.
+  const useGetEnAttenteValidationCount = (options = {}) => {
+    return useQuery({
+      queryKey: ['adhesions', 'en-attente-validation-count'],
+      queryFn: () => adhesionService.getEnAttenteValidationCount(),
+      staleTime: 60 * 1000,
+      ...options,
+    });
+  };
+
   const useCreate = () => {
     return useMutation({
       mutationFn: (data) => adhesionService.create(data),
@@ -112,10 +123,10 @@ export const useAdhesions = () => {
     });
   };
 
-  const useDossierStatus = (numAdherent) => {
+  const useDossierStatus = (numAdherent, requiredTypes) => {
     return useQuery({
-      queryKey: ['adhesions', 'dossier-status', numAdherent],
-      queryFn: () => adhesionService.getDossierStatus(numAdherent),
+      queryKey: ['adhesions', 'dossier-status', numAdherent, requiredTypes],
+      queryFn: () => adhesionService.getDossierStatus(numAdherent, requiredTypes),
       enabled: !!numAdherent,
       staleTime: 5 * 60 * 1000,
     });
@@ -124,6 +135,7 @@ export const useAdhesions = () => {
   return {
     useGetAll,
     useGetById,
+    useGetEnAttenteValidationCount,
     useGetByAdherent,
     useCreate,
     useUpdate,

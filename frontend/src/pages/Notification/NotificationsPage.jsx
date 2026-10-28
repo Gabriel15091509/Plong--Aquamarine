@@ -1,15 +1,12 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  FiBell,
-  FiX,
-  FiChevronLeft,
-  FiChevronRight,
-} from "react-icons/fi";
+import { FiBell, FiX } from "react-icons/fi";
 import { useAlertes } from "../../hooks/Alerte/useAlertes";
 import { getAlertIcon, getAlertDescription } from "../../utils/alerteDisplay";
 import { formatRelativeTime } from "../../utils/helpers";
 import ErrorState from "../../components/Common/ErrorState";
+import Pagination from "../../components/Common/Pagination";
+import Breadcrumb from "../../components/Common/Breadcrumb";
 import AlerteDetailsModal from "../../components/Alerte/AlerteDetailsModal";
 
 const PAGE_SIZE = 20;
@@ -54,6 +51,8 @@ const NotificationsPage = () => {
       transition={{ duration: 0.4 }}
       className="px-4 sm:px-6 pt-2 pb-6"
     >
+      <Breadcrumb current="Notifications" />
+
       <div className="mb-4">
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
           Notifications
@@ -126,31 +125,7 @@ const NotificationsPage = () => {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-gray-100 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(p - 1, 1))}
-              disabled={page <= 1}
-              className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:text-primary-600 dark:hover:text-primary-400"
-            >
-              <FiChevronLeft className="w-4 h-4" />
-              Précédent
-            </button>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Page {page} / {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-              disabled={page >= totalPages}
-              className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:text-primary-600 dark:hover:text-primary-400"
-            >
-              Suivant
-              <FiChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
       {selectedAlerte && (

@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from './Logo';
+import StayOrBack from "./StayOrBack";
 
 // Pages dont l'API sous-jacente n'existe QUE sur l'Ingress local du club
 // (voir k8s/overlays/production/17-ingress-public.yaml) — le contrôleur
@@ -74,12 +75,12 @@ const ProtectedRoute = ({
 
   // Vérifier les rôles
   if (requiredRoles.length > 0 && !hasRole(requiredRoles)) {
-    return <Navigate to={fallbackPath} replace />;
+    return <StayOrBack fallback={fallbackPath} />;
   }
 
   // Vérifier les permissions
   if (requiredPermission && !hasPermission(requiredPermission)) {
-    return <Navigate to={fallbackPath} replace />;
+    return <StayOrBack fallback={fallbackPath} />;
   }
 
   return children;

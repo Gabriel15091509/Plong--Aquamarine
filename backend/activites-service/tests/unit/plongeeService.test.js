@@ -79,6 +79,23 @@ describe("PlongeeService.validatePlongee", () => {
   });
 });
 
+describe("PlongeeService.getAValiderCount", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // Badge Sidebar : doit passer par le COUNT léger du repository, jamais
+  // par un findAll() côté service (voir PlongeeRepository.countAValider).
+  test("délègue au COUNT léger du repository", async () => {
+    jest.spyOn(service.plongeeRepository, "countAValider").mockResolvedValue(4);
+
+    const result = await service.getAValiderCount();
+
+    expect(service.plongeeRepository.countAValider).toHaveBeenCalled();
+    expect(result).toBe(4);
+  });
+});
+
 describe("PlongeeService.attachMaterielUtilise", () => {
   afterEach(() => {
     jest.restoreAllMocks();

@@ -1,22 +1,23 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import {
   FiClock,
   FiSave,
   FiX,
-  FiUsers,
   FiInfo,
-  FiMapPin,
 } from "react-icons/fi";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useAuth } from "../../context/AuthContext";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { isSortieSelectionnable, isNiveauCompatible } from "../../utils/helpers";
+import { STATUTS_ADHERENT_EXCLUS_SELECTION } from "../../utils/constants";
 
 const INSCRIPTION_STATUS = [
   "En attente",
@@ -31,8 +32,17 @@ const fadeInUp = {
   transition: { duration: 0.3 },
 };
 
-const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
-  const navigate = useNavigate();
+// Route "/inscriptions/edit/:id" (App.jsx) : editMode/inscriptionId ne sont
+// plus reçus en props (ils ne l'ont jamais été — le <Route> ne passait rien),
+// on les dérive nous-mêmes de l'URL comme FormationForm/AttributionForm/
+// AdhesionForm, seuls formulaires jusqu'ici à réellement recevoir l'id.
+const InscriptionForm = () => {
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte (fiche
+  // Sortie, ...) si elle vient de là, sinon sur la liste des inscriptions —
+  // voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/inscriptions");
+  const { id: inscriptionId } = useParams();
+  const editMode = !!inscriptionId;
   const [searchParams] = useSearchParams();
   const sortieIdParam = searchParams.get("sortie"); // Récupérer l'ID de la sortie depuis l'URL
 
@@ -40,12 +50,22 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
   const { useGetById, useCreate, useUpdate } = useInscriptions();
   const { useGetAll: useGetAllAdherents } = useAdherents();
   const { useGetAll: useGetAllSorties } = useSorties();
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
 
   const { data: inscriptionData, isLoading: loadingData } =
     useGetById(inscriptionId);
   const { data: adherentsData, isLoading: loadingAdherents } =
     useGetAllAdherents();
   const { data: sortiesData, isLoading: loadingSorties } = useGetAllSorties();
+  // Uniquement pour un moniteur en train de CRÉER une inscription (voir
+  // statutLocked plus bas) — inutile pour président/trésorier/adhérent, ni
+  // en édition (assertCanManageInscription bloque déjà côté API la gestion
+  // d'une inscription existante par un moniteur non encadrant, avant même
+  // d'atteindre ce formulaire).
+  const { data: moniteursData } = useGetAllMoniteurs(
+    {},
+    { enabled: !editMode && user?.role === "moniteur" },
+  );
 
   const create = useCreate();
   const update = useUpdate();
@@ -72,6 +92,25 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
     date_confirmation: "",
   });
 
+  // Un adhérent "Ancien"/"Suspendu" ne doit plus pouvoir être choisi pour
+  // une NOUVELLE inscription (voir STATUTS_ADHERENT_EXCLUS_SELECTION). En
+  // édition, l'adhérent déjà lié à l'inscription reste affiché même si son
+  // statut est désormais exclu, pour ne pas casser l'affichage existant.
+  const adherentOptions = useMemo(() => {
+    const all = adherentsData?.data || [];
+    const eligibles = all.filter(
+      (a) => !STATUTS_ADHERENT_EXCLUS_SELECTION.includes(a.statut),
+    );
+    if (
+      formData.num_adherent &&
+      !eligibles.some((a) => a.num_adherent === formData.num_adherent)
+    ) {
+      const actuel = all.find((a) => a.num_adherent === formData.num_adherent);
+      if (actuel) return [actuel, ...eligibles];
+    }
+    return eligibles;
+  }, [adherentsData, formData.num_adherent]);
+
   // Pré-sélectionner la sortie si l'ID est passé en paramètre
   useEffect(() => {
     if (sortieIdParam && !editMode) {
@@ -89,6 +128,35 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
       (s) => (s.id_sortie || s.id) === parseInt(formData.id_sortie),
     );
   }, [formData.id_sortie, sortiesData]);
+
+  // Moniteur connecté (Sortie.encadrants est une liste d'id_moniteur, pas de
+  // user.id) — même résolution que SortiesPage.jsx:currentMoniteurId /
+  // SortieDetails.jsx:currentMoniteurId.
+  const currentMoniteurId = useMemo(() => {
+    if (!user || !moniteursData?.data) return null;
+    const moniteur = moniteursData.data.find((m) => m.user?.email === user.email);
+    return moniteur?.id_moniteur || null;
+  }, [user, moniteursData]);
+
+  // Un moniteur qui CRÉE une inscription reste libre de préinscrire
+  // n'importe quel adhérent (voir InscriptionService.createInscription
+  // côté backend, volontairement ouvert à tout moniteur) — mais s'il n'est
+  // pas l'encadrant désigné de la sortie choisie, il ne peut plus choisir le
+  // statut : celui-ci est figé à "En attente", comme pour un adhérent qui
+  // s'inscrit lui-même. Non applicable tant qu'aucune sortie n'est encore
+  // sélectionnée (pas de encadrants à vérifier), ni en édition (une
+  // inscription existante est déjà protégée par assertCanManageInscription
+  // côté API, qui interdit même d'ATTEINDRE ce formulaire en édition pour un
+  // moniteur non encadrant).
+  const statutLocked =
+    !editMode &&
+    user?.role === "moniteur" &&
+    !!selectedSortie &&
+    !(
+      currentMoniteurId != null &&
+      Array.isArray(selectedSortie.encadrants) &&
+      selectedSortie.encadrants.includes(currentMoniteurId)
+    );
 
   // Adhérent concerné par le filtre de niveau ci-dessous : soi-même pour un
   // adhérent qui s'inscrit, ou celui actuellement choisi dans le select
@@ -130,6 +198,19 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
     }
   }, [isAdherent, currentAdherent]);
 
+  // Garde le select en phase avec ce qui sera réellement soumis (voir
+  // handleSubmit) : sans ce reset, un moniteur qui choisit d'abord
+  // "Confirmée" PUIS une sortie qu'il n'encadre pas verrait encore
+  // "Confirmée" affiché dans un select devenu disabled, alors que "En
+  // attente" est ce qui part réellement au clic sur Enregistrer.
+  useEffect(() => {
+    if (statutLocked) {
+      setFormData((prev) =>
+        prev.statut === "En attente" ? prev : { ...prev, statut: "En attente" },
+      );
+    }
+  }, [statutLocked]);
+
   useEffect(() => {
     if (editMode && inscriptionId && inscriptionData?.data) {
       const i = inscriptionData.data;
@@ -149,7 +230,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    if (name === "statut" && isAdherent) {
+    if (name === "statut" && (isAdherent || statutLocked)) {
       return;
     }
 
@@ -181,7 +262,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
       const dataToSubmit = {
         num_adherent: formData.num_adherent,
         id_sortie: parseInt(formData.id_sortie),
-        statut: isAdherent ? "En attente" : formData.statut,
+        statut: isAdherent || statutLocked ? "En attente" : formData.statut,
         rang_liste_attente: formData.rang_liste_attente
           ? parseInt(formData.rang_liste_attente)
           : null,
@@ -197,7 +278,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
         await create.mutateAsync(dataToSubmit);
         toast.success("Inscription créée avec succès");
       }
-      navigate("/inscriptions");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement de l'inscription :", error);
       toast.error(
@@ -212,7 +293,8 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
   if (loadingAdherents || loadingSorties)
     return <LoadingSpinner variant="form" />;
 
-  const availableStatus = isAdherent ? ["En attente"] : INSCRIPTION_STATUS;
+  const availableStatus =
+    isAdherent || statutLocked ? ["En attente"] : INSCRIPTION_STATUS;
 
   const inputClasses = (fieldName) =>
     `w-full pl-4 pr-4 py-2.5 text-sm border rounded-lg focus:outline-none transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
@@ -227,39 +309,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      {/* En-tête */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier l'inscription" : "Nouvelle inscription"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {editMode
-                ? "Mettez à jour les informations d'inscription"
-                : "Inscrivez un adhérent à une sortie"}
-            </p>
-            {sortieIdParam && selectedSortie && !editMode && (
-              <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-1">
-                <FiMapPin className="inline mr-1 w-3.5 h-3.5" />
-                Sortie pré-sélectionnée : {selectedSortie.type} -{" "}
-                {selectedSortie.lieu}
-              </p>
-            )}
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiUsers className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
         {isAdherent && (
@@ -293,7 +343,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
                 if (errors.num_adherent)
                   setErrors((prev) => ({ ...prev, num_adherent: "" }));
               }}
-              options={adherentsData?.data || []}
+              options={adherentOptions}
               getOptionLabel={(a) =>
                 `${a.civilite} ${a.nom} ${a.prenom} - ${a.email}`
               }
@@ -354,7 +404,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
               name="statut"
               value={formData.statut}
               onChange={handleChange}
-              disabled={isAdherent}
+              disabled={isAdherent || statutLocked}
               onFocus={() => handleFocus("statut")}
               onBlur={handleBlur}
               className={inputClasses("statut")}
@@ -370,6 +420,12 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
                 ⏳ Statut bloqué sur &quot;En attente&quot; pour les adhérents
               </p>
             )}
+            {statutLocked && (
+              <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                ⏳ Statut bloqué sur &quot;En attente&quot; : vous n&apos;êtes pas
+                désigné encadrant de cette sortie
+              </p>
+            )}
           </motion.div>
 
         </div>
@@ -377,10 +433,10 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
       </div>
 
       {/* Pied de page */}
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/inscriptions")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -400,7 +456,7 @@ const InscriptionForm = ({ editMode = false, inscriptionId = null }) => {
           {editMode ? "Mettre à jour" : "Créer l'inscription"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

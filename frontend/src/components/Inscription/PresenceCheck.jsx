@@ -98,9 +98,6 @@ const PresenceCheck = ({ inscription, onCheck, loading, onCancel }) => {
         <p className="mt-3 text-sm font-bold text-gray-900 dark:text-white truncate w-full">
           {fullName}
         </p>
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate w-full">
-          #{inscription.num_adherent}
-        </p>
 
         {isChecked ? (
           <div

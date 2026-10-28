@@ -64,6 +64,8 @@ const STATUT_LABELS = {
   ok: "À jour",
   bientot: "Bientôt",
   expire: "Expiré",
+  rejete: "Rejeté",
+  attente: "En attente",
   inconnu: "Non renseigné",
 };
 
@@ -79,8 +81,17 @@ const formatDate = (date) =>
     : "Non renseigné";
 
 // Statut d'échéance (expiré / bientôt / à jour / inconnu), sur le même
-// seuil J-30 que AlerteService côté backend.
-const getEcheance = (dateFin) => {
+// seuil J-30 que AlerteService côté backend — mais une pièce (adhésion
+// FFESM/Assurance ou certificat médical) soumise par l'adhérent lui-même
+// et encore "En attente" ou "Rejeté" par le président/trésorier ne doit
+// JAMAIS ressortir "À jour" même avec une date de fin dans le futur :
+// checkDossierValidity/checkCertificateStatus (backend) ne considèrent
+// valide qu'une pièce "Validé" (voir AdhesionService.checkDossierValidity),
+// la carte doit rester cohérente avec cette même règle.
+const getEcheance = (dateFin, statutValidation) => {
+  if (statutValidation === "Rejeté") return { statut: "rejete", joursRestants: null };
+  if (statutValidation === "En attente")
+    return { statut: "attente", joursRestants: null };
   if (!dateFin) return { statut: "inconnu", joursRestants: null };
   const jours = Math.ceil(
     (new Date(dateFin) - new Date()) / (1000 * 60 * 60 * 24),
@@ -107,6 +118,16 @@ const URGENCE_STYLES = {
     textColor: "text-emerald-600 dark:text-emerald-400",
     badge: () => "À jour",
   },
+  rejete: {
+    bgColor: "bg-red-50 dark:bg-red-900/20",
+    textColor: "text-red-600 dark:text-red-400",
+    badge: () => "Rejeté",
+  },
+  attente: {
+    bgColor: "bg-sky-50 dark:bg-sky-900/20",
+    textColor: "text-sky-600 dark:text-sky-400",
+    badge: () => "En attente",
+  },
   inconnu: {
     bgColor: "bg-slate-100 dark:bg-slate-700/40",
     textColor: "text-slate-500 dark:text-slate-400",
@@ -115,17 +136,29 @@ const URGENCE_STYLES = {
 };
 
 // Sélectionne, parmi les adhésions d'un type donné, celle en cours (date_fin
-// la plus proche dans le futur), sinon la plus récemment expirée.
+// la plus proche dans le futur), sinon la plus récemment expirée — mais
+// UNIQUEMENT parmi les entrées "Validé" (voir getEcheance) : une adhésion
+// Club est toujours "Validé" dès sa création (jamais soumise par
+// l'adhérent), donc rien ne change pour elle, mais une FFESM/Assurance
+// soumise par l'adhérent ne doit jamais être retenue comme "en cours" tant
+// qu'un "Rejeté" ou "En attente" plus récent traîne avec une date de fin
+// dans le futur. Si aucune entrée n'est encore validée, on retombe sur la
+// soumission la plus récente (quel que soit son statut) pour que la carte
+// affiche "Rejeté"/"En attente" plutôt qu'un "Non renseigné" trompeur.
 const getAdhesionPertinente = (adhesions, type) => {
   const candidates = (adhesions || []).filter((a) => a.type === type);
   if (candidates.length === 0) return null;
   const now = new Date();
-  const enCours = candidates
+  const validees = candidates.filter((a) => a.statut_validation === "Validé");
+  const enCoursValidee = validees
     .filter((a) => new Date(a.date_fin) >= now)
     .sort((a, b) => new Date(a.date_fin) - new Date(b.date_fin));
-  if (enCours.length > 0) return enCours[0];
+  if (enCoursValidee.length > 0) return enCoursValidee[0];
+  if (validees.length > 0) {
+    return validees.sort((a, b) => new Date(b.date_fin) - new Date(a.date_fin))[0];
+  }
   return candidates.sort(
-    (a, b) => new Date(b.date_fin) - new Date(a.date_fin),
+    (a, b) => new Date(b.createdAt || b.date_debut) - new Date(a.createdAt || a.date_debut),
   )[0];
 };
 
@@ -156,10 +189,27 @@ const AdherentRecapCard = () => {
   const { data: inscriptionsResponse } =
     useGetInscriptionsByAdherent(numAdherent);
 
+  // Même règle que getAdhesionPertinente ci-dessous (voir son commentaire) :
+  // priorité aux certificats "Validé" en cours de validité, sinon au plus
+  // récemment validé, sinon à la soumission la plus récente pour remonter
+  // un "Rejeté"/"En attente" plutôt qu'un statut trompeur.
   const certificatActuel = useMemo(() => {
     if (certificats.length === 0) return null;
+    const now = new Date();
+    const valides = certificats.filter((c) => c.statut_validation === "Validé");
+    const enCoursValide = valides
+      .filter((c) => new Date(c.date_validite) >= now)
+      .sort((a, b) => new Date(a.date_validite) - new Date(b.date_validite));
+    if (enCoursValide.length > 0) return enCoursValide[0];
+    if (valides.length > 0) {
+      return [...valides].sort(
+        (a, b) => new Date(b.date_validite) - new Date(a.date_validite),
+      )[0];
+    }
     return [...certificats].sort(
-      (a, b) => new Date(b.date_validite) - new Date(a.date_validite),
+      (a, b) =>
+        new Date(b.createdAt || b.date_delivrance) -
+        new Date(a.createdAt || a.date_delivrance),
     )[0];
   }, [certificats]);
 
@@ -215,9 +265,18 @@ const AdherentRecapCard = () => {
     );
   }
 
-  const echeanceClub = getEcheance(adhesionClub?.date_fin);
-  const echeanceCertificat = getEcheance(certificatActuel?.date_validite);
-  const echeanceAssurance = getEcheance(adhesionAssurance?.date_fin);
+  const echeanceClub = getEcheance(
+    adhesionClub?.date_fin,
+    adhesionClub?.statut_validation,
+  );
+  const echeanceCertificat = getEcheance(
+    certificatActuel?.date_validite,
+    certificatActuel?.statut_validation,
+  );
+  const echeanceAssurance = getEcheance(
+    adhesionAssurance?.date_fin,
+    adhesionAssurance?.statut_validation,
+  );
 
   const alerteActive = [
     echeanceClub,

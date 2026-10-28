@@ -4,7 +4,7 @@
 // dossier de service (`cd backend/identite-service && node scripts/
 // seedIdentite.js`) pour que `require("dotenv").config()` charge le bon
 // .env (searchPath = schéma identite).
-const { sequelize, User, Adherent, Moniteur, President, Tresorier } = require("../src/models");
+const { sequelize, User, Adherent, Moniteur, President, Tresorier, Brevet } = require("../src/models");
 const {
   writeSeedData,
   randomInt,
@@ -80,6 +80,25 @@ async function seed() {
 
   const currentYear = new Date().getFullYear();
 
+  // Évite qu'un même "Prénom Nom" ne sorte deux fois sur l'ensemble des
+  // personnes réelles créées ci-dessous (président/moniteurs/adhérents) :
+  // avec seulement 57 prénoms × 40 noms (2280 combinaisons) tirés au hasard
+  // pour ~130 personnes, une collision était en pratique quasi certaine à
+  // chaque seed (paradoxe des anniversaires) — deux adhérents affichés
+  // "Mme Durand Sandra" dans AdherentList.jsx, impossibles à distinguer à
+  // l'oeil. Le président et le trésorier ont un nom fixe (voir plus bas) :
+  // enregistrés ici aussi pour qu'aucun moniteur/adhérent tiré au hasard ne
+  // les duplique par coïncidence.
+  const usedFullNames = new Set(["Jean Dupont", "Pierre Durand"]);
+  const nextFullName = () => {
+    let candidate;
+    do {
+      candidate = randomFullName();
+    } while (usedFullNames.has(`${candidate.prenom} ${candidate.nom}`));
+    usedFullNames.add(`${candidate.prenom} ${candidate.nom}`);
+    return candidate;
+  };
+
   // ==================== PRÉSIDENT ====================
   const presidentUser = await User.create({
     email: "lovagabriel038@gmail.com",
@@ -108,7 +127,7 @@ async function seed() {
   // ==================== MONITEURS ====================
   const moniteurIds = [presidentMoniteur.id_moniteur];
   for (let i = 0; i < CONFIG.MONITEURS_SUPPLEMENTAIRES; i++) {
-    const { nom, prenom } = randomFullName();
+    const { nom, prenom } = nextFullName();
     const user = await User.create({
       email: i === 0 ? "moniteur@plongee.com" : randomEmail(nom, prenom),
       password: "moniteur123",
@@ -169,7 +188,7 @@ async function seed() {
   const adherentNiveauMap = {};
   const adherentLicenceMap = {};
   for (let i = 0; i < CONFIG.ADHERENTS; i++) {
-    const { nom, prenom } = randomFullName();
+    const { nom, prenom } = nextFullName();
     const niveau = pickWeighted(NIVEAU_ADHERENT_WEIGHTS);
     const email = i === 0 ? "adherent@plongee.com" : randomEmail(nom, prenom);
     const numLicenceFfesm = niveau !== "Baptême" ? nextLicence() : null;
@@ -212,6 +231,24 @@ async function seed() {
       date_inscription: pastDate(6),
       nb_plongees_total: randomNbPlongees(niveau),
     });
+
+    // Historique des brevets (voir models/Brevet.js) : en production, une
+    // ligne y est créée à chaque changement de niveau via AdherentService.
+    // updateNiveau — jamais renseigné ici avant ce correctif, ce qui laissait
+    // 100% des adhérents N1+ du seed sans le moindre historique alors que
+    // leur niveau courant était déjà défini (page "Brevets" vide pour eux).
+    // Un Baptême n'a ni date_obtention_niveau ni num_brevet (voir plus haut) :
+    // aucune ligne cohérente à créer pour ce niveau, comme pour num_licence_
+    // ffesm ci-dessus — le même gate `niveau !== "Baptême"` s'applique.
+    if (niveau !== "Baptême") {
+      await Brevet.create({
+        num_adherent: numAdherent,
+        niveau,
+        num_brevet: numBrevet,
+        date_obtention: dateObtentionNiveau,
+      });
+    }
+
     adherentIds.push(numAdherent);
     adherentNiveauMap[numAdherent] = niveau;
     adherentLicenceMap[numAdherent] = numLicenceFfesm;

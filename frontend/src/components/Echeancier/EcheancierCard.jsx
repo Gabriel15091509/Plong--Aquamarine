@@ -123,7 +123,11 @@ const EcheancierCard = ({
             <StatusBadge status={echeancier.statut} />
           </div>
 
-          <div className="space-y-2">
+          {/* Grille (plutôt qu'empilé sur toute la largeur) : chaque ligne
+              est courte, un `justify-between` sur toute la largeur de la
+              modale laissait un grand vide entre les deux côtés (voir
+              DetailsModal.jsx). */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {(echeancier.echeances || []).map((echeance) => (
               <div
                 key={echeance.id_echeance}

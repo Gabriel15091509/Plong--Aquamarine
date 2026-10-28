@@ -250,7 +250,7 @@ class PaiementController extends BaseController {
 
   async processPayment(req, res, next) {
     try {
-      const result = await this.paiementService.processPayment(req.params.id);
+      const result = await this.paiementService.processPayment(req.params.id, req.body || {});
       res.json({
         success: true,
         data: result,

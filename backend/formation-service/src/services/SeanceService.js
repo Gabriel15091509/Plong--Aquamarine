@@ -3,6 +3,7 @@ const SeanceRepository = require("../repositories/SeanceRepository");
 const FormationRepository = require("../repositories/FormationRepository");
 const activitesClient = require("../utils/serviceClients/activitesClient");
 const FormationService = require("./FormationService");
+const { isNiveauCompatible } = require("../utils/roleScope");
 
 const TYPES_SEANCE = ["Théorique", "Pratique"];
 const STATUTS_AUTORISES = ["Réalisée", "Absence"];
@@ -28,7 +29,7 @@ class SeanceService extends BaseService {
     return await this.seanceRepository.findPlanifieesByAdherent(num_adherent);
   }
 
-  async validateSeanceData(data, authHeader = null) {
+  async validateSeanceData(data, authHeader = null, user = null) {
     const errors = [];
     if (!data.id_formation) errors.push("La formation est requise");
     if (!data.date_seance) errors.push("La date de la séance est requise");
@@ -37,26 +38,51 @@ class SeanceService extends BaseService {
       errors.push(`Type de séance invalide (attendu : ${TYPES_SEANCE.join(" ou ")})`);
     }
 
+    // Chargée une seule fois, réutilisée par le quota de séances ci-dessous
+    // et par la cohérence niveau/encadrement d'une séance pratique plus bas.
+    const formation = data.id_formation
+      ? await this.formationRepository.findById(data.id_formation)
+      : null;
+
+    // Seul le moniteur assigné à cette formation peut y ajouter une
+    // séance — même règle que pour modifier/supprimer/pointer une séance
+    // déjà existante (voir SeanceService.update/delete/updateStatut) ou la
+    // formation elle-même (FormationService.assertCanModifyFormation) :
+    // un autre moniteur, même avec le rôle "moniteur", n'est pas habilité
+    // à intervenir sur le suivi d'un stagiaire qui n'est pas le sien.
+    // Lève une ForbiddenError (pas un ajout à `errors`) pour rester
+    // cohérent avec assertCanModifyFormation partout ailleurs : une
+    // interdiction d'accès reste un 403, jamais un 400 de validation.
+    if (formation) await this.formationService.assertCanModifyFormation(formation, user);
+
     // Formation.nb_seances_prevues (cible connue à la création, nullable
     // pour les formations existantes créées avant l'ajout de ce champ —
     // voir Formation.js) : au-delà, une nouvelle séance n'a plus de sens,
     // le décompte "Séances (n/nb_seances_prevues)" du frontend deviendrait
     // trompeur. Miroir du garde-fou frontend (FormationSeances.jsx).
-    if (data.id_formation) {
-      const formation = await this.formationRepository.findById(data.id_formation);
-      if (formation?.nb_seances_prevues) {
-        const seancesExistantes = await this.seanceRepository.findByFormation(data.id_formation);
-        if (seancesExistantes.length >= formation.nb_seances_prevues) {
-          errors.push(
-            `Le nombre de séances prévues (${formation.nb_seances_prevues}) est déjà atteint pour cette formation`,
-          );
-        }
+    if (formation?.nb_seances_prevues) {
+      const seancesExistantes = await this.seanceRepository.findByFormation(data.id_formation);
+      if (seancesExistantes.length >= formation.nb_seances_prevues) {
+        errors.push(
+          `Le nombre de séances prévues (${formation.nb_seances_prevues}) est déjà atteint pour cette formation`,
+        );
       }
     }
 
     // Une séance pratique se déroule en réalité lors d'une sortie : elle
     // doit être liée à une sortie existante, de type "Formation" (cf.
-    // taxonomie des types d'activités).
+    // taxonomie des types d'activités) — et cette sortie doit avoir un sens
+    // pour CETTE formation précise, pas n'importe quelle sortie "Formation" :
+    // - niveau cohérent avec le niveau d'entrée de la formation visée (voir
+    //   FormationService.PREREQUIS_FORMATION.niveauMin) — sinon le stagiaire,
+    //   qui n'a au mieux que ce niveau d'entrée, ne pourrait de toute façon
+    //   pas s'inscrire à cette sortie (voir InscriptionService.isNiveauCompatible
+    //   côté activites-service, même règle) ;
+    // - encadrée par le moniteur en charge de cette formation (Sortie.encadrants),
+    //   sinon le moniteur qui suit réellement l'adhérent ne serait même pas
+    //   présent sur la sortie où sa progression est censée se dérouler — même
+    //   principe que SortieService.assertCanManageSortie côté activites-service,
+    //   réappliqué ici faute d'accès direct au modèle Sortie (autre service).
     if (data.type_seance === "Pratique") {
       if (!data.id_sortie) {
         errors.push('Une séance pratique doit être liée à une sortie de type "Formation"');
@@ -66,6 +92,18 @@ class SeanceService extends BaseService {
           errors.push("La sortie liée est introuvable");
         } else if (sortie.type !== "Formation") {
           errors.push('La sortie liée doit être de type "Formation"');
+        } else if (formation) {
+          const prerequis = FormationService.PREREQUIS_FORMATION[formation.niveau_vise];
+          const niveauEntree = prerequis?.niveauMin || "Baptême";
+          if (!isNiveauCompatible(niveauEntree, sortie.niveau_requis)) {
+            errors.push(
+              `Le niveau requis par la sortie (${sortie.niveau_requis}) n'est pas cohérent avec le niveau d'entrée de cette formation (${niveauEntree})`,
+            );
+          }
+          const encadrants = Array.isArray(sortie.encadrants) ? sortie.encadrants : [];
+          if (!encadrants.includes(formation.id_moniteur)) {
+            errors.push("La sortie liée n'est pas encadrée par le moniteur en charge de cette formation");
+          }
         }
       }
     }
@@ -76,10 +114,21 @@ class SeanceService extends BaseService {
   // Marque la séance présente/absente (feuille de présence). Le passage à
   // "Réalisée" incrémente le compteur de la formation liée — remplace
   // l'ancien clic manuel "increment-sessions" par un vrai événement de
-  // présence constatée.
-  async updateStatut(id, { statut, commentaire }, authHeader = null, user = null) {
+  // présence constatée. `note` (/20, facultative) n'a de sens que pour une
+  // séance "Réalisée" — noter une absence n'aurait aucune signification, et
+  // fausserait la moyenne si elle était acceptée par erreur.
+  async updateStatut(id, { statut, commentaire, note }, authHeader = null, user = null) {
     if (!STATUTS_AUTORISES.includes(statut)) {
       throw new Error(`Statut invalide (attendu : ${STATUTS_AUTORISES.join(" ou ")})`);
+    }
+    if (note !== undefined && note !== null && note !== "") {
+      const noteNum = Number(note);
+      if (Number.isNaN(noteNum) || noteNum < 0 || noteNum > 20) {
+        throw new Error("La note doit être un nombre entre 0 et 20");
+      }
+      if (statut !== "Réalisée") {
+        throw new Error('Une note ne peut être attribuée qu\'à une séance "Réalisée"');
+      }
     }
 
     const seance = await this.seanceRepository.findById(id);
@@ -100,10 +149,37 @@ class SeanceService extends BaseService {
       throw new Error(`Impossible de pointer une séance : la formation est "${formation.statut}"`);
     }
 
+    // Une séance "Pratique" se déroule réellement lors de la sortie liée
+    // (voir validateSeanceData plus haut) : même garde-fou que le pointage
+    // de sortie (SortieService.enregistrerPointage côté activites-service)
+    // — impossible de la marquer Réalisée/Absence avant le jour de cette
+    // sortie, l'événement ne s'est simplement pas encore produit. Comparaison
+    // au jour près (setHours(0,0,0,0) des deux côtés), identique à
+    // enregistrerPointage. Une séance "Théorique" n'a pas de sortie liée,
+    // donc rien à comparer — pas concernée par cette règle.
+    if (seance.type_seance === "Pratique" && seance.id_sortie) {
+      const sortie = await activitesClient.getSortieById(seance.id_sortie, authHeader);
+      if (sortie?.date_heure) {
+        const dateSortie = new Date(sortie.date_heure);
+        const today = new Date();
+        dateSortie.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+        if (dateSortie > today) {
+          throw new Error(
+            "Impossible de pointer une séance pratique avant le jour de la sortie liée",
+          );
+        }
+      }
+    }
+
     const devientRealisee = statut === "Réalisée" && seance.statut !== "Réalisée";
 
     seance.statut = statut;
     if (commentaire !== undefined) seance.commentaire = commentaire;
+    // "" efface une note déjà saisie par erreur (redescend à `null`), une
+    // valeur numérique la fixe/la corrige — déjà validée (0-20, "Réalisée"
+    // seulement) au tout début de la méthode.
+    if (note !== undefined) seance.note = note === "" || note === null ? null : Number(note);
     await seance.save();
 
     if (devientRealisee && formation) {

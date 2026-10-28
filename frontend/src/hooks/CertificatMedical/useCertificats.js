@@ -24,6 +24,17 @@ export const useCertificats = () => {
     });
   };
 
+  // Badge Sidebar : COUNT léger côté serveur plutôt que useGetAll() filtré
+  // côté client — voir usePlongees.useGetAValiderCount, même motif.
+  const useGetEnAttenteValidationCount = (options = {}) => {
+    return useQuery({
+      queryKey: ['certificats', 'en-attente-validation-count'],
+      queryFn: () => certificatService.getEnAttenteValidationCount(),
+      staleTime: 60 * 1000,
+      ...options,
+    });
+  };
+
   const useCreate = () => {
     return useMutation({
       mutationFn: (data) => certificatService.create(data),
@@ -32,7 +43,15 @@ export const useCertificats = () => {
         toast.success(response.message || 'Certificat créé avec succès');
       },
       onError: (error) => {
-        toast.error(error.response?.data?.message || 'Erreur lors de la création');
+        // Le middleware validateBeforeCreate (routes/certificatMedicalRoutes.js)
+        // répond { success:false, errors:[...] } sans `message` quand la saisie
+        // est invalide (champ manquant, date de validité non future) — sans ce
+        // repli, le toast retombait sur un "Erreur lors de la création" générique
+        // qui masquait la vraie raison au lieu de guider la correction.
+        const data = error.response?.data;
+        toast.error(
+          data?.message || data?.errors?.join(' ') || 'Erreur lors de la création',
+        );
       },
     });
   };
@@ -109,6 +128,7 @@ export const useCertificats = () => {
   return {
     useGetAll,
     useGetById,
+    useGetEnAttenteValidationCount,
     useCreate,
     useUpdate,
     useRemove,

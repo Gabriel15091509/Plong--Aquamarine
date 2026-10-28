@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.1" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1" xmlns:uml="http://www.eclipse.org/uml2/3.0.0/UML">
+  <uml:Model xmi:id="model_160" name="PlongeeApp_Sprint04_sorties-de-plongee">
+    <packagedElement xmi:type="uml:PrimitiveType" xmi:id="type_1" name="String"/>
+    <packagedElement xmi:type="uml:PrimitiveType" xmi:id="type_2" name="Integer"/>
+    <packagedElement xmi:type="uml:PrimitiveType" xmi:id="type_3" name="Boolean"/>
+    <packagedElement xmi:type="uml:PrimitiveType" xmi:id="type_4" name="Date"/>
+    <packagedElement xmi:type="uml:PrimitiveType" xmi:id="type_5" name="Decimal"/>
+    <packagedElement xmi:type="uml:Package" xmi:id="pkg_6" name="Identité (identite-service)">
+      <packagedElement xmi:type="uml:Class" xmi:id="class_7" name="President">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_8" name="id_president" visibility="private" type="type_2">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_9" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_10" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_11" name="annee_en_poste" visibility="private" type="type_2">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_12" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_13" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_14" name="acces" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_15" value="0"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_16" value="1"/>
+        </ownedAttribute>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_17" name="create" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_18" name="data" type="type_1" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_19" name="return" type="class_7" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_20" name="getAll" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_21" name="return" type="class_7" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_22" name="getById" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_23" name="idPresident" type="type_2" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_24" name="return" type="class_7" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_25" name="update" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_26" name="idPresident" type="type_2" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_27" name="data" type="type_1" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_28" name="return" type="class_7" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_29" name="delete" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_30" name="idPresident" type="type_2" direction="in"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_31" name="getCurrent" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_32" name="return" type="class_7" direction="return"/>
+        </ownedOperation>
+      </packagedElement>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Package" xmi:id="pkg_33" name="Activités (activites-service)">
+      <packagedElement xmi:type="uml:Class" xmi:id="class_34" name="Sortie">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_35" name="id_sortie" visibility="private" type="type_2">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_36" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_37" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_38" name="date_heure" visibility="private" type="type_4">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_39" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_40" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_41" name="lieu" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_42" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_43" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_44" name="site" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_45" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_46" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_47" name="type" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_48" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_49" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_50" name="niveau_requis" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_51" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_52" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_53" name="nb_places" visibility="private" type="type_2">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_54" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_55" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_56" name="profondeur_max" visibility="private" type="type_2">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_57" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_58" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_59" name="duree_estimee" visibility="private" type="type_4">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_60" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_61" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_62" name="statut" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_63" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_64" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_65" name="description_site" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_66" value="0"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_67" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_68" name="date_ouverture_inscriptions" visibility="private" type="type_4">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_69" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_70" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_71" name="condition_affectation" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_72" value="0"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_73" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_74" name="tarif_adherent" visibility="private" type="type_5">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_75" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_76" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_77" name="tarif_non_adherent" visibility="private" type="type_5">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_78" value="0"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_79" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_80" name="latitude" visibility="private" type="type_5">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_81" value="0"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_82" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_83" name="longitude" visibility="private" type="type_5">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_84" value="0"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_85" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_86" name="encadrants" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_87" value="0"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_88" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_89" name="motif_annulation" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_90" value="0"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_91" value="1"/>
+        </ownedAttribute>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_92" name="create" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_93" name="data" type="type_1" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_94" name="return" type="class_34" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_95" name="getAll" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_96" name="return" type="class_34" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_97" name="getById" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_98" name="idSortie" type="type_2" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_99" name="return" type="class_34" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_100" name="update" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_101" name="idSortie" type="type_2" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_102" name="data" type="type_1" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_103" name="return" type="class_34" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_104" name="delete" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_105" name="idSortie" type="type_2" direction="in"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_106" name="getUpcomingSorties" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_107" name="return" type="class_34" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_108" name="getTauxRemplissage" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_109" name="idSortie" type="type_2" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_110" name="return" type="type_5" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_111" name="enregistrerPointage" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_112" name="idSortie" type="type_2" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_113" name="data" type="type_1" direction="in"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_114" name="annulerPointage" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_115" name="idSortie" type="type_2" direction="in"/>
+        </ownedOperation>
+      </packagedElement>
+      <packagedElement xmi:type="uml:Class" xmi:id="class_116" name="Incident">
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_117" name="id_incident" visibility="private" type="type_2">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_118" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_119" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_120" name="date_heure" visibility="private" type="type_4">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_121" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_122" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_123" name="type" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_124" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_125" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_126" name="description" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_127" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_128" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_129" name="mesures_prises" visibility="private" type="type_1">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_130" value="0"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_131" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_132" name="cloture" visibility="private" type="type_3">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_133" value="1"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_134" value="1"/>
+        </ownedAttribute>
+        <ownedAttribute xmi:type="uml:Property" xmi:id="attr_135" name="date_cloture" visibility="private" type="type_4">
+          <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_136" value="0"/>
+          <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_137" value="1"/>
+        </ownedAttribute>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_138" name="create" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_139" name="data" type="type_1" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_140" name="return" type="class_116" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_141" name="getAll" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_142" name="return" type="class_116" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_143" name="getById" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_144" name="idIncident" type="type_2" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_145" name="return" type="class_116" direction="return"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_146" name="cloturer" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_147" name="idIncident" type="type_2" direction="in"/>
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_148" name="mesuresPrises" type="type_1" direction="in"/>
+        </ownedOperation>
+        <ownedOperation xmi:type="uml:Operation" xmi:id="op_149" name="getNonClotures" visibility="public">
+          <ownedParameter xmi:type="uml:Parameter" xmi:id="param_150" name="return" type="class_116" direction="return"/>
+        </ownedOperation>
+      </packagedElement>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Association" xmi:id="assoc_151" name="déclare" memberEnd="end_152 end_153">
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_152" name="sortie" type="class_34" association="assoc_151">
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_154" value="1"/>
+        <upperValue xmi:type="uml:LiteralInteger" xmi:id="uv_155" value="1"/>
+      </ownedEnd>
+      <ownedEnd xmi:type="uml:Property" xmi:id="end_153" name="incidents" type="class_116" association="assoc_151">
+        <lowerValue xmi:type="uml:LiteralInteger" xmi:id="lv_156" value="0"/>
+        <upperValue xmi:type="uml:LiteralUnlimitedNatural" xmi:id="uv_157" value="*"/>
+      </ownedEnd>
+    </packagedElement>
+    <packagedElement xmi:type="uml:Usage" xmi:id="dep_158" name="réf. applicative : created_by" client="class_34" supplier="class_7"/>
+    <packagedElement xmi:type="uml:Usage" xmi:id="dep_159" name="réf. applicative : declared_by" client="class_116" supplier="class_7"/>
+  </uml:Model>
+</xmi:XMI>

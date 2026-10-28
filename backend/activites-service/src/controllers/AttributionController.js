@@ -9,6 +9,23 @@ class AttributionController extends BaseController {
     this.attributionService = service;
   }
 
+  // Surcharge BaseController.getAll (qui n'appelle le service qu'avec
+  // req.query) pour lui passer req.user — voir AttributionService.getAll,
+  // scopé par rôle (adhérent : ses propres attributions ; moniteur : celles
+  // des sorties qu'il encadre).
+  async getAll(req, res, next) {
+    try {
+      const results = await this.attributionService.getAll(req.user);
+      res.json({
+        success: true,
+        data: results,
+        count: results.length,
+      });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async getById(req, res, next) {
     try {
       const result = await this.attributionService.getById(req.params.id, req.user);

@@ -4,6 +4,9 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { FiLock, FiEye, FiEyeOff, FiShield, FiArrowLeft, FiAlertCircle } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import Logo from "../../components/Common/Logo";
+import PasswordStrengthMeter from "../../components/Common/PasswordStrengthMeter";
+import { isPasswordStrong } from "../../utils/passwordStrength";
+import { getPasswordInputType, getPasswordInputStyle } from "../../utils/passwordFieldType";
 
 // Étape 2 du flux "Mot de passe oublié ?" : ouverte depuis le lien reçu par
 // email (?token=...), demande le nouveau mot de passe puis connecte
@@ -19,9 +22,30 @@ const ResetPasswordPage = () => {
   const [formData, setFormData] = useState({ newPassword: "", confirmPassword: "" });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  // Les deux champs restent `readOnly` jusqu'au premier focus (voir
+  // handleFocusEditable) — empêche Chrome de proposer ses identifiants déjà
+  // enregistrés sur un champ de CRÉATION de mot de passe (autoComplete=
+  // "new-password" seul ne suffit pas toujours, Chrome l'ignore parfois).
+  // Piloté par un state (et non `input.removeAttribute` en direct) : sinon
+  // le prochain re-rendu React (déclenché par la première frappe elle-même)
+  // réappliquerait l'attribut JSX figé et re-verrouillerait le champ après
+  // un seul caractère.
+  const [passwordFieldsEditable, setPasswordFieldsEditable] = useState(false);
 
   const togglePassword = (field) =>
     setShowPasswords((prev) => ({ ...prev, [field]: !prev[field] }));
+
+  // setTimeout(0) plutôt qu'un retrait synchrone du readOnly dans le même
+  // événement focus : Chrome évalue parfois s'il doit proposer ses
+  // identifiants enregistrés au moment même du focus, avant que la mise à
+  // jour React (donc le retrait réel de readOnly côté DOM) n'ait eu lieu —
+  // décaler d'un tick laisse cette évaluation se faire sur un champ encore
+  // readOnly (donc ignoré par cette suggestion), puis rend le champ
+  // modifiable juste après, bien avant que l'utilisateur n'ait matériellement
+  // eu le temps de taper un caractère.
+  const handleFocusEditable = () => {
+    setTimeout(() => setPasswordFieldsEditable(true), 0);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -32,8 +56,9 @@ const ResetPasswordPage = () => {
   const validate = () => {
     const newErrors = {};
     if (!formData.newPassword) newErrors.newPassword = "Le mot de passe est requis";
-    else if (formData.newPassword.length < 6)
-      newErrors.newPassword = "Minimum 6 caractères";
+    else if (!isPasswordStrong(formData.newPassword))
+      newErrors.newPassword =
+        "Le mot de passe ne respecte pas encore tous les critères ci-dessous";
     if (formData.newPassword !== formData.confirmPassword)
       newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
     setErrors(newErrors);
@@ -109,6 +134,24 @@ const ResetPasswordPage = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Champs leurres, jamais visibles ni atteignables au clavier
+                  — voir ChangePasswordPage.jsx pour le même correctif et son
+                  explication complète. */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  width: 0,
+                  height: 0,
+                  overflow: "hidden",
+                  opacity: 0,
+                  pointerEvents: "none",
+                }}
+              >
+                <input type="text" name="email" autoComplete="username" tabIndex={-1} readOnly />
+                <input type="password" name="password" autoComplete="current-password" tabIndex={-1} readOnly />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Nouveau mot de passe
@@ -116,8 +159,18 @@ const ResetPasswordPage = () => {
                 <div className="relative">
                   <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
                   <input
-                    type={showPasswords.new ? "text" : "password"}
+                    // type="text" + masquage CSS (voir passwordFieldType.js —
+                    // même correctif que ChangePasswordPage.jsx) au lieu du
+                    // vrai type="password" quand le navigateur le permet : le
+                    // menu de suggestions de Chrome se déclenche précisément
+                    // sur type="password", jamais sur un champ texte — même
+                    // masqué visuellement à l'identique.
+                    type={getPasswordInputType(showPasswords.new)}
+                    style={getPasswordInputStyle(showPasswords.new)}
                     name="newPassword"
+                    autoComplete="new-password"
+                    readOnly={!passwordFieldsEditable}
+                    onFocus={handleFocusEditable}
                     value={formData.newPassword}
                     onChange={handleChange}
                     placeholder="••••••••"
@@ -145,6 +198,7 @@ const ResetPasswordPage = () => {
                     {errors.newPassword}
                   </p>
                 )}
+                <PasswordStrengthMeter password={formData.newPassword} />
               </div>
 
               <div>
@@ -154,8 +208,12 @@ const ResetPasswordPage = () => {
                 <div className="relative">
                   <FiShield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
                   <input
-                    type={showPasswords.confirm ? "text" : "password"}
+                    type={getPasswordInputType(showPasswords.confirm)}
+                    style={getPasswordInputStyle(showPasswords.confirm)}
                     name="confirmPassword"
+                    autoComplete="new-password"
+                    readOnly={!passwordFieldsEditable}
+                    onFocus={handleFocusEditable}
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     placeholder="••••••••"

@@ -1,7 +1,8 @@
 import api from "../services/api";
 
-// Télécharge un fichier depuis une route authentifiée (ex. PDF) et déclenche
-// l'enregistrement navigateur via un lien temporaire.
+// Récupère un PDF depuis une route authentifiée sous forme de Blob, pour
+// aperçu (voir fetchPdfBlobUrl plus bas — PdfPreviewModal.jsx) ou export CSV
+// (downloadCsv, tout en bas).
 //
 // Le backend ne renvoie pas le PDF en binaire brut : un gestionnaire de
 // téléchargement (ex. Internet Download Manager, "Advanced Integration")
@@ -11,9 +12,6 @@ import api from "../services/api";
 // IDM récupère quand même le fichier de son côté. Le backend encode donc le
 // PDF en base64 dans une réponse JSON, invisible pour ce type
 // d'interception ; on reconstruit le blob PDF ici, côté JS uniquement.
-// Partagé par downloadFile (téléchargement direct) et fetchPdfBlobUrl
-// (aperçu) : les deux repartent du même flux base64 -> Blob, seule la suite
-// (déclencher un enregistrement vs afficher dans un <iframe>) diffère.
 async function fetchPdfBlob(url) {
   const response = await api.get(url);
   const { data: base64, filename: serverFilename } = response.data;
@@ -26,21 +24,13 @@ async function fetchPdfBlob(url) {
   return { blob, filename: serverFilename };
 }
 
-export async function downloadFile(url, filename) {
-  const { blob, filename: serverFilename } = await fetchPdfBlob(url);
-  const blobUrl = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = blobUrl;
-  link.download = serverFilename || filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(blobUrl);
-}
-
-// Pour un aperçu (modal avec <iframe>) : on garde le blob URL vivant tant que
-// l'aperçu est affiché, à charge de l'appelant de le révoquer à la fermeture
-// (window.URL.revokeObjectURL) pour ne pas fuiter de mémoire.
+// Seul flux PDF de toute l'app (voir PdfPreviewModal.jsx) : un téléchargement
+// direct sans aperçu (l'ancien `downloadFile`, supprimé) sautait la
+// vérification visuelle du document avant de l'enregistrer — l'aperçu garde
+// le blob URL vivant tant qu'il est affiché, à charge de l'appelant de le
+// révoquer à la fermeture (window.URL.revokeObjectURL) pour ne pas fuiter de
+// mémoire ; son propre bouton "Télécharger" (voir PdfPreviewModal.jsx) couvre
+// le cas où l'utilisateur veut malgré tout l'enregistrer.
 export async function fetchPdfBlobUrl(url, filename) {
   const { blob, filename: serverFilename } = await fetchPdfBlob(url);
   const blobUrl = window.URL.createObjectURL(blob);

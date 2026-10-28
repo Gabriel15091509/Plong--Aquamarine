@@ -30,8 +30,15 @@ const SearchableSelect = ({
     return label.includes(searchTerm.toLowerCase());
   });
 
+  // Comparaison tolérante au type (String(...) des deux côtés), pas une
+  // égalité stricte : `value` vient souvent d'un paramètre d'URL (toujours
+  // une chaîne, ex. IncidentForm.jsx pré-rempli via
+  // `?id_sortie=5` depuis SortieDetails.jsx) tandis que `getOptionValue`
+  // renvoie l'identifiant tel que stocké en base (un nombre pour un ID
+  // auto-incrémenté) — `5 === "5"` est `false` en JS, ce qui laissait le
+  // champ affiché comme vide alors que la valeur était bien celle attendue.
   const selectedOption = options.find(
-    (option) => getOptionValue(option) === value,
+    (option) => String(getOptionValue(option)) === String(value),
   );
 
   const handleSelect = (option) => {
@@ -210,7 +217,11 @@ const SearchableSelect = ({
                   className="divide-y divide-gray-100 dark:divide-gray-800 max-h-56 overflow-y-auto"
                 >
                   {filteredOptions.map((option, index) => {
-                    const isSelected = getOptionValue(option) === value;
+                    // Même comparaison tolérante au type que selectedOption
+                    // ci-dessus, pour que la ligne déjà choisie reste bien
+                    // surlignée dans la liste.
+                    const isSelected =
+                      String(getOptionValue(option)) === String(value);
                     const isHighlighted = index === highlightedIndex;
 
                     return (

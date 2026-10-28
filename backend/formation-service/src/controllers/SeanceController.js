@@ -97,14 +97,26 @@ class SeanceController extends BaseController {
   }
 
   async validateBeforeCreate(req, res, next) {
-    const errors = await this.seanceService.validateSeanceData(req.body, req.headers.authorization);
-    if (errors.length > 0) {
-      return res.status(400).json({
-        success: false,
-        errors,
-      });
+    try {
+      const errors = await this.seanceService.validateSeanceData(
+        req.body,
+        req.headers.authorization,
+        req.user,
+      );
+      if (errors.length > 0) {
+        return res.status(400).json({
+          success: false,
+          errors,
+        });
+      }
+      next();
+    } catch (error) {
+      // Ex. ForbiddenError levée par assertCanModifyFormation (voir
+      // SeanceService.validateSeanceData) si l'auteur n'est pas le moniteur
+      // assigné à la formation ciblée — withStatus ne fait rien ici puisque
+      // l'erreur porte déjà son propre status (403), voir utils/errors.js.
+      next(withStatus(error, 400));
     }
-    next();
   }
 }
 

@@ -50,6 +50,14 @@ class PalanqueeService extends BaseService {
     return isArray ? plains : plains[0];
   }
 
+  // Voir PalanqueeRepository.findAllLight — pas d'enrichComposers ici,
+  // volontairement : cette liste ne sert qu'à afficher des libellés de
+  // palanquée (regroupement de PlongeeList.jsx), pas à consulter leur
+  // composition.
+  async getAllLight() {
+    return await this.palanqueeRepository.findAllLight();
+  }
+
   async getAll(user = null, authHeader = null) {
     const adherent = await identiteClient.getAdherentForUser(user);
     const results = adherent
@@ -242,9 +250,26 @@ class PalanqueeService extends BaseService {
   // validation (PlongeeService.validatePlongee) restent à la charge du
   // moniteur. Idempotent par (id_sortie, num_adherent) — un re-pointage ne
   // duplique pas le brouillon.
+  //
+  // Recale aussi id_palanquee sur une plongée déjà existante (appelé aussi
+  // depuis addMembre) : PlongeeList regroupe les plongées par
+  // Plongee.id_palanquee, pas par Composer — sans ce recalage, un membre
+  // ajouté à une palanquée après le pointage initial (ou déplacé d'une
+  // palanquée à l'autre) garde le lien de sa toute première affectation, et
+  // le listage de plongée continue d'afficher une composition différente de
+  // celle réellement enregistrée dans la sortie (PalanqueesManager/Composer).
+  // Jamais touché si la plongée est déjà validée (historique figé, voir
+  // PlongeeService.assertPlongeeModifiable) : un changement de composition
+  // après coup ne doit pas réécrire un carnet déjà comptabilisé.
   async creerPlongeeBrouillon(id_sortie, id_palanquee, num_adherent) {
     const existante = await Plongee.findOne({ where: { id_sortie, num_adherent } });
-    if (existante) return existante;
+    if (existante) {
+      if (existante.id_palanquee !== id_palanquee && !existante.id_moniteur_validateur) {
+        existante.id_palanquee = id_palanquee;
+        await existante.save();
+      }
+      return existante;
+    }
 
     const sortie = await Sortie.findByPk(id_sortie);
     if (!sortie) return null;
@@ -300,11 +325,19 @@ class PalanqueeService extends BaseService {
       );
     }
 
-    return await Composer.create({
+    const composition = await Composer.create({
       id_palanquee,
       num_adherent,
       niveau_au_moment: nouvelAdherent.niveau,
     });
+
+    // Rattache (ou recale) la plongée de ce membre à CETTE palanquée — sans
+    // quoi PlongeeList (qui groupe par Plongee.id_palanquee, pas par
+    // Composer) continue d'afficher l'ancienne composition, voir
+    // creerPlongeeBrouillon.
+    await this.creerPlongeeBrouillon(palanquee.id_sortie, id_palanquee, num_adherent);
+
+    return composition;
   }
 
   async removeMembre(id_palanquee, num_adherent, user = null) {
@@ -325,6 +358,18 @@ class PalanqueeService extends BaseService {
     if (palanquee.id_secouriste === num_adherent) {
       palanquee.id_secouriste = null;
       await palanquee.save();
+    }
+
+    // Détache aussi sa plongée de cette palanquée — sinon PlongeeList continue
+    // de l'afficher comme membre alors que Composer (la vraie composition,
+    // enregistrée dans la sortie) ne le liste plus. Jamais touché si déjà
+    // validée (voir creerPlongeeBrouillon).
+    const plongeeLiee = await Plongee.findOne({
+      where: { id_sortie: palanquee.id_sortie, num_adherent, id_palanquee },
+    });
+    if (plongeeLiee && !plongeeLiee.id_moniteur_validateur) {
+      plongeeLiee.id_palanquee = null;
+      await plongeeLiee.save();
     }
 
     return true;

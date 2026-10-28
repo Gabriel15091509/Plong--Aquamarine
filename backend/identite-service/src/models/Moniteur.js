@@ -38,6 +38,24 @@ const Moniteur = sequelize.define(
       type: DataTypes.JSON,
       allowNull: true,
     },
+    // Distinct de `disponibilites` ci-dessus (créneaux habituels du moniteur,
+    // ex. "Week-ends" — jamais utilisé pour bloquer une désignation) : ce
+    // booléen est un interrupteur ponctuel ("je pars en vacances/arrêt
+    // médical...") qui empêche de le désigner encadrant tant qu'il n'est pas
+    // remis à true — voir SortieForm.jsx (sélection des encadrants) et
+    // SortieDetails.jsx (alerte sur une sortie déjà planifiée avec lui).
+    disponible: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    // Motif affiché au président/aux autres moniteurs (tooltip) quand
+    // disponible=false — vidé automatiquement dès que disponible repasse à
+    // true, voir MoniteurService.updateDisponibilite.
+    cause_indisponibilite: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     schema: process.env.DB_SCHEMA || "identite",

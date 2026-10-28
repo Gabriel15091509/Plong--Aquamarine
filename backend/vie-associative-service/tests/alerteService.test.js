@@ -73,7 +73,6 @@ describe("AlerteService.getUnread — plafond du dropdown", () => {
   });
 
   test("transmet la limite par défaut (20) au repository", async () => {
-    jest.spyOn(service, "syncExpirationAlertes").mockResolvedValue();
     const findUnreadSpy = jest.spyOn(service.alerteRepository, "findUnread").mockResolvedValue([]);
 
     await service.getUnread({ role: "president" }, null);
@@ -82,12 +81,40 @@ describe("AlerteService.getUnread — plafond du dropdown", () => {
   });
 
   test("transmet une limite explicite au repository", async () => {
-    jest.spyOn(service, "syncExpirationAlertes").mockResolvedValue();
     const findUnreadSpy = jest.spyOn(service.alerteRepository, "findUnread").mockResolvedValue([]);
 
     await service.getUnread({ role: "president" }, null, { limit: 5 });
 
     expect(findUnreadSpy).toHaveBeenCalledWith(expect.any(Object), { limit: 5 });
+  });
+});
+
+// Régression perf : getUnread/getStats sont interrogés en polling (30s) par
+// Header.jsx sur TOUTE page de l'appli — voir le commentaire sur
+// AlerteService.syncExpirationAlertes. Ce job de fond (scan complet +
+// upserts en série) ne doit plus jamais être redéclenché depuis un chemin de
+// lecture, seulement par le cron quotidien (app.js:startBackgroundJobs).
+describe("AlerteService — ne redéclenche plus syncExpirationAlertes à la lecture", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("getUnread ne relance pas la synchro des alertes d'expiration", async () => {
+    const syncSpy = jest.spyOn(service, "syncExpirationAlertes");
+    jest.spyOn(service.alerteRepository, "findUnread").mockResolvedValue([]);
+
+    await service.getUnread({ role: "president" }, null);
+
+    expect(syncSpy).not.toHaveBeenCalled();
+  });
+
+  test("getStats ne relance pas la synchro des alertes d'expiration", async () => {
+    const syncSpy = jest.spyOn(service, "syncExpirationAlertes");
+    jest.spyOn(service.alerteRepository, "getStats").mockResolvedValue({});
+
+    await service.getStats({ role: "president" });
+
+    expect(syncSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -97,7 +124,6 @@ describe("AlerteService.getAllPaginated", () => {
   });
 
   test("calcule offset/limit à partir de page et pageSize, renvoie le total", async () => {
-    jest.spyOn(service, "syncExpirationAlertes").mockResolvedValue();
     const findAllPaginatedSpy = jest
       .spyOn(service.alerteRepository, "findAllPaginated")
       .mockResolvedValue({ rows: [], count: 45 });
@@ -109,7 +135,6 @@ describe("AlerteService.getAllPaginated", () => {
   });
 
   test("retombe sur la page 1 / taille par défaut si non fournis", async () => {
-    jest.spyOn(service, "syncExpirationAlertes").mockResolvedValue();
     const findAllPaginatedSpy = jest
       .spyOn(service.alerteRepository, "findAllPaginated")
       .mockResolvedValue({ rows: [], count: 0 });
@@ -120,7 +145,6 @@ describe("AlerteService.getAllPaginated", () => {
   });
 
   test("plafonne pageSize à 100 même si une valeur plus grande est demandée", async () => {
-    jest.spyOn(service, "syncExpirationAlertes").mockResolvedValue();
     const findAllPaginatedSpy = jest
       .spyOn(service.alerteRepository, "findAllPaginated")
       .mockResolvedValue({ rows: [], count: 0 });

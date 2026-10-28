@@ -23,8 +23,27 @@ import {
 } from "react-icons/fi";
 import { useSorties } from "../../hooks/Sortie/useSorties";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { useAuth } from "../../context/AuthContext";
 import PresenceCheck from "../../components/Inscription/PresenceCheck";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
+import { STATUT_SORTIE } from "../../utils/constants";
+
+// Même palette statut que SortieDetails.getStatutColor (bleu/ambre/gris/
+// rouge) — ici sous forme de dégradé pour le bandeau d'en-tête, qui restait
+// jusqu'ici toujours indigo/bleu/cyan quel que soit le statut réel de la
+// sortie, y compris pour une sortie Terminée/Annulée où le pointage n'a
+// justement plus de sens (bandeau ambre juste en dessous).
+const HEADER_GRADIENT_BY_STATUT = {
+  [STATUT_SORTIE.PLANIFIEE]:
+    "from-indigo-600 via-blue-600 to-cyan-600 dark:from-indigo-800 dark:via-blue-800 dark:to-cyan-800",
+  [STATUT_SORTIE.EN_COURS]:
+    "from-amber-500 via-orange-500 to-amber-600 dark:from-amber-700 dark:via-orange-700 dark:to-amber-800",
+  [STATUT_SORTIE.TERMINEE]:
+    "from-gray-500 via-slate-600 to-gray-700 dark:from-gray-700 dark:via-slate-700 dark:to-gray-800",
+  [STATUT_SORTIE.ANNULEE]:
+    "from-red-600 via-rose-600 to-red-700 dark:from-red-800 dark:via-rose-800 dark:to-red-900",
+};
 
 // Animations
 const fadeInUp = {
@@ -44,12 +63,26 @@ const staggerContainer = {
 const SortiePointage = () => {
   const { id_sortie } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     useGetById: useGetSortie,
     useEnregistrerPointage,
     useAnnulerPointage,
   } = useSorties();
   const { useGetConfirmationsBySortie } = useInscriptions();
+  // Résolution de l'id_moniteur du compte connecté — uniquement pour
+  // restreindre les actions de pointage à l'encadrant désigné de CETTE
+  // sortie, même règle que InscriptionList.jsx (canManageCetteInscription)
+  // et que le garde-fou serveur (SortieService.assertCanManageSortie,
+  // maintenant aussi appliqué à enregistrerPointage/modifierPointage/
+  // annulerPointage) : la route n'était gardée que par le rôle générique
+  // (président/moniteur), donc n'importe quel moniteur du club pouvait
+  // pointer présent/absent sur une sortie confiée à un autre.
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
+  const { data: moniteursData } = useGetAllMoniteurs(
+    {},
+    { enabled: user?.role === "moniteur" },
+  );
 
   const { data: sortie, isLoading: loadingSortie } = useGetSortie(id_sortie);
   const {
@@ -129,8 +162,25 @@ const SortiePointage = () => {
   const sortieNonPlanifiee =
     !!sortie?.data?.statut && sortie.data.statut !== "Planifiée";
 
+  // Président : toujours autorisé. Moniteur : uniquement s'il est désigné
+  // encadrant de CETTE sortie (Sortie.encadrants) — voir le commentaire sur
+  // moniteursData plus haut.
+  const peutPointer = useMemo(() => {
+    if (!user) return false;
+    if (user.role === "president") return true;
+    if (user.role !== "moniteur") return false;
+    const moniteur = (moniteursData?.data || []).find(
+      (m) => m.user?.email === user.email,
+    );
+    return (
+      !!moniteur &&
+      Array.isArray(sortie?.data?.encadrants) &&
+      sortie.data.encadrants.includes(moniteur.id_moniteur)
+    );
+  }, [user, moniteursData, sortie]);
+
   const handleCheck = async (id, data) => {
-    if (isFutureSortie || sortieNonPlanifiee) return;
+    if (isFutureSortie || sortieNonPlanifiee || !peutPointer) return;
 
     setLoading(true);
     try {
@@ -154,7 +204,7 @@ const SortiePointage = () => {
   };
 
   const handleCancel = async (id) => {
-    if (sortieNonPlanifiee) return;
+    if (sortieNonPlanifiee || !peutPointer) return;
 
     setLoading(true);
     try {
@@ -168,6 +218,10 @@ const SortiePointage = () => {
   };
 
   if (loadingSortie || loadingInscriptions) return <LoadingSpinner variant="list" />;
+
+  const headerGradient =
+    HEADER_GRADIENT_BY_STATUT[sortie?.data?.statut] ||
+    HEADER_GRADIENT_BY_STATUT[STATUT_SORTIE.PLANIFIEE];
 
   const formatDate = (date) => {
     if (!date) return "";
@@ -198,7 +252,7 @@ const SortiePointage = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 dark:from-indigo-800 dark:via-blue-800 dark:to-cyan-800 p-6 md:p-8"
+        className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${headerGradient} p-6 md:p-8`}
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4" />
@@ -223,6 +277,11 @@ const SortiePointage = () => {
               <span className="text-xs font-semibold text-white/90 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
                 {stats.total} inscrits
               </span>
+              {sortie?.data?.statut && (
+                <span className="text-xs font-semibold text-white/90 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
+                  {sortie.data.statut}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1.5 text-white/80 text-sm">
@@ -270,6 +329,27 @@ const SortiePointage = () => {
           </div>
         </motion.div>
       )}
+
+      {/* Message pour un moniteur non désigné encadrant de cette sortie */}
+      {!isFutureSortie &&
+        !sortieNonPlanifiee &&
+        !peutPointer &&
+        (user?.role !== "moniteur" || moniteursData) && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 dark:border-red-800/40 dark:bg-red-900/20 dark:text-red-300"
+          >
+            <FiAlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium">Pointage indisponible</p>
+              <p className="text-sm opacity-90">
+                Seul le président ou un moniteur désigné encadrant de cette
+                sortie peut effectuer le pointage.
+              </p>
+            </div>
+          </motion.div>
+        )}
 
       {/* Message pour sortie qui n'est plus planifiée */}
       {!isFutureSortie && sortieNonPlanifiee && (
@@ -366,6 +446,7 @@ const SortiePointage = () => {
                   loading ||
                   isFutureSortie ||
                   sortieNonPlanifiee ||
+                  !peutPointer ||
                   enregistrerPointage.isLoading ||
                   annulerPointage.isLoading
                 }

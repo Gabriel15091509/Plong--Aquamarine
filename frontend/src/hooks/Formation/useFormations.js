@@ -50,6 +50,17 @@ export const useFormations = () => {
     });
   };
 
+  // Badge Sidebar : COUNT léger côté serveur plutôt que useGetAll() filtré
+  // côté client — voir usePlongees.useGetAValiderCount, même motif.
+  const useGetPretesATerminerCount = (options = {}) => {
+    return useQuery({
+      queryKey: ["formations", "pretes-a-terminer-count"],
+      queryFn: () => formationService.getPretesATerminerCount(),
+      staleTime: 60 * 1000,
+      ...options,
+    });
+  };
+
   const useCreate = () => {
     return useMutation({
       mutationFn: (data) => formationService.create(data),
@@ -155,6 +166,7 @@ export const useFormations = () => {
     useGetByAdherent,
     useGetActive,
     useGetStats, // Bien retourné
+    useGetPretesATerminerCount,
     useCreate,
     useUpdate,
     useRemove,

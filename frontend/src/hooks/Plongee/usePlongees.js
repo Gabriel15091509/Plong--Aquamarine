@@ -32,6 +32,21 @@ export const usePlongees = () => {
     });
   };
 
+  // Badge Sidebar : COUNT léger côté serveur plutôt que useGetAll() filtré
+  // côté client — même motif que useInscriptions.useGetPendingCount (évite
+  // de rapatrier tout le club juste pour un chiffre, et allège d'autant le
+  // nombre de requêtes simultanées à chaque changement de page, voir
+  // Sidebar.jsx). Invalidé par ['plongees'] (préfixe partagé) après
+  // create/update/remove/validate ci-dessous.
+  const useGetAValiderCount = (options = {}) => {
+    return useQuery({
+      queryKey: ['plongees', 'a-valider-count'],
+      queryFn: () => plongeeService.getAValiderCount(),
+      staleTime: 60 * 1000,
+      ...options,
+    });
+  };
+
   const useGetByAdherent = (numAdherent) => {
     return useQuery({
       queryKey: ['plongees', 'adherent', numAdherent],
@@ -106,6 +121,7 @@ export const usePlongees = () => {
     useGetAll,
     useGetById,
     useGetStats,
+    useGetAValiderCount,
     useGetByAdherent,
     useGetWithDetails,
     useCreate,

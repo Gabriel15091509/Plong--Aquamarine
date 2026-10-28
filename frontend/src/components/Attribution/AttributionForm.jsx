@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  FiPackage,
   FiSave,
   FiX,
   FiCalendar,
@@ -12,10 +11,19 @@ import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
-import { ETAT_MATERIEL_OPTIONS } from "../../utils/constants";
-import { formatDateForInput, isSortieSelectionnable } from "../../utils/helpers";
+import {
+  ETAT_MATERIEL_OPTIONS,
+  STATUTS_ADHERENT_EXCLUS_SELECTION,
+} from "../../utils/constants";
+import {
+  formatDateForInput,
+  isSortieSelectionnable,
+  isMaterielDisponible,
+} from "../../utils/helpers";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -24,7 +32,10 @@ const fadeInUp = {
 };
 
 const AttributionForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte (fiche
+  // Matériel, fiche Sortie, ...) si elle vient de là, sinon sur la liste des
+  // attributions — voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/attributions");
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const editMode = !!id;
@@ -33,6 +44,7 @@ const AttributionForm = () => {
   const { useGetAll: useGetAllMateriels } = useMateriels();
   const { useGetAll: useGetAllAdherents } = useAdherents();
   const { useGetAll: useGetAllSorties } = useSorties();
+  const { useGetConfirmationsBySortie } = useInscriptions();
 
   const { data: attributionData, isLoading: loadingData } = useGetById(id);
   const { data: materielsData, isLoading: loadingMateriels } =
@@ -62,6 +74,45 @@ const AttributionForm = () => {
     (s) =>
       isSortieSelectionnable(s) ||
       String(s.id_sortie) === String(formData.id_sortie),
+  );
+
+  // Même principe : seul le matériel disponible (bon état, révision à jour,
+  // physiquement au club) doit être proposé — sauf celui déjà lié à
+  // l'attribution en cours de modification (par construction "Prêté" tant
+  // qu'il n'est pas rendu, donc absent de la liste des disponibles).
+  const materielsSelectionnables = (materielsData?.data || []).filter(
+    (m) =>
+      isMaterielDisponible(m) ||
+      String(m.num_inventaire) === String(formData.num_inventaire),
+  );
+
+  // Attribuer du matériel "pour une sortie" n'a de sens que pour ses
+  // participants (une attribution sans sortie liée — prêt libre — n'est
+  // évidemment pas concernée). `enabled: !!id_sortie` dans le hook évite
+  // l'appel tant qu'aucune sortie n'est choisie.
+  const { data: confirmationsSortieData, isLoading: loadingConfirmationsSortie } =
+    useGetConfirmationsBySortie(formData.id_sortie);
+  const numAdherentsConfirmesSortie = formData.id_sortie
+    ? new Set(
+        (confirmationsSortieData?.data || []).map((inscription) =>
+          String(inscription.num_adherent),
+        ),
+      )
+    : null;
+
+  // Un adhérent "Ancien"/"Suspendu" ne doit plus pouvoir être choisi pour un
+  // NOUVEAU prêt de matériel (voir STATUTS_ADHERENT_EXCLUS_SELECTION), et si
+  // une sortie est sélectionnée, seuls ses participants confirmés
+  // (numAdherentsConfirmesSortie, calculé ci-dessus) sont proposés — sauf,
+  // dans les deux cas, l'adhérent déjà lié à l'attribution en cours de
+  // modification (ex. sortie changée après coup sur une attribution
+  // existante : on ne fait pas disparaître la valeur déjà enregistrée).
+  const adherentsSelectionnables = (adherentsData?.data || []).filter(
+    (a) =>
+      String(a.num_adherent) === String(formData.num_adherent) ||
+      (!STATUTS_ADHERENT_EXCLUS_SELECTION.includes(a.statut) &&
+        (!numAdherentsConfirmesSortie ||
+          numAdherentsConfirmesSortie.has(String(a.num_adherent)))),
   );
 
   useEffect(() => {
@@ -113,7 +164,7 @@ const AttributionForm = () => {
       } else {
         await create.mutateAsync(formData);
       }
-      navigate("/attributions");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement de l'attribution :", error);
     } finally {
@@ -140,29 +191,7 @@ const AttributionForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier l'attribution" : "Nouvelle attribution"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Attribuez du matériel à un adhérent pour une sortie, ou en prêt libre
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiPackage className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <motion.div {...fadeInUp}>
@@ -174,7 +203,7 @@ const AttributionForm = () => {
                 if (errors.num_inventaire)
                   setErrors((prev) => ({ ...prev, num_inventaire: "" }));
               }}
-              options={materielsData?.data || []}
+              options={materielsSelectionnables}
               getOptionLabel={(m) =>
                 `${m.marque} ${m.modele} - N°${m.num_inventaire}`
               }
@@ -194,13 +223,28 @@ const AttributionForm = () => {
                 if (errors.num_adherent)
                   setErrors((prev) => ({ ...prev, num_adherent: "" }));
               }}
-              options={adherentsData?.data || []}
+              options={adherentsSelectionnables}
               getOptionLabel={(a) => `${a.civilite} ${a.nom} ${a.prenom}`}
               getOptionValue={(a) => a.num_adherent}
               placeholder="Rechercher un adhérent..."
               error={errors.num_adherent}
               required={true}
             />
+            {formData.id_sortie &&
+              (loadingConfirmationsSortie ? (
+                <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  Chargement des participants de la sortie...
+                </p>
+              ) : numAdherentsConfirmesSortie.size === 0 ? (
+                <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                  Aucun participant confirmé pour cette sortie.
+                </p>
+              ) : (
+                <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  Seuls les participants confirmés de cette sortie sont
+                  proposés.
+                </p>
+              ))}
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -304,10 +348,10 @@ const AttributionForm = () => {
         </div>
       </div>
 
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/attributions")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -327,7 +371,7 @@ const AttributionForm = () => {
           {editMode ? "Mettre à jour" : "Créer l'attribution"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

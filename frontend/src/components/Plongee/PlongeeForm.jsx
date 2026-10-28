@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FiUser,
@@ -9,7 +9,6 @@ import {
   FiThermometer,
   FiEye,
   FiTag,
-  FiImage,
   FiFileText,
   FiCheckCircle,
   FiSave,
@@ -17,21 +16,20 @@ import {
   FiActivity,
 } from "react-icons/fi";
 import { usePlongees } from "../../hooks/Plongee/usePlongees";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSeances } from "../../hooks/Formation/useSeances";
 import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import {
   TYPE_PLONGEE_OPTIONS,
   VISIBILITE_OPTIONS,
   COURANT_OPTIONS,
+  STATUT_SORTIE,
 } from "../../utils/constants";
-import {
-  formatDate,
-  formatDateTime,
-  isSortieSelectionnable,
-} from "../../utils/helpers";
+import { formatDate, formatDateTime } from "../../utils/helpers";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -40,7 +38,9 @@ const fadeInUp = {
 };
 
 const PlongeeForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte si elle
+  // vient de là, sinon sur la liste des plongées — voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/plongees");
   const { id } = useParams();
   const editMode = !!id;
 
@@ -48,6 +48,7 @@ const PlongeeForm = () => {
   const { useGetAll } = useAdherents();
   const { useGetPlanifieesByAdherent } = useSeances();
   const { useGetAll: useGetAllSorties } = useSorties();
+  const { useGetConfirmationsBySortie } = useInscriptions();
 
   const { data, isLoading: loadingData } = useGetById(id);
   const { data: adherentsData, isLoading: loadingAdherents } = useGetAll();
@@ -70,7 +71,6 @@ const PlongeeForm = () => {
     courant: "Nul",
     type_plongee: "Plongée d'exploration",
     observations_faune: "",
-    lien_photos: "",
     id_seance: "",
   });
 
@@ -78,12 +78,46 @@ const PlongeeForm = () => {
     formData.type_plongee === "Formation" ? formData.num_adherent : null,
   );
 
-  // Une sortie déjà en cours ou terminée ne doit plus être proposée, sauf si
-  // c'est déjà la sortie liée à la plongée en cours de modification.
+  // Une plongée documente un plongeon déjà réalisé et complet (profondeur
+  // max atteinte, durée totale...) : contrairement à IncidentForm (qui
+  // partage isSortieUtilisablePourConstat et accepte "En cours"), une
+  // sortie encore "En cours" n'a pas fini de se dérouler — ses valeurs
+  // finales ne sont pas encore connues. Seule "Terminée" est donc proposée
+  // ici. Le type de plongée (choisi juste au-dessus, voir son bloc)
+  // restreint encore la liste : pas la peine de faire défiler des sorties
+  // "Baptême" quand on documente une "Plongée technique". La sortie déjà
+  // sélectionnée reste visible même si son statut/type ne correspond plus
+  // (ex. en modification), sinon le champ afficherait une valeur sans
+  // option correspondante.
   const sortiesSelectionnables = (sortiesData?.data || []).filter(
     (s) =>
-      isSortieSelectionnable(s) ||
-      String(s.id_sortie) === String(formData.id_sortie),
+      (s.statut === STATUT_SORTIE.TERMINEE || String(s.id_sortie) === String(formData.id_sortie)) &&
+      (!formData.type_plongee || s.type === formData.type_plongee || String(s.id_sortie) === String(formData.id_sortie)),
+  );
+
+  // Une plongée documente ce qu'un participant de LA sortie a vécu : pas la
+  // peine de faire chercher tout le club dans le select Adhérent une fois
+  // la sortie connue, seuls ses inscrits confirmés sont concernés. Même
+  // motif que AttributionForm.jsx. `enabled: !!id_sortie` dans le hook
+  // évite l'appel tant qu'aucune sortie n'est choisie (liste non filtrée à
+  // ce stade). L'adhérent déjà choisi reste toujours proposé, y compris si
+  // la sortie change ensuite et ne le compte plus parmi ses confirmés — on
+  // ne fait pas disparaître une valeur déjà saisie.
+  const { data: confirmationsSortieData } = useGetConfirmationsBySortie(
+    formData.id_sortie,
+  );
+  const numAdherentsConfirmesSortie = formData.id_sortie
+    ? new Set(
+        (confirmationsSortieData?.data || []).map((inscription) =>
+          String(inscription.num_adherent),
+        ),
+      )
+    : null;
+  const adherentsSelectionnables = (adherentsData?.data || []).filter(
+    (a) =>
+      String(a.num_adherent) === String(formData.num_adherent) ||
+      !numAdherentsConfirmesSortie ||
+      numAdherentsConfirmesSortie.has(String(a.num_adherent)),
   );
 
   useEffect(() => {
@@ -100,7 +134,6 @@ const PlongeeForm = () => {
         courant: p.courant || "Nul",
         type_plongee: p.type_plongee || "Plongée d'exploration",
         observations_faune: p.observations_faune || "",
-        lien_photos: p.lien_photos || "",
         id_seance: p.id_seance || "",
       });
     }
@@ -143,7 +176,7 @@ const PlongeeForm = () => {
       } else {
         await create.mutateAsync(formData);
       }
-      navigate("/plongees");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement de la plongée :", error);
     } finally {
@@ -167,32 +200,7 @@ const PlongeeForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      {/* En-tête */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier la plongée" : "Nouvelle plongée"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {editMode
-                ? "Mettez à jour les informations de la plongée"
-                : "Enregistrez une nouvelle plongée"}
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiActivity className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -205,7 +213,7 @@ const PlongeeForm = () => {
                 if (errors.num_adherent)
                   setErrors((prev) => ({ ...prev, num_adherent: "" }));
               }}
-              options={adherentsData?.data || []}
+              options={adherentsSelectionnables}
               getOptionLabel={(a) =>
                 `${a.civilite} ${a.nom} ${a.prenom} - ${a.email}`
               }
@@ -214,6 +222,55 @@ const PlongeeForm = () => {
               error={errors.num_adherent}
               required={true}
             />
+          </motion.div>
+
+          <motion.div {...fadeInUp}>
+            <label className={labelClasses}>
+              <span className="flex items-center gap-2">
+                <FiTag className="w-4 h-4 text-gray-400" />
+                Type de plongée *
+              </span>
+            </label>
+            <select
+              name="type_plongee"
+              value={formData.type_plongee}
+              onChange={(e) => {
+                const { value } = e.target;
+                setFormData((prev) => {
+                  const sortieActuelle = (sortiesData?.data || []).find(
+                    (s) => String(s.id_sortie) === String(prev.id_sortie),
+                  );
+                  // La sortie déjà choisie ne correspond plus au type
+                  // sélectionné : elle sort de la liste filtrée ci-dessous,
+                  // on vide donc la sélection plutôt que de garder une
+                  // valeur devenue invisible dans le select.
+                  const sortieEncoreValide =
+                    !sortieActuelle || sortieActuelle.type === value;
+                  return {
+                    ...prev,
+                    type_plongee: value,
+                    id_sortie: sortieEncoreValide ? prev.id_sortie : "",
+                    id_seance: value === "Formation" ? prev.id_seance : "",
+                  };
+                });
+                if (errors.type_plongee)
+                  setErrors((prev) => ({ ...prev, type_plongee: "" }));
+              }}
+              onFocus={() => handleFocus("type_plongee")}
+              onBlur={handleBlur}
+              className={inputClasses("type_plongee")}
+            >
+              {TYPE_PLONGEE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            {errors.type_plongee && (
+              <p className="mt-1.5 text-sm text-red-500">
+                {errors.type_plongee}
+              </p>
+            )}
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -384,43 +441,6 @@ const PlongeeForm = () => {
             </select>
           </motion.div>
 
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiTag className="w-4 h-4 text-gray-400" />
-                Type de plongée *
-              </span>
-            </label>
-            <select
-              name="type_plongee"
-              value={formData.type_plongee}
-              onChange={(e) => {
-                const { value } = e.target;
-                setFormData((prev) => ({
-                  ...prev,
-                  type_plongee: value,
-                  id_seance: value === "Formation" ? prev.id_seance : "",
-                }));
-                if (errors.type_plongee)
-                  setErrors((prev) => ({ ...prev, type_plongee: "" }));
-              }}
-              onFocus={() => handleFocus("type_plongee")}
-              onBlur={handleBlur}
-              className={inputClasses("type_plongee")}
-            >
-              {TYPE_PLONGEE_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-            {errors.type_plongee && (
-              <p className="mt-1.5 text-sm text-red-500">
-                {errors.type_plongee}
-              </p>
-            )}
-          </motion.div>
-
           {formData.type_plongee === "Formation" && (
             <motion.div {...fadeInUp}>
               <SearchableSelect
@@ -448,25 +468,6 @@ const PlongeeForm = () => {
             </motion.div>
           )}
 
-          <motion.div {...fadeInUp}>
-            <label className={labelClasses}>
-              <span className="flex items-center gap-2">
-                <FiImage className="w-4 h-4 text-gray-400" />
-                Lien photos
-              </span>
-            </label>
-            <input
-              type="text"
-              name="lien_photos"
-              value={formData.lien_photos}
-              onChange={handleChange}
-              onFocus={() => handleFocus("lien_photos")}
-              onBlur={handleBlur}
-              className={inputClasses("lien_photos")}
-              placeholder="https://..."
-            />
-          </motion.div>
-
           <motion.div {...fadeInUp} className="md:col-span-2">
             <label className={labelClasses}>
               <span className="flex items-center gap-2">
@@ -490,10 +491,10 @@ const PlongeeForm = () => {
       </div>
 
       {/* Pied de page */}
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/plongees")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -513,7 +514,7 @@ const PlongeeForm = () => {
           {editMode ? "Mettre à jour" : "Créer la plongée"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

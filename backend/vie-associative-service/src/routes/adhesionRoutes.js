@@ -11,6 +11,9 @@ router.get('/', AuthMiddleware.authenticate, adhesionController.getAll.bind(adhe
 router.get('/active', AuthMiddleware.authenticate, adhesionController.getActiveAdhesions.bind(adhesionController));
 router.get('/expiring', AuthMiddleware.authenticate, adhesionController.getExpiringAdhesions.bind(adhesionController));
 router.get('/stats', adhesionController.getStats.bind(adhesionController));
+// Badge Sidebar (voir AdhesionController.getEnAttenteValidationCount) —
+// avant "/:id" pour ne pas être avalée par cette route générique.
+router.get('/en-attente-validation-count', AuthMiddleware.authenticate, adhesionController.getEnAttenteValidationCount.bind(adhesionController));
 router.get('/taux-renouvellement', adhesionController.getTauxRenouvellement.bind(adhesionController));
 router.get('/adherent/:num_adherent', AuthMiddleware.authenticate, adhesionController.getByAdherent.bind(adhesionController));
 router.get('/adherent/:num_adherent/dossier-status', AuthMiddleware.authenticate, adhesionController.getDossierStatus.bind(adhesionController));
@@ -46,6 +49,17 @@ router.post('/:id/valider',
   AuthMiddleware.authenticate,
   AuthMiddleware.authorize(ROLES.PRESIDENT_TRESORIER),
   adhesionController.valider.bind(adhesionController)
+);
+
+// Appelé uniquement par identite-service (jeton interne, voir
+// AdhesionController.creerLicenceAutomatique) quand un adhérent passe de
+// "Baptême" à "Niveau 1" — jamais depuis le frontend. Même contrôle de rôle
+// que les autres routes de création : le jeton interne (internalAuth.js,
+// côté identite-service) porte le rôle "president" pour le satisfaire.
+router.post('/adherent/:num_adherent/licence-automatique',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_TRESORIER),
+  adhesionController.creerLicenceAutomatique.bind(adhesionController)
 );
 
 router.put('/:id',

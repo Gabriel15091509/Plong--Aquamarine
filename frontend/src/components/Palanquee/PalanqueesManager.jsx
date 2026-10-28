@@ -7,6 +7,7 @@ import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import SearchableSelect from "../Common/SearchableSelect";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import PalanqueeCard from "./PalanqueeCard";
+import { STATUT_SORTIE } from "../../utils/constants";
 
 const PalanqueesManager = ({ sortie }) => {
   const { useGetBySortie, useGetStatsBySortie, useCreate } = usePalanquees();
@@ -27,7 +28,18 @@ const PalanqueesManager = ({ sortie }) => {
   const palanquees = palanqueesData?.data || [];
   const presents = presentsData?.data || [];
   const stats = statsData?.data;
-  const isTerminee = sortie.statut === "Terminée";
+  // Une palanquée se forme sur les plongeurs pointés présents — ça n'a de
+  // sens que pendant la sortie elle-même, ni avant (rien à pointer encore,
+  // voir le message "Aucun plongeur pointé" ci-dessous) ni après coup une
+  // fois "Terminée"/"Annulée" — même principe que "Déclarer un incident"
+  // et "Attribuer du matériel" dans SortieDetails.jsx.
+  const peutConstituer = sortie.statut === STATUT_SORTIE.EN_COURS;
+  const raisonIndisponible =
+    sortie.statut === STATUT_SORTIE.PLANIFIEE
+      ? "Sortie pas encore commencée : constitution de palanquée impossible"
+      : sortie.statut === STATUT_SORTIE.ANNULEE
+        ? "Sortie annulée : constitution de palanquée impossible"
+        : "Sortie terminée : constitution de palanquée impossible";
 
   const moniteurOptions = (moniteursData?.data || []).map((m) => ({
     ...m,
@@ -68,8 +80,8 @@ const PalanqueesManager = ({ sortie }) => {
           )}
           <button
             onClick={() => setShowForm((prev) => !prev)}
-            disabled={isTerminee}
-            title={isTerminee ? "Sortie terminée : constitution de palanquée impossible" : undefined}
+            disabled={!peutConstituer}
+            title={!peutConstituer ? raisonIndisponible : undefined}
             className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:text-gray-400 dark:disabled:text-gray-600 disabled:no-underline disabled:cursor-not-allowed"
           >
             <FiPlus className="w-4 h-4" /> Constituer une palanquée

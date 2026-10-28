@@ -8,7 +8,6 @@ import {
   FiPlus,
   FiUsers,
   FiUser,
-  FiAward,
   FiCalendar,
   FiTag,
   FiList,
@@ -16,18 +15,27 @@ import {
   FiMail,
   FiX,
   FiSearch,
+  FiFilter,
+  FiRefreshCw,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
 import ConfirmModal from "../Common/ConfirmModal";
 import BulkActionBar from "../Common/BulkActionBar";
+import Pagination from "../Common/Pagination";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { usePresidents } from "../../hooks/President/usePresidents";
 import { useUsers } from "../../hooks/User/useUsers";
 import { useSelection } from "../../hooks/useSelection";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import moniteurService from "../../services/Moniteur/moniteurService";
+import MoniteurFormModal from "./MoniteurFormModal";
+import MoniteurDetails from "./MoniteurDetails";
+import TabBar from "../Common/TabBar";
+import { ROLE_TABS } from "../../constants/roleTabs";
+import AccountActionsMenu from "../User/AccountActionsMenu";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -46,18 +54,26 @@ const MoniteurList = () => {
   // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN CONDITIONNEL
   const { useGetAll, useRemove } = useMoniteurs();
   const { useGetAll: useGetAllUsers } = useUsers();
+  const { useGetAll: useGetAllPresidents } = usePresidents();
 
   const { data, isLoading, error, refetch } = useGetAll();
-  const { data: usersData, isLoading: loadingUsers } = useGetAllUsers();
+  const { data: usersData } = useGetAllUsers();
+  const { data: presidentsData } = useGetAllPresidents();
   const remove = useRemove();
   const selection = useSelection();
 
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteModal, setDeleteModal] = useState(null);
   const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  // Clé de l'action en cours (`delete-<id>`) : seule l'icône de la ligne
+  // concernée passe en spinner (même motif que InscriptionList.jsx).
+  const [actionLoading, setActionLoading] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState("list");
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "grid" : "list",
+  );
   const itemsPerPage = 10;
 
   const userMap = useMemo(() => {
@@ -70,7 +86,20 @@ const MoniteurList = () => {
     return map;
   }, [usersData]);
 
-  const allMoniteurs = data?.data || [];
+  // Un président est nécessairement aussi moniteur (President.id_moniteur,
+  // FK obligatoire — voir PresidentService.create) : sans ce filtre, il
+  // apparaissait en double, une fois dans "Présidents", une fois ici. Son
+  // profil moniteur (niveau, spécialités, brevet...) reste consultable
+  // depuis sa fiche président — voir PresidentDetails.jsx.
+  const idsMoniteursPresidents = useMemo(() => {
+    return new Set(
+      (presidentsData?.data || []).map((p) => p.id_moniteur),
+    );
+  }, [presidentsData]);
+
+  const allMoniteurs = (data?.data || []).filter(
+    (m) => !idsMoniteursPresidents.has(m.id_moniteur),
+  );
 
   const filteredMoniteurs = useMemo(() => {
     return allMoniteurs.filter((m) => {
@@ -96,12 +125,17 @@ const MoniteurList = () => {
   );
 
   const handleDelete = async (id) => {
+    // Ferme la modale dès le lancement : elle masquerait sinon le spinner
+    // de la ligne pendant la requête.
+    setDeleteModal(null);
+    setActionLoading(`delete-${id}`);
     try {
       await remove.mutateAsync(id);
-      refetch();
-      setDeleteModal(null);
+      await refetch();
     } catch (err) {
       console.error("Échec de la suppression du moniteur :", err);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -121,12 +155,17 @@ const MoniteurList = () => {
   };
 
   // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
-  if (isLoading || loadingUsers) return <LoadingSpinner variant="list" />;
+  // N'attend que la propre liste : usersData ne sert qu'au nom/photo affichés
+  // (userMap), avec repli "Utilisateur #<id>" déjà prévu tant qu'il n'est pas
+  // encore chargé — chargement progressif.
+  if (isLoading) return <LoadingSpinner variant="list" />;
   if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredMoniteurs.length === 0) {
     return (
-      <motion.div
+      <div className="space-y-4">
+        <TabBar tabs={ROLE_TABS} />
+        <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg"
@@ -160,14 +199,30 @@ const MoniteurList = () => {
         >
           <FiPlus className="w-4 h-4" /> Nouveau moniteur
         </Link>
+        <MoniteurFormModal />
+        <MoniteurDetails />
       </motion.div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      <TabBar tabs={ROLE_TABS} />
       {/* Barre de recherche */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+      {/* Bouton "Filtres" (mobile uniquement) : recherche + filtres
+          repliés par défaut pour ne pas encombrer l'écran — un tap les
+          affiche. Toujours visibles à partir de sm (recherche fréquente
+          sur grand écran, pas besoin de la cacher). */}
+      <button
+        type="button"
+        onClick={() => setShowFilters((v) => !v)}
+        className="sm:hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+      >
+        {showFilters ? <FiX className="w-4 h-4" /> : <FiFilter className="w-4 h-4" />}
+        Filtres
+      </button>
+      <div className={`${showFilters ? "flex" : "hidden"} flex-col gap-3 sm:flex sm:flex-row`}>
         <div className="relative flex-1">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -254,7 +309,7 @@ const MoniteurList = () => {
             animate={{ opacity: 1 }}
             className={
               viewMode === "grid"
-                ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
                 : "grid gap-3"
             }
           >
@@ -271,6 +326,17 @@ const MoniteurList = () => {
                     exit={{ opacity: 0, scale: 0.95 }}
                     className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
                   >
+                    {moniteur.disponible === false && (
+                      <span
+                        title={
+                          moniteur.cause_indisponibilite ||
+                          "Indisponibilité déclarée"
+                        }
+                        className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                      >
+                        Indisponible
+                      </span>
+                    )}
                     {user?.photo ? (
                       <img
                         src={photoUrl(user.photo)}
@@ -332,11 +398,17 @@ const MoniteurList = () => {
                       </Link>
                       <button
                         onClick={() => setDeleteModal(moniteur.id_moniteur)}
-                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        disabled={actionLoading === `delete-${moniteur.id_moniteur}`}
+                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                         title="Supprimer"
                       >
-                        <FiTrash2 className="w-4 h-4" />
+                        {actionLoading === `delete-${moniteur.id_moniteur}` ? (
+                          <FiRefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FiTrash2 className="w-4 h-4" />
+                        )}
                       </button>
+                      <AccountActionsMenu user={user} />
                     </div>
                   </motion.div>
                 );
@@ -380,7 +452,7 @@ const MoniteurList = () => {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                            <h3 className="font-semibold text-gray-900 dark:text-white break-words">
                               {user?.name || `Utilisateur #${moniteur.user_id}`}
                             </h3>
                             <span className="text-sm text-gray-400 dark:text-gray-500">
@@ -398,6 +470,17 @@ const MoniteurList = () => {
                                   {moniteur.niveau}
                                 </span>
                               </>
+                            )}
+                            {moniteur.disponible === false && (
+                              <span
+                                title={
+                                  moniteur.cause_indisponibilite ||
+                                  "Indisponibilité déclarée"
+                                }
+                                className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                              >
+                                Indisponible
+                              </span>
                             )}
                           </div>
                           <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -439,11 +522,17 @@ const MoniteurList = () => {
                           </Link>
                           <button
                             onClick={() => setDeleteModal(moniteur.id_moniteur)}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            disabled={actionLoading === `delete-${moniteur.id_moniteur}`}
+                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                             title="Supprimer"
                           >
-                            <FiTrash2 className="w-4 h-4" />
+                            {actionLoading === `delete-${moniteur.id_moniteur}` ? (
+                              <FiRefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <FiTrash2 className="w-4 h-4" />
+                            )}
                           </button>
+                          <AccountActionsMenu user={user} />
                         </div>
                       </div>
                     </div>
@@ -455,34 +544,11 @@ const MoniteurList = () => {
         )}
       </AnimatePresence>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
-        >
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Précédent
-          </button>
-          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Suivant
-          </button>
-        </motion.div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Modal de confirmation de suppression */}
       {deleteModal && (
@@ -530,6 +596,9 @@ const MoniteurList = () => {
         onCancel={() => setBulkDeleteModal(false)}
         onConfirm={handleBulkDelete}
       />
+
+      <MoniteurFormModal />
+      <MoniteurDetails />
     </div>
   );
 };

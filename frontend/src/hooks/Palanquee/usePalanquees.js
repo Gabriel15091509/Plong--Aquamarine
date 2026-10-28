@@ -14,6 +14,17 @@ export const usePalanquees = () => {
     });
   };
 
+  // Voir palanqueeService.getAllLight — libellés seuls, à préférer à
+  // useGetAll() quand seul le nom de la palanquée est nécessaire (ex.
+  // regroupement de PlongeeList.jsx).
+  const useGetAllLight = () => {
+    return useQuery({
+      queryKey: ["palanquees", "light"],
+      queryFn: () => palanqueeService.getAllLight(),
+      staleTime: 5 * 60 * 1000,
+    });
+  };
+
   const useGetById = (id) => {
     return useQuery({
       queryKey: ["palanquees", id],
@@ -221,6 +232,7 @@ export const usePalanquees = () => {
 
   return {
     useGetAll,
+    useGetAllLight,
     useGetById,
     useGetByPlongee,
     useGetBySortie,

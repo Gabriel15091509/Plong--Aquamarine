@@ -11,7 +11,7 @@ export const useSorties = () => {
       queryKey: ["sorties", "all", JSON.stringify(params)],
       queryFn: () => sortieService.getAll(params),
       staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 10,
+      cacheTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
       retry: 1,
     });
@@ -23,7 +23,7 @@ export const useSorties = () => {
       queryFn: () => getByIdWithOfflineFallback(sortieService, id, 'id_sortie'),
       enabled: !!id,
       staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 10,
+      cacheTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
     });
   };
@@ -33,7 +33,7 @@ export const useSorties = () => {
       queryKey: ["sorties", "upcoming"],
       queryFn: () => sortieService.getUpcoming(),
       staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 10,
+      cacheTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
       ...options,
     });
@@ -44,7 +44,7 @@ export const useSorties = () => {
       queryKey: ["sorties", "stats"],
       queryFn: () => sortieService.getStats(),
       staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 10,
+      cacheTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
     });
   };
@@ -54,7 +54,7 @@ export const useSorties = () => {
       queryKey: ["sorties", "available-places"],
       queryFn: () => sortieService.getAvailablePlaces(),
       staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 10,
+      cacheTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
     });
   };
@@ -66,7 +66,7 @@ export const useSorties = () => {
       queryFn: () => sortieService.getDetails(id),
       enabled: !!id,
       staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 10,
+      cacheTime: 1000 * 60 * 10,
       refetchOnWindowFocus: false,
     });
   };
@@ -81,7 +81,7 @@ export const useSorties = () => {
       queryFn: () => sortieService.getMeteo(id),
       enabled: !!id,
       staleTime: 1000 * 60 * 10,
-      gcTime: 1000 * 60 * 20,
+      cacheTime: 1000 * 60 * 20,
       refetchOnWindowFocus: false,
       retry: 1,
     });
@@ -94,7 +94,7 @@ export const useSorties = () => {
       queryFn: () => sortieService.getPointage(id),
       enabled: !!id,
       staleTime: 1000 * 60 * 2, // 2 minutes
-      gcTime: 1000 * 60 * 5,
+      cacheTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
     });
   };
@@ -182,6 +182,120 @@ export const useSorties = () => {
     });
   };
 
+  // Annulation manuelle pour météo dangereuse (voir SortieService.
+  // annulerPourMeteo côté backend) — invalide aussi la prévision météo de la
+  // sortie (et pas seulement la liste), pour repasser immédiatement le
+  // badge sur "Annulée pour météo" sans recharger la page.
+  const useAnnulerPourMeteo = () => {
+    return useMutation({
+      mutationFn: (id) => sortieService.annulerPourMeteo(id),
+      onSuccess: (response, id) => {
+        queryClient.invalidateQueries({ queryKey: ["sorties"] });
+        queryClient.invalidateQueries({ queryKey: ["sorties", id, "meteo"] });
+        toast.success(response.message || "Sortie annulée pour cause météorologique");
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message ||
+            "Erreur lors de l'annulation pour cause météorologique",
+        );
+      },
+    });
+  };
+
+  // Dates de repli proposées pour une sortie annulée météo (voir
+  // SortieService.getPropositionsReprogrammation côté backend) — n'a de
+  // sens que sur une sortie "Annulée" pour ce motif, laissé au composant
+  // appelant de conditionner `enabled` en conséquence (voir SortieDetails).
+  const useGetPropositionsReprogrammation = (id, options = {}) => {
+    return useQuery({
+      queryKey: ["sorties", id, "propositions-reprogrammation"],
+      queryFn: () => sortieService.getPropositionsReprogrammation(id),
+      enabled: !!id && options.enabled !== false,
+      staleTime: 1000 * 60 * 5,
+      cacheTime: 1000 * 60 * 10,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    });
+  };
+
+  // Reprogrammation d'une sortie annulée météo sur une nouvelle date (voir
+  // SortieService.replanifier côté backend) — invalide aussi bien la liste
+  // que la prévision météo et les propositions (une fois "Planifiée", ni
+  // l'une ni l'autre ne concerne plus cette sortie sous cette forme).
+  const useReplanifier = () => {
+    return useMutation({
+      mutationFn: ({ id, data }) => sortieService.replanifier(id, data),
+      onSuccess: (response, { id }) => {
+        queryClient.invalidateQueries({ queryKey: ["sorties"] });
+        queryClient.invalidateQueries({ queryKey: ["sorties", id, "meteo"] });
+        queryClient.invalidateQueries({
+          queryKey: ["sorties", id, "propositions-reprogrammation"],
+        });
+        toast.success(response.message || "Sortie replanifiée");
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message || "Erreur lors de la replanification",
+        );
+      },
+    });
+  };
+
+  // Photos de la sortie — réservées aux participants (le backend refuse un
+  // 403 aux autres, voir SortieService.assertCanAccessPhotos) : `retry:
+  // false`, un 403 n'a aucune raison de réussir en re-tentant, et le
+  // composant appelant distingue ce cas (message "réservé aux
+  // participants") d'une vraie erreur via `error?.response?.status`.
+  const useGetPhotos = (id, options = {}) => {
+    return useQuery({
+      queryKey: ["sorties", id, "photos"],
+      queryFn: () => sortieService.getPhotos(id),
+      enabled: !!id && options.enabled !== false,
+      staleTime: 1000 * 60 * 2,
+      cacheTime: 1000 * 60 * 10,
+      refetchOnWindowFocus: false,
+      retry: false,
+    });
+  };
+
+  // `urls` : plusieurs liens à la fois, voir SortieService.addPhotos côté
+  // backend (un seul appel, pas un aller-retour par photo).
+  const useAddPhotos = () => {
+    return useMutation({
+      mutationFn: ({ id, urls }) => sortieService.addPhotos(id, urls),
+      onSuccess: (response, { id }) => {
+        queryClient.invalidateQueries({ queryKey: ["sorties", id, "photos"] });
+        // photos_count (voir SortieService.attachCapacity) affiché sur la
+        // liste/fiche générale : à rafraîchir aussi.
+        queryClient.invalidateQueries({ queryKey: ["sorties"] });
+        toast.success(response.message || "Photo(s) ajoutée(s) avec succès");
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message || "Erreur lors de l'ajout des photos",
+        );
+      },
+    });
+  };
+
+  const useRemovePhoto = () => {
+    return useMutation({
+      mutationFn: ({ id, photoId }) => sortieService.removePhoto(id, photoId),
+      onSuccess: (response, { id }) => {
+        queryClient.invalidateQueries({ queryKey: ["sorties", id, "photos"] });
+        queryClient.invalidateQueries({ queryKey: ["sorties"] });
+        toast.success(response.message || "Photo supprimée avec succès");
+      },
+      onError: (error) => {
+        toast.error(
+          error.response?.data?.message ||
+            "Erreur lors de la suppression de la photo",
+        );
+      },
+    });
+  };
+
   // NOUVEAU - Annuler un pointage
   const useAnnulerPointage = () => {
     return useMutation({
@@ -213,8 +327,14 @@ export const useSorties = () => {
     useCreate,
     useUpdate,
     useRemove,
+    useAnnulerPourMeteo,
+    useGetPropositionsReprogrammation,
+    useReplanifier,
     useEnregistrerPointage, // Nouveau
     useModifierPointage, // Nouveau
     useAnnulerPointage, // Nouveau
+    useGetPhotos,
+    useAddPhotos,
+    useRemovePhoto,
   };
 };

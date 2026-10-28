@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import ModalLink from "../Common/ModalLink";
 import toast from "react-hot-toast";
 import {
   FiUser,
@@ -9,60 +8,55 @@ import {
   FiFileText,
   FiHash,
   FiEdit,
-  FiArrowLeft,
   FiClock,
   FiTrash2,
   FiCalendar,
-  FiCheckCircle,
-  FiXCircle,
-  FiInfo,
-  FiTrendingUp,
   FiAward,
   FiDownload,
+  FiCheck,
+  FiRefreshCw,
+  FiX,
 } from "react-icons/fi";
 import { usePaiements } from "../../hooks/Paiement/usePaiements";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
+import { useDetailsModal } from "../../hooks/useFormModal";
+import DetailsModal from "../Common/DetailsModal";
+import PdfPreviewModal from "../Common/PdfPreviewModal";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
-import SectionCard from "../Common/SectionCard";
 import InfoItem from "../Common/InfoItem";
 import { photoUrl } from "../../utils/photoUrl";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
+import ModalOverlay from "../Common/ModalOverlay";
+import { MODE_PAIEMENT_OPTIONS } from "../../utils/constants";
 import paiementService from "../../services/Paiement/paiementService";
-import { STATUT_PAIEMENT } from "../../utils/constants";
 
-// Animations
-const staggerContainer = {
-  initial: { opacity: 0 },
-  animate: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.04,
-      delayChildren: 0.05,
-    },
-  },
-};
-
-const scaleIn = {
-  initial: { opacity: 0, scale: 0.98 },
-  animate: { opacity: 1, scale: 1 },
-  transition: { duration: 0.25, ease: "easeOut" },
-};
-
+// Fiche paiement, modale par-dessus la liste (voir MoniteurDetails.jsx pour
+// le prototype d'origine et DetailsModal.jsx pour la coquille commune).
+// Une seule page : peu d'informations, pas besoin de pagination.
 const PaiementDetails = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const modal = useDetailsModal("/paiements");
+  const { id } = modal;
   const { hasRole } = useAuth();
   const canManagePaiement = hasRole(["president", "tresorier"]);
-  const { useGetById, useRemove } = usePaiements();
+  const { useGetById, useRemove, useProcess } = usePaiements();
   const { useGetAll } = useAdherents();
   const { data, isLoading } = useGetById(id);
-  const { data: adherentsData } = useGetAll();
+  const { data: adherentsData } = useGetAll({}, { enabled: !!id });
   const remove = useRemove();
+  const process = useProcess();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState(null);
+  const [showEnregistrer, setShowEnregistrer] = useState(false);
+  const [saisie, setSaisie] = useState({
+    montant: "",
+    mode: "",
+    reference_id: "",
+    date_paiement: "",
+  });
 
   const paiement = data?.data;
   const adherent = adherentsData?.data?.find(
@@ -72,334 +66,230 @@ const PaiementDetails = () => {
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      navigate("/paiements");
+      setShowDeleteModal(false);
+      modal.close();
     } catch (error) {
       console.error("Échec de la suppression du paiement :", error);
     }
   };
 
-  const handleDownloadRecu = async () => {
+  // Enregistrer le règlement : petit formulaire prérempli avec les valeurs
+  // du paiement (le trésorier ne change que ce qui diffère — montant
+  // réellement reçu, mode, n° de chèque/virement, date d'encaissement), puis
+  // PATCH /paiements/:id/process qui passe le statut à "Payé". Le toast de
+  // succès et le rafraîchissement du cache sont dans useProcess.
+  const ouvrirEnregistrer = () => {
+    setSaisie({
+      montant: paiement.montant ?? "",
+      mode: paiement.mode || MODE_PAIEMENT_OPTIONS[0],
+      reference_id: paiement.reference_id || "",
+      date_paiement: new Date().toISOString().slice(0, 10),
+    });
+    setShowEnregistrer(true);
+  };
+
+  const handleEnregistrer = async (e) => {
+    e.preventDefault();
+    try {
+      await process.mutateAsync({ id, ajustements: saisie });
+      setShowEnregistrer(false);
+    } catch (error) {
+      console.error("Échec de l'enregistrement du paiement :", error);
+    }
+  };
+
+  const peutEnregistrer =
+    canManagePaiement && ["En attente", "Partiel"].includes(paiement?.statut);
+
+  const closePdfPreview = () => {
+    if (pdfPreview?.blobUrl) window.URL.revokeObjectURL(pdfPreview.blobUrl);
+    setPdfPreview(null);
+  };
+
+  // Aperçu (PdfPreviewModal, voir AdherentDetails.jsx pour le même principe
+  // sur carnet/attestation) plutôt qu'un téléchargement direct — l'aperçu a
+  // son propre bouton "Télécharger" une fois le document affiché.
+  const handlePreviewRecu = async () => {
     setDownloading(true);
     try {
-      await paiementService.downloadRecu(id);
+      const { blobUrl, filename } = await paiementService.previewRecu(id);
+      setPdfPreview({ blobUrl, filename });
     } catch (error) {
-      toast.error("Erreur lors du téléchargement du reçu");
+      toast.error("Erreur lors du chargement du reçu");
     } finally {
       setDownloading(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <LoadingSpinner variant="details" />
-      </div>
-    );
-  }
-
-  if (!paiement) {
-    return (
-      <motion.div
-        variants={scaleIn}
-        initial="initial"
-        animate="animate"
-        className="text-center py-16"
+  const headerExtra = paiement && (
+    <>
+      <button
+        onClick={handlePreviewRecu}
+        disabled={downloading}
+        className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors disabled:opacity-60"
+        title="Reçu"
       >
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800/50 mb-6">
-          <FiInfo className="w-10 h-10 text-gray-400" />
-        </div>
-        <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-          Paiement non trouvé
-        </h3>
-        <p className="text-gray-500 dark:text-gray-400">
-          Le paiement que vous recherchez n'existe pas ou a été supprimé.
-        </p>
-        <button
-          onClick={() => navigate("/paiements")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-        >
-          <FiArrowLeft className="w-4 h-4" />
-          Retour à la liste
-        </button>
-      </motion.div>
-    );
-  }
-
-  const getStatutColor = (statut) => {
-    const colors = {
-      Confirmé:
-        "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800",
-      [STATUT_PAIEMENT.EN_ATTENTE]:
-        "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800",
-      [STATUT_PAIEMENT.ANNULE]: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
-      Remboursé:
-        "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
-    };
-    return colors[statut] || colors[STATUT_PAIEMENT.EN_ATTENTE];
-  };
-
-  const getStatutIcon = (statut) => {
-    const icons = {
-      Confirmé: FiCheckCircle,
-      [STATUT_PAIEMENT.EN_ATTENTE]: FiClock,
-      [STATUT_PAIEMENT.ANNULE]: FiXCircle,
-      Remboursé: FiTrendingUp,
-    };
-    return icons[statut] || FiClock;
-  };
-
-  const getStatutText = (statut) => {
-    const texts = {
-      Confirmé: "Le paiement a été confirmé avec succès",
-      [STATUT_PAIEMENT.EN_ATTENTE]: "Le paiement est en attente de validation",
-      [STATUT_PAIEMENT.ANNULE]: "Le paiement a été annulé",
-      Remboursé: "Le paiement a été remboursé",
-    };
-    return texts[statut] || "Statut inconnu";
-  };
-
-  const StatutIcon = getStatutIcon(paiement.statut);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6 px-4"
-    >
-      {/* En-tête */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-      >
-        <div className="flex items-center gap-4">
-          
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
-                <FiCreditCard className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-              </span>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                  Paiement{" "}
-                  <span className="text-blue-600 dark:text-blue-400">
-                    {paiement.type_paiement}
-                  </span>
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
-                  <span className="flex items-center gap-1 text-sm">
-                    <FiFileText className="w-3.5 h-3.5" />
-                    N°{paiement.id_paiement}
-                  </span>
-                  <span className="text-gray-300 dark:text-gray-600">•</span>
-                  <span className="flex items-center gap-1 text-sm">
-                    <FiCreditCard className="w-3.5 h-3.5" />
-                    {paiement.mode}
-                  </span>
-                  <span className="text-gray-300 dark:text-gray-600">•</span>
-                  <span className="flex items-center gap-1 text-sm">
-                    <FiUser className="w-3.5 h-3.5" />
-                    {adherent
-                      ? `${adherent.nom} ${adherent.prenom}`
-                      : `N°${paiement.num_adherent}`}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={handleDownloadRecu}
-            disabled={downloading}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-xl transition-all duration-300 disabled:opacity-60"
-          >
-            <FiDownload className="w-4 h-4" />
-            Télécharger le reçu
-          </button>
-        </div>
-        {canManagePaiement && (
-        <div className="flex gap-2">
-          <Link
+        <FiDownload className="w-4 h-4" />
+      </button>
+      {canManagePaiement && (
+        <>
+          <ModalLink
             to={`/paiements/edit/${paiement.id_paiement}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
+            className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-colors"
+            title="Modifier"
           >
             <FiEdit className="w-4 h-4" />
-            Modifier
-          </Link>
+          </ModalLink>
           <button
+            type="button"
             onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
+            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+            title="Supprimer"
           >
             <FiTrash2 className="w-4 h-4" />
-            Supprimer
           </button>
-        </div>
-        )}
-      </motion.div>
+        </>
+      )}
+    </>
+  );
 
-      {/* Carte récapitulative */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${getStatutColor(paiement.statut)}`}
-      >
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Statut du paiement
-            </p>
-            <div className="flex items-center gap-4 mt-2">
-              <div
-                className={`p-3 rounded-full ${
-                  paiement.statut === "Confirmé"
-                    ? "bg-green-100 dark:bg-green-900/30"
-                    : paiement.statut === STATUT_PAIEMENT.ANNULE
-                      ? "bg-red-100 dark:bg-red-900/30"
-                      : paiement.statut === "Remboursé"
-                        ? "bg-blue-100 dark:bg-blue-900/30"
-                        : "bg-yellow-100 dark:bg-yellow-900/30"
-                }`}
-              >
-                <StatutIcon
-                  className={`w-7 h-7 ${
-                    paiement.statut === "Confirmé"
-                      ? "text-green-600 dark:text-green-400"
-                      : paiement.statut === STATUT_PAIEMENT.ANNULE
-                        ? "text-red-600 dark:text-red-400"
-                        : paiement.statut === "Remboursé"
-                          ? "text-blue-600 dark:text-blue-400"
-                          : "text-yellow-600 dark:text-yellow-400"
-                  }`}
-                />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {paiement.statut}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {getStatutText(paiement.statut)}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-8 flex-wrap">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {formatCurrency(paiement.montant)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Montant
-              </p>
-            </div>
-            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {paiement.mode}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Mode
-              </p>
-            </div>
-            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {formatDate(paiement.created_at)}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Date
-              </p>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Grille d'informations */}
-      <motion.div
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-      >
-        {/* Informations adhérent */}
-        <SectionCard title="Informations adhérent" icon={FiUser}>
-          <InfoItem
-            icon={FiUser}
-            label="Adhérent"
-            highlight
-            avatarUrl={photoUrl(adherent?.photo)}
-          >
-            {adherent ? (
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-white">
-                  {adherent.civilite} {adherent.nom} {adherent.prenom}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  N°{adherent.num_adherent}
-                </p>
+  if (isLoading || !paiement) {
+    return (
+      <DetailsModal
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        title={isLoading ? "Chargement…" : "Paiement non trouvé"}
+        icon={FiCreditCard}
+        pages={[
+          {
+            label: "",
+            content: isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <LoadingSpinner variant="details" />
               </div>
             ) : (
-              <p className="font-semibold text-gray-900 dark:text-white">
-                N°{paiement.num_adherent}
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">
+                Le paiement que vous recherchez n&apos;existe pas ou a été
+                supprimé.
               </p>
-            )}
-          </InfoItem>
-          {adherent && (
-            <>
+            ),
+          },
+        ]}
+      />
+    );
+  }
+
+  const pages = [
+    {
+      label: "Détails",
+      icon: FiCreditCard,
+      content: (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+          <div className="space-y-1">
+            <InfoItem
+              icon={FiUser}
+              label="Adhérent"
+              highlight
+              avatarUrl={photoUrl(adherent?.photo)}
+            >
+              {adherent ? (
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">
+                    {adherent.civilite} {adherent.nom} {adherent.prenom}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    N°{adherent.num_adherent}
+                  </p>
+                </div>
+              ) : (
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  N°{paiement.num_adherent}
+                </p>
+              )}
+            </InfoItem>
+            {adherent && (
               <InfoItem
                 icon={FiAward}
                 label="Niveau"
                 value={adherent.niveau || "Non défini"}
               />
-              <InfoItem
-                icon={FiCalendar}
-                label="Date d'adhésion"
-                value={formatDate(adherent.date_adhesion)}
-              />
-            </>
+            )}
+            <InfoItem
+              icon={FiDollarSign}
+              label="Montant"
+              value={formatCurrency(paiement.montant)}
+              highlight
+            />
+            <InfoItem
+              icon={FiCreditCard}
+              label="Mode de paiement"
+              value={paiement.mode}
+            />
+          </div>
+          <div className="space-y-1">
+            <InfoItem
+              icon={FiFileText}
+              label="Type de paiement"
+              value={paiement.type_paiement}
+            />
+            <InfoItem
+              icon={FiClock}
+              label="Statut"
+              value={<StatusBadge status={paiement.statut} />}
+            />
+            <InfoItem
+              icon={FiHash}
+              label="Référence"
+              value={paiement.reference_id || "Non renseignée"}
+            />
+            <InfoItem
+              icon={FiFileText}
+              label="Description"
+              value={paiement.description || "Non renseignée"}
+            />
+            <InfoItem
+              icon={FiCalendar}
+              label="Date du paiement"
+              value={formatDate(paiement.created_at)}
+            />
+          </div>
+          {peutEnregistrer && (
+            <div className="md:col-span-2 mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                Ce paiement de{" "}
+                <span className="font-semibold">
+                  {formatCurrency(paiement.montant)}
+                </span>{" "}
+                n&apos;est pas encore encaissé.
+              </p>
+              <button
+                type="button"
+                onClick={ouvrirEnregistrer}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
+              >
+                <FiCheck className="w-4 h-4" />
+                Enregistrer le paiement
+              </button>
+            </div>
           )}
-        </SectionCard>
+        </div>
+      ),
+    },
+  ];
 
-        {/* Informations paiement */}
-        <SectionCard title="Informations paiement" icon={FiCreditCard}>
-          <InfoItem
-            icon={FiDollarSign}
-            label="Montant"
-            value={formatCurrency(paiement.montant)}
-            highlight
-          />
-          <InfoItem
-            icon={FiCreditCard}
-            label="Mode de paiement"
-            value={paiement.mode}
-          />
-          <InfoItem
-            icon={FiFileText}
-            label="Type de paiement"
-            value={paiement.type_paiement}
-          />
-          <InfoItem
-            icon={FiClock}
-            label="Statut"
-            value={<StatusBadge status={paiement.statut} />}
-          />
-          <InfoItem
-            icon={FiHash}
-            label="Référence"
-            value={paiement.reference_id || "Non renseignée"}
-          />
-          <InfoItem
-            icon={FiFileText}
-            label="Description"
-            value={paiement.description || "Non renseignée"}
-          />
-          <InfoItem
-            icon={FiCalendar}
-            label="Date du paiement"
-            value={formatDate(paiement.created_at)}
-          />
-        </SectionCard>
-      </motion.div>
+  return (
+    <>
+      <DetailsModal
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        title={`Paiement ${paiement.type_paiement}`}
+        subtitle={`N°${paiement.id_paiement} • ${
+          adherent ? `${adherent.nom} ${adherent.prenom}` : `N°${paiement.num_adherent}`
+        }`}
+        icon={FiCreditCard}
+        headerExtra={headerExtra}
+        pages={pages}
+      />
 
       <ConfirmModal
         isOpen={showDeleteModal}
@@ -415,7 +305,118 @@ const PaiementDetails = () => {
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteModal(false)}
       />
-    </motion.div>
+
+      {showEnregistrer && (
+        <ModalOverlay
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50"
+          onClick={() => setShowEnregistrer(false)}
+        >
+          <form
+            onSubmit={handleEnregistrer}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-900 dark:text-white">
+                Enregistrer le paiement
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowEnregistrer(false)}
+                aria-label="Fermer"
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Vérifiez les informations, modifiez ce qui diffère du
+                règlement reçu, puis confirmez.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Montant reçu (€)</span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    required
+                    value={saisie.montant}
+                    onChange={(e) => setSaisie({ ...saisie, montant: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Mode de paiement</span>
+                  <select
+                    value={saisie.mode}
+                    onChange={(e) => setSaisie({ ...saisie, mode: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    {MODE_PAIEMENT_OPTIONS.map((mode) => (
+                      <option key={mode} value={mode}>
+                        {mode}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Date d&apos;encaissement</span>
+                  <input
+                    type="date"
+                    required
+                    value={saisie.date_paiement}
+                    onChange={(e) => setSaisie({ ...saisie, date_paiement: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Référence (n° chèque…)</span>
+                  <input
+                    type="text"
+                    maxLength={50}
+                    value={saisie.reference_id}
+                    onChange={(e) => setSaisie({ ...saisie, reference_id: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="px-5 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowEnregistrer(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={process.isLoading}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {process.isLoading ? (
+                  <FiRefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FiCheck className="w-4 h-4" />
+                )}
+                Confirmer l&apos;encaissement
+              </button>
+            </div>
+          </form>
+        </ModalOverlay>
+      )}
+
+      <PdfPreviewModal
+        isOpen={!!pdfPreview}
+        onClose={closePdfPreview}
+        blobUrl={pdfPreview?.blobUrl}
+        filename={pdfPreview?.filename}
+      />
+    </>
   );
 };
 

@@ -8,6 +8,12 @@ const palanqueeController = new PalanqueeController();
 const STAFF = ROLES.PRESIDENT_MONITEUR;
 
 router.get('/', AuthMiddleware.authenticate, palanqueeController.getAll.bind(palanqueeController));
+
+// Libellés seuls (id/nom/sortie/statut), sans composers — voir
+// PalanqueeService.getAllLight. Doit rester déclarée avant '/:id' pour ne
+// pas être avalée par cette dernière.
+router.get('/light', AuthMiddleware.authenticate, palanqueeController.getAllLight.bind(palanqueeController));
+
 router.get('/plongee/:id_plongee', AuthMiddleware.authenticate, palanqueeController.getByPlongee.bind(palanqueeController));
 router.get('/sortie/:id_sortie/stats', AuthMiddleware.authenticate, palanqueeController.getStatsBySortie.bind(palanqueeController));
 router.get('/sortie/:id_sortie', AuthMiddleware.authenticate, palanqueeController.getBySortie.bind(palanqueeController));

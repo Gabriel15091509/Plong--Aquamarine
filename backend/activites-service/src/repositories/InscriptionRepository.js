@@ -107,6 +107,42 @@ class InscriptionRepository {
     });
   }
 
+  // Sortie passée "En cours" (départ effectif) : les inscrits pas encore
+  // confirmés (En attente / Liste d'attente) n'ont plus vocation à
+  // embarquer — utilisé par SortieService.annulerInscriptionsNonConfirmees
+  // pour les annuler en bloc plutôt que de les laisser trainer, que la
+  // transition soit automatique (cron demarrerSortiesEchues) ou manuelle
+  // (formulaire de sortie). Bulk update direct (comme
+  // SortieRepository.demarrerSortiesEchues) : pas besoin de charger chaque
+  // ligne, ni de repasser par les hooks du modèle pour un simple champ
+  // statut.
+  async annulerNonConfirmeesBySortie(id_sortie) {
+    const [count] = await Inscription.update(
+      { statut: "Annulée", rang_liste_attente: null },
+      {
+        where: {
+          id_sortie,
+          statut: { [Op.in]: ["En attente", "Liste d'attente"] },
+        },
+      },
+    );
+    return count;
+  }
+
+  // Sortie replanifiée après une annulation météo (voir SortieService.
+  // replanifier) : la place n'est plus garantie à la nouvelle date, chaque
+  // inscription "Confirmée" repasse "En attente" avec reconfirmation_requise
+  // — seul cas où l'adhérent peut ensuite se reconfirmer lui-même (voir
+  // InscriptionService.confirmInscription). Bulk update direct, même motif
+  // qu'annulerNonConfirmeesBySortie ci-dessus.
+  async remettreEnAttenteConfirmeesBySortie(id_sortie) {
+    const [count] = await Inscription.update(
+      { statut: "En attente", date_confirmation: null, reconfirmation_requise: true },
+      { where: { id_sortie, statut: "Confirmée" } },
+    );
+    return count;
+  }
+
   async getWaitlistBySortie(id_sortie, transaction) {
     return await Inscription.findAll({
       where: {
@@ -115,6 +151,25 @@ class InscriptionRepository {
       },
       order: [["rang_liste_attente", "ASC"]],
       transaction,
+    });
+  }
+
+  // Nombre d'inscriptions "En attente" (badge Sidebar.jsx) : un simple COUNT,
+  // sans charger les lignes ni leur `.sortie` — voir InscriptionService.
+  // getPendingCount pour le pourquoi (findAll()+withAdherent() est bien trop
+  // coûteux rien que pour afficher un chiffre).
+  async countPending() {
+    return await Inscription.count({ where: { statut: "En attente" } });
+  }
+
+  // Inscriptions "En attente" avec leur sortie : sert au badge d'un moniteur,
+  // qui ne compte que celles de SES sorties (voir InscriptionService.
+  // getPendingCount) — le filtre par encadrant se fait sur le tableau
+  // Sortie.encadrants, en JS (peu de lignes "En attente").
+  async findPending() {
+    return await Inscription.findAll({
+      where: { statut: "En attente" },
+      include: [{ model: Sortie, as: "sortie" }],
     });
   }
 

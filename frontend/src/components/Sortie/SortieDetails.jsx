@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useLocation } from "react-router-dom";
+import ModalLink from "../Common/ModalLink";
 import ConfirmModal from "../Common/ConfirmModal";
 import {
   FiCalendar,
@@ -9,10 +9,8 @@ import {
   FiDroplet,
   FiClock,
   FiEdit,
-  FiArrowLeft,
   FiTag,
   FiAward,
-  FiFileText,
   FiAlertCircle,
   FiTrash2,
   FiInfo,
@@ -38,76 +36,47 @@ import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useAuth } from "../../context/AuthContext";
+import { useDetailsModal } from "../../hooks/useFormModal";
+import { useScrollToHash } from "../../hooks/useScrollToHash";
+import DetailsModal from "../Common/DetailsModal";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import StatusBadge from "../Common/StatusBadge";
-import SectionCard from "../Common/SectionCard";
 import InfoItem from "../Common/InfoItem";
+import Pagination from "../Common/Pagination";
 import PalanqueesManager from "../Palanquee/PalanqueesManager";
 import MaPalanqueeCard from "../Palanquee/MaPalanqueeCard";
+import SortiePhotos from "./SortiePhotos";
 import SortieRouteMap from "./SortieRouteMap";
 import {
   formatDateTime,
   getFinEstimeeSortie,
   sortieDoitEtreCloturee,
+  weatherCodeLabel,
 } from "../../utils/helpers";
 import { STATUT_SORTIE } from "../../utils/constants";
 
-// Animations
-const fadeInUp = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.25, ease: "easeOut" },
-};
-
-const staggerContainer = {
-  initial: { opacity: 0 },
-  animate: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.03,
-      delayChildren: 0.05,
-    },
-  },
-};
-
-const scaleIn = {
-  initial: { opacity: 0, scale: 0.98 },
-  animate: { opacity: 1, scale: 1 },
-  transition: { duration: 0.25, ease: "easeOut" },
-};
-
-// Table WMO simplifiée (codes utilisés par Open-Meteo) — voir
-// meteoClient.js côté backend pour les seuils de dangerosité associés.
-const WEATHER_CODE_LABELS = {
-  0: "Ciel dégagé",
-  1: "Peu nuageux",
-  2: "Partiellement nuageux",
-  3: "Couvert",
-  45: "Brouillard",
-  48: "Brouillard givrant",
-  51: "Bruine légère",
-  53: "Bruine",
-  55: "Bruine forte",
-  61: "Pluie légère",
-  63: "Pluie",
-  65: "Pluie forte",
-  80: "Averses légères",
-  81: "Averses",
-  82: "Averses violentes",
-  95: "Orage",
-  96: "Orage avec grêle",
-  99: "Orage violent avec grêle",
-};
-
-function weatherCodeLabel(code) {
-  if (code === null || code === undefined) return null;
-  return WEATHER_CODE_LABELS[code] || `Code météo ${code}`;
-}
-
+// Fiche sortie, modale par-dessus la liste (voir MoniteurDetails.jsx pour le
+// prototype d'origine et DetailsModal.jsx pour la coquille commune).
+// Plafonnée à 3 pages (voir DetailsModal.jsx), la plus riche des 15 fiches
+// à regrouper : "Vue d'ensemble" (infos + description), "Météo &
+// itinéraire" (prévision + carte, absente s'il n'y a pas de position) et
+// "Activité" (incidents + matériel + palanquées, les vraies sous-listes
+// avec leur propre gestion, empilées plutôt qu'étalées sur 3 pages à part).
+// Colonne de droite de "Vue d'ensemble" : rééquilibrée avec la gauche
+// (7 champs de chaque côté environ, au lieu de 3 à droite pour 10 à
+// gauche) et complétée par un aperçu météo (vent/houle/ciel) quand une
+// position existe — sinon elle restait nettement plus courte que la
+// gauche, avec tout cet espace perdu en dessous plutôt qu'utilisé.
 const SortieDetails = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { hasRole } = useAuth();
+  const modal = useDetailsModal("/sorties");
+  const { id } = modal;
+  // PlongeeDetails.jsx (lien "Voir les photos de la sortie") renvoie ici via
+  // `/sorties/:id#photos` — repris plus bas pour ouvrir directement sur la
+  // page "Activité" (qui contient les photos) plutôt que sur "Vue
+  // d'ensemble" — même mécanique que AdherentDetails.jsx + #materiel-attribue
+  // (voir DetailsModal.jsx, prop `initialPageIndex`).
+  const { hash } = useLocation();
+  const { user, hasRole } = useAuth();
   const canManageSortie = hasRole(["president", "moniteur"]);
   // La gestion du matériel (attribuer/retirer) reste réservée au président
   // partout ailleurs dans l'appli (canSeeMateriel dans Sidebar.jsx, route
@@ -116,25 +85,61 @@ const SortieDetails = () => {
   // matériel" plus bas, même si la liste du matériel déjà attribué reste
   // visible à tous en lecture seule.
   const canManageMateriel = hasRole(["president"]);
-  const { useGetById, useGetMeteo, useRemove, useUpdate } = useSorties();
+  const {
+    useGetById,
+    useGetMeteo,
+    useRemove,
+    useUpdate,
+    useAnnulerPourMeteo,
+    useGetPropositionsReprogrammation,
+    useReplanifier,
+  } = useSorties();
   const { useGetBySortie } = useIncidents();
   const { useGetBySortie: useGetAttributionsBySortie } = useAttributions();
   const { useGetAll: useGetAllMateriels } = useMateriels();
   const { useGetAll: useGetAllAdherents } = useAdherents();
   const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
   const { data, isLoading } = useGetById(id);
-  const { data: moniteursData } = useGetAllMoniteurs();
+  const { data: moniteursData } = useGetAllMoniteurs({}, { enabled: !!id });
   const { data: meteoData, isLoading: loadingMeteo } = useGetMeteo(id);
+  // N'interroge le backend que si la sortie est déjà annulée pour météo —
+  // route à part (voir SortieService.getPropositionsReprogrammation),
+  // inutile de la solliciter tant qu'on ne sait pas encore si elle sert.
+  const { data: propositionsData, isLoading: loadingPropositions } =
+    useGetPropositionsReprogrammation(id, {
+      enabled: !!meteoData?.data?.annuleePourMeteo,
+    });
   const { data: incidentsData } = useGetBySortie(id);
   const { data: attributionsData } = useGetAttributionsBySortie(id);
-  const { data: materielsData } = useGetAllMateriels();
-  const { data: adherentsData } = useGetAllAdherents();
+  const { data: materielsData } = useGetAllMateriels({}, { enabled: !!id });
+  const { data: adherentsData } = useGetAllAdherents({}, { enabled: !!id });
   const remove = useRemove();
   const update = useUpdate();
+  const annulerPourMeteo = useAnnulerPourMeteo();
+  const replanifier = useReplanifier();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAnnulerModal, setShowAnnulerModal] = useState(false);
+  const [showAnnulerMeteoModal, setShowAnnulerMeteoModal] = useState(false);
+  // Date choisie parmi les propositions (voir plus bas) en attente de
+  // confirmation — null tant qu'aucune n'a été cliquée.
+  const [replanifierModal, setReplanifierModal] = useState(null);
+  // Incidents/matériel attribué pour cette sortie : une sortie à forte
+  // participation peut en accumuler des dizaines (ex. matériel attribué à
+  // chaque inscrit) — pagination plutôt que tout afficher d'un coup (même
+  // principe que "Mon matériel attribué", ProfilePage.jsx).
+  const [incidentsPage, setIncidentsPage] = useState(1);
+  const [attributionsMaterielPage, setAttributionsMaterielPage] = useState(1);
+  const HISTORIQUE_PAR_PAGE = 4;
 
   const sortie = data?.data;
+  // Arrivée via #photos (voir plus haut) : sélectionner la bonne PAGE
+  // ("Activité") ne suffit pas — Incidents/Matériel/Palanquées passent
+  // avant Photos sur cette page, qui peut donc s'ouvrir hors champ si son
+  // contenu dépasse la hauteur visible de la modale — même hook que
+  // ProfilePage.jsx + #materiel-attribue pour le défilement fin.
+  useScrollToHash(!isLoading && !!sortie);
   const meteo = meteoData?.data;
+  const propositions = propositionsData?.data || [];
   const incidents = incidentsData?.data || [];
   const attributionsMateriel = attributionsData?.data || [];
   const materielMap = {};
@@ -147,11 +152,21 @@ const SortieDetails = () => {
   });
   const moniteurMap = {};
   moniteursData?.data?.forEach((m) => {
-    moniteurMap[m.id_moniteur] = m.user?.name || `Moniteur #${m.id_moniteur}`;
+    moniteurMap[m.id_moniteur] =
+      (m.user?.name || `Moniteur #${m.id_moniteur}`) +
+      (m.disponible === false ? " (indisponible)" : "");
   });
   const encadrantsNoms = (sortie?.encadrants || []).map(
     (idMoniteur) => moniteurMap[idMoniteur] || `Moniteur #${idMoniteur}`,
   );
+  // Parmi les encadrants désignés, ceux qui se sont depuis déclarés (ou ont
+  // été déclarés par le président) indisponibles — voir
+  // MoniteurAvailabilityToggle.jsx. N'a d'intérêt que tant que la sortie
+  // est encore modifiable ("Planifiée" : voir isVerrouillee plus bas), pour
+  // que le président pense à réaffecter avant le départ.
+  const encadrantsIndisponibles = (sortie?.encadrants || [])
+    .map((idMoniteur) => moniteursData?.data?.find((m) => m.id_moniteur === idMoniteur))
+    .filter((m) => m && m.disponible === false);
 
   // Durée estimée dépassée mais le statut n'a pas été mis à jour
   // manuellement : on alerte le staff pour qu'il clôture/annule. Basé sur
@@ -162,10 +177,31 @@ const SortieDetails = () => {
   // utils/helpers.js:sortieDoitEtreCloturee.
   const needsStatusUpdate = !!sortie && sortieDoitEtreCloturee(sortie);
   const finEstimee = sortie ? getFinEstimeeSortie(sortie) : null;
-  const isTerminee = sortie?.statut === STATUT_SORTIE.TERMINEE;
+  // Un incident se constate forcément PENDANT la sortie (en mer, sur site) —
+  // ni avant (rien ne s'est encore passé, sortie encore "Planifiée") ni
+  // après coup une fois "Terminée"/"Annulée".
+  const peutDeclarerIncident = sortie?.statut === STATUT_SORTIE.EN_COURS;
+  const raisonIncidentIndisponible =
+    sortie?.statut === STATUT_SORTIE.PLANIFIEE
+      ? "Sortie pas encore commencée : déclaration d'incident impossible"
+      : sortie?.statut === STATUT_SORTIE.ANNULEE
+        ? "Sortie annulée : déclaration d'incident impossible"
+        : "Sortie terminée : déclaration d'incident impossible";
+  // Même principe que l'incident ci-dessus : attribuer du matériel ou
+  // constituer une palanquée n'a de sens que pendant la sortie elle-même
+  // (le matériel part avec les plongeurs, les palanquées se forment sur les
+  // présents pointés) — ni avant (rien à équiper/pointer encore) ni après
+  // coup une fois "Terminée"/"Annulée".
+  const raisonActionEnCoursSeuleIndisponible = (action) =>
+    sortie?.statut === STATUT_SORTIE.PLANIFIEE
+      ? `Sortie pas encore commencée : ${action} impossible`
+      : sortie?.statut === STATUT_SORTIE.ANNULEE
+        ? `Sortie annulée : ${action} impossible`
+        : `Sortie terminée : ${action} impossible`;
   // Verrouillé côté serveur (SortieService.update/delete) dès que la sortie
   // a quitté "Planifiée" — pas seulement une fois "Terminée".
   const isVerrouillee = !!sortie && sortie.statut !== STATUT_SORTIE.PLANIFIEE;
+  const isEnCours = sortie?.statut === STATUT_SORTIE.EN_COURS;
 
   const handleChangeStatut = async (statut) => {
     try {
@@ -175,48 +211,150 @@ const SortieDetails = () => {
     }
   };
 
+  const handleAnnuler = async () => {
+    try {
+      await update.mutateAsync({ id, data: { statut: STATUT_SORTIE.ANNULEE } });
+      setShowAnnulerModal(false);
+    } catch (error) {
+      // Erreur déjà notifiée via toast par le hook useUpdate — modale
+      // laissée ouverte, même principe que handleAnnulerPourMeteo ci-dessous.
+    }
+  };
+
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      navigate("/sorties");
+      setShowDeleteModal(false);
+      modal.close();
     } catch (error) {
       // Erreur déjà notifiée via toast par le hook useRemove
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <LoadingSpinner variant="details" />
-      </div>
-    );
-  }
+  const handleAnnulerPourMeteo = async () => {
+    try {
+      await annulerPourMeteo.mutateAsync(id);
+      setShowAnnulerMeteoModal(false);
+    } catch (error) {
+      // Erreur déjà notifiée via toast par le hook useAnnulerPourMeteo
+    }
+  };
 
-  if (!sortie) {
-    return (
-      <motion.div
-        variants={scaleIn}
-        initial="initial"
-        animate="animate"
-        className="text-center py-16"
-      >
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800/50 mb-6">
-          <FiInfo className="w-10 h-10 text-gray-400" />
-        </div>
-        <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-          Sortie non trouvée
-        </h3>
-        <p className="text-gray-500 dark:text-gray-400">
-          La sortie que vous recherchez n'existe pas ou a été supprimée.
-        </p>
-        <button
-          onClick={() => navigate("/sorties")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
+  const handleReplanifier = async () => {
+    try {
+      await replanifier.mutateAsync({ id, data: { date_heure: replanifierModal } });
+      setReplanifierModal(null);
+    } catch (error) {
+      // Erreur déjà notifiée via toast par le hook useReplanifier — modale
+      // laissée ouverte (même principe que handleAnnulerPourMeteo ci-dessus).
+    }
+  };
+
+  // Actions de gestion de CETTE sortie (Déclarer un incident/Modifier/
+  // Supprimer, "À terminer"/"Annuler pour météo", constitution des
+  // palanquées) : réservées au président (accès total) ou au moniteur
+  // explicitement désigné encadrant ici (Sortie.encadrants) — un autre
+  // moniteur, staff du club mais non désigné sur CETTE sortie, ne les voit
+  // plus. Même correctif côté API (SortieService.assertCanManageSortie /
+  // IncidentService.assertCanDeclareIncident), donc pas seulement cosmétique
+  // — même correctif que SortiesPage.jsx:canManageCetteSortie.
+  const currentMoniteurId =
+    moniteursData?.data?.find((m) => m.user?.email === user?.email)
+      ?.id_moniteur || null;
+  const canManageCetteSortie =
+    !!sortie &&
+    canManageSortie &&
+    (user?.role === "president" ||
+      (currentMoniteurId != null &&
+        Array.isArray(sortie.encadrants) &&
+        sortie.encadrants.includes(currentMoniteurId)));
+
+  const headerExtra = sortie && canManageCetteSortie && (
+    <>
+      {!peutDeclarerIncident ? (
+        <span
+          className="p-2 text-gray-300 dark:text-gray-700 cursor-not-allowed"
+          title={`Déclarer un incident — ${raisonIncidentIndisponible}`}
         >
-          <FiArrowLeft className="w-4 h-4" />
-          Retour à la liste
+          <FiAlertTriangle className="w-4 h-4" />
+        </span>
+      ) : (
+        <ModalLink
+          to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
+          title="Déclarer un incident"
+          className="p-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition-colors"
+        >
+          <FiAlertTriangle className="w-4 h-4" />
+        </ModalLink>
+      )}
+      {isVerrouillee ? (
+        <span
+          className="p-2 text-gray-300 dark:text-gray-700 cursor-not-allowed"
+          title='Modifier — Cette sortie a quitté le statut "Planifiée" : modification impossible'
+        >
+          <FiEdit className="w-4 h-4" />
+        </span>
+      ) : (
+        <ModalLink
+          to={`/sorties/edit/${sortie.id_sortie}`}
+          title="Modifier"
+          className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-colors"
+        >
+          <FiEdit className="w-4 h-4" />
+        </ModalLink>
+      )}
+      {sortie.statut === STATUT_SORTIE.PLANIFIEE ? (
+        <button
+          onClick={() => setShowAnnulerModal(true)}
+          disabled={update.isPending}
+          title="Annuler la sortie"
+          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FiXCircle className="w-4 h-4" />
         </button>
-      </motion.div>
+      ) : isEnCours ? (
+        <span
+          className="p-2 text-gray-300 dark:text-gray-700 cursor-not-allowed"
+          title="Sortie en cours : ni annulation ni suppression possible"
+        >
+          <FiXCircle className="w-4 h-4" />
+        </span>
+      ) : (
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          disabled={remove.isPending}
+          title="Supprimer"
+          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FiTrash2 className="w-4 h-4" />
+        </button>
+      )}
+    </>
+  );
+
+  if (isLoading || !sortie) {
+    return (
+      <DetailsModal
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        title={isLoading ? "Chargement…" : "Sortie non trouvée"}
+        icon={FiAnchor}
+        pages={[
+          {
+            label: "",
+            content: isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <LoadingSpinner variant="details" />
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">
+                La sortie que vous recherchez n&apos;existe pas ou a été
+                supprimée.
+              </p>
+            ),
+          },
+        ]}
+      />
     );
   }
 
@@ -250,167 +388,80 @@ const SortieDetails = () => {
     return icons[statut] || FiCalendar;
   };
 
-  const getStatutText = (statut) => {
-    const texts = {
-      [STATUT_SORTIE.PLANIFIEE]: "La sortie est planifiée et en attente",
-      [STATUT_SORTIE.EN_COURS]: "La sortie est en cours",
-      Confirmée: "La sortie est confirmée et prête",
-      [STATUT_SORTIE.ANNULEE]: "La sortie a été annulée",
-      [STATUT_SORTIE.TERMINEE]: "La sortie est terminée",
-      Reportée: "La sortie a été reportée à une date ultérieure",
-    };
-    return texts[statut] || "Statut inconnu";
-  };
-
   const StatutIcon = getStatutIcon(sortie.statut);
+  const hasPosition = sortie.latitude != null && sortie.longitude != null;
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6 px-4"
-    >
-      {/* En-tête */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-      >
-        <div className="flex items-center gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
-                <FiAnchor className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-              </span>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                  {sortie.type}{" "}
-                  <span className="text-cyan-600 dark:text-cyan-400">
-                    - {sortie.lieu}
-                  </span>
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
-                  <span className="flex items-center gap-1 text-sm">
-                    <FiFileText className="w-3.5 h-3.5" />
-                    N°{sortie.id_sortie}
-                  </span>
-                  <span className="text-gray-300 dark:text-gray-600">•</span>
-                  <span className="flex items-center gap-1 text-sm">
-                    <FiMapPin className="w-3.5 h-3.5" />
-                    {sortie.site}
-                  </span>
-                  <span className="text-gray-300 dark:text-gray-600">•</span>
-                  <span className="flex items-center gap-1 text-sm">
-                    <FiCalendar className="w-3.5 h-3.5" />
-                    {formatDateTime(sortie.date_heure)}
-                  </span>
+  const pages = [
+    {
+      label: "Vue d'ensemble",
+      icon: FiInfo,
+      content: (
+        <div className="space-y-3">
+          {sortie.statut === STATUT_SORTIE.PLANIFIEE &&
+            encadrantsIndisponibles.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-2.5">
+                <div className="flex items-center gap-2">
+                  <FiAlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                    {encadrantsIndisponibles.length === 1
+                      ? `${encadrantsIndisponibles[0].user?.name || "Un encadrant désigné"} est indisponible`
+                      : `${encadrantsIndisponibles.length} encadrants désignés sont indisponibles`}
+                    {" — "}
+                    {encadrantsIndisponibles
+                      .map((m) => m.cause_indisponibilite)
+                      .filter(Boolean)
+                      .join(" · ") || "choisissez un autre encadrant disponible."}
+                  </p>
+                </div>
+                {canManageCetteSortie && (
+                  <ModalLink
+                    to={`/sorties/edit/${sortie.id_sortie}`}
+                    className="flex-shrink-0 px-3 py-1.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                  >
+                    Changer d&apos;encadrant
+                  </ModalLink>
+                )}
+              </div>
+            )}
+
+          {needsStatusUpdate && canManageCetteSortie && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-2.5">
+              <div className="flex items-center gap-2">
+                <FiAlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  Durée estimée dépassée (fin prévue vers{" "}
+                  {formatDateTime(finEstimee)}), statut toujours «{" "}
+                  {sortie.statut} ».
                 </p>
               </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={() => handleChangeStatut("Terminée")}
+                  disabled={update.isPending}
+                  className="px-3 py-1.5 text-sm font-semibold text-white bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Marquer terminée
+                </button>
+                {sortie.statut === STATUT_SORTIE.PLANIFIEE && (
+                  <button
+                    onClick={() => handleChangeStatut("Annulée")}
+                    disabled={update.isPending}
+                    className="px-3 py-1.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Annuler
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
-        {canManageSortie && (
-          // flex-col sur mobile (empilés, pleine largeur) : 3 boutons avec
-          // libellé complet en px-5 dans un simple flex gap-2 débordaient
-          // hors de l'écran sur mobile (pas de flex-wrap, pas de largeur
-          // contrainte) — sm:flex-row remet la rangée horizontale dès que
-          // la largeur le permet.
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            {isTerminee ? (
-              <span
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed w-full sm:w-auto"
-                title="Sortie terminée : déclaration d'incident impossible"
-              >
-                <FiAlertTriangle className="w-4 h-4" />
-                Déclarer un incident
-              </span>
-            ) : (
-              <Link
-                to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150 w-full sm:w-auto"
-              >
-                <FiAlertTriangle className="w-4 h-4" />
-                Déclarer un incident
-              </Link>
-            )}
-            {isVerrouillee ? (
-              <span
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-400 dark:text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-not-allowed w-full sm:w-auto"
-                title='Cette sortie a quitté le statut "Planifiée" : modification impossible'
-              >
-                <FiEdit className="w-4 h-4" />
-                Modifier
-              </span>
-            ) : (
-              <Link
-                to={`/sorties/edit/${sortie.id_sortie}`}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150 w-full sm:w-auto"
-              >
-                <FiEdit className="w-4 h-4" />
-                Modifier
-              </Link>
-            )}
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              disabled={isVerrouillee}
-              title={isVerrouillee ? 'Cette sortie a quitté le statut "Planifiée" : suppression impossible' : undefined}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-            >
-              <FiTrash2 className="w-4 h-4" />
-              Supprimer
-            </button>
-          </div>
-        )}
-      </motion.div>
+          )}
 
-      {/* Alerte : la date est passée mais le statut n'a pas été mis à jour */}
-      {needsStatusUpdate && canManageSortie && (
-        <motion.div
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 p-4"
-        >
-          <div className="flex items-center gap-3">
-            <FiAlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-              La durée estimée de cette sortie est dépassée (fin prévue vers{" "}
-              {formatDateTime(finEstimee)}) mais son statut est toujours «{" "}
-              {sortie.statut} ». Pensez à le mettre à jour.
-            </p>
-          </div>
-          <div className="flex gap-2 w-full sm:w-auto sm:flex-shrink-0">
-            <button
-              onClick={() => handleChangeStatut("Terminée")}
-              disabled={update.isPending}
-              className="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold text-white bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
-            >
-              Marquer terminée
-            </button>
-            <button
-              onClick={() => handleChangeStatut("Annulée")}
-              disabled={update.isPending}
-              className="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
-            >
-              Annuler
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Carte récapitulative */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${getStatutColor(sortie.statut)}`}
-      >
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-              Statut de la sortie
-            </p>
-            <div className="flex items-center gap-4 mt-2">
+          {/* Bandeau statut, compact */}
+          <div
+            className={`rounded-xl p-2.5 border flex items-center justify-between gap-3 flex-wrap ${getStatutColor(sortie.statut)}`}
+          >
+            <div className="flex items-center gap-3">
               <div
-                className={`p-3 rounded-full ${
+                className={`p-2 rounded-full ${
                   sortie.statut === "Confirmée"
                     ? "bg-green-100 dark:bg-green-900/30"
                     : sortie.statut === STATUT_SORTIE.ANNULEE
@@ -423,7 +474,7 @@ const SortieDetails = () => {
                 }`}
               >
                 <StatutIcon
-                  className={`w-7 h-7 ${
+                  className={`w-5 h-5 ${
                     sortie.statut === "Confirmée"
                       ? "text-green-600 dark:text-green-400"
                       : sortie.statut === STATUT_SORTIE.ANNULEE
@@ -437,179 +488,270 @@ const SortieDetails = () => {
                 />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="font-bold text-gray-900 dark:text-white">
                   {sortie.statut}
                 </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {getStatutText(sortie.statut)}
-                </p>
-                {/* Renseigné automatiquement par SortieService.
-                    verifierMeteoEtAnnulerSiDangereux — vide pour une
-                    annulation manuelle. */}
                 {sortie.statut === STATUT_SORTIE.ANNULEE && sortie.motif_annulation && (
-                  <p className="text-sm text-red-600 dark:text-red-400 mt-1 max-w-md">
+                  <p className="text-xs text-red-600 dark:text-red-400">
                     {sortie.motif_annulation}
                   </p>
                 )}
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-8 flex-wrap">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                {sortie.nb_places}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Places
-              </p>
-            </div>
-            <div className="w-px h-12 bg-gray-200 dark:bg-gray-700 hidden sm:block" />
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {sortie.profondeur_max}m
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Profondeur max
-              </p>
+            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+              <span>{sortie.nb_places} places</span>
+              <span>{sortie.profondeur_max}m max</span>
             </div>
           </div>
-        </div>
-      </motion.div>
 
-      {/* Grille d'informations */}
-      <motion.div
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-      >
-        {/* Informations générales */}
-        <SectionCard title="Informations générales" icon={FiInfo}>
-          <InfoItem
-            icon={FiTag}
-            label="Type de sortie"
-            value={sortie.type}
-            highlight
-          />
-          <InfoItem
-            icon={FiCalendar}
-            label="Date et heure"
-            value={formatDateTime(sortie.date_heure)}
-          />
-          <InfoItem icon={FiMapPin} label="Lieu" value={sortie.lieu} />
-          <InfoItem icon={FiMapPin} label="Site" value={sortie.site} />
-          <InfoItem
-            icon={FiAward}
-            label="Niveau requis"
-            value={sortie.niveau_requis || "Tous niveaux"}
-          />
-          <InfoItem
-            icon={FiUsers}
-            label="Nombre de places"
-            value={`${sortie.nb_places} places`}
-          />
-          <InfoItem
-            icon={FiDroplet}
-            label="Profondeur max"
-            value={`${sortie.profondeur_max} mètres`}
-          />
-          <InfoItem
-            icon={FiClock}
-            label="Durée estimée"
-            value={sortie.duree_estimee || "Non définie"}
-          />
-          <InfoItem
-            icon={FiTag}
-            label="Tarif adhérent"
-            value={
-              Number(sortie.tarif_adherent) > 0
-                ? `${Number(sortie.tarif_adherent).toFixed(2)} €`
-                : "Gratuit"
-            }
-          />
-          {sortie.tarif_non_adherent != null && (
-            <InfoItem
-              icon={FiTag}
-              label="Tarif non-adhérent"
-              value={`${Number(sortie.tarif_non_adherent).toFixed(2)} €`}
-            />
-          )}
-          <InfoItem
-            icon={FiUserCheck}
-            label="Encadrants désignés"
-            value={
-              encadrantsNoms.length > 0
-                ? encadrantsNoms.join(", ")
-                : "Aucun encadrant désigné pour l'instant"
-            }
-          />
-        </SectionCard>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+            <div className="space-y-1">
+              <InfoItem
+                icon={FiTag}
+                label="Type de sortie"
+                value={sortie.type}
+                highlight
+              />
+              <InfoItem
+                icon={FiCalendar}
+                label="Date et heure"
+                value={formatDateTime(sortie.date_heure)}
+              />
+              <InfoItem icon={FiMapPin} label="Lieu" value={sortie.lieu} />
+              <InfoItem icon={FiMapPin} label="Site" value={sortie.site} />
+              <InfoItem
+                icon={FiAward}
+                label="Niveau requis"
+                value={sortie.niveau_requis || "Tous niveaux"}
+              />
+              <InfoItem
+                icon={FiUsers}
+                label="Nombre de places"
+                value={`${sortie.nb_places} places`}
+              />
+              <InfoItem
+                icon={FiDroplet}
+                label="Profondeur max"
+                value={`${sortie.profondeur_max} mètres`}
+              />
+            </div>
+            {/* Colonne de droite : le reste des champs, puis un aperçu météo
+                (voir plus bas) quand une position est renseignée — plutôt
+                que de la laisser bien plus courte que la colonne de gauche
+                (espace gaspillé en dessous). */}
+            <div className="space-y-1">
+              <InfoItem
+                icon={FiCalendar}
+                label="Ouverture des inscriptions"
+                value={formatDateTime(sortie.date_ouverture_inscriptions)}
+                highlight
+              />
+              <InfoItem
+                icon={FiAward}
+                label="Statut"
+                value={<StatusBadge status={sortie.statut} />}
+              />
+              <InfoItem
+                icon={FiBarChart2}
+                label="Places disponibles"
+                value={
+                  <span className="font-semibold">
+                    {sortie.places_disponibles ?? sortie.nb_places} /{" "}
+                    {sortie.nb_places} places
+                    {sortie.places_disponibles === 0 && (
+                      <span className="text-orange-600 dark:text-orange-400 font-medium ml-1">
+                        (Complet)
+                      </span>
+                    )}
+                  </span>
+                }
+              />
+              <InfoItem
+                icon={FiClock}
+                label="Durée estimée"
+                value={sortie.duree_estimee || "Non définie"}
+              />
+              <InfoItem
+                icon={FiTag}
+                label="Tarif adhérent"
+                value={
+                  Number(sortie.tarif_adherent) > 0
+                    ? `${Number(sortie.tarif_adherent).toFixed(2)} €`
+                    : "Gratuit"
+                }
+              />
+              {sortie.tarif_non_adherent != null && (
+                <InfoItem
+                  icon={FiTag}
+                  label="Tarif non-adhérent"
+                  value={`${Number(sortie.tarif_non_adherent).toFixed(2)} €`}
+                />
+              )}
+              <InfoItem
+                icon={FiUserCheck}
+                label="Encadrants désignés"
+                value={
+                  encadrantsNoms.length > 0
+                    ? encadrantsNoms.join(", ")
+                    : "Aucun encadrant désigné pour l'instant"
+                }
+              />
+            </div>
+          </div>
 
-        {/* Prévision météo — voir SortieService.getPrevisionMeteo. Card
-            affichée seulement si une position (latitude/longitude) a été
-            renseignée pour cette sortie (sinon rien à prévoir). */}
-        {sortie.latitude != null && sortie.longitude != null && (
-          <SectionCard
-            title={meteo?.forecast?.historique ? "Météo observée" : "Prévision météo"}
-            icon={FiWind}
-            headerExtra={
-              meteo?.disponible ? (
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                    meteo.dangereux
-                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  }`}
-                >
-                  {meteo.dangereux ? (
-                    <FiAlertTriangle className="w-3.5 h-3.5" />
-                  ) : (
-                    <FiCheckCircle className="w-3.5 h-3.5" />
-                  )}
-                  {meteo.annuleePourMeteo
-                    ? "Annulée pour météo"
-                    : meteo.dangereux
-                      ? meteo.forecast?.historique
-                        ? "Conditions dégradées"
-                        : "Conditions dangereuses"
-                      : "Conditions favorables"}
-                </span>
-              ) : null
-            }
-          >
-            {loadingMeteo ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500 px-4 py-2">
-                Chargement de la prévision…
-              </p>
-            ) : !meteo?.disponible ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 px-4 py-2 flex items-start gap-2">
-                <FiInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                {meteo?.raison || "Prévision météo indisponible."}
-              </p>
-            ) : meteo.annuleePourMeteo ? (
-              // Sortie annulée pour météo : on n'affiche plus les valeurs
-              // chiffrées (vent/houle/ciel) recalculées en direct — elles ont
-              // pu évoluer depuis la décision et contrediraient visuellement
-              // le motif d'annulation, qui seul fait foi ici.
-              <div className="px-4 py-2 space-y-3">
-                <p className="text-sm text-gray-500 dark:text-gray-400 flex items-start gap-2">
-                  <FiInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  Motif enregistré au moment de l&apos;annulation automatique.
-                  Les valeurs météo ont pu évoluer depuis : elles ne sont plus
-                  affichées ici pour éviter toute confusion.
-                </p>
-                {meteo.motifs?.length > 0 && (
-                  <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
-                    <ul className="text-sm text-red-700 dark:text-red-400 list-disc list-inside space-y-0.5">
-                      {meteo.motifs.map((motif) => (
-                        <li key={motif}>{motif}</li>
-                      ))}
-                    </ul>
+          {/* Description — fusionnée ici (plutôt qu'une page à part) pour
+              rester sous la limite de 3 pages (voir DetailsModal.jsx). */}
+          {(sortie.description_site || sortie.condition_affectation) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {sortie.description_site && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                    Description du site
+                  </p>
+                  <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
+                      {sortie.description_site}
+                    </p>
                   </div>
-                )}
-              </div>
-            ) : (
-              <>
+                </div>
+              )}
+              {sortie.condition_affectation && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                    Conditions d&apos;affectation
+                  </p>
+                  <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
+                      {sortie.condition_affectation}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  if (hasPosition) {
+    pages.push({
+      label: meteo?.forecast?.historique ? "Météo observée" : "Prévision météo",
+      icon: FiWind,
+      content: (
+        <div className="space-y-3">
+          {meteo?.disponible && (
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                meteo.dangereux
+                  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+              }`}
+            >
+              {meteo.dangereux ? (
+                <FiAlertTriangle className="w-3.5 h-3.5" />
+              ) : (
+                <FiCheckCircle className="w-3.5 h-3.5" />
+              )}
+              {meteo.annuleePourMeteo
+                ? "Annulée pour météo"
+                : meteo.dangereux
+                  ? meteo.forecast?.historique
+                    ? "Conditions dégradées"
+                    : "Conditions dangereuses"
+                  : "Conditions favorables"}
+            </span>
+          )}
+
+          {loadingMeteo ? (
+            <p className="text-sm text-gray-400 dark:text-gray-500 py-2">
+              Chargement de la prévision…
+            </p>
+          ) : !meteo?.disponible ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 py-2 flex items-start gap-2">
+              <FiInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              {meteo?.raison || "Prévision météo indisponible."}
+            </p>
+          ) : meteo.annuleePourMeteo ? (
+            // Sortie annulée pour météo : on n'affiche plus les valeurs
+            // chiffrées (vent/houle/ciel) recalculées en direct — elles ont
+            // pu évoluer depuis la décision et contrediraient visuellement
+            // le motif d'annulation, qui seul fait foi ici.
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500 dark:text-gray-400 flex items-start gap-2">
+                <FiInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                Motif enregistré au moment de l&apos;annulation automatique.
+                Les valeurs météo ont pu évoluer depuis : elles ne sont plus
+                affichées ici pour éviter toute confusion.
+              </p>
+              {meteo.motifs?.length > 0 && (
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
+                  <ul className="text-sm text-red-700 dark:text-red-400 list-disc list-inside space-y-0.5">
+                    {meteo.motifs.map((motif) => (
+                      <li key={motif}>{motif}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {/* Dates de repli (voir SortieService.
+                  getPropositionsReprogrammation) — jusque-là seulement
+                  envoyées par email à l'organisateur, ici sélectionnables
+                  directement pour replanifier sans recréer la sortie à la
+                  main. Réservé à qui peut gérer cette sortie (même garde
+                  que "Annuler pour météo" ci-dessous). */}
+              {canManageCetteSortie && (
+                <div className="pt-1">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                    <FiCalendar className="w-4 h-4" />
+                    Dates alternatives pour replanifier
+                  </p>
+                  {loadingPropositions ? (
+                    <p className="text-sm text-gray-400 dark:text-gray-500">
+                      Recherche de créneaux disponibles…
+                    </p>
+                  ) : propositions.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Aucun créneau libre trouvé automatiquement dans les 3
+                      prochaines semaines (chaque proposition évite tout
+                      chevauchement avec une autre sortie déjà planifiée).
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {propositions.map((proposition) => (
+                        <button
+                          key={proposition.date_heure}
+                          onClick={() => setReplanifierModal(proposition.date_heure)}
+                          disabled={replanifier.isPending}
+                          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span
+                            title={
+                              !proposition.meteo
+                                ? "Météo pas encore prévisible pour cette date"
+                                : proposition.meteo.dangereux
+                                  ? "Conditions déjà jugées dangereuses pour cette date"
+                                  : "Conditions favorables"
+                            }
+                          >
+                            {!proposition.meteo ? (
+                              <FiInfo className="w-4 h-4 text-gray-400" />
+                            ) : proposition.meteo.dangereux ? (
+                              <FiAlertTriangle className="w-4 h-4 text-red-500" />
+                            ) : (
+                              <FiCheckCircle className="w-4 h-4 text-green-500" />
+                            )}
+                          </span>
+                          {formatDateTime(proposition.date_heure)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
                 <InfoItem
                   icon={FiWind}
                   label="Vent max"
@@ -646,272 +788,273 @@ const SortieDetails = () => {
                       : "Non disponible"
                   }
                 />
-                {meteo.dangereux && meteo.motifs?.length > 0 && (
-                  <div className="mt-2 mx-4 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
-                    <ul className="text-sm text-red-700 dark:text-red-400 list-disc list-inside space-y-0.5">
-                      {meteo.motifs.map((motif) => (
-                        <li key={motif}>{motif}</li>
-                      ))}
-                    </ul>
-                  </div>
+              </div>
+              {meteo.dangereux && meteo.motifs?.length > 0 && (
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
+                  <ul className="text-sm text-red-700 dark:text-red-400 list-disc list-inside space-y-0.5">
+                    {meteo.motifs.map((motif) => (
+                      <li key={motif}>{motif}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {/* Décision humaine réservée au président/moniteur — voir
+                  SortieService.annulerPourMeteo. Le cron ne fait qu'alerter
+                  à J-1 (aucune annulation automatique aussi proche du
+                  départ) : c'est ce bouton qui couvre la décision. */}
+              {meteo.dangereux &&
+                canManageCetteSortie &&
+                sortie.statut === STATUT_SORTIE.PLANIFIEE && (
+                  <button
+                    onClick={() => setShowAnnulerMeteoModal(true)}
+                    disabled={annulerPourMeteo.isPending}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150 disabled:opacity-50"
+                  >
+                    <FiXCircle className="w-4 h-4" />
+                    Annuler pour cause météorologique
+                  </button>
                 )}
-              </>
+            </>
+          )}
+
+          {/* Itinéraire — fusionné avec la météo sur une même page (plutôt
+              qu'une page à part) pour rester sous la limite de 3 pages
+              (voir DetailsModal.jsx). */}
+          <div className="pt-1">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5 flex items-center gap-2">
+              <FiMap className="w-3.5 h-3.5" />
+              Itinéraire
+            </p>
+            <SortieRouteMap
+              siteLat={Number(sortie.latitude)}
+              siteLng={Number(sortie.longitude)}
+              siteName={sortie.site}
+            />
+          </div>
+        </div>
+      ),
+    });
+  }
+
+  // Incidents + Matériel + Palanquées : trois vraies sous-listes avec leur
+  // propre gestion, empilées sur une même page plutôt qu'étalées sur 3
+  // pages à part pour rester sous la limite de 3 pages (voir
+  // DetailsModal.jsx).
+  pages.push({
+    label: "Activité",
+    icon: FiActivity,
+    content: (
+      <div className="space-y-4">
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 flex items-center gap-2">
+              <FiAlertTriangle className="w-3.5 h-3.5" />
+              Incidents ({incidents.length})
+            </p>
+            {!peutDeclarerIncident ? (
+              <span
+                className="text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                title={raisonIncidentIndisponible}
+              >
+                + Déclarer un incident
+              </span>
+            ) : (
+              <ModalLink
+                to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
+                className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
+              >
+                + Déclarer un incident
+              </ModalLink>
             )}
-          </SectionCard>
-        )}
-
-        {/* Informations inscription */}
-        <SectionCard title="Inscription" icon={FiUsers}>
-          <InfoItem
-            icon={FiCalendar}
-            label="Ouverture des inscriptions"
-            value={formatDateTime(sortie.date_ouverture_inscriptions)}
-            highlight
-          />
-          <InfoItem
-            icon={FiAward}
-            label="Statut"
-            value={<StatusBadge status={sortie.statut} />}
-          />
-          <InfoItem
-            icon={FiBarChart2}
-            label="Places disponibles"
-            value={
-              <span className="font-semibold">
-                {sortie.places_disponibles ?? sortie.nb_places} /{" "}
-                {sortie.nb_places} places
-                {sortie.places_disponibles === 0 && (
-                  <span className="text-orange-600 dark:text-orange-400 font-medium ml-1">
-                    (Complet)
-                  </span>
-                )}
-              </span>
-            }
-          />
-        </SectionCard>
-      </motion.div>
-
-      {/* Localisation & itinéraire */}
-      {sortie.latitude != null && sortie.longitude != null && (
-        <motion.div
-          variants={fadeInUp}
-          initial="initial"
-          animate="animate"
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
-        >
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
-              <FiMap className="w-5 h-5" />
-            </span>
-            Localisation & itinéraire
-          </h3>
-          <SortieRouteMap
-            siteLat={Number(sortie.latitude)}
-            siteLng={Number(sortie.longitude)}
-            siteName={sortie.site}
-          />
-        </motion.div>
-      )}
-
-      {/* Sections supplémentaires */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {sortie.description_site && (
-          <motion.div
-            variants={fadeInUp}
-            initial="initial"
-            animate="animate"
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
-          >
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-              <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
-                <FiFileText className="w-5 h-5" />
-              </span>
-              Description du site
-            </h3>
-            <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                {sortie.description_site}
-              </p>
-            </div>
-          </motion.div>
-        )}
-
-        {sortie.condition_affectation && (
-          <motion.div
-            variants={fadeInUp}
-            initial="initial"
-            animate="animate"
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
-          >
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-              <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
-                <FiAlertCircle className="w-5 h-5" />
-              </span>
-              Conditions d'affectation
-            </h3>
-            <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                {sortie.condition_affectation}
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Incidents liés à cette sortie */}
-      <motion.div
-        variants={fadeInUp}
-        initial="initial"
-        animate="animate"
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400">
-              <FiAlertTriangle className="w-5 h-5" />
-            </span>
-            Incidents ({incidents.length})
-          </h3>
-          {isTerminee ? (
-            <span
-              className="text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"
-              title="Sortie terminée : déclaration d'incident impossible"
-            >
-              + Déclarer un incident
-            </span>
+          </div>
+          {incidents.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Aucun incident déclaré pour cette sortie.
+            </p>
           ) : (
-            <Link
-              to={`/incidents/create?id_sortie=${sortie.id_sortie}`}
-              className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
-            >
-              + Déclarer un incident
-            </Link>
+            // Grille (plutôt qu'empilé sur toute la largeur) : chaque carte
+            // n'a que 2 courtes lignes de texte + un badge, un `flex
+            // justify-between` sur toute la largeur de la modale laissait
+            // un grand vide entre les deux (voir DetailsModal.jsx).
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {incidents
+                  .slice(
+                    (incidentsPage - 1) * HISTORIQUE_PAR_PAGE,
+                    incidentsPage * HISTORIQUE_PAR_PAGE,
+                  )
+                  .map((incident) => (
+                    <ModalLink
+                      key={incident.id_incident}
+                      to={`/incidents/${incident.id_incident}`}
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 dark:text-white truncate">
+                          {incident.type}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
+                          {incident.description}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${
+                          incident.cloture
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        }`}
+                      >
+                        {incident.cloture ? "Clôturé" : "Non clôturé"}
+                      </span>
+                    </ModalLink>
+                  ))}
+              </div>
+              <Pagination
+                currentPage={incidentsPage}
+                totalPages={Math.ceil(incidents.length / HISTORIQUE_PAR_PAGE)}
+                onPageChange={setIncidentsPage}
+                scrollToTop={false}
+              />
+            </>
           )}
         </div>
-        {incidents.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Aucun incident déclaré pour cette sortie.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {incidents.map((incident) => (
-              <Link
-                key={incident.id_incident}
-                to={`/incidents/${incident.id_incident}`}
-                className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
-              >
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {incident.type}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
-                    {incident.description}
-                  </p>
-                </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 flex items-center gap-2">
+              <FiPackage className="w-3.5 h-3.5" />
+              Matériel ({attributionsMateriel.length})
+            </p>
+            {canManageMateriel &&
+              (!isEnCours ? (
                 <span
-                  className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                    incident.cloture
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                  }`}
+                  className="text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"
+                  title={raisonActionEnCoursSeuleIndisponible("l'attribution de matériel")}
                 >
-                  {incident.cloture ? "Clôturé" : "Non clôturé"}
+                  + Attribuer du matériel
                 </span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </motion.div>
-
-      {/* Matériel attribué : check-list de départ/retour (CDC 3.4.3) */}
-      <motion.div
-        variants={fadeInUp}
-        initial="initial"
-        animate="animate"
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100/80 dark:border-gray-800/80 p-6"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
-              <FiPackage className="w-5 h-5" />
-            </span>
-            Matériel attribué ({attributionsMateriel.length})
-          </h3>
-          {canManageMateriel && (isTerminee ? (
-            <span
-              className="text-sm font-medium text-gray-400 dark:text-gray-600 cursor-not-allowed"
-              title="Sortie terminée : attribution de matériel impossible"
-            >
-              + Attribuer du matériel
-            </span>
-          ) : (
-            <Link
-              to={`/attributions/create?id_sortie=${sortie.id_sortie}`}
-              className="text-sm font-medium text-cyan-600 dark:text-cyan-400 hover:underline"
-            >
-              + Attribuer du matériel
-            </Link>
-          ))}
-        </div>
-        {attributionsMateriel.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Aucun matériel attribué pour cette sortie.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {attributionsMateriel.map((attribution) => {
-              const rendu = !!attribution.date_retour_reel;
-              return (
-                <Link
-                  key={attribution.id_attribution}
-                  to={`/attributions/${attribution.id_attribution}`}
-                  className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+              ) : (
+                <ModalLink
+                  to={`/attributions/create?id_sortie=${sortie.id_sortie}`}
+                  className="text-sm font-medium text-cyan-600 dark:text-cyan-400 hover:underline"
                 >
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {materielMap[attribution.num_inventaire] || `Matériel #${attribution.num_inventaire}`}
-                      {" → "}
-                      {adherentMap[attribution.num_adherent] || `Adhérent #${attribution.num_adherent}`}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Départ : {attribution.etat_depart}
-                      {rendu && ` • Retour : ${attribution.etat_retour}`}
-                      {attribution.constat_deterioration && " • Détérioration constatée"}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                      rendu
-                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                    }`}
-                  >
-                    {rendu ? "Rendu" : "En cours"}
-                  </span>
-                </Link>
-              );
-            })}
+                  + Attribuer du matériel
+                </ModalLink>
+              ))}
           </div>
-        )}
-      </motion.div>
+          {attributionsMateriel.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Aucun matériel attribué pour cette sortie.
+            </p>
+          ) : (
+            // Même grille que les incidents ci-dessus (voir commentaire).
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {attributionsMateriel
+                  .slice(
+                    (attributionsMaterielPage - 1) * HISTORIQUE_PAR_PAGE,
+                    attributionsMaterielPage * HISTORIQUE_PAR_PAGE,
+                  )
+                  .map((attribution) => {
+                    const rendu = !!attribution.date_retour_reel;
+                    return (
+                      <ModalLink
+                        key={attribution.id_attribution}
+                        to={`/attributions/${attribution.id_attribution}`}
+                        className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-gray-900 dark:text-white truncate">
+                            {materielMap[attribution.num_inventaire] || `Matériel #${attribution.num_inventaire}`}
+                            {" → "}
+                            {adherentMap[attribution.num_adherent] || `Adhérent #${attribution.num_adherent}`}
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                            Départ : {attribution.etat_depart}
+                            {rendu && ` • Retour : ${attribution.etat_retour}`}
+                            {attribution.constat_deterioration && " • Détérioration constatée"}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${
+                            rendu
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                          }`}
+                        >
+                          {rendu ? "Rendu" : "En cours"}
+                        </span>
+                      </ModalLink>
+                    );
+                  })}
+              </div>
+              <Pagination
+                currentPage={attributionsMaterielPage}
+                totalPages={Math.ceil(
+                  attributionsMateriel.length / HISTORIQUE_PAR_PAGE,
+                )}
+                onPageChange={setAttributionsMaterielPage}
+                scrollToTop={false}
+              />
+            </>
+          )}
+        </div>
 
-      {/* Constitution des palanquées (moniteur / président) */}
-      {canManageSortie && (
-        <motion.div variants={fadeInUp} initial="initial" animate="animate">
-          <PalanqueesManager sortie={sortie} />
-        </motion.div>
-      )}
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5 flex items-center gap-2">
+            <FiUsers className="w-3.5 h-3.5" />
+            {/* Constitution des palanquées (moniteur désigné encadrant /
+                président) ou, à défaut, vue lecture seule de sa propre
+                palanquée pour cette sortie — le staff désigné encadrant a
+                déjà mieux via PalanqueesManager, pas besoin de dupliquer.
+                Concerne aussi bien un adhérent qu'un moniteur non désigné
+                sur CETTE sortie : il n'a plus la main sur la gestion, mais
+                reste inscrit comme n'importe quel autre participant. */}
+            {canManageCetteSortie ? "Palanquées" : "Ma palanquée"}
+          </p>
+          {canManageCetteSortie ? (
+            <PalanqueesManager sortie={sortie} />
+          ) : (
+            <MaPalanqueeCard idSortie={sortie.id_sortie} />
+          )}
+        </div>
 
-      {/* Vue adhérent, lecture seule, de sa propre palanquée pour cette
-          sortie (voir MaPalanqueeCard) — le staff a déjà mieux via
-          PalanqueesManager ci-dessus, pas besoin de dupliquer. */}
-      {!canManageSortie && (
-        <motion.div variants={fadeInUp} initial="initial" animate="animate">
-          <MaPalanqueeCard idSortie={sortie.id_sortie} />
-        </motion.div>
-      )}
+        {/* Empilée ici plutôt qu'en 4e page à part : la limite est de 3
+            pages (voir DetailsModal.jsx) — SortiePhotos gère elle-même
+            l'accès restreint aux participants (message "réservé" au lieu du
+            contenu si le backend renvoie 403, voir assertCanAccessPhotos).
+            id="photos" : cible du lien "Voir les photos de la sortie"
+            (PlongeeDetails.jsx) — voir initialPageIndex plus bas, qui
+            sélectionne déjà cette page, et le useEffect de scrollIntoView
+            plus haut, qui amène ensuite cette section précise en vue
+            (Incidents/Matériel/Palanquées passent avant elle ici). */}
+        <div id="photos">
+          <SortiePhotos sortie={sortie} />
+        </div>
+      </div>
+    ),
+  });
 
-      {/* Modal suppression */}
+  // Cible "Activité" (contient les photos, voir ci-dessus) quand on arrive
+  // via #photos ; "Vue d'ensemble" (index 0) dans tous les autres cas.
+  const activitePageIndex = pages.findIndex((p) => p.label === "Activité");
+  const initialPageIndex =
+    hash === "#photos" && activitePageIndex !== -1 ? activitePageIndex : 0;
+
+  return (
+    <>
+      <DetailsModal
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        initialPageIndex={initialPageIndex}
+        title={`${sortie.type} - ${sortie.lieu}`}
+        subtitle={`N°${sortie.id_sortie} • ${sortie.site} • ${formatDateTime(sortie.date_heure)}`}
+        icon={FiAnchor}
+        headerExtra={headerExtra}
+        pages={pages}
+      />
+
+      {/* Modal suppression (sortie "Terminée"/"Annulée" — voir headerExtra) */}
       <ConfirmModal
         isOpen={showDeleteModal}
         icon={FiAlertCircle}
@@ -928,7 +1071,70 @@ const SortieDetails = () => {
         onCancel={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}
       />
-    </motion.div>
+
+      {/* Modal annulation (sortie encore "Planifiée" — voir headerExtra) */}
+      <ConfirmModal
+        isOpen={showAnnulerModal}
+        icon={FiXCircle}
+        message={
+          <>
+            Êtes-vous sûr de vouloir annuler la sortie{" "}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {sortie.type} - {sortie.lieu}
+            </span>
+            ?
+          </>
+        }
+        confirmLabel="Confirmer l'annulation"
+        onCancel={() => setShowAnnulerModal(false)}
+        onConfirm={handleAnnuler}
+      />
+
+      {/* Modal annulation météo */}
+      <ConfirmModal
+        isOpen={showAnnulerMeteoModal}
+        icon={FiAlertTriangle}
+        message={
+          <>
+            Annuler la sortie{" "}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {sortie.type} - {sortie.lieu}
+            </span>{" "}
+            pour cause météorologique ? Les adhérents inscrits seront
+            notifiés par email et le motif météo leur sera affiché sur la
+            fiche de la sortie.
+          </>
+        }
+        confirmLabel="Confirmer l'annulation"
+        onCancel={() => setShowAnnulerMeteoModal(false)}
+        onConfirm={handleAnnulerPourMeteo}
+      />
+
+      {/* Modal replanification (choix d'une date alternative dans la page
+          "Météo") */}
+      <ConfirmModal
+        isOpen={!!replanifierModal}
+        icon={FiCalendar}
+        message={
+          <>
+            Replanifier la sortie{" "}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {sortie.type} - {sortie.lieu}
+            </span>{" "}
+            au{" "}
+            <span className="font-semibold text-gray-900 dark:text-white">
+              {replanifierModal ? formatDateTime(replanifierModal) : ""}
+            </span>
+            ? Elle repasse « Planifiée » et les adhérents déjà inscrits
+            seront notifiés par email et par notification de la nouvelle
+            date.
+          </>
+        }
+        confirmLabel="Confirmer la replanification"
+        onCancel={() => setReplanifierModal(null)}
+        onConfirm={handleReplanifier}
+      />
+    </>
   );
 };
 

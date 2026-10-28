@@ -31,6 +31,37 @@ class FormationSpecialiteService extends BaseService {
     return await this.formationSpecialiteRepository.findByMoniteur(id_moniteur);
   }
 
+  // Une spécialité clôturée ("Terminée" : acquise, "Abandonnée" : parcours
+  // arrêté) ne doit plus pouvoir être modifiée ni supprimée — même principe
+  // que FormationService.assertFormationModifiable (verrou une fois l'état
+  // final atteint, "En cours" restant seul état encore modifiable).
+  // Contrairement à une formation (séances/compétences à vérifier avant de
+  // clôturer via une route dédiée), une spécialité n'a aucun sous-critère à
+  // contrôler : la transition vers "Terminée"/"Abandonnée" elle-même reste
+  // donc accessible depuis le formulaire d'édition générique — seul un
+  // retour en arrière une fois close est bloqué.
+  assertSpecialiteModifiable(specialite) {
+    if (specialite.statut === "Terminée" || specialite.statut === "Abandonnée") {
+      throw new Error(
+        `Cette spécialité est ${specialite.statut === "Terminée" ? "terminée" : "abandonnée"} : elle n'est plus modifiable.`,
+      );
+    }
+  }
+
+  async update(id, data) {
+    const specialite = await this.formationSpecialiteRepository.findById(id);
+    if (!specialite) throw new Error("Spécialité non trouvée");
+    this.assertSpecialiteModifiable(specialite);
+    return await this.formationSpecialiteRepository.update(id, data);
+  }
+
+  async delete(id) {
+    const specialite = await this.formationSpecialiteRepository.findById(id);
+    if (!specialite) throw new Error("Spécialité non trouvée");
+    this.assertSpecialiteModifiable(specialite);
+    return await this.formationSpecialiteRepository.delete(id);
+  }
+
   async validateData(data, authHeader) {
     const errors = [];
     if (!data.num_adherent) errors.push("L'adhérent est requis");

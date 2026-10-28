@@ -1,6 +1,9 @@
+jest.mock("../src/utils/serviceClients/vieAssociativeClient");
+
 const AdherentService = require("../src/services/AdherentService");
 const AdherentRepository = require("../src/repositories/AdherentRepository");
-const { Adherent } = require("../src/models");
+const { Adherent, Brevet } = require("../src/models");
+const vieAssociativeClient = require("../src/utils/serviceClients/vieAssociativeClient");
 
 const service = new AdherentService();
 
@@ -37,6 +40,56 @@ describe("AdherentService.getAdherentStats", () => {
     await service.getAdherentStats();
     expect(spy).toHaveBeenCalledWith({ statut: "Actif", est_invite: false });
     spy.mockRestore();
+  });
+});
+
+describe("AdherentService.updateNiveau — création automatique licence FFESM au passage Baptême -> Niveau 1", () => {
+  function mockAdherent(niveauActuel) {
+    return {
+      niveau: niveauActuel,
+      num_brevet: null,
+      num_licence_ffesm: null,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+  }
+
+  beforeEach(() => {
+    jest.spyOn(Brevet, "create").mockResolvedValue({});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    vieAssociativeClient.creerLicenceAutomatique.mockReset();
+  });
+
+  test("crée la licence FFESM/Assurance RC automatique quand un Baptême passe Niveau 1", async () => {
+    const adherent = mockAdherent("Baptême");
+    jest.spyOn(service.repository, "findById").mockResolvedValue(adherent);
+    vieAssociativeClient.creerLicenceAutomatique.mockResolvedValue([]);
+
+    await service.updateNiveau("A001", "Niveau 1");
+
+    expect(vieAssociativeClient.creerLicenceAutomatique).toHaveBeenCalledWith(
+      "A001",
+      adherent.date_obtention_niveau,
+    );
+  });
+
+  test("ne crée rien pour une progression qui ne part pas de Baptême (ex. Niveau 1 -> Niveau 2)", async () => {
+    const adherent = mockAdherent("Niveau 1");
+    jest.spyOn(service.repository, "findById").mockResolvedValue(adherent);
+
+    await service.updateNiveau("A001", "Niveau 2");
+
+    expect(vieAssociativeClient.creerLicenceAutomatique).not.toHaveBeenCalled();
+  });
+
+  test("ne fait jamais échouer la mise à jour du niveau si vie-associative-service est injoignable", async () => {
+    const adherent = mockAdherent("Baptême");
+    jest.spyOn(service.repository, "findById").mockResolvedValue(adherent);
+    vieAssociativeClient.creerLicenceAutomatique.mockRejectedValue(new Error("indisponible"));
+
+    await expect(service.updateNiveau("A001", "Niveau 1")).resolves.toBe(adherent);
   });
 });
 

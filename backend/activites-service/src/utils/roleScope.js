@@ -34,6 +34,36 @@ function profondeurMaxPourNiveau(niveau) {
   return PROFONDEUR_MAX_PAR_NIVEAU[niveau] ?? null;
 }
 
+// Niveau minimum compatible avec chaque type de sortie — évite par exemple
+// qu'une "Plongée technique" (plus exigeante) reste accessible à un Baptême,
+// ou qu'une sortie "Baptême" (réservée aux non-plongeurs découvrant
+// l'activité) exige un niveau déjà acquis. Même grille côté frontend, voir
+// frontend/src/utils/constants.js NIVEAU_MIN_PAR_TYPE_SORTIE — à faire
+// évoluer en même temps si jamais modifiée. "Baptême" est un cas à part
+// (voir isTypeNiveauCompatible ci-dessous) : seul niveau compatible avec ce
+// type, pas un simple minimum — une sortie Baptême visant "Niveau 3" n'aurait
+// pas de sens non plus.
+const NIVEAU_MIN_PAR_TYPE_SORTIE = {
+  "Baptême": "Baptême",
+  Formation: "Baptême",
+  "Sortie bateau": "Baptême",
+  Nettoyage: "Baptême",
+  "Plongée d'exploration": "Niveau 1",
+  "Plongée de nuit": "Niveau 1",
+  "Plongée technique": "Niveau 2",
+};
+
+function isTypeNiveauCompatible(type, niveauRequis) {
+  if (!type || !niveauRequis) return true;
+  if (type === "Baptême") return niveauRequis === "Baptême";
+  const min = NIVEAU_MIN_PAR_TYPE_SORTIE[type];
+  if (!min) return true;
+  const minIdx = NIVEAU_ORDER.indexOf(min);
+  const niveauIdx = NIVEAU_ORDER.indexOf(niveauRequis);
+  if (minIdx === -1 || niveauIdx === -1) return true;
+  return niveauIdx >= minIdx;
+}
+
 const ROLES = {
   PRESIDENT_ONLY: ["president"],
   PRESIDENT_MONITEUR: ["president", "moniteur"],
@@ -64,10 +94,12 @@ function isNiveauCompatible(adherentNiveau, niveauRequis) {
 module.exports = {
   isStaff,
   isNiveauCompatible,
+  isTypeNiveauCompatible,
   computeStatutPaiement,
   profondeurMaxPourNiveau,
   STAFF_ROLES,
   NIVEAU_ORDER,
   PROFONDEUR_MAX_PAR_NIVEAU,
+  NIVEAU_MIN_PAR_TYPE_SORTIE,
   ROLES,
 };

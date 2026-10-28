@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  FiTool,
   FiSave,
   FiX,
   FiCalendar,
@@ -12,6 +11,7 @@ import {
 } from "react-icons/fi";
 import { useReparations } from "../../hooks/Reparation/useReparations";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import { formatDateForInput } from "../../utils/helpers";
@@ -23,7 +23,10 @@ const fadeInUp = {
 };
 
 const ReparationForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte (fiche
+  // Matériel, ...) si elle vient de là, sinon sur la liste des réparations
+  // — voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/reparations");
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const editMode = !!id;
@@ -95,7 +98,7 @@ const ReparationForm = () => {
       } else {
         await create.mutateAsync(payload);
       }
-      navigate("/reparations");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement de la réparation :", error);
     } finally {
@@ -116,29 +119,7 @@ const ReparationForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier la réparation" : "Nouvelle réparation"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              Déclarez une panne et suivez sa réparation
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
-            <FiTool className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <motion.div {...fadeInUp} className="md:col-span-2">
@@ -262,10 +243,10 @@ const ReparationForm = () => {
         </div>
       </div>
 
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/reparations")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -285,7 +266,7 @@ const ReparationForm = () => {
           {editMode ? "Mettre à jour" : "Créer la réparation"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

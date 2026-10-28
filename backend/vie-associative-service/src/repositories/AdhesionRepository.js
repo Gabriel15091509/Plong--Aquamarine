@@ -60,6 +60,24 @@ class AdhesionRepository extends BaseRepository {
     return await this.model.findOne({ where });
   }
 
+  // Adhésion "Club" déjà en base pour cet adhérent, pas encore
+  // intégralement réglée ("En attente"/"Partiel" — "Annulé" est exclu : un
+  // abandon ne bloque pas un renouvellement) — voir
+  // AdhesionService.assertPreviousClubImpayee, qui s'en sert pour bloquer la
+  // création d'une NOUVELLE adhésion Club tant que la précédente n'est pas
+  // soldée. La plus ancienne d'abord (ORDER BY date_fin ASC) : c'est celle
+  // que l'adhérent doit régler en premier.
+  async findUnpaidClub(num_adherent) {
+    return await this.model.findOne({
+      where: {
+        num_adherent,
+        type: 'Club',
+        statut_paiement: { [Op.in]: ['En attente', 'Partiel'] },
+      },
+      order: [['date_fin', 'ASC']],
+    });
+  }
+
   // Une ligne Adhesion (n'importe quel adhérent) qui porte déjà ce n° de
   // licence FFESM pour un AUTRE adhérent que celui donné — le n° de licence
   // est délivré une seule fois par la fédération à une personne, jamais
@@ -87,6 +105,14 @@ class AdhesionRepository extends BaseRepository {
       raw: true,
     });
     return rows.map((r) => r.num_adherent);
+  }
+
+  // Badge Sidebar ("adhésions en attente de validation") : COUNT léger côté
+  // serveur — même motif que InscriptionRepository.countPending.
+  async countEnAttenteValidation() {
+    return await this.model.count({
+      where: { soumis_par_adherent: true, statut_validation: 'En attente' },
+    });
   }
 
   async getAdhesionStats() {

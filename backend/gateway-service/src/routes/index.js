@@ -42,6 +42,8 @@ router.use("/email", proxyTo(IDENTITE_SERVICE_URL));
 router.use("/moniteurs", proxyTo(IDENTITE_SERVICE_URL));
 router.use("/president", proxyTo(IDENTITE_SERVICE_URL));
 router.use("/tresoriers", proxyTo(IDENTITE_SERVICE_URL));
+router.use("/brevets", proxyTo(IDENTITE_SERVICE_URL));
+router.use("/backups", proxyTo(IDENTITE_SERVICE_URL));
 router.use("/incidents", proxyTo(ACTIVITES_SERVICE_URL));
 router.use("/palanquees", proxyTo(ACTIVITES_SERVICE_URL));
 router.use("/attributions", proxyTo(ACTIVITES_SERVICE_URL));
@@ -75,6 +77,8 @@ router.get("/", (req, res) => {
       moniteurs: "/api/moniteurs",
       president: "/api/president",
       tresoriers: "/api/tresoriers",
+      brevets: "/api/brevets",
+      backups: "/api/backups",
       incidents: "/api/incidents",
       palanquees: "/api/palanquees",
       attributions: "/api/attributions",

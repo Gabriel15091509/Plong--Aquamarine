@@ -2,10 +2,19 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "../services/api";
 import toast from "react-hot-toast";
-import {
-  prefetchForOffline,
-  registerOfflinePrefetchOnReconnect,
-} from "../utils/offlinePrefetch";
+
+// Nettoyage ponctuel : un cache localStorage (clé "aquanature-query-cache")
+// a été introduit puis retiré dans la même période — voir utils/queryClient.js
+// pour le pourquoi (ralentissements généralisés). Un poste qui a ouvert
+// l'app pendant cette fenêtre peut avoir ce blob encore présent ; il n'est
+// plus jamais relu ni réécrit par le code actuel, mais autant le supprimer
+// plutôt que le laisser occuper de la place indéfiniment. Sans effet si la
+// clé n'existe pas (comportement normal pour la grande majorité des postes).
+try {
+  localStorage.removeItem("aquanature-query-cache");
+} catch {
+  // Quota/navigation privée stricte : tant pis, ce n'est qu'un nettoyage.
+}
 
 const AuthContext = createContext();
 
@@ -20,8 +29,6 @@ export const AuthProvider = ({ children }) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    registerOfflinePrefetchOnReconnect();
-
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
 
@@ -31,7 +38,6 @@ export const AuthProvider = ({ children }) => {
         setUser(parsedUser);
         setPermissions(getUserPermissions(parsedUser.role));
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-        prefetchForOffline();
       } catch {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
@@ -76,7 +82,6 @@ export const AuthProvider = ({ children }) => {
 
     setUser(user);
     setPermissions(getUserPermissions(user.role));
-    prefetchForOffline();
 
     if (user.must_change_password) {
       toast("Veuillez changer votre mot de passe avant de continuer");

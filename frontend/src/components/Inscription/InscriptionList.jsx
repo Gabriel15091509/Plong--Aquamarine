@@ -2,26 +2,41 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import { FiPlus, FiClipboard, FiX, FiSearch } from "react-icons/fi";
+import {
+  FiPlus,
+  FiClipboard,
+  FiX,
+  FiSearch,
+  FiFilter,
+  FiList,
+  FiGrid,
+  FiMapPin,
+} from "react-icons/fi";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
 import BulkActionBar from "../Common/BulkActionBar";
+import Pagination from "../Common/Pagination";
 import SearchableSelect from "../Common/SearchableSelect";
 import InscriptionRow from "./InscriptionRow";
 import InscriptionActionModals from "./InscriptionActionModals";
+import { formatDateTime } from "../../utils/helpers";
 import { useInscriptions } from "../../hooks/Inscription/useInscriptions";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import { useAuth } from "../../context/AuthContext";
 import { useSelection } from "../../hooks/useSelection";
 import { STATUT_INSCRIPTION } from "../../utils/constants";
 import inscriptionService from "../../services/Inscription/inscriptionService";
+import InscriptionFormModal from "./InscriptionFormModal";
+import InscriptionDetails from "./InscriptionDetails";
 
 import ErrorState from "../Common/ErrorState";
 
 // TODO: Ajouter un filtre par date de sortie
 const InscriptionList = () => {
   const [searchParams] = useSearchParams();
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState("all");
@@ -35,7 +50,11 @@ const InscriptionList = () => {
     setFilterSortie(searchParams.get("sortie") || "all");
     setCurrentPage(1);
   }, [searchParams]);
-  const [loading, setLoading] = useState(false);
+  // Clé de l'action en cours (ex. "confirm-42") — voir InscriptionRow.jsx :
+  // seule l'icône de l'action concernée passe en spinner, pas tout le
+  // bouton d'un simple opacity-50 comme avant (même motif que
+  // FormationList.jsx/actionLoading).
+  const [actionLoading, setActionLoading] = useState(null);
   const selection = useSelection();
   const [deleteModal, setDeleteModal] = useState(null);
   const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
@@ -43,6 +62,11 @@ const InscriptionList = () => {
   const [confirmModal, setConfirmModal] = useState(null);
   const [cancelModal, setCancelModal] = useState(null);
   const [waitlistModal, setWaitlistModal] = useState(null);
+  // Vue grille par défaut (cartes verticales, comme SortiesPage/AdherentList)
+  // : mieux adapté au mobile que les lignes horizontales de la vue liste.
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "grid" : "list",
+  );
   const itemsPerPage = 10;
 
   // Auth
@@ -57,11 +81,21 @@ const InscriptionList = () => {
     useInscriptions();
   const { useGetAll: useGetAllAdherents } = useAdherents();
   const { useGetAll: useGetAllSorties } = useSorties();
+  const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
 
   const { data, isLoading, error, refetch } = useGetAll();
-  const { data: adherentsData, isLoading: loadingAdherents } =
-    useGetAllAdherents();
-  const { data: sortiesData, isLoading: loadingSorties } = useGetAllSorties();
+  const { data: adherentsData } = useGetAllAdherents();
+  const { data: sortiesData } = useGetAllSorties();
+  // Résout le moniteur connecté et les encadrants désignés par sortie —
+  // uniquement pour restreindre les ACTIONS de gestion (confirmer/annuler/
+  // mettre en liste d'attente/supprimer) au président, au trésorier, ou à un
+  // moniteur désigné encadrant de LA SORTIE de chaque inscription (voir
+  // canManageCetteInscription plus bas) — même garde-fou que
+  // InscriptionService.assertCanManageInscription côté serveur, et même
+  // correctif que PlongeeList.jsx/SortiesPage.jsx pour le même motif. isAdmin
+  // (rôle générique) reste utilisé tel quel pour ce qui ne dépend PAS d'une
+  // sortie précise (visibilité de la liste complète, bouton "Nouvelle").
+  const { data: moniteursData } = useGetAllMoniteurs({}, { enabled: isAdmin });
 
   const remove = useRemove();
   const confirm = useConfirm();
@@ -137,6 +171,40 @@ const InscriptionList = () => {
     return map;
   }, [sortiesData, capacityBySortie]);
 
+  const currentMoniteurId = useMemo(() => {
+    if (!user || !moniteursData?.data) return null;
+    const moniteur = moniteursData.data.find((m) => m.user?.email === user.email);
+    return moniteur?.id_moniteur || null;
+  }, [user, moniteursData]);
+
+  // Map id_sortie -> liste d'id_moniteur encadrants (Sortie.encadrants)
+  const sortieEncadrantsMap = useMemo(() => {
+    const map = new Map();
+    (sortiesData?.data || []).forEach((s) => {
+      map.set(s.id_sortie || s.id, Array.isArray(s.encadrants) ? s.encadrants : []);
+    });
+    return map;
+  }, [sortiesData]);
+
+  // Actions de gestion d'UNE inscription donnée (confirmer/mettre en liste
+  // d'attente/annuler-en-tant-que-gestionnaire/supprimer/pointage) :
+  // réservées au président et au trésorier (accès total, le trésorier
+  // n'encadrant jamais de sortie lui-même) ou au moniteur désigné encadrant
+  // de LA SORTIE de cette inscription (Sortie.encadrants) — pas seulement
+  // "être un moniteur", pour rester strictement identique à la règle serveur
+  // (InscriptionService.assertCanManageInscription) et ne jamais montrer un
+  // bouton qu'un 403 refuserait ensuite. Avant ce garde-fou, isAdmin (rôle
+  // générique) ouvrait ces actions à n'importe quel moniteur sur n'importe
+  // quelle inscription, y compris celles d'une sortie confiée à un autre.
+  const canManageCetteInscription = (inscription) => {
+    if (!isAdmin) return false;
+    if (user?.role === "president" || user?.role === "tresorier") return true;
+    return (
+      currentMoniteurId != null &&
+      (sortieEncadrantsMap.get(inscription.id_sortie) || []).includes(currentMoniteurId)
+    );
+  };
+
   // Options de filtrage
   const sortieOptions = useMemo(() => {
     const options = [{ value: "all", label: "Toutes les sorties" }];
@@ -187,15 +255,43 @@ const InscriptionList = () => {
     filterSortie,
   ]);
 
+  // Regroupement par sortie : les inscriptions d'une même sortie doivent
+  // apparaître ensemble à l'affichage (voir le rendu plus bas, qui insère un
+  // en-tête à chaque changement de sortie) — ça suppose qu'elles soient déjà
+  // contiguës dans la liste, d'où ce tri par PROXIMITÉ avec aujourd'hui
+  // (distance absolue à `now`, pas un simple ordre chronologique croissant) :
+  // la sortie la plus proche de la date du jour arrive en premier, qu'elle
+  // soit à venir ou déjà passée. Sorties sans date connue (pas encore
+  // chargées) repoussées en fin de liste plutôt que de casser l'ordre.
+  const sortedInscriptions = useMemo(() => {
+    const now = Date.now();
+    return [...filteredInscriptions].sort((a, b) => {
+      const dateA = sortieMap[a.id_sortie]?.date;
+      const dateB = sortieMap[b.id_sortie]?.date;
+      if (dateA && dateB) {
+        const diff =
+          Math.abs(new Date(dateA) - now) - Math.abs(new Date(dateB) - now);
+        if (diff !== 0) return diff;
+      } else if (dateA) {
+        return -1;
+      } else if (dateB) {
+        return 1;
+      }
+      return (a.id_inscription || 0) - (b.id_inscription || 0);
+    });
+  }, [filteredInscriptions, sortieMap]);
+
   // Pagination
-  const totalPages = Math.ceil(filteredInscriptions.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedInscriptions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedInscriptions = useMemo(() => {
-    return filteredInscriptions.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredInscriptions, startIndex, itemsPerPage]);
+    return sortedInscriptions.slice(startIndex, startIndex + itemsPerPage);
+  }, [sortedInscriptions, startIndex, itemsPerPage]);
 
-  if (isLoading || loadingAdherents || loadingSorties)
-    return <LoadingSpinner variant="list" />;
+  // N'attend que la propre liste : adherentsData/sortiesData ne servent
+  // qu'aux libellés affichés (adherentMap/sortieMap), avec repli déjà prévu
+  // tant qu'ils ne sont pas encore chargés — chargement progressif.
+  if (isLoading) return <LoadingSpinner variant="list" />;
   if (error) return <ErrorState onRetry={refetch} />;
 
   // Actions
@@ -204,18 +300,24 @@ const InscriptionList = () => {
       toast.error("Vous n'avez pas les droits pour supprimer une inscription");
       return;
     }
-    setLoading(true);
+    // Ferme la modale de confirmation dès le lancement de la requête (pas à
+    // la fin) : elle masquerait sinon le spinner qui remplace l'icône de la
+    // ligne pendant le chargement (voir InscriptionRow.jsx/actionLoading).
+    setDeleteModal(null);
+    setActionLoading(`delete-${id}`);
     try {
       await remove.mutateAsync(id);
       toast.success("Inscription supprimée avec succès");
-      refetch();
-      setDeleteModal(null);
+      // Attend le refetch (pas juste la mutation) avant de retirer le
+      // spinner : sinon l'icône reprend son état normal un instant avant
+      // que la ligne ne disparaisse réellement de l'écran.
+      await refetch();
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Erreur lors de la suppression",
       );
     } finally {
-      setLoading(false);
+      setActionLoading(null);
     }
   };
 
@@ -229,7 +331,7 @@ const InscriptionList = () => {
       const result = await inscriptionService.bulkDelete(Array.from(selection.selectedIds));
       toast[result.success ? "success" : "error"](result.message);
       selection.clear();
-      refetch();
+      await refetch();
     } catch (error) {
       toast.error(error.response?.data?.message || "Erreur lors de la suppression groupée");
     } finally {
@@ -243,34 +345,34 @@ const InscriptionList = () => {
       toast.error("Seul un gestionnaire peut confirmer");
       return;
     }
-    setLoading(true);
+    setConfirmModal(null);
+    setActionLoading(`confirm-${id}`);
     try {
       await confirm.mutateAsync(id);
       toast.success("Inscription confirmée avec succès");
-      refetch();
-      setConfirmModal(null);
+      await refetch();
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Erreur lors de la confirmation",
       );
     } finally {
-      setLoading(false);
+      setActionLoading(null);
     }
   };
 
   const handleCancel = async (id) => {
-    setLoading(true);
+    setCancelModal(null);
+    setActionLoading(`cancel-${id}`);
     try {
       await cancel.mutateAsync(id);
       toast.success("Inscription annulée avec succès");
-      refetch();
-      setCancelModal(null);
+      await refetch();
     } catch (error) {
       toast.error(
         error.response?.data?.message || "Erreur lors de l'annulation",
       );
     } finally {
-      setLoading(false);
+      setActionLoading(null);
     }
   };
 
@@ -279,22 +381,22 @@ const InscriptionList = () => {
       toast.error("Seul un gestionnaire peut gérer la liste d'attente");
       return;
     }
-    setLoading(true);
+    setWaitlistModal(null);
+    setActionLoading(`waitlist-${id}`);
     try {
       await updateInscription.mutateAsync({
         id,
         data: { statut: "Liste d'attente" },
       });
       toast.success("Inscription ajoutée à la liste d'attente");
-      refetch();
-      setWaitlistModal(null);
+      await refetch();
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
           "Erreur lors de la mise en liste d'attente",
       );
     } finally {
-      setLoading(false);
+      setActionLoading(null);
     }
   };
 
@@ -341,6 +443,8 @@ const InscriptionList = () => {
           <FiPlus className="w-4 h-4" />
           {isAdherent ? "M'inscrire" : "Nouvelle inscription"}
         </Link>
+        <InscriptionFormModal />
+        <InscriptionDetails />
       </motion.div>
     );
   }
@@ -348,7 +452,19 @@ const InscriptionList = () => {
   return (
     <div className="space-y-4">
       {/* Barre de recherche */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+      {/* Bouton "Filtres" (mobile uniquement) : recherche + filtres
+          repliés par défaut pour ne pas encombrer l'écran — un tap les
+          affiche. Toujours visibles à partir de sm (recherche fréquente
+          sur grand écran, pas besoin de la cacher). */}
+      <button
+        type="button"
+        onClick={() => setShowFilters((v) => !v)}
+        className="sm:hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+      >
+        {showFilters ? <FiX className="w-4 h-4" /> : <FiFilter className="w-4 h-4" />}
+        Filtres
+      </button>
+      <div className={`${showFilters ? "flex" : "hidden"} flex-col gap-3 sm:flex sm:flex-row`}>
         <div className="relative flex-1">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -379,7 +495,7 @@ const InscriptionList = () => {
             <option value="En attente">En attente</option>
             <option value="Confirmée">Confirmées</option>
             <option value="Annulée">Annulées</option>
-            <option value="Liste d'attente">Liste d'attente</option>
+            <option value="Liste d'attente">Liste d&apos;attente</option>
           </select>
 
           {/* Sur mobile, un <select> natif avec une option par sortie
@@ -405,31 +521,65 @@ const InscriptionList = () => {
             <FiPlus className="w-4 h-4" />
             {isAdherent ? "M'inscrire" : "Nouvelle"}
           </Link>
+          <div className="col-span-2 flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-100 p-1 dark:border-gray-700 dark:bg-gray-800 sm:col-auto">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              title="Vue grille"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "grid"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              title="Vue liste"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "list"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiList className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Sélection multiple / actions groupées (suppression réservée aux
-          gestionnaires, même règle que le bouton individuel) */}
-      {isAdmin && (
-        <>
-          <div className="flex items-center gap-2 px-1">
-            <input
-              type="checkbox"
-              checked={selection.allSelected(paginatedInscriptions.map((i) => i.id_inscription))}
-              onChange={() => selection.toggleAll(paginatedInscriptions.map((i) => i.id_inscription))}
-              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+          inscriptions que l'utilisateur peut effectivement gérer, même règle
+          que le bouton individuel — voir canManageCetteInscription) */}
+      {isAdmin && (() => {
+        const selectableIds = paginatedInscriptions
+          .filter(canManageCetteInscription)
+          .map((i) => i.id_inscription);
+        return (
+          <>
+            {selectableIds.length > 0 && (
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="checkbox"
+                  checked={selection.allSelected(selectableIds)}
+                  onChange={() => selection.toggleAll(selectableIds)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  Tout sélectionner (page courante)
+                </span>
+              </div>
+            )}
+            <BulkActionBar
+              count={selection.selectedCount}
+              onClear={selection.clear}
+              onDelete={() => setBulkDeleteModal(true)}
             />
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Tout sélectionner (page courante)
-            </span>
-          </div>
-          <BulkActionBar
-            count={selection.selectedCount}
-            onClear={selection.clear}
-            onDelete={() => setBulkDeleteModal(true)}
-          />
-        </>
-      )}
+          </>
+        );
+      })()}
 
       {/* Liste des inscriptions */}
       <AnimatePresence>
@@ -452,83 +602,101 @@ const InscriptionList = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid gap-3"
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                : "grid gap-3"
+            }
           >
-            {paginatedInscriptions.map((inscription) => {
-              const adherentInfo = adherentMap[inscription.num_adherent] || {
-                nom: `#${inscription.num_adherent}`,
-                photo: null,
-              };
-              const sortieInfo = sortieMap[inscription.id_sortie] || {
-                label: `#${inscription.id_sortie}`,
-              };
-              const capacityInfo = capacityBySortie[inscription.id_sortie] || {};
-              const isOwnInscription =
-                isAdherent &&
-                currentAdherent &&
-                inscription.num_adherent === currentAdherent.num_adherent;
+            {(() => {
+              // En-tête de groupe seulement s'il y a plus d'une sortie sur
+              // la page courante — avec un seul groupe (ex. filtre "sortie"
+              // déjà appliqué), un unique en-tête ne ferait que répéter ce
+              // que la barre de filtres affiche déjà. paginatedInscriptions
+              // est trié par sortie (voir sortedInscriptions plus haut),
+              // donc une même sortie y est toujours contiguë : comparer au
+              // précédent suffit à détecter chaque changement de groupe.
+              const showGroupHeaders =
+                new Set(paginatedInscriptions.map((i) => i.id_sortie)).size > 1;
+              let previousSortieId;
 
-              return (
-                <InscriptionRow
-                  key={inscription.id_inscription}
-                  inscription={inscription}
-                  adherentInfo={adherentInfo}
-                  sortieInfo={sortieInfo}
-                  capacityInfo={capacityInfo}
-                  isAdmin={isAdmin}
-                  isOwnInscription={isOwnInscription}
-                  loading={loading}
-                  onRequestConfirm={() =>
-                    setConfirmModal(inscription.id_inscription)
-                  }
-                  onRequestWaitlist={() =>
-                    setWaitlistModal(inscription.id_inscription)
-                  }
-                  onRequestCancel={() =>
-                    setCancelModal(inscription.id_inscription)
-                  }
-                  onRequestDelete={() =>
-                    setDeleteModal(inscription.id_inscription)
-                  }
-                  selected={isAdmin ? selection.isSelected(inscription.id_inscription) : undefined}
-                  onToggleSelect={
-                    isAdmin ? () => selection.toggle(inscription.id_inscription) : undefined
-                  }
-                />
-              );
-            })}
+              return paginatedInscriptions.map((inscription) => {
+                const adherentInfo = adherentMap[inscription.num_adherent] || {
+                  nom: `#${inscription.num_adherent}`,
+                  photo: null,
+                };
+                const sortieInfo = sortieMap[inscription.id_sortie] || {
+                  label: `#${inscription.id_sortie}`,
+                };
+                const capacityInfo = capacityBySortie[inscription.id_sortie] || {};
+                const isOwnInscription =
+                  isAdherent &&
+                  currentAdherent &&
+                  inscription.num_adherent === currentAdherent.num_adherent;
+                const isNewGroup =
+                  showGroupHeaders && inscription.id_sortie !== previousSortieId;
+                previousSortieId = inscription.id_sortie;
+
+                return (
+                  <React.Fragment key={inscription.id_inscription}>
+                    {isNewGroup && (
+                      <div className="col-span-full flex items-center gap-2 px-1 pt-4 mt-1 border-t border-gray-100 dark:border-gray-700 first:mt-0 first:pt-0 first:border-t-0">
+                        <FiMapPin className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                        <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                          {sortieInfo.label}
+                        </h3>
+                        {sortieInfo.date && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+                            {formatDateTime(sortieInfo.date)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <InscriptionRow
+                      variant={viewMode}
+                      inscription={inscription}
+                      adherentInfo={adherentInfo}
+                      sortieInfo={sortieInfo}
+                      capacityInfo={capacityInfo}
+                      isAdmin={canManageCetteInscription(inscription)}
+                      isOwnInscription={isOwnInscription}
+                      actionLoading={actionLoading}
+                      onRequestConfirm={() =>
+                        setConfirmModal(inscription.id_inscription)
+                      }
+                      onRequestWaitlist={() =>
+                        setWaitlistModal(inscription.id_inscription)
+                      }
+                      onRequestCancel={() =>
+                        setCancelModal(inscription.id_inscription)
+                      }
+                      onRequestDelete={() =>
+                        setDeleteModal(inscription.id_inscription)
+                      }
+                      selected={
+                        canManageCetteInscription(inscription)
+                          ? selection.isSelected(inscription.id_inscription)
+                          : undefined
+                      }
+                      onToggleSelect={
+                        canManageCetteInscription(inscription)
+                          ? () => selection.toggle(inscription.id_inscription)
+                          : undefined
+                      }
+                    />
+                  </React.Fragment>
+                );
+              });
+            })()}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
-        >
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Précédent
-          </button>
-          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Suivant
-          </button>
-        </motion.div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Modal Suppression */}
       <ConfirmModal
@@ -557,6 +725,9 @@ const InscriptionList = () => {
         onCancelWaitlist={() => setWaitlistModal(null)}
         onWaitlist={handleWaitlist}
       />
+
+      <InscriptionFormModal />
+      <InscriptionDetails />
     </div>
   );
 };

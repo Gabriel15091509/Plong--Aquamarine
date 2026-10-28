@@ -69,6 +69,15 @@ class FormationController extends BaseController {
     }
   }
 
+  async getPretesATerminerCount(req, res, next) {
+    try {
+      const count = await this.formationService.getPretesATerminerCount();
+      res.json({ success: true, data: { count } });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   // Consommé par le dashboard (encore dans le monolithe) via HTTP plutôt que
   // par une requête Sequelize directe sur un modèle qui ne lui appartient
   // plus — voir DashboardService.getTrends côté monolithe.

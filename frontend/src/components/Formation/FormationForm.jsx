@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FiAward,
@@ -10,21 +10,25 @@ import {
   FiFileText,
   FiSave,
   FiX,
-  FiBookOpen,
   FiDollarSign,
   FiCreditCard,
 } from "react-icons/fi";
 import { useFormations } from "../../hooks/Formation/useFormations";
+import { useSeances } from "../../hooks/Formation/useSeances";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
 import {
   NIVEAU_FORMATION_OPTIONS,
+  NIVEAU_VISE_SUIVANT,
   STATUT_FORMATION_OPTIONS,
   MODE_PAIEMENT_OPTIONS,
   APPRECIATION_MONITEUR_OPTIONS,
+  STATUTS_ADHERENT_EXCLUS_SELECTION,
 } from "../../utils/constants";
+import { computeNoteMoyenneSeances, suggestAppreciationMoniteur } from "../../utils/helpers";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -33,17 +37,24 @@ const fadeInUp = {
 };
 
 const FormationForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte si elle
+  // vient de là, sinon sur la liste des formations — voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/formations");
   const { id } = useParams();
   const editMode = !!id;
 
   const { useGetById, useCreate, useUpdate } = useFormations();
   const { useGetAll } = useAdherents();
   const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
+  const { useGetByFormation: useGetSeancesByFormation } = useSeances();
 
   const { data, isLoading: loadingData } = useGetById(id);
   const { data: adherentsData, isLoading: loadingAdherents } = useGetAll();
   const { data: moniteursData, isLoading: loadingMoniteurs } = useGetAllMoniteurs();
+  // Uniquement pour suggérer une appréciation (voir l'effet plus bas) : pas
+  // besoin en création, une formation qui vient de naître n'a pas encore de
+  // séance.
+  const { data: seancesData } = useGetSeancesByFormation(editMode ? id : undefined);
 
   const create = useCreate();
   const update = useUpdate();
@@ -51,6 +62,19 @@ const FormationForm = () => {
   const [errors, setErrors] = useState({});
   const [focused, setFocused] = useState(null);
   const submittingRef = useRef(false);
+  // Même principe que profondeurMaxTouchedRef dans SortieForm.jsx :
+  // "Niveau visé" est auto-rempli au niveau juste supérieur à celui de
+  // l'adhérent choisi (NIVEAU_VISE_SUIVANT) tant que le staff n'a pas
+  // modifié ce champ à la main — dès qu'il le touche directement, on arrête
+  // de le réécrire si l'adhérent change ensuite.
+  const niveauViseTouchedRef = useRef(false);
+  // Même principe que niveauViseTouchedRef : la suggestion d'appréciation
+  // (voir l'effet plus bas) ne pré-remplit le select QUE tant que le
+  // moniteur n'a jamais lui-même choisi de valeur pour cette formation —
+  // dès qu'il en choisit une (même pour revenir sur la suggestion), elle
+  // arrête de s'imposer si la moyenne recalcule ensuite (ex. une note
+  // corrigée après coup).
+  const appreciationTouchedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     num_adherent: "",
@@ -69,9 +93,35 @@ const FormationForm = () => {
     mode: "Espèces",
   });
 
+  // Un adhérent "Ancien"/"Suspendu" ne doit plus pouvoir être choisi pour
+  // une NOUVELLE formation (voir STATUTS_ADHERENT_EXCLUS_SELECTION). En
+  // édition, l'adhérent déjà lié à la formation reste affiché même si son
+  // statut est désormais exclu, pour ne pas casser l'affichage existant.
+  const adherentOptions = useMemo(() => {
+    const all = adherentsData?.data || [];
+    const eligibles = all.filter(
+      (a) => !STATUTS_ADHERENT_EXCLUS_SELECTION.includes(a.statut),
+    );
+    if (
+      formData.num_adherent &&
+      !eligibles.some((a) => a.num_adherent === formData.num_adherent)
+    ) {
+      const actuel = all.find((a) => a.num_adherent === formData.num_adherent);
+      if (actuel) return [actuel, ...eligibles];
+    }
+    return eligibles;
+  }, [adherentsData, formData.num_adherent]);
+
   useEffect(() => {
     if (editMode && id && data?.data) {
       const f = data.data;
+      // Une formation existante a déjà son propre niveau visé (voulu par le
+      // staff à l'époque, potentiellement différent du "niveau suivant"
+      // théorique) : ne jamais l'écraser via l'auto-calcul en édition.
+      niveauViseTouchedRef.current = true;
+      // Une appréciation déjà enregistrée est un choix du moniteur qu'il ne
+      // faut plus jamais recouvrir par la suggestion (voir l'effet plus bas).
+      if (f.appreciation_moniteur) appreciationTouchedRef.current = true;
       setFormData({
         num_adherent: f.num_adherent || "",
         id_moniteur: f.id_moniteur || "",
@@ -95,8 +145,48 @@ const FormationForm = () => {
     }
   }, [editMode, id, data]);
 
+  // Moyenne des séances déjà notées (voir FormationSeances.jsx) : une fois
+  // toutes les séances prévues réalisées, suggère une appréciation à partir
+  // de seuils indicatifs (SEUILS_APPRECIATION_MONITEUR) — jamais avant, le
+  // "résultat" ne doit s'afficher qu'à la fin de toutes les séances. Pure
+  // proposition : le moniteur choisit toujours librement, y compris une
+  // valeur différente.
+  const noteMoyenne = useMemo(
+    () => computeNoteMoyenneSeances(seancesData?.data || []),
+    [seancesData],
+  );
+  const toutesSeancesFaites =
+    !!formData.nb_seances_prevues &&
+    Number(formData.nb_seances_realisees) >= Number(formData.nb_seances_prevues);
+  const appreciationSuggeree =
+    toutesSeancesFaites && noteMoyenne !== null
+      ? suggestAppreciationMoniteur(noteMoyenne)
+      : null;
+
+  useEffect(() => {
+    if (
+      appreciationSuggeree &&
+      !appreciationTouchedRef.current &&
+      !formData.appreciation_moniteur
+    ) {
+      setFormData((prev) => ({ ...prev, appreciation_moniteur: appreciationSuggeree }));
+    }
+    // formData.appreciation_moniteur volontairement absent des deps : cet
+    // effet ne doit réagir qu'à l'arrivée de la suggestion elle-même, pas se
+    // redéclencher à chaque frappe dans le reste du formulaire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appreciationSuggeree]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "niveau_vise") {
+      // Modification manuelle explicite : ne plus jamais auto-recalculer ce
+      // champ pour ce formulaire, même si l'adhérent change ensuite.
+      niveauViseTouchedRef.current = true;
+    }
+    if (name === "appreciation_moniteur") {
+      appreciationTouchedRef.current = true;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
@@ -133,7 +223,7 @@ const FormationForm = () => {
       } else {
         await create.mutateAsync(formData);
       }
-      navigate("/formations");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement de la formation :", error);
     } finally {
@@ -150,6 +240,13 @@ const FormationForm = () => {
     label: m.user?.name || `Moniteur #${m.id_moniteur}`,
   }));
 
+  // Sert uniquement à l'indication sous "Niveau visé" ci-dessous (niveau
+  // actuel de l'adhérent choisi) — le pré-remplissage lui-même se fait dans
+  // le onChange de "Adhérent" plus haut.
+  const selectedAdherent = (adherentsData?.data || []).find(
+    (a) => a.num_adherent === formData.num_adherent,
+  );
+
   const inputClasses = (fieldName) =>
     `w-full pl-4 pr-4 py-2.5 text-sm border rounded-lg focus:outline-none transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
       errors[fieldName]
@@ -163,32 +260,7 @@ const FormationForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      {/* En-tête */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier la formation" : "Nouvelle formation"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {editMode
-                ? "Mettez à jour les informations de la formation"
-                : "Créez un nouveau programme de formation"}
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiBookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -197,11 +269,29 @@ const FormationForm = () => {
               label="Adhérent *"
               value={formData.num_adherent}
               onChange={(value) => {
-                setFormData((prev) => ({ ...prev, num_adherent: value }));
+                // Pré-remplit "Niveau visé" au niveau juste supérieur à
+                // celui de l'adhérent (NIVEAU_VISE_SUIVANT) tant que le
+                // staff n'a pas modifié ce champ à la main — voir
+                // niveauViseTouchedRef/handleChange. Un Moniteur n'a pas de
+                // "niveau supérieur" prévu : le champ garde alors sa valeur
+                // actuelle, à choisir manuellement.
+                const adherent = (adherentsData?.data || []).find(
+                  (a) => a.num_adherent === value,
+                );
+                const niveauSuivant =
+                  adherent && NIVEAU_VISE_SUIVANT[adherent.niveau];
+                setFormData((prev) => ({
+                  ...prev,
+                  num_adherent: value,
+                  niveau_vise:
+                    !niveauViseTouchedRef.current && niveauSuivant
+                      ? niveauSuivant
+                      : prev.niveau_vise,
+                }));
                 if (errors.num_adherent)
                   setErrors((prev) => ({ ...prev, num_adherent: "" }));
               }}
-              options={adherentsData?.data || []}
+              options={adherentOptions}
               getOptionLabel={(a) =>
                 `${a.civilite} ${a.nom} ${a.prenom} - ${a.email}`
               }
@@ -254,6 +344,12 @@ const FormationForm = () => {
             {errors.niveau_vise && (
               <p className="mt-1.5 text-sm text-red-500">
                 {errors.niveau_vise}
+              </p>
+            )}
+            {selectedAdherent && NIVEAU_VISE_SUIVANT[selectedAdherent.niveau] && (
+              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                Pré-rempli selon le niveau actuel de l&apos;adhérent (
+                {selectedAdherent.niveau}) — modifiable si besoin.
               </p>
             )}
           </motion.div>
@@ -498,6 +594,14 @@ const FormationForm = () => {
                 </option>
               ))}
             </select>
+            {noteMoyenne !== null && (
+              <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                Moyenne des séances notées : {noteMoyenne.toFixed(1)}/20
+                {appreciationSuggeree && ` — suggestion : ${appreciationSuggeree}`}
+                {!toutesSeancesFaites &&
+                  " (toutes les séances prévues ne sont pas encore réalisées)"}
+              </p>
+            )}
           </motion.div>
 
           <motion.div {...fadeInUp} className="md:col-span-2">
@@ -522,10 +626,10 @@ const FormationForm = () => {
       </div>
 
       {/* Pied de page */}
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/formations")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -545,7 +649,7 @@ const FormationForm = () => {
           {editMode ? "Mettre à jour" : "Créer la formation"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

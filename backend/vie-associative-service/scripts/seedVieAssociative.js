@@ -42,16 +42,42 @@ async function seed() {
   const currentYear = new Date().getFullYear();
 
   // ==================== ADHESIONS ====================
+  // Deux lignes (même adhérent, même type, même année) couvrent exactement
+  // la même période [1er janvier, 31 décembre] : un vrai chevauchement,
+  // que AdhesionService.assertNoOverlap refuse en usage réel mais que ce
+  // script contournait (bulkCreate direct, sans passer par le service) —
+  // tirer num_adherent/type/année indépendamment à chaque itération pouvait
+  // donc produire deux adhésions "Club" identiques en période pour le même
+  // adhérent. Suivi ici via un Set de clés déjà utilisées, même principe que
+  // usedLicences/usedFullNames dans seedIdentite.js : jusqu'à 30 nouveaux
+  // tirages avant d'abandonner la ligne (plutôt que de boucler indéfiniment
+  // sur un adhérent Baptême dont les 3 années possibles sont déjà toutes
+  // prises — seul type "Club" disponible pour lui, voir plus bas).
+  const clesAdhesionUtilisees = new Set();
+  function tirerAdhesionUnique() {
+    for (let tentative = 0; tentative < 30; tentative++) {
+      const numAdherent = pick(identite.adherentIds);
+      const estBapteme = identite.adherentNiveauMap[numAdherent] === "Baptême";
+      const annee = currentYear - randomInt(0, 2);
+      // Un Baptême n'est pas licencié FFESM ni assuré à l'année : seule une
+      // adhésion Club a du sens pour ce niveau (dossier allégé).
+      const type = estBapteme ? "Club" : pick(["Club", "Club", "FFESM", "Assurance RC", "Assurance IA"]);
+      const cle = `${numAdherent}|${type}|${annee}`;
+      if (!clesAdhesionUtilisees.has(cle)) {
+        clesAdhesionUtilisees.add(cle);
+        return { numAdherent, estBapteme, annee, type };
+      }
+    }
+    return null;
+  }
+
   const adhesions = [];
   for (let i = 0; i < CONFIG.ADHESIONS; i++) {
-    const numAdherent = pick(identite.adherentIds);
-    const estBapteme = identite.adherentNiveauMap[numAdherent] === "Baptême";
-    const annee = currentYear - randomInt(0, 2);
+    const tirage = tirerAdhesionUnique();
+    if (!tirage) continue;
+    const { numAdherent, estBapteme, annee, type } = tirage;
     const dateDebut = new Date(annee, 0, 1);
     const dateFin = new Date(annee, 11, 31);
-    // Un Baptême n'est pas licencié FFESM ni assuré à l'année : seule une
-    // adhésion Club a du sens pour ce niveau (dossier allégé).
-    const type = estBapteme ? "Club" : pick(["Club", "Club", "FFESM", "Assurance RC", "Assurance IA"]);
     const montant = type === "Club" ? randomFloat(50, 200) : 0;
     const statutPaiement = type === "Club" ? pickWeighted(STATUT_PAIEMENT_WEIGHTS) : "Payé";
     adhesions.push({
@@ -70,6 +96,28 @@ async function seed() {
       annee_adhesion: annee,
     });
   }
+  // Le club veut être réglé avant de facturer une nouvelle année (voir
+  // AdhesionService.assertPreviousClubSoldee) : une adhésion Club plus
+  // ANCIENNE ne peut donc jamais rester impayée si une adhésion Club plus
+  // RÉCENTE existe déjà pour le même adhérent — impossible à obtenir via
+  // l'app depuis ce garde-fou, mais le tirage indépendant ci-dessus
+  // (num_adherent/année/statut_paiement chacun au hasard) pouvait très bien
+  // produire cette incohérence (ex. Club 2024 "En attente" ET Club 2026 déjà
+  // en base). Seule la plus RÉCENTE ligne Club de chaque adhérent peut donc
+  // rester impayée ; toutes les autres sont forcées "Payé" après coup.
+  const clubParAdherent = {};
+  for (const a of adhesions) {
+    if (a.type !== "Club") continue;
+    (clubParAdherent[a.num_adherent] ||= []).push(a);
+  }
+  for (const clubs of Object.values(clubParAdherent)) {
+    clubs.sort((a, b) => a.annee_adhesion - b.annee_adhesion);
+    for (const a of clubs.slice(0, -1)) {
+      a.statut_paiement = "Payé";
+      a.montant_paye = a.montant;
+    }
+  }
+
   await Adhesion.bulkCreate(adhesions);
   console.log(`[vie-associative] ${adhesions.length} adhésions créées`);
 

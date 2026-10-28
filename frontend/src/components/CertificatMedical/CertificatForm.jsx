@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FiUser,
@@ -9,7 +9,6 @@ import {
   FiSave,
   FiX,
   FiChevronRight,
-  FiHeart,
   FiClock,
   FiAward,
   FiBriefcase,
@@ -21,6 +20,7 @@ import {
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
 import LoadingSpinner from "../Common/LoadingSpinner";
@@ -50,7 +50,9 @@ const fadeInUp = {
 };
 
 const CertificatForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte si elle
+  // vient de là, sinon sur la liste des certificats — voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/certificats");
   const { id } = useParams();
   const editMode = !!id;
   const { user } = useAuth();
@@ -321,7 +323,7 @@ const CertificatForm = () => {
       } else {
         await create.mutateAsync(payload);
       }
-      navigate("/certificats");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement du certificat médical :", error);
     } finally {
@@ -345,38 +347,7 @@ const CertificatForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      {/* En-tête */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode
-                ? "Modifier le certificat"
-                : isSelfSubmission
-                  ? "Soumettre mon certificat médical"
-                  : "Nouveau certificat"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {editMode
-                ? "Mettez à jour les informations du certificat"
-                : isSelfSubmission
-                  ? "En attente de validation par le président avant d'être pris en compte."
-                  : "Ajoutez un nouveau certificat médical"}
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiHeart className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
         {isSelfSubmission && (
@@ -668,10 +639,10 @@ const CertificatForm = () => {
       )}
 
       {/* Pied de page */}
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/certificats")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -695,7 +666,7 @@ const CertificatForm = () => {
               : "Créer le certificat"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

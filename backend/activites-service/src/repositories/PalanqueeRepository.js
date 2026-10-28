@@ -27,6 +27,20 @@ class PalanqueeRepository extends BaseRepository {
     });
   }
 
+  // Version allégée de findAllDetailed, sans composers (donc sans le
+  // enrichComposers -> withAdherent en aval côté service) : sert uniquement
+  // à afficher un libellé (nom_palanquee) par sortie, comme le regroupement
+  // de PlongeeList.jsx — inutile d'y charger les membres/moniteur ou de
+  // déclencher un appel HTTP identite-service par adhérent distinct sur
+  // l'ensemble des palanquées existantes (des centaines dès qu'un club a un
+  // peu d'historique), qui rendait GET /palanquees inutilisable en pratique.
+  async findAllLight() {
+    return await this.model.findAll({
+      attributes: ['id_palanquee', 'id_sortie', 'nom_palanquee', 'statut'],
+      order: [['created_at', 'DESC']],
+    });
+  }
+
   async findByPlongee(id_plongee) {
     return await this.model.findAll({
       where: { id_plongee },

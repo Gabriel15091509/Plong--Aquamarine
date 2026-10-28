@@ -1,5 +1,5 @@
 import api from "../api";
-import { downloadFile, downloadCsv } from "../../utils/downloadFile";
+import { fetchPdfBlobUrl, downloadCsv } from "../../utils/downloadFile";
 
 class PaiementService {
   async getAll(params = {}) {
@@ -44,8 +44,8 @@ class PaiementService {
     return response.data;
   }
 
-  async process(id) {
-    const response = await api.patch(`/paiements/${id}/process`);
+  async process(id, ajustements = {}) {
+    const response = await api.patch(`/paiements/${id}/process`, ajustements);
     return response.data;
   }
 
@@ -64,8 +64,10 @@ class PaiementService {
     return response.data;
   }
 
-  async downloadRecu(id) {
-    return downloadFile(`/paiements/${id}/recu`, `recu-paiement-${id}.pdf`);
+  // Aperçu (PdfPreviewModal), jamais un téléchargement direct — voir le même
+  // commentaire dans plongeeService.previewCarnet.
+  async previewRecu(id) {
+    return fetchPdfBlobUrl(`/paiements/${id}/recu`, `recu-paiement-${id}.pdf`);
   }
 
   async exportCsv(startDate, endDate) {

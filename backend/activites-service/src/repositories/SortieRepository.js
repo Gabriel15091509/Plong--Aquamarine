@@ -211,6 +211,22 @@ class SortieRepository extends BaseRepository {
     });
   }
 
+  // Même principe que ci-dessus, avec `encadrants` en plus (et lieu/site
+  // pour un message d'erreur lisible) : utilisé par
+  // SortieService.findEncadrantOverlapErrors pour vérifier qu'aucun des
+  // moniteurs désignés encadrants d'une sortie n'est déjà encadrant d'une
+  // AUTRE sortie non annulée dont le créneau chevauche celui-ci —
+  // `id_sortie_exclue` optionnel (absent à la création, la sortie n'existe
+  // pas encore).
+  async findAutresAvecEncadrants(id_sortie_exclue) {
+    const where = { statut: { [Op.ne]: "Annulée" } };
+    if (id_sortie_exclue) where.id_sortie = { [Op.ne]: id_sortie_exclue };
+    return await this.model.findAll({
+      where,
+      attributes: ["id_sortie", "date_heure", "duree_estimee", "encadrants", "lieu", "site"],
+    });
+  }
+
   // Fait passer automatiquement "Planifiée" -> "En cours" toute sortie dont
   // l'heure de départ est atteinte — jusqu'ici un passage 100% manuel (et en
   // pratique jamais fait : aucun bouton dédié dans l'UI, seul le champ
@@ -220,13 +236,44 @@ class SortieRepository extends BaseRepository {
   // app.js:startBackgroundJobs). Ne touche jamais "Terminée"/"Annulée", qui
   // restent des décisions humaines (cf. l'alerte needsStatusUpdate de
   // SortieDetails.jsx).
+  //
+  // Renvoie les id des sorties effectivement démarrées (pas juste un
+  // compte) : SortieService en a besoin pour annuler, sortie par sortie,
+  // les inscriptions pas encore confirmées (voir
+  // SortieService.annulerInscriptionsNonConfirmees) — un simple total ne
+  // permettrait pas de savoir lesquelles.
   async demarrerSortiesEchues() {
     const now = new Date();
-    const [count] = await this.model.update(
+    const sorties = await this.model.findAll({
+      where: { date_heure: { [Op.lte]: now }, statut: "Planifiée" },
+      attributes: ["id_sortie"],
+    });
+    if (sorties.length === 0) return [];
+
+    const ids = sorties.map((s) => s.id_sortie);
+    await this.model.update(
       { statut: "En cours" },
-      { where: { date_heure: { [Op.lte]: now }, statut: "Planifiée" } },
+      { where: { id_sortie: { [Op.in]: ids } } },
     );
-    return count;
+    return ids;
+  }
+
+  // Sorties dont ce moniteur fait partie des encadrants désignés (id_sortie
+  // seul, allégé) — utilisé par AttributionService.getAll pour scoper "le
+  // matériel des adhérents de mes sorties encadrées" côté moniteur.
+  // Sortie.encadrants est un JSON simple (pas JSONB) : pas d'opérateur de
+  // containment fiable en base, le filtre se fait donc en JS après coup —
+  // même choix que SortieService.assertCanManageSortie pour une sortie
+  // unique (sortie.encadrants.includes(idMoniteur)).
+  async findIdsByEncadrant(id_moniteur) {
+    const sorties = await this.model.findAll({
+      attributes: ["id_sortie", "encadrants"],
+    });
+    return sorties
+      .filter(
+        (s) => Array.isArray(s.encadrants) && s.encadrants.includes(id_moniteur),
+      )
+      .map((s) => s.id_sortie);
   }
 
   async countInPeriod(dateField, start, end) {

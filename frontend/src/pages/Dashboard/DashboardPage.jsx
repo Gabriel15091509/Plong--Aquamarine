@@ -28,11 +28,11 @@ import { usePlongees } from "../../hooks/Plongee/usePlongees";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useDashboard } from "../../hooks/Dashboard/useDashboard";
 import StatsCard from "../../components/Common/StatsCard";
-import LoadingSpinner from "../../components/Common/LoadingSpinner";
 import BarChart from "../../components/Charts/BarChart";
 import PieChart from "../../components/Charts/PieChart";
 import RecentActivity from "../../components/Dashboard/RecentActivity";
 import AdherentRecapCard from "../../components/Dashboard/AdherentRecapCard";
+import MoniteurDashboardContent from "../../components/Dashboard/MoniteurDashboardContent";
 import DashboardHero from "../../components/Dashboard/DashboardHero";
 import ProchaineSortieCard from "../../components/Dashboard/ProchaineSortieCard";
 import { useAuth } from "../../context/AuthContext";
@@ -48,6 +48,24 @@ const formatCurrency = (amount) => {
   if (amount === undefined || amount === null || isNaN(amount)) return "0 €";
   return amount.toLocaleString("fr-FR") + " €";
 };
+
+// Étiquette affichée au survol/focus des badges de tendance (↑/↓ %) —
+// même formule dans les 6 microservices concernés (voir ex.
+// AdherentService.getTrend) : fenêtre "depuis le 1er du mois" comparée à la
+// même fenêtre, en nombre de jours, le mois précédent — jamais un mois
+// complet contre un mois complet, d'où des pourcentages volatils en tout
+// début de mois (petit échantillon des deux côtés).
+const TREND_HINT =
+  "Évolution depuis le 1er du mois, comparée au même nombre de jours le mois dernier — pas un mois complet contre un mois complet.";
+
+// Étiquettes des deux cartes "tertiaires" dont la valeur affichée EST déjà
+// un pourcentage (pas un badge de tendance) : une photo de l'état actuel,
+// pas une évolution dans le temps — voir SortieService.getTauxRemplissage
+// et AdhesionService.getTauxRenouvellement.
+const REMPLISSAGE_HINT =
+  "Places occupées (inscriptions confirmées) ÷ places offertes, sur les sorties non annulées — photo actuelle, pas une tendance.";
+const RENOUVELLEMENT_HINT =
+  "Part des adhérents \"Club\" de l'année dernière encore adhérents \"Club\" cette année — photo actuelle, pas une tendance.";
 
 // Animations
 const fadeInUp = {
@@ -89,9 +107,21 @@ const DashboardPage = () => {
     );
   }
 
+  // Un moniteur voit SES sorties/plongées/formations encadrées plutôt que
+  // le chiffre d'affaires, les adhésions ou l'état du parc matériel du
+  // club — indicateurs de gestion réservés au président/trésorier (voir
+  // MoniteurDashboardContent.jsx).
+  if (user?.role === "moniteur") {
+    return <MoniteurDashboardContent />;
+  }
+
   return <StaffDashboardContent />;
 };
 
+// Désormais réservé au président/trésorier (voir le branchement moniteur
+// ci-dessus) : le nom "Staff" date d'avant cette distinction, quand les 3
+// rôles partageaient encore cette même vue — pas renommé pour limiter le
+// diff, la portée réelle est documentée ici.
 const StaffDashboardContent = () => {
   const { user } = useAuth();
   // Le trésorier n'a droit de regard sur les sorties nulle part ailleurs
@@ -99,6 +129,8 @@ const StaffDashboardContent = () => {
   // requiredRoles de la route /sorties dans App.jsx) — la carte doit
   // suivre la même règle, sinon elle offre un lien direct vers le détail
   // d'une sortie (/sorties/:id) qu'aucun autre chemin ne lui montre.
+  // Ne reste pertinent que pour "president" (moniteur a désormais sa
+  // propre branche ci-dessus, jamais rendue avec ce composant).
   const canSeeSorties = ["president", "moniteur"].includes(user?.role);
 
   // Hooks
@@ -113,7 +145,8 @@ const StaffDashboardContent = () => {
   // Données
   const { data: trendsResponse } = useGetTrends();
   const trends = trendsResponse?.data;
-  const { data: indicateursResponse } = useGetIndicateurs();
+  const { data: indicateursResponse, isLoading: indicateursLoading } =
+    useGetIndicateurs();
   const indicateurs = indicateursResponse?.data;
   const {
     data: adherentStats,
@@ -145,14 +178,6 @@ const StaffDashboardContent = () => {
     isLoading: materielLoading,
     error: materielError,
   } = useGetMaterielStats();
-
-  const isLoading =
-    adherentLoading ||
-    sortieLoading ||
-    paiementLoading ||
-    formationLoading ||
-    plongeeLoading ||
-    materielLoading;
 
   const hasError =
     adherentError ||
@@ -424,6 +449,8 @@ const StaffDashboardContent = () => {
         subValue: `${formatNumber(statsData.activeAdherents)} actifs • ${formatNumber(statsData.inactiveAdherents)} inactifs • ${formatNumber(statsData.suspendedAdherents)} suspendus`,
         trend: trends?.adherents?.trend,
         trendUp: trends?.adherents?.trendUp,
+        trendHint: TREND_HINT,
+        loading: adherentLoading,
       },
       {
         title: "Sorties",
@@ -434,6 +461,8 @@ const StaffDashboardContent = () => {
         subValue: `${formatNumber(statsData.plannedSorties)} planifiées • ${formatNumber(statsData.ongoingSorties)} en cours • ${formatNumber(statsData.completedSorties)} terminées`,
         trend: trends?.sorties?.trend,
         trendUp: trends?.sorties?.trendUp,
+        trendHint: TREND_HINT,
+        loading: sortieLoading,
       },
       {
         title: "Chiffre d'affaires",
@@ -444,6 +473,8 @@ const StaffDashboardContent = () => {
         subValue: `${formatNumber(statsData.validatedPaiements)} validés • ${formatNumber(statsData.pendingPaiements)} en attente`,
         trend: trends?.chiffreAffaires?.trend,
         trendUp: trends?.chiffreAffaires?.trendUp,
+        trendHint: TREND_HINT,
+        loading: paiementLoading,
       },
       {
         title: "Formations",
@@ -454,9 +485,18 @@ const StaffDashboardContent = () => {
         subValue: `${formatNumber(statsData.activeFormations)} en cours • ${formatNumber(statsData.completedFormations)} terminées`,
         trend: trends?.formations?.trend,
         trendUp: trends?.formations?.trendUp,
+        trendHint: TREND_HINT,
+        loading: formationLoading,
       },
     ],
-    [statsData, trends],
+    [
+      statsData,
+      trends,
+      adherentLoading,
+      sortieLoading,
+      paiementLoading,
+      formationLoading,
+    ],
   );
 
   // Statistiques secondaires
@@ -474,6 +514,8 @@ const StaffDashboardContent = () => {
             : "Aucune plongée",
         trend: trends?.plongees?.trend,
         trendUp: trends?.plongees?.trendUp,
+        trendHint: TREND_HINT,
+        loading: plongeeLoading,
       },
       {
         title: "Matériel disponible",
@@ -487,9 +529,11 @@ const StaffDashboardContent = () => {
             : "Aucun matériel",
         trend: trends?.materiel?.trend,
         trendUp: trends?.materiel?.trendUp,
+        trendHint: TREND_HINT,
+        loading: materielLoading,
       },
     ],
-    [statsData, trends],
+    [statsData, trends, plongeeLoading, materielLoading],
   );
 
   // Indicateurs CDC 3.6.2 non couverts par mainStats/secondaryStats — soit
@@ -513,6 +557,8 @@ const StaffDashboardContent = () => {
         bgColor: "bg-indigo-50 dark:bg-indigo-900/20",
         textColor: "text-indigo-600 dark:text-indigo-400",
         subValue: "Taux moyen de places occupées",
+        valueHint: REMPLISSAGE_HINT,
+        loading: indicateursLoading,
       },
       {
         title: "Plongées / adhérent",
@@ -521,6 +567,8 @@ const StaffDashboardContent = () => {
         bgColor: "bg-teal-50 dark:bg-teal-900/20",
         textColor: "text-teal-600 dark:text-teal-400",
         subValue: "Moyenne club",
+        // Dérivée de statsData (adhérents + plongées), pas des indicateurs.
+        loading: adherentLoading || plongeeLoading,
       },
       {
         title: "Renouvellement adhésions",
@@ -533,6 +581,8 @@ const StaffDashboardContent = () => {
         bgColor: "bg-sky-50 dark:bg-sky-900/20",
         textColor: "text-sky-600 dark:text-sky-400",
         subValue: "Vs l'année précédente",
+        valueHint: RENOUVELLEMENT_HINT,
+        loading: indicateursLoading,
       },
       {
         title: "Matériel à réviser",
@@ -545,6 +595,7 @@ const StaffDashboardContent = () => {
         bgColor: "bg-amber-50 dark:bg-amber-900/20",
         textColor: "text-amber-600 dark:text-amber-400",
         subValue: "Échéance proche ou dépassée",
+        loading: indicateursLoading,
       },
       {
         title: "Adhérents sans plongée 6 mois",
@@ -557,9 +608,10 @@ const StaffDashboardContent = () => {
         bgColor: "bg-red-50 dark:bg-red-900/20",
         textColor: "text-red-600 dark:text-red-400",
         subValue: "À relancer",
+        loading: indicateursLoading,
       },
     ];
-  }, [statsData, indicateurs]);
+  }, [statsData, indicateurs, indicateursLoading, adherentLoading, plongeeLoading]);
 
   // Données graphiques
   const monthlyActivityData = useMemo(() => {
@@ -593,13 +645,27 @@ const StaffDashboardContent = () => {
     [statsData],
   );
 
-  if (isLoading) return <LoadingSpinner />;
+  // Chaque graphique n'attend que ses propres dépendances (voir
+  // monthlyActivityData/statusData ci-dessus), pas les 6 requêtes de stats.
+  const barChartLoading = adherentLoading || sortieLoading || paiementLoading;
+  const pieChartLoading = adherentLoading;
 
   return (
     <div className="min-h-screen from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6 space-y-6">
       {/* Sortie la plus proche + compte à rebours — visible d'un coup d'œil
           plutôt que noyée dans la liste des sorties. Masquée pour le
-          trésorier, voir canSeeSorties ci-dessus. */}
+          trésorier, voir canSeeSorties ci-dessus.
+          Rendue AVANT le `if (isLoading)` qui suivait ici : ce composant
+          gère son propre chargement (useSorties/useInscriptions, pas les 6
+          useGetStats ci-dessus) et n'a aucun besoin d'attendre les stats.
+          Avant ce correctif, il restait démonté (donc ne lançait même pas
+          sa propre requête) tant qu'un seul des 6 useGetStats traînait —
+          une attente en cascade évitable, pas seulement perçue : chaque
+          seconde de plus prise par exemple par les stats paiements
+          retardait d'autant le déclenchement de la requête sorties de
+          cette carte, alors que les deux pourraient partir en parallèle
+          dès le montage de la page. Même chose pour RecentActivity plus
+          bas, qui gère aussi son propre chargement (voir son composant). */}
       {canSeeSorties && <ProchaineSortieCard />}
 
       {/* Bannière d'erreur */}
@@ -632,7 +698,11 @@ const StaffDashboardContent = () => {
         </motion.div>
       )}
 
-      {/* Statistiques principales */}
+      {/* Statistiques principales — chaque StatsCard reçoit son propre
+          `loading` (voir stat.loading ci-dessus, transmis par {...stat}) :
+          affichée dès que SA requête à elle est prête, sans attendre les
+          5 autres. Plus de gate global ici (voir git history pour l'ancien
+          `if (isLoading) return <LoadingSpinner />` qui bloquait tout). */}
       <motion.div
         variants={staggerContainer}
         initial="hidden"
@@ -686,7 +756,11 @@ const StaffDashboardContent = () => {
         ))}
       </motion.div>
 
-      {/* Graphiques */}
+      {/* Graphiques — même principe : chacun n'attend que les stats dont il
+          dépend réellement (voir barChartLoading/pieChartLoading), pas les
+          6 requêtes. Squelette de même hauteur que le graphique final
+          (300px/260px, cf. BarChart.jsx/PieChart.jsx) pour éviter un saut
+          de mise en page quand la vraie donnée arrive. */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
@@ -712,7 +786,14 @@ const StaffDashboardContent = () => {
               Voir plus <FiChevronRight className="w-3 h-3" />
             </button>
           </div>
-          <BarChart data={monthlyActivityData} />
+          {barChartLoading ? (
+            <div
+              className="h-[300px] rounded-2xl bg-gray-50 dark:bg-slate-700/40 animate-pulse"
+              aria-hidden="true"
+            />
+          ) : (
+            <BarChart data={monthlyActivityData} />
+          )}
         </motion.div>
 
         <motion.div
@@ -734,7 +815,14 @@ const StaffDashboardContent = () => {
               </p>
             </div>
           </div>
-          <PieChart data={statusData} />
+          {pieChartLoading ? (
+            <div
+              className="h-[260px] rounded-2xl bg-gray-50 dark:bg-slate-700/40 animate-pulse"
+              aria-hidden="true"
+            />
+          ) : (
+            <PieChart data={statusData} />
+          )}
         </motion.div>
       </div>
 

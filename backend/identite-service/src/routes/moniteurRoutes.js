@@ -25,6 +25,15 @@ router.put('/:id',
   moniteurController.update.bind(moniteurController)
 );
 
+// Ouvert au président ET au moniteur (self-check dans le service : un
+// moniteur ne peut toucher que sa propre fiche) — contrairement au PUT
+// général ci-dessus, réservé au président seul.
+router.patch('/:id/disponibilite',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize(ROLES.PRESIDENT_MONITEUR),
+  moniteurController.updateDisponibilite.bind(moniteurController)
+);
+
 router.delete('/:id',
   AuthMiddleware.authenticate,
   AuthMiddleware.authorize(ROLES.PRESIDENT_ONLY),

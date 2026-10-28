@@ -1,11 +1,20 @@
+const crypto = require("crypto");
 const BaseService = require("./BaseService");
 const SortieRepository = require("../repositories/SortieRepository");
 const InscriptionRepository = require("../repositories/InscriptionRepository");
 const identiteClient = require("../utils/serviceClients/identiteClient");
-const { isNiveauCompatible, profondeurMaxPourNiveau } = require("../utils/roleScope");
+const vieAssociativeClient = require("../utils/serviceClients/vieAssociativeClient");
+const {
+  isNiveauCompatible,
+  isTypeNiveauCompatible,
+  profondeurMaxPourNiveau,
+  NIVEAU_MIN_PAR_TYPE_SORTIE,
+} = require("../utils/roleScope");
 const { withAdherent } = require("../utils/enrichAdherents");
 const {
   sendSortieReminderEmail,
+  sendSortieModifieeEmail,
+  sendReconfirmationInscriptionEmail,
   sendSortieAnnuleeMeteoEmail,
   sendPropositionsReprogrammationEmail,
   sendAlerteMeteoDouteuseEmail,
@@ -14,6 +23,7 @@ const {
 } = require("../utils/email");
 const { getForecastForDate, evaluerDanger } = require("../utils/meteoClient");
 const { sortiesSeChevauchent } = require("../utils/sortieOverlap");
+const { NotFoundError, ValidationError, ForbiddenError } = require("../utils/errors");
 
 // Le test météo automatique se joue en deux phases (jamais en continu) :
 //   - 3 tests sur 3 jours différents, nominalement J-5, J-4, J-3 (voir
@@ -73,12 +83,70 @@ const PROPOSITIONS_FENETRE_JOURS = 21;
 // (la prévision a pu être révisée depuis, ou un relevé observé après coup
 // peut différer de la prévision qui a motivé l'annulation à l'époque).
 const PREFIXE_MOTIF_ANNULATION_METEO = "Annulation automatique (météo défavorable)";
+// Annulation manuelle (voir annulerPourMeteo) : déclenchée par le
+// président/moniteur depuis la fiche sortie, typiquement suite à l'alerte
+// J-1 (sendAlerteMeteoDouteuseEmail) qui ne déclenche jamais d'annulation
+// automatique elle-même. Préfixe distinct du cas automatique ci-dessus,
+// mais reconnu au même titre par estMotifAnnulationMeteo ci-dessous (même
+// affichage "Annulée pour météo" côté fiche sortie).
+const PREFIXE_MOTIF_ANNULATION_METEO_MANUELLE = "Annulation manuelle (météo dangereuse)";
+const PREFIXES_MOTIF_ANNULATION_METEO = [
+  PREFIXE_MOTIF_ANNULATION_METEO,
+  PREFIXE_MOTIF_ANNULATION_METEO_MANUELLE,
+];
+
+// Reconnaît un motif_annulation posé par l'un des deux chemins d'annulation
+// météo (auto ou manuel) et en extrait la partie "motifs" (après le " : "
+// initial, sans le point final) — utilisé par getPrevisionMeteo pour ne
+// jamais afficher un verdict recalculé qui contredirait la décision déjà
+// prise. Renvoie `null` si le motif ne vient pas d'une annulation météo.
+function motifAnnulationMeteo(motifAnnulation) {
+  const prefixe = PREFIXES_MOTIF_ANNULATION_METEO.find((p) =>
+    motifAnnulation?.startsWith(p),
+  );
+  if (!prefixe) return null;
+  return motifAnnulation.slice(prefixe.length + 3).replace(/\.$/, "");
+}
 
 function formatSortieLabel(sortie) {
   const date = sortie?.date_heure
     ? new Date(sortie.date_heure).toLocaleDateString("fr-FR")
     : "";
   return `${sortie?.site || sortie?.lieu || "Sortie"} du ${date}`;
+}
+
+// Champs de logistique dont la modification, sur une sortie encore
+// "Planifiée", justifie de prévenir les inscrits déjà enregistrés (email +
+// notification in-app, voir SortieService.update/notifierModificationSortie)
+// — un changement purement administratif ou interne (motif_annulation, les
+// indicateurs meteo_test_*, alerte_remplissage_envoyee...) ne les concerne
+// pas. Valeur = libellé affiché dans l'email et le détail de la notification.
+const CHAMPS_NOTIFIABLES_MODIFICATION = {
+  date_heure: "Date et heure",
+  duree_estimee: "Durée estimée",
+  lieu: "Lieu",
+  site: "Site",
+  type: "Type d'activité",
+  niveau_requis: "Niveau requis",
+  profondeur_max: "Profondeur max",
+  nb_places: "Nombre de places",
+  tarif_adherent: "Tarif",
+};
+
+// `data` (payload de mise à jour) peut arriver en chaînes/nombres bruts du
+// formulaire, `sortie[champ]` en types Sequelize déjà castés (Date pour
+// date_heure, number pour les colonnes numériques) — une comparaison stricte
+// (`!==`) déclencherait donc une fausse détection de changement sur quasiment
+// tous les champs. date_heure compare des timestamps, le reste une
+// représentation texte.
+function valeurChampModifiee(champ, ancienne, nouvelle) {
+  if (nouvelle === undefined) return false;
+  if (champ === "date_heure") {
+    const a = ancienne ? new Date(ancienne).getTime() : null;
+    const b = nouvelle ? new Date(nouvelle).getTime() : null;
+    return a !== b;
+  }
+  return String(ancienne ?? "") !== String(nouvelle ?? "");
 }
 
 // Nombre de jours calendaires (pas d'heures) restant avant la sortie —
@@ -148,11 +216,178 @@ class SortieService extends BaseService {
       (i) => i.statut === "Confirmée",
     ).length;
     delete plain.inscriptions;
+    // Jamais le contenu des photos dans la réponse générale (liste, fiche) :
+    // seuls les participants doivent pouvoir les voir (voir
+    // assertCanAccessPhotos), et cette méthode alimente des endpoints
+    // ouverts à tout authentifié (ex. la liste des sorties, parcourue par
+    // n'importe quel adhérent avant même de s'inscrire). Seul le compte
+    // (utile pour afficher un badge "12 photos" sans rien dévoiler) est
+    // conservé ; le détail complet ne se récupère que via
+    // GET /sorties/:id/photos, qui applique le vrai contrôle d'accès.
+    const photos_count = Array.isArray(plain.photos) ? plain.photos.length : 0;
+    delete plain.photos;
     return {
       ...plain,
       nb_inscrits,
       places_disponibles: Math.max((plain.nb_places || 0) - nb_inscrits, 0),
+      photos_count,
     };
+  }
+
+  // Empêche de désigner un moniteur encadrant de deux sorties dont les
+  // créneaux se chevauchent : sans ce garde-fou côté API, seul le grisage du
+  // formulaire (SortieForm.jsx, purement visuel) dissuadait le président —
+  // rien n'empêchait un double-booking via l'API directe, ni même via le
+  // formulaire d'édition (auparavant non revalidé du tout, voir update()
+  // ci-dessous). Même définition du chevauchement que
+  // proposerNouvellesDates plus haut (sortieOverlap.sortiesSeChevauchent,
+  // intervalle semi-ouvert [date_heure, date_heure + duree_estimee[).
+  // `id_sortie_exclue` : la sortie elle-même en modification (absent à la
+  // création). Ne vérifie rien si aucune date n'est encore connue — rien à
+  // comparer.
+  async findEncadrantOverlapErrors(encadrants, candidate, id_sortie_exclue) {
+    if (!Array.isArray(encadrants) || encadrants.length === 0) return [];
+    if (!candidate?.date_heure) return [];
+    const autres = await this.sortieRepository.findAutresAvecEncadrants(id_sortie_exclue);
+    const errors = [];
+    for (const idMoniteur of encadrants) {
+      const conflit = autres.find(
+        (autre) =>
+          Array.isArray(autre.encadrants) &&
+          autre.encadrants.includes(idMoniteur) &&
+          sortiesSeChevauchent(candidate, autre),
+      );
+      if (conflit) {
+        errors.push({
+          field: "encadrants",
+          message: `Moniteur #${idMoniteur} est déjà encadrant de "${formatSortieLabel(conflit)}", qui chevauche ce créneau`,
+        });
+      }
+    }
+    return errors;
+  }
+
+  // Un moniteur ne peut gérer (modifier/supprimer/annuler pour météo,
+  // pointage...) QUE les sorties où il est lui-même désigné encadrant
+  // (Sortie.encadrants, liste d'id_moniteur choisie par le président à la
+  // planification) — le président garde un accès total, quel que soit son
+  // propre id_moniteur (pas besoin d'être désigné). Avant ce garde-fou,
+  // `authorize(ROLES.PRESIDENT_MONITEUR)` sur les routes ne vérifiait que le
+  // rôle générique : n'importe quel moniteur du club pouvait agir sur
+  // n'importe quelle sortie, y compris celles confiées à un autre — voir
+  // aussi le filtre "Encadrant" retiré de la vue "Sorties que j'encadre"
+  // côté frontend (SortiesPage.jsx) pour le même motif.
+  async assertCanManageSortie(sortie, user) {
+    if (!user || user.role === "president") return;
+    if (user.role !== "moniteur") {
+      throw new ForbiddenError(
+        "Seuls le président et les moniteurs désignés encadrants peuvent gérer cette sortie",
+      );
+    }
+    const moniteur = await identiteClient.getMoniteurByUserId(user.id);
+    const estEncadrantDesigne =
+      moniteur &&
+      Array.isArray(sortie.encadrants) &&
+      sortie.encadrants.includes(moniteur.id_moniteur);
+    if (!estEncadrantDesigne) {
+      throw new ForbiddenError(
+        "Seul le président ou un encadrant désigné sur cette sortie peut la gérer",
+      );
+    }
+  }
+
+  // Contrairement à assertCanManageSortie ci-dessus (gestion complète de la
+  // sortie, réservée président/encadrant désigné), ici c'est délibérément
+  // plus large : voir/ajouter des photos doit rester possible à tout
+  // adhérent qui a réellement participé (inscription "Confirmée"), pas
+  // seulement au staff qui l'a organisée — ce sont eux qui les ont prises.
+  // Le président et le moniteur désigné encadrant gardent un accès total
+  // (modération), même s'ils n'étaient pas eux-mêmes du voyage.
+  async assertCanAccessPhotos(sortie, user) {
+    if (!user) return;
+    if (user.role === "president") return;
+    if (user.role === "moniteur") {
+      const moniteur = await identiteClient.getMoniteurByUserId(user.id);
+      if (
+        moniteur &&
+        Array.isArray(sortie.encadrants) &&
+        sortie.encadrants.includes(moniteur.id_moniteur)
+      ) {
+        return;
+      }
+    }
+    const adherent = await identiteClient.getAdherentForUser(user);
+    const inscription =
+      adherent &&
+      (await this.inscriptionRepository.findByAdherentAndSortie(
+        adherent.num_adherent,
+        sortie.id_sortie,
+      ));
+    if (inscription && inscription.statut === "Confirmée") return;
+    throw new ForbiddenError(
+      "Seuls les participants de cette sortie peuvent voir ses photos",
+    );
+  }
+
+  async getPhotos(id, user) {
+    const sortie = await this.sortieRepository.findById(id);
+    if (!sortie) throw new NotFoundError("Sortie non trouvée");
+    await this.assertCanAccessPhotos(sortie, user);
+    return sortie.photos || [];
+  }
+
+  // `urls` : plusieurs liens à la fois (un par ligne côté formulaire) —
+  // ajoutés en un seul appel plutôt qu'un aller-retour par photo. Chaque
+  // lien vide (ligne blanche laissée dans le formulaire) est silencieusement
+  // ignoré ; l'erreur ne porte que sur "aucun lien exploitable du tout".
+  async addPhotos(id, urls, user) {
+    const sortie = await this.sortieRepository.findById(id);
+    if (!sortie) throw new NotFoundError("Sortie non trouvée");
+    await this.assertCanAccessPhotos(sortie, user);
+
+    const liens = (Array.isArray(urls) ? urls : [urls])
+      .map((u) => String(u || "").trim())
+      .filter(Boolean);
+    if (liens.length === 0) {
+      throw new ValidationError("Au moins un lien photo est requis");
+    }
+
+    const horodatage = new Date().toISOString();
+    const nouvelles = liens.map((url) => ({
+      id: crypto.randomUUID(),
+      url,
+      ajoute_par_user_id: user?.id ?? null,
+      // Recopié au moment de l'ajout (pas une relation vers le compte) :
+      // reste affichable même si ce compte est supprimé plus tard, voir le
+      // même choix pour Sortie.encadrants/moniteurMap côté frontend.
+      ajoute_par_nom: user?.name || "Un participant",
+      date_ajout: horodatage,
+    }));
+    const photos = [...(sortie.photos || []), ...nouvelles];
+    await this.sortieRepository.update(id, { photos });
+    return photos;
+  }
+
+  async removePhoto(id, photoId, user) {
+    const sortie = await this.sortieRepository.findById(id);
+    if (!sortie) throw new NotFoundError("Sortie non trouvée");
+    await this.assertCanAccessPhotos(sortie, user);
+
+    const photos = sortie.photos || [];
+    const photo = photos.find((p) => p.id === photoId);
+    if (!photo) throw new NotFoundError("Photo non trouvée");
+
+    // Chacun peut retirer SES PROPRES photos ; retirer celle d'un autre
+    // participant reste réservé à la modération (président/encadrant
+    // désigné), même règle d'accès que la gestion de la sortie elle-même.
+    const estAuteur = user && photo.ajoute_par_user_id === user.id;
+    if (!estAuteur) {
+      await this.assertCanManageSortie(sortie, user);
+    }
+
+    const restantes = photos.filter((p) => p.id !== photoId);
+    await this.sortieRepository.update(id, { photos: restantes });
+    return restantes;
   }
 
   async getAll(user = null) {
@@ -303,10 +538,23 @@ class SortieService extends BaseService {
   // "En cours"), ses informations (lieu, horaires, tarifs...) ne doivent
   // plus être modifiables : les adhérents se sont déjà inscrits/organisés
   // sur cette base. Seul le champ `statut` lui-même reste modifiable, pour
-  // permettre la suite du cycle de vie (En cours -> Terminée / Annulée) —
-  // même principe que PalanqueeService.assertPalanqueeModifiable et
+  // permettre la suite du cycle de vie (En cours -> Terminée) — même
+  // principe que PalanqueeService.assertPalanqueeModifiable et
   // AdhesionService.update (verrou une fois validé).
+  //
+  // L'annulation (statut -> "Annulée") est un cas à part, restreint à
+  // "Planifiée" uniquement : une fois "En cours", des inscrits sont déjà
+  // partis en mer/sur site — annuler après coup n'a plus de sens (voir
+  // SortieDetails.jsx/SortiesPage.jsx, où le bouton "Annuler" n'est même
+  // plus proposé passé ce stade). Une sortie "Terminée"/déjà "Annulée" ne
+  // peut pas non plus être (re-)annulée — seule la suppression reste alors
+  // possible (cf. delete() ci-dessous).
   assertSortieModifiable(sortie, data = {}) {
+    if (data.statut === "Annulée" && sortie.statut !== "Planifiée") {
+      throw new Error(
+        'Seule une sortie encore "Planifiée" peut être annulée.',
+      );
+    }
     if (sortie.statut === "Planifiée") return;
     const champsModifies = Object.keys(data).filter((key) => key !== "statut");
     if (champsModifies.length > 0) {
@@ -316,20 +564,157 @@ class SortieService extends BaseService {
     }
   }
 
-  async update(id, data) {
+  async update(id, data, user = null, authHeader = null) {
     const sortie = await this.sortieRepository.findById(id);
     if (!sortie) throw new Error("Sortie non trouvée");
+    await this.assertCanManageSortie(sortie, user);
     this.assertSortieModifiable(sortie, data);
+    // Revalidé à chaque modification qui touche à l'un de ces 3 champs, pas
+    // à chaque appel de update() (validateSortieData, jamais appelée ici
+    // auparavant) : un changement de date, de durée OU d'encadrants peut à
+    // lui seul créer un chevauchement qui n'existait pas avant — donc
+    // recalculé sur les valeurs EFFECTIVES (celles fournies, sinon celles
+    // déjà en base) UNIQUEMENT quand l'un des 3 est effectivement fourni.
+    // Sans cette garde, un simple changement de statut (ex. "Marquer
+    // terminée", qui n'envoie que { statut }) revalidait un chevauchement
+    // encadrant/date déjà en place depuis la planification d'origine — donc
+    // jamais nouveau — et bloquait une action qui n'a rien à voir avec
+    // l'encadrement (incident réel : passage à "Terminée" impossible sur
+    // une sortie dont l'encadrant chevauchait une autre sortie de longue
+    // date).
+    if (
+      data.encadrants !== undefined ||
+      data.date_heure !== undefined ||
+      data.duree_estimee !== undefined
+    ) {
+      const encadrantsOverlapErrors = await this.findEncadrantOverlapErrors(
+        data.encadrants !== undefined ? data.encadrants : sortie.encadrants,
+        {
+          date_heure: data.date_heure !== undefined ? data.date_heure : sortie.date_heure,
+          duree_estimee:
+            data.duree_estimee !== undefined ? data.duree_estimee : sortie.duree_estimee,
+        },
+        id,
+      );
+      if (encadrantsOverlapErrors.length > 0) {
+        throw new Error(encadrantsOverlapErrors.map((e) => e.message).join(" "));
+      }
+    }
+    // Même garde que l'encadrement ci-dessus, mais basée sur un VRAI
+    // changement (valeurChampModifiee), pas seulement sur la présence du
+    // champ dans le payload : le formulaire d'édition renvoie systématique-
+    // ment l'objet complet (type ET niveau_requis inclus, même non
+    // touchés), donc `!== undefined` re-validerait une combinaison déjà en
+    // place à CHAQUE modification, y compris pour corriger un simple lieu —
+    // exactement le même piège que l'encadrement (voir plus haut). Une
+    // combinaison déjà incohérente en base (donnée historique, antérieure à
+    // ce garde-fou) reste donc éditable tant qu'on ne touche ni au type ni
+    // au niveau requis eux-mêmes.
+    if (
+      valeurChampModifiee("type", sortie.type, data.type) ||
+      valeurChampModifiee("niveau_requis", sortie.niveau_requis, data.niveau_requis)
+    ) {
+      const effectiveType = data.type !== undefined ? data.type : sortie.type;
+      const effectiveNiveau =
+        data.niveau_requis !== undefined ? data.niveau_requis : sortie.niveau_requis;
+      if (!isTypeNiveauCompatible(effectiveType, effectiveNiveau)) {
+        throw new Error(
+          effectiveType === "Baptême"
+            ? 'Une sortie "Baptême" doit avoir "Baptême" comme niveau requis (réservée aux non-plongeurs).'
+            : `Le niveau requis "${effectiveNiveau}" n'est pas compatible avec le type "${effectiveType}" (minimum : "${NIVEAU_MIN_PAR_TYPE_SORTIE[effectiveType]}").`,
+        );
+      }
+    }
+    // Capturés avant l'update : une fois sortie.update(data) passé, l'ancien
+    // statut/les anciennes valeurs ne sont plus lisibles sur cette même
+    // instance (mutée en place).
+    const demarreMaintenant = data.statut === "En cours" && sortie.statut !== "En cours";
+    const ancienStatut = sortie.statut;
+    const champsModifies = Object.keys(CHAMPS_NOTIFIABLES_MODIFICATION).filter((champ) =>
+      valeurChampModifiee(champ, sortie[champ], data[champ]),
+    );
     await sortie.update(data);
+    if (demarreMaintenant) {
+      await this.annulerInscriptionsNonConfirmees(id);
+    }
+    // Notifier les inscrits déjà enregistrés (email + notification in-app) :
+    // seulement si la sortie reste "Planifiée" après la modification — un
+    // changement qui coïncide avec une sortie de ce statut (annulation,
+    // passage "En cours"...) relève d'un autre flux/message, pas d'une
+    // simple modif de logistique — et qu'au moins un champ de logistique a
+    // réellement changé (évite de notifier sur un enregistrement sans
+    // changement réel, ex. juste re-soumettre le formulaire tel quel).
+    if (ancienStatut === "Planifiée" && sortie.statut === "Planifiée" && champsModifies.length > 0) {
+      await this.notifierModificationSortie(sortie, champsModifies, authHeader);
+    }
     return sortie;
   }
 
-  async delete(id) {
+  // Voir le garde-fou dans update() ci-dessus pour les conditions de
+  // déclenchement. "Déjà inscrit" = même critère que la notification
+  // d'annulation météo (annulerPourMeteo ci-dessous) : toute inscription non
+  // annulée, pas seulement les "Confirmée" — une demande encore "En attente"
+  // ou en "Liste d'attente" reste concernée par un changement de logistique.
+  async notifierModificationSortie(sortie, champsModifies, authHeader) {
+    const sortieAvecInscriptions = await this.sortieRepository.findByIdWithInscriptions(
+      sortie.id_sortie,
+    );
+    const inscrits = (sortieAvecInscriptions?.inscriptions || []).filter(
+      (i) => i.statut !== "Annulée",
+    );
+    if (inscrits.length === 0) return;
+
+    const label = formatSortieLabel(sortie);
+    const libellesChamps = champsModifies.map((champ) => CHAMPS_NOTIFIABLES_MODIFICATION[champ]);
+    // Alerte.detail est limité à 100 caractères côté modèle (vie-associative-
+    // service) — tronqué ici plutôt que de laisser l'API rejeter l'appel.
+    const detail = `${label} — ${libellesChamps.join(", ")}`.slice(0, 100);
+
+    for (const inscription of inscrits) {
+      try {
+        const adherent = await identiteClient.getAdherentById(inscription.num_adherent, authHeader);
+        if (!adherent) continue;
+        if (adherent.email) {
+          await sendSortieModifieeEmail({
+            to: adherent.email,
+            adherentName: `${adherent.prenom} ${adherent.nom}`,
+            sortieLabel: label,
+            champsModifies: libellesChamps,
+          });
+        }
+        await vieAssociativeClient.createAlerte(inscription.num_adherent, "Sortie modifiée", {
+          detail,
+          referenceType: "Sortie",
+          referenceId: sortie.id_sortie,
+        });
+      } catch (error) {
+        console.error(
+          `Erreur notification modification sortie (inscription ${inscription.id_inscription}):`,
+          error.message,
+        );
+      }
+    }
+  }
+
+  // `user` par défaut à null (et non requis) : bulkDelete (BaseService)
+  // rejoue this.delete(id, user, authHeader) pour chaque id, mais
+  // this.delete garde une signature compatible avec un appel direct sans
+  // user (scripts, tests) — dans ce cas assertCanManageSortie ne fait rien
+  // (voir son garde `if (!user) return`).
+  async delete(id, user = null) {
     const sortie = await this.sortieRepository.findById(id);
     if (!sortie) throw new Error("Sortie non trouvée");
-    if (sortie.statut !== "Planifiée") {
+    await this.assertCanManageSortie(sortie, user);
+    // "En cours" est le seul statut où la suppression reste refusée : des
+    // inscrits sont déjà partis en mer/sur site, un destroy silencieux ne
+    // les prévient pas — voir assertSortieModifiable ci-dessus pour
+    // l'annulation, réservée elle à "Planifiée". "Planifiée", "Terminée" et
+    // "Annulée" restent toutes supprimables (avant que ça ne commence, ou
+    // nettoyage d'un enregistrement final) — même règle que
+    // SortieDetails.jsx/SortiesPage.jsx.
+    if (sortie.statut === "En cours") {
       throw new Error(
-        'Cette sortie a quitté le statut "Planifiée" : suppression impossible.',
+        "Cette sortie est en cours : suppression impossible.",
       );
     }
     await sortie.destroy();
@@ -350,9 +735,16 @@ class SortieService extends BaseService {
     }
   }
 
-  async enregistrerPointage(id_sortie, inscriptions, userId, authHeader) {
+  async enregistrerPointage(id_sortie, inscriptions, userId, authHeader, user) {
     const sortie = await this.sortieRepository.findById(id_sortie);
     if (!sortie) throw new Error("Sortie non trouvée");
+    // Même garde-fou que replanifier/annulerPourMeteo : un moniteur ne peut
+    // pointer que les sorties où il est lui-même désigné encadrant — sans
+    // ça, un moniteur quelconque pouvait pointer présent/absent (donc
+    // déclencher la constitution automatique de palanquées juste en
+    // dessous) sur une sortie confiée à un autre, la route n'étant gardée
+    // que par `authenticate` (voir sortieRoutes.js).
+    await this.assertCanManageSortie(sortie, user);
     this.assertSortiePlanifiee(sortie);
 
     const dateSortie = new Date(sortie.date_heure);
@@ -429,11 +821,13 @@ class SortieService extends BaseService {
     return results;
   }
 
-  async modifierPointage(id_inscription, data, userId) {
+  async modifierPointage(id_inscription, data, userId, user) {
     const inscription =
       await this.inscriptionRepository.findById(id_inscription);
     if (!inscription) throw new Error("Inscription non trouvée");
     const sortie = await this.sortieRepository.findById(inscription.id_sortie);
+    // Voir enregistrerPointage : même garde-fou "encadrant désigné".
+    if (sortie) await this.assertCanManageSortie(sortie, user);
     if (sortie) this.assertSortiePlanifiee(sortie);
     if (!inscription.presence_checked)
       throw new Error("Cette inscription n'a pas encore été pointée");
@@ -455,11 +849,13 @@ class SortieService extends BaseService {
     });
   }
 
-  async annulerPointage(id_inscription, _userId) {
+  async annulerPointage(id_inscription, _userId, user) {
     const inscription =
       await this.inscriptionRepository.findById(id_inscription);
     if (!inscription) throw new Error("Inscription non trouvée");
     const sortie = await this.sortieRepository.findById(inscription.id_sortie);
+    // Voir enregistrerPointage : même garde-fou "encadrant désigné".
+    if (sortie) await this.assertCanManageSortie(sortie, user);
     if (sortie) this.assertSortiePlanifiee(sortie);
     if (!inscription.presence_checked)
       throw new Error("Cette inscription n'a pas encore été pointée");
@@ -477,6 +873,23 @@ class SortieService extends BaseService {
     const errors = [];
     if (!data.type)
       errors.push({ field: "type", message: "Le type est requis" });
+    // Un type de sortie n'est pas compatible avec n'importe quel niveau
+    // requis (ex. "Plongée technique" exige un minimum d'autonomie, une
+    // sortie "Baptême" est réservée aux non-plongeurs) — voir
+    // isTypeNiveauCompatible/NIVEAU_MIN_PAR_TYPE_SORTIE (utils/roleScope.js).
+    if (
+      data.type &&
+      data.niveau_requis &&
+      !isTypeNiveauCompatible(data.type, data.niveau_requis)
+    ) {
+      errors.push({
+        field: "niveau_requis",
+        message:
+          data.type === "Baptême"
+            ? 'Une sortie "Baptême" doit avoir "Baptême" comme niveau requis (réservée aux non-plongeurs).'
+            : `Le niveau requis "${data.niveau_requis}" n'est pas compatible avec le type "${data.type}" (minimum : "${NIVEAU_MIN_PAR_TYPE_SORTIE[data.type]}").`,
+      });
+    }
     if (!data.lieu)
       errors.push({ field: "lieu", message: "Le lieu est requis" });
     if (!data.site)
@@ -549,6 +962,13 @@ class SortieService extends BaseService {
               message: `Moniteur #${v.idMoniteur} introuvable`,
             }),
           );
+
+        errors.push(
+          ...(await this.findEncadrantOverlapErrors(data.encadrants, {
+            date_heure: data.date_heure,
+            duree_estimee: data.duree_estimee,
+          })),
+        );
       }
     }
 
@@ -612,8 +1032,56 @@ class SortieService extends BaseService {
   // manuel, et en pratique jamais fait faute de bouton dédié dans l'UI).
   // Appelé par un cron toutes les 5 minutes (voir app.js) — ne touche jamais
   // "Terminée"/"Annulée", qui restent décidés par le staff.
+  //
+  // Une fois "En cours", les inscriptions pas encore confirmées de chaque
+  // sortie démarrée sont annulées automatiquement (demande explicite,
+  // 2026-09-07 : voir annulerInscriptionsNonConfirmees) — même règle que le
+  // passage manuel à "En cours" via update() ci-dessus.
   async demarrerSortiesEchues() {
-    return await this.sortieRepository.demarrerSortiesEchues();
+    const ids = await this.sortieRepository.demarrerSortiesEchues();
+    for (const id of ids) {
+      await this.annulerInscriptionsNonConfirmees(id);
+    }
+    return ids.length;
+  }
+
+  // Une sortie "En cours" a déjà démarré : une inscription encore "En
+  // attente" ou "Liste d'attente" n'a plus vocation à être confirmée, il
+  // n'y a plus d'embarquement possible pour elle. Annulée en bloc plutôt
+  // que laissée trainer indéfiniment, sans qu'un organisateur ait à le
+  // faire une par une. Contrairement à InscriptionService.cancelInscription
+  // (annulation d'UNE inscription par son titulaire ou le staff), pas de
+  // promotion depuis la liste d'attente ici : la sortie ayant déjà démarré,
+  // il n'y a plus personne à faire monter à la place de qui que ce soit.
+  // Best-effort (erreur avalée) : appelée depuis demarrerSortiesEchues
+  // (cron) autant que depuis update() (édition manuelle), ni l'un ni
+  // l'autre ne doit échouer à cause d'un souci sur les inscriptions liées.
+  async annulerInscriptionsNonConfirmees(id_sortie) {
+    try {
+      await this.inscriptionRepository.annulerNonConfirmeesBySortie(id_sortie);
+    } catch (error) {
+      console.error(
+        `Erreur annulation auto des inscriptions non confirmées (sortie #${id_sortie}):`,
+        error.message,
+      );
+    }
+  }
+
+  // Voir replanifier() ci-dessous : remet "En attente" (reconfirmation_
+  // requise) chaque inscription "Confirmée" d'une sortie replanifiée après
+  // annulation météo — la place n'est plus garantie à la nouvelle date.
+  // Best-effort, même motif qu'annulerInscriptionsNonConfirmees ci-dessus :
+  // un échec ici laisse les inscriptions "Confirmée" en l'état plutôt que
+  // de faire échouer toute la replanification, déjà actée sur la sortie.
+  async remettreEnAttenteConfirmeesInscriptions(id_sortie) {
+    try {
+      await this.inscriptionRepository.remettreEnAttenteConfirmeesBySortie(id_sortie);
+    } catch (error) {
+      console.error(
+        `Erreur remise en attente des inscriptions confirmées (sortie #${id_sortie}):`,
+        error.message,
+      );
+    }
   }
 
   // Rappel 24h avant sortie (CDC 3.2.2), envoyé aux inscrits Confirmée des
@@ -930,6 +1398,83 @@ class SortieService extends BaseService {
     }
   }
 
+  // Annulation manuelle pour météo dangereuse, déclenchée par le président
+  // ou un moniteur depuis la fiche sortie (bouton affiché uniquement quand
+  // la prévision est jugée dangereuse — voir getPrevisionMeteo côté API,
+  // meteo.dangereux côté frontend). Recalcule la dangerosité côté serveur
+  // (jamais de confiance aveugle dans ce que le client affichait à l'instant
+  // du clic) : refuse si les conditions sont finalement jugées favorables,
+  // ou si la sortie n'est plus "Planifiée" (déjà annulée, démarrée...).
+  // Même traitement que l'annulation automatique une fois la décision prise
+  // : motif figé, inscrits notifiés par email — seul le préfixe du motif
+  // diffère (PREFIXE_MOTIF_ANNULATION_METEO_MANUELLE) pour tracer l'origine
+  // humaine de la décision.
+  async annulerPourMeteo(id, authHeader, user = null) {
+    const sortie = await this.sortieRepository.findByIdWithInscriptions(id);
+    if (!sortie) throw new NotFoundError("Sortie non trouvée");
+    await this.assertCanManageSortie(sortie, user);
+
+    if (sortie.statut !== "Planifiée") {
+      throw new ValidationError(
+        "Seule une sortie encore planifiée peut être annulée pour cause météorologique.",
+      );
+    }
+    if (sortie.latitude === null || sortie.longitude === null) {
+      throw new ValidationError(
+        "Aucune position renseignée pour cette sortie : impossible de vérifier la météo.",
+      );
+    }
+
+    const forecast = await getForecastForDate({
+      latitude: sortie.latitude,
+      longitude: sortie.longitude,
+      date: sortie.date_heure,
+    });
+    if (!forecast) {
+      throw new ValidationError(
+        "Prévision météo indisponible pour cette date : annulation refusée.",
+      );
+    }
+
+    const { dangereux, motifs } = evaluerDanger(forecast);
+    if (!dangereux) {
+      throw new ValidationError(
+        "Les conditions météo ne sont plus jugées dangereuses : annulation refusée.",
+      );
+    }
+
+    const motifAnnulation = `${PREFIXE_MOTIF_ANNULATION_METEO_MANUELLE} : ${motifs.join(", ")}.`;
+    await this.sortieRepository.update(sortie.id_sortie, {
+      statut: "Annulée",
+      motif_annulation: motifAnnulation,
+    });
+
+    const label = formatSortieLabel(sortie);
+    const inscrits = (sortie.inscriptions || []).filter((i) => i.statut !== "Annulée");
+    for (const inscription of inscrits) {
+      try {
+        const adherent = await identiteClient.getAdherentById(
+          inscription.num_adherent,
+          authHeader,
+        );
+        if (!adherent?.email) continue;
+        await sendSortieAnnuleeMeteoEmail({
+          to: adherent.email,
+          adherentName: `${adherent.prenom} ${adherent.nom}`,
+          sortieLabel: label,
+          motifs,
+        });
+      } catch (error) {
+        console.error(
+          `Erreur notification annulation météo manuelle (inscription ${inscription.id_inscription}):`,
+          error.message,
+        );
+      }
+    }
+
+    return this.sortieRepository.findById(sortie.id_sortie);
+  }
+
   // Météo affichée sur la fiche sortie (GET /sorties/:id/meteo) — même
   // client et mêmes seuils que verifierMeteoEtAnnulerSiDangereux, mais
   // purement consultatif : ne modifie jamais le statut de la sortie (seul le
@@ -963,30 +1508,166 @@ class SortieService extends BaseService {
       return { disponible: false, raison };
     }
 
-    // Sortie déjà annulée pour météo : la prévision a pu être révisée depuis
-    // (le cron l'évalue jusqu'à FENETRE_METEO_JOURS avant la date, elle peut
-    // ensuite s'améliorer), ou le relevé observé après coup peut différer de
-    // ce qui a motivé la décision à l'époque. Dans les deux cas, ne jamais
-    // recalculer un verdict "Conditions favorables" qui contredirait
-    // visuellement le motif_annulation déjà affiché — celui-ci fait foi.
-    if (
-      sortie.statut === "Annulée" &&
-      sortie.motif_annulation?.startsWith(PREFIXE_MOTIF_ANNULATION_METEO)
-    ) {
-      const motifOriginal = sortie.motif_annulation
-        .slice(PREFIXE_MOTIF_ANNULATION_METEO.length + 3) // ` : `
-        .replace(/\.$/, "");
-      return {
-        disponible: true,
-        forecast,
-        dangereux: true,
-        motifs: motifOriginal ? motifOriginal.split(", ") : [],
-        annuleePourMeteo: true,
-      };
+    // Sortie déjà annulée pour météo (auto ou manuelle) : la prévision a pu
+    // être révisée depuis (le cron l'évalue jusqu'à FENETRE_METEO_JOURS avant
+    // la date, elle peut ensuite s'améliorer), ou le relevé observé après
+    // coup peut différer de ce qui a motivé la décision à l'époque. Dans les
+    // deux cas, ne jamais recalculer un verdict "Conditions favorables" qui
+    // contredirait visuellement le motif_annulation déjà affiché — celui-ci
+    // fait foi.
+    if (sortie.statut === "Annulée") {
+      const motifOriginal = motifAnnulationMeteo(sortie.motif_annulation);
+      if (motifOriginal !== null) {
+        return {
+          disponible: true,
+          forecast,
+          dangereux: true,
+          motifs: motifOriginal ? motifOriginal.split(", ") : [],
+          annuleePourMeteo: true,
+        };
+      }
     }
 
     const { dangereux, motifs } = evaluerDanger(forecast);
     return { disponible: true, forecast, dangereux, motifs };
+  }
+
+  // Propositions de dates de repli affichées sur la fiche sortie pour une
+  // sortie annulée météo (auto ou manuelle) — même calcul que celui déjà
+  // envoyé par email à l'organisateur (proposerNouvellesDates : jusqu'à
+  // PROPOSITIONS_MAX dates, même heure que la sortie annulée, sans
+  // chevauchement avec une autre sortie), mais exposé ici comme choix
+  // interactif (replanifier() ci-dessous) plutôt que comme simple
+  // information à recopier à la main. Chaque proposition est enrichie de
+  // sa météo quand elle est déjà prévisible (≤16 jours, getForecastForDate)
+  // — au-delà, `meteo: null`, comme le rappelle déjà l'email ("sera
+  // revérifiée par le cron une fois dans sa fenêtre").
+  async getPropositionsReprogrammation(id) {
+    const sortie = await this.sortieRepository.findById(id);
+    if (!sortie) throw new NotFoundError("Sortie non trouvée");
+
+    if (sortie.statut !== "Annulée" || motifAnnulationMeteo(sortie.motif_annulation) === null) {
+      throw new ValidationError(
+        "Cette sortie n'a pas été annulée pour cause météorologique.",
+      );
+    }
+
+    const dates = await proposerNouvellesDates(sortie, this.sortieRepository);
+
+    return Promise.all(
+      dates.map(async (date) => {
+        let meteo = null;
+        if (sortie.latitude !== null && sortie.longitude !== null) {
+          const forecast = await getForecastForDate({
+            latitude: sortie.latitude,
+            longitude: sortie.longitude,
+            date,
+          });
+          if (forecast) meteo = { ...evaluerDanger(forecast), forecast };
+        }
+        return { date_heure: date.toISOString(), meteo };
+      }),
+    );
+  }
+
+  // Reprogrammation d'une sortie annulée météo sur l'une des propositions
+  // ci-dessus (ou toute autre date choisie manuellement) : remet la sortie
+  // "Planifiée" à la nouvelle date, efface le motif d'annulation, et
+  // réinitialise tout le cycle de test météo automatique (les 3 tests
+  // J-5/J-4/J-3 + l'alerte J-1 doivent rejouer sur CETTE nouvelle date, pas
+  // réutiliser des indicateurs déjà posés pour l'ancienne — voir
+  // testerUneEtapeAuto). Revérifie le chevauchement (même garde que
+  // proposerNouvellesDates) plutôt que de faire confiance à une proposition
+  // reçue du frontend : une autre sortie a pu être créée sur ce créneau
+  // entre le calcul des propositions et ce choix.
+  async replanifier(id, data, user = null, authHeader = null) {
+    const sortie = await this.sortieRepository.findByIdWithInscriptions(id);
+    if (!sortie) throw new NotFoundError("Sortie non trouvée");
+    await this.assertCanManageSortie(sortie, user);
+
+    if (sortie.statut !== "Annulée" || motifAnnulationMeteo(sortie.motif_annulation) === null) {
+      throw new ValidationError(
+        "Cette sortie n'a pas été annulée pour cause météorologique.",
+      );
+    }
+    if (!data?.date_heure) {
+      throw new ValidationError("La nouvelle date est requise.");
+    }
+    const nouvelleDate = new Date(data.date_heure);
+    if (Number.isNaN(nouvelleDate.getTime()) || nouvelleDate <= new Date()) {
+      throw new ValidationError("La nouvelle date doit être une date future valide.");
+    }
+
+    const autres = await this.sortieRepository.findAutresPourChevauchement(sortie.id_sortie);
+    const candidate = { date_heure: nouvelleDate, duree_estimee: sortie.duree_estimee };
+    if (autres.some((autre) => sortiesSeChevauchent(candidate, autre))) {
+      throw new ValidationError("Cette date chevauche une autre sortie déjà planifiée.");
+    }
+
+    await this.sortieRepository.update(sortie.id_sortie, {
+      statut: "Planifiée",
+      date_heure: nouvelleDate,
+      motif_annulation: null,
+      meteo_test_j5_fait: false,
+      meteo_test_j4_fait: false,
+      meteo_test_j3_fait: false,
+      meteo_motifs_detectes: null,
+      meteo_alerte_j1_envoyee: false,
+    });
+
+    await this.remettreEnAttenteConfirmeesInscriptions(sortie.id_sortie);
+
+    const label = formatSortieLabel({ site: sortie.site, lieu: sortie.lieu, date_heure: nouvelleDate });
+    // `sortie.inscriptions` a été chargé avant la remise en attente
+    // ci-dessus : `inscription.statut` y reflète encore l'ancien statut,
+    // ce qui permet justement de distinguer qui doit reconfirmer (était
+    // "Confirmée") de qui doit juste être informé (déjà "En attente"/
+    // "Liste d'attente", statut inchangé par cette replanification).
+    const inscrits = (sortie.inscriptions || []).filter((i) => i.statut !== "Annulée");
+    for (const inscription of inscrits) {
+      const doitReconfirmer = inscription.statut === "Confirmée";
+      try {
+        const adherent = await identiteClient.getAdherentById(inscription.num_adherent, authHeader);
+        if (!adherent) continue;
+        if (adherent.email) {
+          if (doitReconfirmer) {
+            await sendReconfirmationInscriptionEmail({
+              to: adherent.email,
+              adherentName: `${adherent.prenom} ${adherent.nom}`,
+              sortieLabel: label,
+              nouvelleDate,
+              id_inscription: inscription.id_inscription,
+            });
+          } else {
+            await sendSortieModifieeEmail({
+              to: adherent.email,
+              adherentName: `${adherent.prenom} ${adherent.nom}`,
+              sortieLabel: label,
+              champsModifies: [CHAMPS_NOTIFIABLES_MODIFICATION.date_heure],
+            });
+          }
+        }
+        // referenceType "Inscription" (plutôt que "Sortie") quand une
+        // reconfirmation est attendue : AlerteDetailsModal.jsx s'appuie
+        // dessus pour renvoyer directement vers la fiche inscription (où
+        // se trouve le bouton "Reconfirmer"), pas seulement la sortie.
+        await vieAssociativeClient.createAlerte(inscription.num_adherent, "Sortie modifiée", {
+          detail: (doitReconfirmer
+            ? `${label} — reconfirmation requise après replanification météo`
+            : `${label} — nouvelle date après annulation météo`
+          ).slice(0, 100),
+          referenceType: doitReconfirmer ? "Inscription" : "Sortie",
+          referenceId: doitReconfirmer ? inscription.id_inscription : sortie.id_sortie,
+        });
+      } catch (error) {
+        console.error(
+          `Erreur notification replanification (inscription ${inscription.id_inscription}):`,
+          error.message,
+        );
+      }
+    }
+
+    return this.sortieRepository.findById(sortie.id_sortie);
   }
 }
 

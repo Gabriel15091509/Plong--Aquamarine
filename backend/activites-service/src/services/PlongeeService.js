@@ -1,11 +1,13 @@
 const BaseService = require('./BaseService');
 const PlongeeRepository = require('../repositories/PlongeeRepository');
 const AttributionRepository = require('../repositories/AttributionRepository');
+const SortieRepository = require('../repositories/SortieRepository');
 const identiteClient = require('../utils/serviceClients/identiteClient');
 const formationClient = require('../utils/serviceClients/formationClient');
 const vieAssociativeClient = require('../utils/serviceClients/vieAssociativeClient');
 const materielClient = require('../utils/serviceClients/materielClient');
 const { withAdherent, withMoniteurEncadrant } = require('../utils/enrichAdherents');
+const { NotFoundError, ForbiddenError } = require('../utils/errors');
 
 const SIX_MOIS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
 
@@ -15,6 +17,7 @@ class PlongeeService extends BaseService {
     super(repository);
     this.plongeeRepository = repository;
     this.attributionRepository = new AttributionRepository();
+    this.sortieRepository = new SortieRepository();
   }
 
   // Matériel utilisé par plongée (CDC 3.3.1 : "Matériel utilisé (bloc,
@@ -86,6 +89,37 @@ class PlongeeService extends BaseService {
     }
   }
 
+  // Créer/modifier/supprimer/valider une plongée : réservé au président ou
+  // au moniteur explicitement désigné encadrant de LA SORTIE à laquelle elle
+  // se rattache (Sortie.encadrants) — même garde-fou que SortieService.
+  // assertCanManageSortie / IncidentService.assertCanDeclareIncident
+  // (dupliqué ici plutôt qu'importé, pour ne pas faire dépendre PlongeeService
+  // de SortieService — aucun des deux ne dépend de l'autre aujourd'hui, mieux
+  // vaut ne pas commencer). Avant ce garde-fou, `authorize(ROLES.
+  // PRESIDENT_MONITEUR)` sur les routes ne vérifiait que le rôle générique :
+  // n'importe quel moniteur pouvait gérer les plongées de n'importe quelle
+  // sortie, y compris celles confiées à un autre.
+  async assertCanManagePlongee(id_sortie, user) {
+    if (!user || user.role === 'president') return;
+    if (user.role !== 'moniteur') {
+      throw new ForbiddenError(
+        "Seuls le président et les moniteurs désignés encadrants peuvent gérer cette plongée",
+      );
+    }
+    const sortie = await this.sortieRepository.findById(id_sortie);
+    if (!sortie) throw new NotFoundError('Sortie non trouvée');
+    const moniteur = await identiteClient.getMoniteurByUserId(user.id);
+    const estEncadrantDesigne =
+      moniteur &&
+      Array.isArray(sortie.encadrants) &&
+      sortie.encadrants.includes(moniteur.id_moniteur);
+    if (!estEncadrantDesigne) {
+      throw new ForbiddenError(
+        "Seul le président ou un encadrant désigné sur la sortie de cette plongée peut la gérer",
+      );
+    }
+  }
+
   async getPlongeesByAdherent(num_adherent, user = null) {
     const adherent = await identiteClient.getAdherentForUser(user);
     if (adherent && num_adherent !== adherent.num_adherent) {
@@ -124,6 +158,12 @@ class PlongeeService extends BaseService {
     return await this.plongeeRepository.getStats();
   }
 
+  // Badge Sidebar ("plongées à valider") : voir PlongeeRepository.
+  // countAValider.
+  async getAValiderCount() {
+    return await this.plongeeRepository.countAValider();
+  }
+
   async getPlongeesByDateRange(startDate, endDate) {
     return await this.plongeeRepository.getPlongeesByDateRange(startDate, endDate);
   }
@@ -157,25 +197,33 @@ class PlongeeService extends BaseService {
     }
   }
 
-  async update(id, data) {
+  async create(data, user = null) {
+    await this.assertCanManagePlongee(data.id_sortie, user);
+    return await this.plongeeRepository.create(data);
+  }
+
+  async update(id, data, user = null) {
     const plongee = await this.plongeeRepository.findById(id);
     if (!plongee) throw new Error('Plongée non trouvée');
+    await this.assertCanManagePlongee(plongee.id_sortie, user);
     this.assertPlongeeModifiable(plongee);
     return await this.plongeeRepository.update(id, data);
   }
 
-  async delete(id) {
+  async delete(id, user = null) {
     const plongee = await this.plongeeRepository.findById(id);
     if (!plongee) throw new Error('Plongée non trouvée');
+    await this.assertCanManagePlongee(plongee.id_sortie, user);
     this.assertPlongeeModifiable(plongee);
     return await this.plongeeRepository.delete(id);
   }
 
   // AdherentService (identite-service) : incrémentation du compte de
   // plongées de l'adhérent via HTTP au lieu d'un appel en-process.
-  async validatePlongee(id, id_moniteur, authHeader = null) {
+  async validatePlongee(id, id_moniteur, authHeader = null, user = null) {
     const plongee = await this.getById(id);
     if (!plongee) throw new Error('Plongée non trouvée');
+    await this.assertCanManagePlongee(plongee.id_sortie, user);
     if (!id_moniteur) throw new Error('Le moniteur validateur est requis');
     // Déjà validée : ne pas ré-incrémenter le compteur de plongées de
     // l'adhérent (double-clic ou nouvelle validation sur une plongée déjà

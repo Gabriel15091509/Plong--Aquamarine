@@ -83,10 +83,31 @@ const Sortie = sequelize.define(
       type: DataTypes.JSON,
       allowNull: true,
     },
+    // Photos de la sortie — déplacées ici depuis Plongee.lien_photos (un
+    // lien unique par plongée individuelle) : la sortie est le niveau
+    // naturel de partage, tout le groupe qui l'a vécue ensemble, pas
+    // chaque plongée séparément. Tableau d'objets { id, url,
+    // ajoute_par_user_id, ajoute_par_nom, date_ajout } plutôt qu'un simple
+    // tableau de liens : `id` permet de cibler une suppression précise sans
+    // dépendre d'un index de tableau (fragile si deux ajouts se
+    // chevauchent), et ajoute_par_* trace qui a le droit de la retirer (voir
+    // SortieService.assertCanAccessPhotos/removePhoto) sans dépendre d'une
+    // relation FK vers un compte qui peut être supprimé plus tard. Visible
+    // uniquement par les participants de cette sortie (inscription
+    // "Confirmée") ou le staff qui la gère (président, moniteur désigné
+    // encadrant) — jamais renvoyé par le GET général de la sortie, seulement
+    // via /sorties/:id/photos (voir assertCanAccessPhotos).
+    photos: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
     // Renseigné automatiquement par SortieService.
     // verifierMeteoEtAnnulerSiDangereux quand une sortie "Planifiée" est
     // annulée pour cause de météo dangereuse (voir migrate-sortie-motif-
-    // annulation.sql) — reste vide pour une annulation manuelle.
+    // annulation.sql), ou par SortieService.annulerPourMeteo lors d'une
+    // annulation météo déclenchée manuellement par le président/un moniteur
+    // — reste vide pour toute autre annulation manuelle (générique, via le
+    // formulaire de modification).
     motif_annulation: {
       type: DataTypes.TEXT,
       allowNull: true,

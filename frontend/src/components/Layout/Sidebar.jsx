@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,24 +10,12 @@ import {
   FiFileText,
   FiCreditCard,
   FiAnchor,
-  FiClipboard,
   FiChevronLeft,
   FiChevronRight,
   FiLogOut,
   FiActivity,
-  FiInfo,
-  FiSun,
-  FiMoon,
-  FiShield,
-  FiUser,
-  FiCompass,
-  FiStar,
-  FiBriefcase,
-  FiAlertTriangle,
-  FiTool,
-  FiDollarSign,
+  FiSettings,
   FiX,
-  FiChevronDown,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -39,22 +27,27 @@ import { useFormations } from "../../hooks/Formation/useFormations";
 import { useAdhesions } from "../../hooks/Adhesion/useAdhesions";
 import { useCertificats } from "../../hooks/CertificatMedical/useCertificats";
 
-// Élément de menu simple, ou avec un sous-menu pliable (`item.children`) —
-// utilisé par Adhésions/Certificats pour donner un accès direct à la file
-// "en attente de validation" sans quitter la vue "toutes". Déplié par
-// défaut (un sous-menu replié par défaut passait inaperçu), mais un
-// chevron permet de le replier une fois qu'on sait qu'il est là.
+// Élément de menu simple (plus de sous-menu dépliable — les vues qui en
+// avaient un, ex. "Validation"/"Mes X", sont désormais des onglets DANS
+// la page elle-même, voir TabBar.jsx, pour raccourcir la sidebar).
 const MenuItem = ({ item, isOpen, onNavigate }) => {
+  // "Incidents" a rejoint les onglets du groupe Sorties (voir
+  // useSortieTabs.js) mais vit sous /incidents, un chemin qui ne commence
+  // pas par /sorties : le matching par défaut de NavLink (actif si
+  // location.pathname commence par `to`) ne surligne donc plus rien dans
+  // la sidebar une fois sur cet onglet. `activePaths` liste les chemins
+  // supplémentaires à traiter comme cet item pour la surbrillance, sans
+  // toucher la navigation elle-même (toujours portée par `item.path`).
   const location = useLocation();
-  const hasChildren = Array.isArray(item.children) && item.children.length > 0;
-  const currentUrl = `${location.pathname}${location.search}`;
-  const [expanded, setExpanded] = useState(true);
+  const extraActive = (item.activePaths || []).some(
+    (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
+  );
 
   const linkClasses = ({ isActive }) => `
     relative flex items-center gap-3 px-3 py-2.5 rounded-xl
     transition-colors duration-150
     ${
-      isActive
+      isActive || extraActive
         ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400"
         : "text-gray-600 hover:bg-gray-50 hover:text-cyan-700 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400"
     }
@@ -64,7 +57,9 @@ const MenuItem = ({ item, isOpen, onNavigate }) => {
 
   const badgeCount = item.badge > 0 ? (item.badge > 99 ? "99+" : item.badge) : null;
 
-  const linkContent = ({ isActive }) => (
+  const linkContent = ({ isActive: navActive }) => {
+    const isActive = navActive || extraActive;
+    return (
     <>
       <span
         className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-full bg-cyan-500 transition-all duration-150 ${
@@ -98,72 +93,13 @@ const MenuItem = ({ item, isOpen, onNavigate }) => {
         </span>
       )}
     </>
-  );
-
-  if (!hasChildren) {
-    return (
-      <NavLink to={item.path} onClick={onNavigate} className={linkClasses}>
-        {linkContent}
-      </NavLink>
     );
-  }
+  };
 
   return (
-    <div>
-      <div className="flex items-center gap-0.5">
-        <NavLink
-          to={item.path}
-          end
-          onClick={onNavigate}
-          className={({ isActive }) => `flex-1 ${linkClasses({ isActive })}`}
-        >
-          {linkContent}
-        </NavLink>
-        {isOpen && (
-          <button
-            type="button"
-            onClick={() => setExpanded((prev) => !prev)}
-            aria-label={expanded ? "Replier" : "Déplier"}
-            className="p-2 rounded-lg text-gray-400 hover:text-cyan-600 hover:bg-gray-50 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400 transition-colors duration-150 flex-shrink-0"
-          >
-            <FiChevronDown
-              className={`w-3.5 h-3.5 transition-transform duration-150 ${expanded ? "" : "-rotate-90"}`}
-            />
-          </button>
-        )}
-      </div>
-
-      {isOpen && expanded && (
-        <div className="ml-6 pl-2.5 border-l border-gray-200 dark:border-gray-700 mt-0.5 mb-1 space-y-0.5">
-          {item.children.map((child) => {
-            const childBadge =
-              child.badge > 0 ? (child.badge > 99 ? "99+" : child.badge) : null;
-            return (
-              <NavLink
-                key={child.path}
-                to={child.path}
-                onClick={onNavigate}
-                className={() => `
-                  flex items-center gap-2 px-3 py-2 rounded-lg text-sm truncate transition-colors duration-150
-                  ${
-                    currentUrl === child.path
-                      ? "text-cyan-700 bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/30 font-medium"
-                      : "text-gray-500 hover:text-cyan-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-cyan-400"
-                  }
-                `}
-              >
-                <span className="truncate">{child.label}</span>
-                {childBadge && (
-                  <span className="ml-auto min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full flex-shrink-0">
-                    {childBadge}
-                  </span>
-                )}
-              </NavLink>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    <NavLink to={item.path} onClick={onNavigate} className={linkClasses}>
+      {linkContent}
+    </NavLink>
   );
 };
 
@@ -199,7 +135,7 @@ const MenuSection = ({
 
 const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const { user, logout, hasRole } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -209,32 +145,21 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
 
   const canSeeSorties = hasRole(["president", "moniteur", "adherent"]);
   const canSeeAdministration = hasRole(["president", "moniteur", "tresorier"]);
-  const canSeeUsers = hasRole(["president"]);
   const canSeePaiements = hasRole(["president", "tresorier", "adherent"]);
   const canSeeAdherentsList = hasRole(["president", "moniteur", "tresorier"]);
   const canSeeMateriel = hasRole(["president"]);
-  const canSeeFormations = hasRole(["president", "moniteur"]);
-  // Un adhérent doit voir "Formations" (sa propre progression, en lecture
-  // seule) mais pas "Spécialités" (catalogue géré par le staff) — d'où un
-  // flag séparé plutôt que d'ajouter "adherent" à canSeeFormations, qui
-  // couvre encore Spécialités.
+  // Accès direct pour un adhérent/moniteur : seul l'onglet "Attributions"
+  // leur est ouvert dans ce groupe (voir MaterielGroupPage.needsPresident +
+  // AttributionService.getAll côté backend), pas de sens à les envoyer sur
+  // /materiels (onglet "Matériel", réservé président) comme le fait
+  // l'entrée ci-dessus pour lui.
+  const canSeeMesAttributions = hasRole(["moniteur", "adherent"]);
+  // "Spécialités"/"Brevets" fusionnées en onglets DANS "Formations" (voir
+  // formationMenu ci-dessous et constants/formationTabs.js) — un adhérent
+  // atteint donc "Spécialités" via l'URL directe s'il la connaît déjà,
+  // mais la garde de rôle réelle vit dans FormationGroupPage.jsx (comme
+  // pour Adhérents/création dans MembresPage.jsx), pas ici.
   const canSeeMyFormations = hasRole(["president", "moniteur", "adherent"]);
-  const canSeeIncidents = hasRole(["president", "moniteur"]);
-  const canSeeRoles = hasRole(["president"]);
-  // Sous-menu "Validation" (lien vers ?validation=soumis, qui affiche
-  // toutes les auto-soumissions — soumis_par_adherent — quel que soit leur
-  // statut) : voir AdhesionService.validerAdhesion /
-  // CertificatMedicalService.validerCertificat pour qui peut réellement
-  // valider (président/trésorier pour les adhésions, président seul pour
-  // les certificats — géré séparément par canManageAdhesion/
-  // canManageCertificat dans AdhesionList/CertificatList, pas ici). Un
-  // adhérent ne valide rien, mais voit le même sous-menu pour suivre le
-  // statut de ses propres soumissions — la liste est déjà scopée à
-  // lui-même côté backend (AdhesionService/CertificatMedicalService.getAll)
-  // — sans ça, "ma licence a-t-elle été acceptée ?" n'était accessible
-  // qu'au staff.
-  const canSeeAdhesionValidationMenu = hasRole(["president", "tresorier", "adherent"]);
-  const canSeeCertificatValidationMenu = hasRole(["president", "adherent"]);
 
   // Accès public (Tailscale Funnel, voir k8s/overlays/production/
   // 17-ingress-public.yaml) : seules les routes adhérent sont exposées
@@ -244,39 +169,59 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   // les connaît pas). Un président/trésorier PEUT se connecter depuis
   // l'extérieur (l'auth est publique), mais sans ce masquage il verrait
   // des menus dont chaque clic échoue silencieusement (l'appel retombe
-  // sur le frontend statique au lieu du JSON attendu). "Incidents" reste
-  // volontairement visible : cette route-là est publique (décision
-  // produit — un adhérent doit pouvoir signaler un incident hors club).
+  // sur le frontend statique au lieu du JSON attendu). "Incidents" a
+  // rejoint les onglets du groupe Sorties (voir useSortieTabs.js) : plus
+  // de lien sidebar dédié à masquer ici pour lui.
   const isPublicAccess =
     typeof window !== "undefined" && window.location.hostname.endsWith(".ts.net");
 
   // Badges (petits compteurs sur le menu) : uniquement pour le staff qui peut
   // réellement agir sur la file en question — un adhérent n'a aucun bouton
   // pour "traiter" ces éléments, un chiffre serait juste du bruit pour lui.
-  // Chaque hook partage son queryKey avec celui du composant qui affiche la
-  // vraie liste (InscriptionList/PlongeeList/FormationList/AdhesionList/
-  // CertificatList) : React Query dédoublonne, donc pas d'appel réseau en
-  // plus une fois la page visitée — la Sidebar se contente d'amorcer/lire le
-  // même cache. `enabled` évite même ce premier appel pour les rôles qui ne
-  // verront jamais le badge.
+  // Chaque badge lit un COUNT léger côté serveur (voir useGetPendingCount
+  // ci-dessous), jamais un useGetAll() de la liste complète : la Sidebar est
+  // montée sur TOUTES les pages, donc un badge basé sur useGetAll s'ajoute
+  // systématiquement aux requêtes propres de la page réellement affichée
+  // (ex: /sorties, qui a déjà 4-5 appels) — sur le serveur de dev Vite
+  // (HTTP/1.1, 6 connexions/origine max), ça suffisait à mettre en file
+  // d'attente les requêtes de la page visible derrière celles, sans lien,
+  // des badges des AUTRES sections. `enabled` évite même ce premier appel
+  // pour les rôles qui ne verront jamais le badge.
   const canManageInscriptionsBadge = hasRole(["president", "moniteur"]);
   const canManagePlongeesBadge = hasRole(["president", "moniteur"]);
   const canManageFormationsBadge = hasRole(["president", "moniteur"]);
   const canManageAdhesionValidation = hasRole(["president", "tresorier"]);
   const canManageCertificatValidation = hasRole(["president"]);
 
-  const { useGetAll: useGetAllInscriptions } = useInscriptions();
-  const { data: inscriptionsData } = useGetAllInscriptions({
+  // useGetPendingCount (COUNT léger côté serveur) plutôt que useGetAll
+  // filtré côté client ci-après : ce dernier recomposait `.adherent` par
+  // HTTP pour CHAQUE inscription existante (voir InscriptionService.getAll)
+  // rien que pour en jeter le contenu et ne garder qu'un chiffre — sur un
+  // club avec de l'historique, cet appel à lui seul dépassait 8s et, la
+  // Sidebar étant montée sur toutes les pages, retardait par ricochet (limite
+  // Chrome de 6 connexions/origine) le chargement de la page réellement
+  // demandée (ex. /plongees). Le queryKey ["inscriptions", ...] de
+  // useGetAll reste partagé avec InscriptionList.jsx (dédoublonnage React
+  // Query) — mais useGetPendingCount, lui, n'est plus partagé : c'est
+  // volontaire, un second appel léger vaut mieux qu'un seul appel lourd.
+  const { useGetPendingCount } = useInscriptions();
+  const { data: pendingInscriptionsData } = useGetPendingCount({
     enabled: canManageInscriptionsBadge,
   });
   const nouvellesInscriptions = canManageInscriptionsBadge
-    ? (inscriptionsData?.data || []).filter((i) => i.statut === "En attente").length
+    ? pendingInscriptionsData?.data?.count || 0
     : 0;
 
-  const { useGetAll: useGetAllPlongees } = usePlongees();
-  const { data: plongeesData } = useGetAllPlongees({}, { enabled: canManagePlongeesBadge });
+  // useGetAValiderCount (COUNT léger côté serveur) plutôt que useGetAll +
+  // filtre client — même motif que useGetPendingCount ci-dessus : la liste
+  // complète des plongées du club n'est utile qu'à PlongeeList, jamais à ce
+  // seul chiffre de badge.
+  const { useGetAValiderCount } = usePlongees();
+  const { data: plongeesAValiderData } = useGetAValiderCount({
+    enabled: canManagePlongeesBadge,
+  });
   const plongeesAValider = canManagePlongeesBadge
-    ? (plongeesData?.data || []).filter((p) => !p.id_moniteur_validateur).length
+    ? plongeesAValiderData?.data?.count || 0
     : 0;
 
   // "Prêtes à terminer" plutôt que "Terminées" : une formation Terminée le
@@ -285,203 +230,140 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   // nombre de séances prévues mais attendent encore le clic "Terminer" du
   // moniteur — actionnable, et ça se vide une fois traité, comme les autres
   // badges.
-  const { useGetAll: useGetAllFormations } = useFormations();
-  const { data: formationsData } = useGetAllFormations(
-    {},
-    { enabled: canManageFormationsBadge },
-  );
+  // useGetPretesATerminerCount (COUNT léger côté serveur) plutôt que
+  // useGetAll + filtre client — même motif que useGetPendingCount ci-dessus.
+  const { useGetPretesATerminerCount } = useFormations();
+  const { data: formationsPretesData } = useGetPretesATerminerCount({
+    enabled: canManageFormationsBadge,
+  });
   const formationsPretesATerminer = canManageFormationsBadge
-    ? (formationsData?.data || []).filter(
-        (f) =>
-          f.statut === "En cours" &&
-          f.nb_seances_prevues &&
-          f.nb_seances_realisees >= f.nb_seances_prevues,
-      ).length
+    ? formationsPretesData?.data?.count || 0
     : 0;
 
-  const { useGetAll: useGetAllAdhesions } = useAdhesions();
-  const { data: adhesionsData } = useGetAllAdhesions(
-    {},
-    { enabled: canManageAdhesionValidation },
-  );
+  // useGetEnAttenteValidationCount (COUNT léger côté serveur) plutôt que
+  // useGetAll + filtre client — même motif que useGetPendingCount ci-dessus.
+  const { useGetEnAttenteValidationCount: useGetAdhesionsEnAttenteCount } = useAdhesions();
+  const { data: adhesionsEnAttenteData } = useGetAdhesionsEnAttenteCount({
+    enabled: canManageAdhesionValidation,
+  });
   const adhesionsEnAttente = canManageAdhesionValidation
-    ? (adhesionsData?.data || []).filter(
-        (a) => a.soumis_par_adherent && a.statut_validation === "En attente",
-      ).length
+    ? adhesionsEnAttenteData?.data?.count || 0
     : 0;
 
-  const { useGetAll: useGetAllCertificats } = useCertificats();
-  const { data: certificatsData } = useGetAllCertificats(
-    {},
-    { enabled: canManageCertificatValidation },
-  );
+  const { useGetEnAttenteValidationCount: useGetCertificatsEnAttenteCount } = useCertificats();
+  const { data: certificatsEnAttenteData } = useGetCertificatsEnAttenteCount({
+    enabled: canManageCertificatValidation,
+  });
   const certificatsEnAttente = canManageCertificatValidation
-    ? (certificatsData?.data || []).filter(
-        (c) => c.soumis_par_adherent && c.statut_validation === "En attente",
-      ).length
+    ? certificatsEnAttenteData?.data?.count || 0
     : 0;
 
   // Menu général - visible par tous
   const mainMenu = [
     { path: "/dashboard", icon: FiHome, label: "Tableau de bord" },
+    // Libellé "Membres" (et non "Adhérents") : ce lien sert aussi de point
+    // d'entrée vers Moniteurs/Présidents/Trésoriers via les onglets de la
+    // page (voir plus bas) — la route reste /adherents, seul le libellé
+    // change pour refléter ce rôle de hub.
     canSeeAdherentsList && {
       path: "/adherents",
       icon: FiUsers,
-      label: "Adhérents",
+      label: "Membres",
     },
+    // "Validation" (?validation=soumis, toutes les auto-soumissions
+    // soumis_par_adherent quel que soit leur statut) n'est plus un
+    // sous-menu ici — c'est désormais un onglet DANS AdhesionList.jsx/
+    // CertificatList.jsx (voir TabBar), pour raccourcir la sidebar.
+    //
+    // Adhésions/Certificats fusionnés en une seule entrée ("Dossier") :
+    // les deux représentent le même dossier administratif du club
+    // (licence FFESM/assurance d'un côté, certificat médical de l'autre)
+    // — un seul point d'entrée, depuis lequel on rejoint l'autre via
+    // TabBar (constants/dossierTabs.js), même schéma que "Membres"
+    // ci-dessus pour Adhérents/Moniteurs/Présidents/Trésoriers. Badge =
+    // somme des deux compteurs en attente, pour ne rien perdre de
+    // l'alerte qu'avaient les 2 entrées séparées.
     {
       path: "/adhesions",
       icon: FiFileText,
-      label: "Adhésions",
-      badge: adhesionsEnAttente,
-      children: canSeeAdhesionValidationMenu
-        ? [
-            { path: "/adhesions", label: "Toutes les adhésions" },
-            {
-              path: "/adhesions?validation=soumis",
-              label: "Validation",
-              badge: adhesionsEnAttente,
-            },
-          ]
-        : undefined,
-    },
-    {
-      path: "/certificats",
-      icon: FiClipboard,
-      label: "Certificats",
-      badge: certificatsEnAttente,
-      children: canSeeCertificatValidationMenu
-        ? [
-            { path: "/certificats", label: "Tous les certificats" },
-            {
-              path: "/certificats?validation=soumis",
-              label: "Validation",
-              badge: certificatsEnAttente,
-            },
-          ]
-        : undefined,
+      label: "Dossier",
+      badge: adhesionsEnAttente + certificatsEnAttente,
     },
   ].filter(Boolean);
 
   const calendrierMenu = [
     { path: "/calendrier", icon: FiCalendar, label: "Calendrier" },
   ];
-  const aboutMenu = [
-    { path: "/about", icon: FiInfo, label: "À propos" },
-    { path: "/confidentialite", icon: FiShield, label: "Confidentialité" },
-  ];
-
-  // Sous-menu "Mes sorties" (lien vers ?filtre=mes-sorties, voir
-  // SortiesPage.jsx) : réservé à l'adhérent — le staff voit déjà toutes les
-  // sorties par défaut, "les miennes" n'a de sens que pour quelqu'un qui
-  // s'inscrit lui-même.
-  const canSeeMesSortiesMenu = hasRole(["adherent"]);
-  // Sous-menu "Sorties que j'encadre" / "Mes plongées" (?filtre=mes-sorties-
-  // encadrees, ?filtre=mes-plongees, voir SortiesPage.jsx/PlongeeList.jsx) :
-  // réservé au moniteur (pas au président, qui a déjà une vue globale sans
-  // avoir besoin de filtrer sur lui-même) — un moniteur encadre certaines
-  // sorties parmi toutes (Sortie.encadrants) et veut vite retrouver
-  // celles-ci, ainsi que les plongées qui s'y rattachent.
-  const canSeeMoniteurSousMenus = hasRole(["moniteur"]);
 
   const sortieMenu = [
-    {
-      path: "/sorties",
-      icon: FiCalendar,
-      label: "Sorties",
-      children: canSeeMesSortiesMenu
-        ? [
-            { path: "/sorties", label: "Toutes les sorties" },
-            {
-              path: "/sorties?filtre=mes-sorties",
-              label: "Mes sorties",
-            },
-          ]
-        : canSeeMoniteurSousMenus
-          ? [
-              { path: "/sorties", label: "Toutes les sorties" },
-              {
-                path: "/sorties?filtre=mes-sorties-encadrees",
-                label: "Sorties que j'encadre",
-              },
-            ]
-          : undefined,
-    },
+    // "Mes sorties"/"Sorties que j'encadre"/"Carte des sites"/"Incidents"
+    // (?filtre=mes-sorties, ?filtre=mes-sorties-encadrees, /sorties/carte,
+    // /incidents) ne sont plus un sous-menu ici — ce sont désormais des
+    // onglets DANS SortiesPage.jsx/SortieCartePage.jsx/IncidentsPage.jsx
+    // (voir TabBar/useSortieTabs), pour raccourcir la sidebar. /incidents
+    // ne commence pas par /sorties (ex-section "Sécurité" à part) :
+    // activePaths force la surbrillance de "Sorties" quand on y est, sinon
+    // plus rien ne s'allume dans la sidebar sur cet onglet (voir
+    // MenuItem/extraActive dans ce fichier).
+    { path: "/sorties", icon: FiCalendar, label: "Sorties", activePaths: ["/incidents"] },
     {
       path: "/inscriptions",
       icon: FiAnchor,
       label: "Inscriptions",
       badge: nouvellesInscriptions,
     },
+    // "Mes plongées" (?filtre=mes-plongees) : idem, onglet DANS
+    // PlongeeList.jsx désormais.
     {
       path: "/plongees",
       icon: FiActivity,
       label: "Plongées",
       badge: plongeesAValider,
-      children: canSeeMoniteurSousMenus
-        ? [
-            { path: "/plongees", label: "Toutes les plongées" },
-            { path: "/plongees?filtre=mes-plongees", label: "Mes plongées" },
-          ]
-        : undefined,
     },
   ];
 
+  // "Brevets"/"Spécialités" : fusionnées dans des onglets DANS la page
+  // (TabBar, voir constants/formationTabs.js), même schéma que Matériel/
+  // Attributions/Réparations ci-dessus — un seul point d'entrée sidebar
+  // ("Formations", route /formations), depuis lequel un président/
+  // moniteur rejoint Spécialités/Brevets via ces onglets (un adhérent n'a
+  // que Formations/Brevets, voir FormationGroupPage.jsx).
   const formationMenu = [
     {
       path: "/formations",
       icon: FiAward,
       label: "Formations",
       badge: formationsPretesATerminer,
-      children: canSeeMoniteurSousMenus
-        ? [
-            { path: "/formations", label: "Toutes les formations" },
-            {
-              path: "/formations?filtre=mes-formations-encadrees",
-              label: "Formations que j'encadre",
-            },
-          ]
-        : undefined,
     },
   ];
 
+  // "Attributions"/"Réparations" : fusionnées dans des onglets DANS la page
+  // (TabBar, voir constants/materielTabs.js), même schéma que Moniteurs/
+  // Présidents/Trésoriers ci-dessous pour Membres — un point d'entrée
+  // sidebar ("Matériel", route /materiels), depuis lequel un président
+  // rejoint Attributions/Réparations via ces onglets. Un moniteur/adhérent
+  // (canSeeMesAttributions) a sa propre entrée pointant directement sur
+  // /attributions (seul onglet qui leur soit ouvert, voir
+  // MaterielGroupPage.needsPresident) — jamais les deux à la fois, un
+  // compte n'a qu'un rôle.
   const adminMenu = [
     canSeeMateriel && { path: "/materiels", icon: FiPackage, label: "Matériel" },
-    canSeeMateriel && {
-      path: "/attributions",
-      icon: FiBriefcase,
-      label: "Attributions",
-    },
-    canSeeMateriel && {
-      path: "/reparations",
-      icon: FiTool,
-      label: "Réparations",
-    },
-    canSeeFormations && {
-      path: "/specialites-formation",
-      icon: FiStar,
-      label: "Spécialités",
-    },
+    canSeeMesAttributions && { path: "/attributions", icon: FiPackage, label: "Matériel" },
   ].filter(Boolean);
 
   const paiementsMenu = [
     { path: "/paiements", icon: FiCreditCard, label: "Paiements" },
   ];
 
-  const securiteMenu = [
-    { path: "/incidents", icon: FiAlertTriangle, label: "Incidents" },
-  ];
-
-  const rolesMenu = [
-    { path: "/moniteurs", icon: FiCompass, label: "Moniteurs" },
-    { path: "/presidents", icon: FiStar, label: "Présidents" },
-    { path: "/tresoriers", icon: FiDollarSign, label: "Trésoriers" },
-  ];
-
-  const usersMenu = [{ path: "/users", icon: FiShield, label: "Utilisateurs" }];
-  const profileMenu = user
-    ? [{ path: "/profile", icon: FiUser, label: "Mon profil" }]
-    : [];
+  // "Moniteurs"/"Présidents"/"Trésoriers" (ex-section "Rôles") : fusionnés
+  // dans des onglets DANS la page (TabBar, voir constants/roleTabs.js) —
+  // la page "Utilisateurs" elle-même a depuis été supprimée : sa gestion
+  // de compte vit désormais sur la fiche Détails de chaque moniteur/
+  // président/trésorier/adhérent (AccountManagementCard.jsx). Le point
+  // d'entrée sidebar pour toute cette famille de pages est désormais
+  // l'entrée "Membres" ci-dessous (canSeeAdherentsList, route /adherents),
+  // depuis laquelle un président rejoint Moniteurs/Présidents/Trésoriers
+  // via ces onglets.
 
   const themeTransition = { duration: 0.15, ease: "easeOut" };
   const tapScale = { scale: 0.96 };
@@ -594,8 +476,9 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
               : "scrollbar-thumb-cyan-200"
           }`}
         >
-          <MenuSection title="Personnel" items={profileMenu} {...menuSectionProps} />
-
+          {/* "Mon profil" retiré de la sidebar (déjà accessible depuis le
+              menu déroulant de l'avatar dans Header.jsx) : plus de section
+              "Personnel" ici. */}
           {isOpen && (
             <div className="relative my-2">
               <div className="absolute inset-0 flex items-center">
@@ -699,51 +582,6 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
             isVisible={canSeeAdministration && !isPublicAccess}
             {...menuSectionProps}
           />
-          <MenuSection
-            title="Sécurité"
-            items={securiteMenu}
-            isVisible={canSeeIncidents}
-            {...menuSectionProps}
-          />
-          <MenuSection
-            title="Rôles"
-            items={rolesMenu}
-            isVisible={canSeeRoles && !isPublicAccess}
-            {...menuSectionProps}
-          />
-          <MenuSection
-            title="Utilisateurs"
-            items={usersMenu}
-            isVisible={canSeeUsers && !isPublicAccess}
-            {...menuSectionProps}
-          />
-
-          {isOpen && (
-            <div className="relative my-2">
-              <div className="absolute inset-0 flex items-center">
-                <div
-                  className={`w-full border-t transition-colors duration-300 ${
-                    theme === "dark"
-                      ? "border-cyan-800/30"
-                      : "border-cyan-100/50"
-                  }`}
-                />
-              </div>
-              <div className="relative flex justify-center">
-                <span
-                  className={`px-2 text-xs transition-colors duration-300 ${
-                    theme === "dark"
-                      ? "text-cyan-500/70 bg-gray-900"
-                      : "text-cyan-500/70 bg-white"
-                  }`}
-                >
-                  Informations
-                </span>
-              </div>
-            </div>
-          )}
-
-          <MenuSection title="À propos" items={aboutMenu} {...menuSectionProps} />
         </nav>
 
         {/* Footer */}
@@ -798,9 +636,13 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
 
           {/* Actions du footer */}
           <div className="flex items-center gap-1 mt-2">
+            {/* Le thème vit désormais dans Paramètres (voir
+                ParametresPage.jsx, lié depuis le dropdown profil de
+                Header.jsx) avec tout ce qui EST du paramétrage — ce bouton
+                y renvoie directement plutôt que de dupliquer le toggle ici. */}
             <motion.button
               whileTap={tapScale}
-              onClick={toggleTheme}
+              onClick={() => navigate("/parametres")}
               className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors duration-150 ${
                 !isOpen ? "justify-center flex-1" : ""
               } ${
@@ -808,17 +650,11 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
                   ? "hover:bg-cyan-900/30 text-cyan-400"
                   : "hover:bg-cyan-100/50 text-cyan-600"
               }`}
-              title={theme === "dark" ? "Mode clair" : "Mode sombre"}
+              title="Paramètres"
             >
-              {theme === "dark" ? (
-                <FiSun className="w-4 h-4" />
-              ) : (
-                <FiMoon className="w-4 h-4" />
-              )}
+              <FiSettings className="w-4 h-4" />
               {isOpen && (
-                <span className="text-xs font-medium">
-                  {theme === "dark" ? "Mode clair" : "Mode sombre"}
-                </span>
+                <span className="text-xs font-medium">Paramètres</span>
               )}
             </motion.button>
 

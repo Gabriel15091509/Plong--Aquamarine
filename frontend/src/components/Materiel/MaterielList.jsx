@@ -9,26 +9,31 @@ import {
   FiTool,
   FiBox,
   FiSearch,
+  FiFilter,
   FiX,
-  FiChevronRight,
-  FiUser,
   FiMapPin,
   FiTag,
   FiList,
   FiGrid,
   FiCalendar,
+  FiRefreshCw,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
 import ConfirmModal from "../Common/ConfirmModal";
 import BulkActionBar from "../Common/BulkActionBar";
+import Pagination from "../Common/Pagination";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useSelection } from "../../hooks/useSelection";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import { CATEGORIE_MATERIEL_OPTIONS } from "../../utils/constants";
 import materielService from "../../services/Materiel/materielService";
+import MaterielFormModal from "./MaterielFormModal";
+import MaterielDetails from "./MaterielDetails";
+import TabBar from "../Common/TabBar";
+import { MATERIEL_TABS } from "../../constants/materielTabs";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -38,15 +43,20 @@ const MaterielList = () => {
   const remove = useRemove();
   const selection = useSelection();
 
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [categorieFilter, setCategorieFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
   const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  // Clé de l'action en cours (`delete-<id>`) : seule l'icône de la ligne
+  // concernée passe en spinner (même motif que InscriptionList.jsx).
+  const [actionLoading, setActionLoading] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [viewMode, setViewMode] = useState("list");
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "grid" : "list",
+  );
   const itemsPerPage = 10;
 
   const allMateriels = data?.data || [];
@@ -81,15 +91,17 @@ const MaterielList = () => {
   );
 
   const handleDelete = async (id) => {
+    // Ferme la modale dès le lancement : elle masquerait sinon le spinner
+    // de la ligne pendant la requête.
+    setDeleteModal(null);
+    setActionLoading(`delete-${id}`);
     try {
-      setLoading(true);
       await remove.mutateAsync(id);
-      refetch();
-      setDeleteModal(null);
+      await refetch();
     } catch (error) {
       console.error("Échec de la suppression du matériel :", error);
     } finally {
-      setLoading(false);
+      setActionLoading(null);
     }
   };
 
@@ -130,7 +142,9 @@ const MaterielList = () => {
 
   if (filteredMateriels.length === 0) {
     return (
-      <motion.div
+      <div className="space-y-4">
+        <TabBar tabs={MATERIEL_TABS} />
+        <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg"
@@ -168,14 +182,29 @@ const MaterielList = () => {
         >
           <FiPlus className="w-4 h-4" /> Nouveau matériel
         </Link>
-      </motion.div>
+        <MaterielFormModal />
+        <MaterielDetails />
+        </motion.div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Barre de recherche et filtres */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <TabBar tabs={MATERIEL_TABS} />
+            {/* Bouton "Filtres" (mobile uniquement) : recherche + filtres
+          repliés par défaut pour ne pas encombrer l'écran — un tap les
+          affiche. Toujours visibles à partir de sm (recherche fréquente
+          sur grand écran, pas besoin de la cacher). */}
+      <button
+        type="button"
+        onClick={() => setShowFilters((v) => !v)}
+        className="sm:hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+      >
+        {showFilters ? <FiX className="w-4 h-4" /> : <FiFilter className="w-4 h-4" />}
+        Filtres
+      </button>
+      <div className={`${showFilters ? "flex" : "hidden"} flex-col gap-3 sm:flex sm:flex-row`}>
         <div className="relative flex-1">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -409,11 +438,15 @@ const MaterielList = () => {
                           onClick={() =>
                             setDeleteModal(materiel.num_inventaire)
                           }
-                          disabled={loading}
+                          disabled={actionLoading === `delete-${materiel.num_inventaire}`}
                           className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                           title="Supprimer"
                         >
-                          <FiTrash2 className="w-4 h-4" />
+                          {actionLoading === `delete-${materiel.num_inventaire}` ? (
+                            <FiRefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <FiTrash2 className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -447,8 +480,19 @@ const MaterielList = () => {
                         <FiBox className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
                       )}
                     </div>
-                    <div className="text-center mt-1">
-                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                    {/* w-16 + truncate : cette colonne (flex-shrink-0) n'a
+                        pas de largeur propre — sans contrainte, un numéro
+                        d'inventaire un peu long forçait toute la colonne
+                        (photo comprise) à s'élargir pour tenir sur une
+                        seule ligne, écrasant la colonne "Informations"
+                        (flex-1) à côté sur une largeur minuscule — vérifié
+                        en conditions réelles (rendu mobile), où ça cassait
+                        complètement la mise en page de la carte (texte
+                        empilé mot par mot, actions qui chevauchent le
+                        bouton flottant). w-16 aligne la largeur sur celle
+                        de la photo juste au-dessus. */}
+                    <div className="text-center mt-1 w-16">
+                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500 truncate block">
                         #{materiel.num_inventaire}
                       </span>
                     </div>
@@ -459,7 +503,7 @@ const MaterielList = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-gray-900 dark:text-white">
+                          <h3 className="font-semibold text-gray-900 dark:text-white break-words">
                             {materiel.marque}
                           </h3>
                           <span className="text-sm text-gray-400 dark:text-gray-500">•</span>
@@ -505,11 +549,15 @@ const MaterielList = () => {
                         </Link>
                         <button
                           onClick={() => setDeleteModal(materiel.num_inventaire)}
-                          disabled={loading}
+                          disabled={actionLoading === `delete-${materiel.num_inventaire}`}
                           className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                           title="Supprimer"
                         >
-                          <FiTrash2 className="w-4 h-4" />
+                          {actionLoading === `delete-${materiel.num_inventaire}` ? (
+                            <FiRefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <FiTrash2 className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -521,34 +569,11 @@ const MaterielList = () => {
         )}
       </AnimatePresence>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
-        >
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Précédent
-          </button>
-          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Suivant
-          </button>
-        </motion.div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Modal de confirmation de suppression */}
       {deleteModal && (
@@ -596,6 +621,9 @@ const MaterielList = () => {
         onCancel={() => setBulkDeleteModal(false)}
         onConfirm={handleBulkDelete}
       />
+
+      <MaterielFormModal />
+      <MaterielDetails />
     </div>
   );
 };

@@ -1,11 +1,9 @@
 import React, { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import ModalLink from "../Common/ModalLink";
 import {
   FiPackage,
   FiCalendar,
   FiEdit,
-  FiArrowLeft,
   FiUser,
   FiAlertCircle,
   FiTrash2,
@@ -16,20 +14,34 @@ import {
   FiDollarSign,
   FiShield,
 } from "react-icons/fi";
+import { useAuth } from "../../context/AuthContext";
 import { useAttributions } from "../../hooks/Attribution/useAttributions";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useSorties } from "../../hooks/Sortie/useSorties";
+import { useDetailsModal } from "../../hooks/useFormModal";
+import DetailsModal from "../Common/DetailsModal";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
 import ConfirmModal from "../Common/ConfirmModal";
-import SectionCard from "../Common/SectionCard";
 import { formatDate, formatDateForInput, formatCurrency } from "../../utils/helpers";
 import { ETAT_MATERIEL_OPTIONS, MODE_PAIEMENT_OPTIONS } from "../../utils/constants";
 
+// Fiche attribution, modale par-dessus la liste (voir MoniteurDetails.jsx
+// pour le prototype d'origine et DetailsModal.jsx pour la coquille commune).
+// Les formulaires d'action (retour, caution, détérioration) restent des
+// panneaux/overlays indépendants des pages de la modale — ils s'affichent
+// par-dessus quelle que soit la page consultée, comme ConfirmModal.
 const AttributionDetails = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const modal = useDetailsModal("/attributions");
+  const { id } = modal;
+  const { hasRole } = useAuth();
+  // Même garde que AttributionList.jsx (canManageAttribution) : un
+  // moniteur/adhérent qui ouvre cette fiche depuis la liste (désormais
+  // accessible en lecture, voir AttributionService.getAll côté backend) n'a
+  // ici qu'une consultation — modifier/supprimer/retour/caution/
+  // détérioration restent présidentiels.
+  const canManageAttribution = hasRole(["president"]);
   const {
     useGetById,
     useRemove,
@@ -65,7 +77,7 @@ const AttributionDetails = () => {
   const attribution = data?.data;
   const { data: materielData } = useGetMateriel(attribution?.num_inventaire);
   const materiel = materielData?.data;
-  const { data: adherentsData } = useGetAllAdherents();
+  const { data: adherentsData } = useGetAllAdherents({}, { enabled: !!id });
   const adherent = adherentsData?.data?.find(
     (a) => a.num_adherent === attribution?.num_adherent,
   );
@@ -75,7 +87,8 @@ const AttributionDetails = () => {
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      navigate("/attributions");
+      setShowDeleteModal(false);
+      modal.close();
     } catch (error) {
       // toast déjà géré par le hook useRemove
     }
@@ -133,286 +146,250 @@ const AttributionDetails = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <LoadingSpinner variant="details" />
-      </div>
-    );
-  }
-
-  if (!attribution) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="text-center py-16"
+  const headerExtra = attribution && canManageAttribution && (
+    <>
+      <ModalLink
+        to={`/attributions/edit/${attribution.id_attribution}`}
+        className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-colors"
+        title="Modifier"
       >
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800/50 mb-6">
-          <FiInfo className="w-10 h-10 text-gray-400" />
-        </div>
-        <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-          Attribution non trouvée
-        </h3>
-        <button
-          onClick={() => navigate("/attributions")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-        >
-          <FiArrowLeft className="w-4 h-4" />
-          Retour à la liste
-        </button>
-      </motion.div>
+        <FiEdit className="w-4 h-4" />
+      </ModalLink>
+      <button
+        type="button"
+        onClick={() => setShowDeleteModal(true)}
+        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+        title="Supprimer"
+      >
+        <FiTrash2 className="w-4 h-4" />
+      </button>
+    </>
+  );
+
+  if (isLoading || !attribution) {
+    return (
+      <DetailsModal
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        title={isLoading ? "Chargement…" : "Attribution non trouvée"}
+        icon={FiPackage}
+        pages={[
+          {
+            label: "",
+            content: isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <LoadingSpinner variant="details" />
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">
+                L&apos;attribution que vous recherchez n&apos;existe pas ou a
+                été supprimée.
+              </p>
+            ),
+          },
+        ]}
+      />
     );
   }
 
   const isEnCours = !attribution.date_retour_reel;
   const isEnRetard = isEnCours && new Date(attribution.date_retour_prevue) < new Date();
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6 px-4"
-    >
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-      >
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
-              <FiPackage className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-            </span>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                Attribution N°{attribution.id_attribution}
-              </h1>
-              <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
-                {materiel ? `${materiel.marque} ${materiel.modele}` : `Matériel #${attribution.num_inventaire}`}
-                {" → "}
-                {adherent ? `${adherent.nom} ${adherent.prenom}` : `Adhérent #${attribution.num_adherent}`}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            to={`/attributions/edit/${attribution.id_attribution}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
+  const pages = [
+    {
+      label: "Détails",
+      icon: FiInfo,
+      content: (
+        <div className="space-y-4">
+          {/* Bandeau statut, compact */}
+          <div
+            className={`rounded-xl p-3 border flex items-center justify-between gap-3 flex-wrap ${
+              isEnRetard
+                ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                : isEnCours
+                  ? "bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800"
+                  : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+            }`}
           >
-            <FiEdit className="w-4 h-4" />
-            Modifier
-          </Link>
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
-          >
-            <FiTrash2 className="w-4 h-4" />
-            Supprimer
-          </button>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl shadow-sm p-6 md:p-8 border-2 ${
-          isEnRetard
-            ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-            : isEnCours
-              ? "bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800"
-              : "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-        }`}
-      >
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div
-              className={`p-3 rounded-full ${
-                isEnRetard
-                  ? "bg-red-100 dark:bg-red-900/30"
-                  : isEnCours
-                    ? "bg-cyan-100 dark:bg-cyan-900/30"
-                    : "bg-green-100 dark:bg-green-900/30"
-              }`}
-            >
-              {isEnRetard ? (
-                <FiAlertCircle className="w-7 h-7 text-red-600 dark:text-red-400" />
-              ) : isEnCours ? (
-                <FiClock className="w-7 h-7 text-cyan-600 dark:text-cyan-400" />
-              ) : (
-                <FiCheckCircle className="w-7 h-7 text-green-600 dark:text-green-400" />
-              )}
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {isEnRetard ? "En retard" : isEnCours ? "En cours" : "Retourné"}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {isEnCours
-                  ? `Retour prévu le ${formatDate(attribution.date_retour_prevue)}`
-                  : `Retourné le ${formatDate(attribution.date_retour_reel)}`}
-              </p>
-            </div>
-          </div>
-          {isEnCours && (
-            <button
-              onClick={() => setShowRetourForm(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-            >
-              <FiCheckCircle className="w-4 h-4" />
-              Enregistrer le retour
-            </button>
-          )}
-        </div>
-      </motion.div>
-
-      {showRetourForm && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-100/80 dark:border-gray-800/80 p-6"
-        >
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
-            Enregistrer le retour
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                État au retour
-              </label>
-              <select
-                value={etatRetour}
-                onChange={(e) => setEtatRetour(e.target.value)}
-                className="w-full px-4 py-2.5 text-sm border rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            <div className="flex items-center gap-3">
+              <div
+                className={`p-2 rounded-full ${
+                  isEnRetard
+                    ? "bg-red-100 dark:bg-red-900/30"
+                    : isEnCours
+                      ? "bg-cyan-100 dark:bg-cyan-900/30"
+                      : "bg-green-100 dark:bg-green-900/30"
+                }`}
               >
-                {ETAT_MATERIEL_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
+                {isEnRetard ? (
+                  <FiAlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                ) : isEnCours ? (
+                  <FiClock className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+                ) : (
+                  <FiCheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                )}
+              </div>
+              <div>
+                <p className="font-bold text-gray-900 dark:text-white">
+                  {isEnRetard ? "En retard" : isEnCours ? "En cours" : "Retourné"}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {isEnCours
+                    ? `Retour prévu le ${formatDate(attribution.date_retour_prevue)}`
+                    : `Retourné le ${formatDate(attribution.date_retour_reel)}`}
+                </p>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Date de retour réel
-              </label>
-              <input
-                type="date"
-                value={dateRetourReel}
-                onChange={(e) => setDateRetourReel(e.target.value)}
-                className="w-full px-4 py-2.5 text-sm border rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3 mt-4">
-            <button
-              onClick={() => setShowRetourForm(false)}
-              className="px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleRetour}
-              disabled={retour.isPending}
-              className="px-5 py-2.5 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors disabled:opacity-60"
-            >
-              Confirmer le retour
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      <SectionCard title="Détails" icon={FiInfo}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <FiUser className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Adhérent :</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {adherent ? `${adherent.nom} ${adherent.prenom}` : attribution.num_adherent}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <FiPackage className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Matériel :</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {materiel ? `${materiel.marque} ${materiel.modele}` : attribution.num_inventaire}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <FiCalendar className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Date d'attribution :</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {formatDate(attribution.date_attribution)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <FiPackage className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Sortie :</span>
-            {attribution.id_sortie ? (
-              <Link
-                to={`/sorties/${attribution.id_sortie}`}
-                className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            {isEnCours && canManageAttribution && (
+              <button
+                onClick={() => setShowRetourForm((v) => !v)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
               >
-                {sortie ? `${sortie.type} - ${sortie.lieu}` : `#${attribution.id_sortie}`}
-              </Link>
-            ) : (
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                Prêt (sans sortie)
-              </span>
+                <FiCheckCircle className="w-4 h-4" />
+                Enregistrer le retour
+              </button>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <FiTag className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">État au départ :</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {attribution.etat_depart}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <FiCalendar className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Retour prévu :</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {formatDate(attribution.date_retour_prevue)}
-            </span>
-          </div>
-          {attribution.date_retour_reel && (
-            <>
-              <div className="flex items-center gap-2">
-                <FiCalendar className="text-gray-400" />
-                <span className="text-gray-500 dark:text-gray-400">Retour réel :</span>
-                <span className="font-medium text-gray-900 dark:text-white">
-                  {formatDate(attribution.date_retour_reel)}
-                </span>
+
+          {showRetourForm && canManageAttribution && (
+            <div className="bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    État au retour
+                  </label>
+                  <select
+                    value={etatRetour}
+                    onChange={(e) => setEtatRetour(e.target.value)}
+                    className="w-full px-4 py-2.5 text-sm border rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  >
+                    {ETAT_MATERIEL_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    Date de retour réel
+                  </label>
+                  <input
+                    type="date"
+                    value={dateRetourReel}
+                    onChange={(e) => setDateRetourReel(e.target.value)}
+                    className="w-full px-4 py-2.5 text-sm border rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <FiTag className="text-gray-400" />
-                <span className="text-gray-500 dark:text-gray-400">État au retour :</span>
-                <span className="font-medium text-gray-900 dark:text-white">
-                  {attribution.etat_retour}
-                </span>
+              <div className="flex justify-end gap-3 mt-4">
+                <button
+                  onClick={() => setShowRetourForm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleRetour}
+                  disabled={retour.isPending}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl transition-colors disabled:opacity-60"
+                >
+                  Confirmer le retour
+                </button>
               </div>
-            </>
-          )}
-          {attribution.constat_deterioration && (
-            <div className="flex items-center gap-2 sm:col-span-2">
-              <FiAlertCircle className="text-red-400" />
-              <span className="text-gray-500 dark:text-gray-400">Constat de détérioration :</span>
-              <span className="font-medium text-gray-900 dark:text-white">
-                {attribution.constat_deterioration}
-              </span>
             </div>
           )}
-        </div>
-      </SectionCard>
 
-      {/* Caution */}
-      <SectionCard
-        title="Caution"
-        icon={FiShield}
-        headerExtra={
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <FiUser className="text-gray-400" />
+              <span className="text-gray-500 dark:text-gray-400">Adhérent :</span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {adherent ? `${adherent.nom} ${adherent.prenom}` : attribution.num_adherent}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FiPackage className="text-gray-400" />
+              <span className="text-gray-500 dark:text-gray-400">Matériel :</span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {materiel ? `${materiel.marque} ${materiel.modele}` : attribution.num_inventaire}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FiCalendar className="text-gray-400" />
+              <span className="text-gray-500 dark:text-gray-400">Date d&apos;attribution :</span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {formatDate(attribution.date_attribution)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FiPackage className="text-gray-400" />
+              <span className="text-gray-500 dark:text-gray-400">Sortie :</span>
+              {attribution.id_sortie ? (
+                <ModalLink
+                  to={`/sorties/${attribution.id_sortie}`}
+                  className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {sortie ? `${sortie.type} - ${sortie.lieu}` : `#${attribution.id_sortie}`}
+                </ModalLink>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                  Prêt (sans sortie)
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <FiTag className="text-gray-400" />
+              <span className="text-gray-500 dark:text-gray-400">État au départ :</span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {attribution.etat_depart}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FiCalendar className="text-gray-400" />
+              <span className="text-gray-500 dark:text-gray-400">Retour prévu :</span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {formatDate(attribution.date_retour_prevue)}
+              </span>
+            </div>
+            {attribution.date_retour_reel && (
+              <>
+                <div className="flex items-center gap-2">
+                  <FiCalendar className="text-gray-400" />
+                  <span className="text-gray-500 dark:text-gray-400">Retour réel :</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {formatDate(attribution.date_retour_reel)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FiTag className="text-gray-400" />
+                  <span className="text-gray-500 dark:text-gray-400">État au retour :</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {attribution.etat_retour}
+                  </span>
+                </div>
+              </>
+            )}
+            {attribution.constat_deterioration && (
+              <div className="flex items-center gap-2 sm:col-span-2">
+                <FiAlertCircle className="text-red-400" />
+                <span className="text-gray-500 dark:text-gray-400">Constat de détérioration :</span>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  {attribution.constat_deterioration}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      label: "Caution",
+      icon: FiShield,
+      content: (
+        <div className="space-y-4">
           <div className="flex gap-2 flex-wrap">
-            {attribution.statut_caution === "Aucune" && (
+            {attribution.statut_caution === "Aucune" && canManageAttribution && (
               <button
                 onClick={() => setShowCautionModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
@@ -421,7 +398,7 @@ const AttributionDetails = () => {
                 Enregistrer la caution
               </button>
             )}
-            {attribution.statut_caution === "Payée" && !isEnCours && (
+            {attribution.statut_caution === "Payée" && !isEnCours && canManageAttribution && (
               <>
                 <button
                   onClick={handleRestituerCaution}
@@ -441,39 +418,53 @@ const AttributionDetails = () => {
               </>
             )}
           </div>
-        }
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <FiDollarSign className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Montant :</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {attribution.montant_caution ? formatCurrency(attribution.montant_caution) : "Non renseigné"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <FiShield className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Statut :</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {attribution.statut_caution}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 sm:col-span-2">
-            <FiShield className="text-gray-400" />
-            <span className="text-gray-500 dark:text-gray-400">Pièce d'identité retenue :</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {attribution.piece_identite_retenue || "Aucune"}
-            </span>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <FiDollarSign className="text-gray-400" />
+              <span className="text-gray-500 dark:text-gray-400">Montant :</span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {attribution.montant_caution ? formatCurrency(attribution.montant_caution) : "Non renseigné"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FiShield className="text-gray-400" />
+              <span className="text-gray-500 dark:text-gray-400">Statut :</span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {attribution.statut_caution}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 sm:col-span-2">
+              <FiShield className="text-gray-400" />
+              <span className="text-gray-500 dark:text-gray-400">Pièce d&apos;identité retenue :</span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {attribution.piece_identite_retenue || "Aucune"}
+              </span>
+            </div>
           </div>
         </div>
-      </SectionCard>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <DetailsModal
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        title={`Attribution N°${attribution.id_attribution}`}
+        subtitle={`${
+          materiel ? `${materiel.marque} ${materiel.modele}` : `Matériel #${attribution.num_inventaire}`
+        } → ${adherent ? `${adherent.nom} ${adherent.prenom}` : `Adhérent #${attribution.num_adherent}`}`}
+        icon={FiPackage}
+        headerExtra={headerExtra}
+        pages={pages}
+      />
 
       {showCautionModal && (
         <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.form
+          <form
             onSubmit={handleEnregistrerCaution}
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
             className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800"
           >
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
@@ -529,16 +520,14 @@ const AttributionDetails = () => {
                 Enregistrer
               </button>
             </div>
-          </motion.form>
+          </form>
         </ModalOverlay>
       )}
 
       {showDeteriorationModal && (
         <ModalOverlay className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <motion.form
+          <form
             onSubmit={handleTraiterDeterioration}
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
             className="bg-white dark:bg-gray-900 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-100 dark:border-gray-800"
           >
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
@@ -612,7 +601,7 @@ const AttributionDetails = () => {
                 Enregistrer
               </button>
             </div>
-          </motion.form>
+          </form>
         </ModalOverlay>
       )}
 
@@ -622,7 +611,7 @@ const AttributionDetails = () => {
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteModal(false)}
       />
-    </motion.div>
+    </>
   );
 };
 

@@ -1,6 +1,7 @@
 const BaseService = require('./BaseService');
 const CompetenceRepository = require('../repositories/CompetenceRepository');
 const FormationService = require('./FormationService');
+const { NotFoundError } = require('../utils/errors');
 
 class CompetenceService extends BaseService {
   constructor() {
@@ -12,6 +13,28 @@ class CompetenceService extends BaseService {
 
   async getByFormation(id_formation) {
     return await this.competenceRepository.findByFormation(id_formation);
+  }
+
+  // Le niveau requis d'une compétence n'est jamais saisi à la main : c'est
+  // toujours celui visé par SA formation (Formation.niveau_vise) — une
+  // compétence n'existe que dans le cadre d'une formation précise, pas
+  // question qu'elle demande un niveau différent de celui que cette
+  // formation prépare. `data.niveau_requis` fourni par l'appelant (ancien
+  // formulaire, script...) est donc ignoré, jamais fusionné : sinon une
+  // valeur incohérente resterait possible en la fournissant quand même.
+  // Le champ reste stocké sur Competence (recopie, pas une jointure à
+  // chaque affichage), mais n'a plus qu'une seule source de vérité — voir
+  // aussi la migration de rattrapage pour les lignes déjà existantes
+  // (app.js:runPendingMigrations).
+  async create(data) {
+    const formation = await this.formationService.formationRepository.findById(
+      data.id_formation,
+    );
+    if (!formation) throw new NotFoundError('Formation non trouvée');
+    return await this.competenceRepository.create({
+      ...data,
+      niveau_requis: formation.niveau_vise,
+    });
   }
 
   async valider(id, validee_par, authHeader = null, user = null) {
@@ -57,12 +80,26 @@ class CompetenceService extends BaseService {
     return await this.competenceRepository.delete(id);
   }
 
-  async validateCompetenceData(data) {
+  async validateCompetenceData(data, user = null) {
     const errors = [];
 
     if (!data.id_formation) errors.push("La formation est requise");
     if (!data.libelle) errors.push("Le libellé est requis");
-    if (!data.niveau_requis) errors.push("Le niveau requis est requis");
+    // Plus de "niveau requis" à valider ici : create() ci-dessous l'impose
+    // toujours depuis Formation.niveau_vise, jamais depuis une saisie.
+
+    // Seul le moniteur assigné à cette formation peut y ajouter une
+    // compétence — même règle que pour modifier/supprimer/valider une
+    // compétence déjà existante (voir CompetenceService.update/delete/
+    // valider) ou la formation elle-même
+    // (FormationService.assertCanModifyFormation). Lève une ForbiddenError
+    // (pas un ajout à `errors`) pour rester cohérent avec
+    // assertCanModifyFormation partout ailleurs : une interdiction d'accès
+    // reste un 403, jamais un 400 de validation.
+    if (data.id_formation) {
+      const formation = await this.formationService.formationRepository.findById(data.id_formation);
+      if (formation) await this.formationService.assertCanModifyFormation(formation, user);
+    }
 
     return errors;
   }

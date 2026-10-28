@@ -46,6 +46,11 @@ describe("meteoClient.getForecastForDate", () => {
       }),
       okJson({
         daily: { time: [veille, jourCible], wave_height_max: [0.8, 2.5] },
+        // Courant horaire : seul le jour cible compte, on garde son max.
+        hourly: {
+          time: [`${veille}T10:00`, `${jourCible}T06:00`, `${jourCible}T14:00`],
+          ocean_current_velocity: [9, 0.6, 1.8],
+        },
       }),
     ]);
 
@@ -56,6 +61,7 @@ describe("meteoClient.getForecastForDate", () => {
     });
 
     expect(forecast).toEqual({
+      currentVelocity: 1.8,
       date: jourCible,
       windspeed: 42,
       windgusts: 60,
@@ -134,6 +140,7 @@ describe("meteoClient.getForecastForDate", () => {
     });
 
     expect(forecast).toEqual({
+      currentVelocity: null,
       date: "2026-08-10",
       windspeed: 25,
       windgusts: 35,

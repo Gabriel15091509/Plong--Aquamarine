@@ -1,6 +1,5 @@
 import React, { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import ModalLink from "../Common/ModalLink";
 import {
   FiUser,
   FiMail,
@@ -8,35 +7,28 @@ import {
   FiCalendar,
   FiDollarSign,
   FiEdit,
-  FiArrowLeft,
   FiTrash2,
-  FiInfo,
 } from "react-icons/fi";
 import { useTresoriers } from "../../hooks/Tresorier/useTresoriers";
 import { useUsers } from "../../hooks/User/useUsers";
+import { useDetailsModal } from "../../hooks/useFormModal";
+import DetailsModal from "../Common/DetailsModal";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
-import SectionCard from "../Common/SectionCard";
 import InfoItem from "../Common/InfoItem";
+import AccountManagementCard from "../User/AccountManagementCard";
 
-const staggerContainer = {
-  initial: { opacity: 0 },
-  animate: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.04,
-      delayChildren: 0.05,
-    },
-  },
-};
-
+// Fiche trésorier, modale par-dessus la liste (voir MoniteurDetails.jsx pour
+// le prototype d'origine et DetailsModal.jsx pour la coquille commune).
+// Une seule page : peu d'informations (compte + mandat), pas besoin de
+// pagination (DetailsModal la masque d'elle-même quand pages.length <= 1).
 const TresorierDetails = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const modal = useDetailsModal("/tresoriers");
+  const { id } = modal;
   const { useGetById, useRemove } = useTresoriers();
   const { useGetAll: useGetAllUsers } = useUsers();
   const { data, isLoading } = useGetById(id);
-  const { data: usersData } = useGetAllUsers();
+  const { data: usersData } = useGetAllUsers({}, { enabled: !!id });
   const remove = useRemove();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -46,132 +38,104 @@ const TresorierDetails = () => {
   const handleDelete = async () => {
     try {
       await remove.mutateAsync(id);
-      navigate("/tresoriers");
+      setShowDeleteModal(false);
+      modal.close();
     } catch (error) {
       console.error("Échec de la suppression du trésorier :", error);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <LoadingSpinner variant="details" />
-      </div>
-    );
-  }
-
-  if (!tresorier) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="text-center py-16"
+  const headerExtra = tresorier && (
+    <>
+      <ModalLink
+        to={`/tresoriers/edit/${tresorier.id_tresorier}`}
+        className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-colors"
+        title="Modifier"
       >
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800/50 mb-6">
-          <FiInfo className="w-10 h-10 text-gray-400" />
-        </div>
-        <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
-          Trésorier non trouvé
-        </h3>
-        <p className="text-gray-500 dark:text-gray-400">
-          Le trésorier que vous recherchez n'existe pas ou a été supprimé.
-        </p>
-        <button
-          onClick={() => navigate("/tresoriers")}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-        >
-          <FiArrowLeft className="w-4 h-4" />
-          Retour à la liste
-        </button>
-      </motion.div>
-    );
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6 px-4"
-    >
-      {/* En-tête */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+        <FiEdit className="w-4 h-4" />
+      </ModalLink>
+      <button
+        type="button"
+        onClick={() => setShowDeleteModal(true)}
+        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+        title="Supprimer"
       >
-        <div className="flex items-center gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-900/20">
-                <FiDollarSign className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-              </span>
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                  {user?.name || `Trésorier #${tresorier.id_tresorier}`}
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
-                  {tresorier.annee_en_poste && (
-                    <span className="flex items-center gap-1 text-sm">
-                      <FiCalendar className="w-3.5 h-3.5" />
-                      Trésorier {tresorier.annee_en_poste}
-                    </span>
-                  )}
-                  {user?.email && (
-                    <>
-                      <span className="text-gray-300 dark:text-gray-600">•</span>
-                      <span className="flex items-center gap-1 text-sm">
-                        <FiMail className="w-3.5 h-3.5" />
-                        {user.email}
-                      </span>
-                    </>
-                  )}
-                </p>
+        <FiTrash2 className="w-4 h-4" />
+      </button>
+    </>
+  );
+
+  if (isLoading || !tresorier) {
+    return (
+      <DetailsModal
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        title={isLoading ? "Chargement…" : "Trésorier non trouvé"}
+        icon={FiDollarSign}
+        pages={[
+          {
+            label: "",
+            content: isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <LoadingSpinner variant="details" />
               </div>
-            </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">
+                Le trésorier que vous recherchez n&apos;existe pas ou a été
+                supprimé.
+              </p>
+            ),
+          },
+        ]}
+      />
+    );
+  }
+
+  const pages = [
+    {
+      label: "Compte & mandat",
+      icon: FiUser,
+      content: (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+          <div className="space-y-1">
+            <InfoItem icon={FiUser} label="Nom" value={user?.name} highlight />
+            <InfoItem icon={FiMail} label="Email" value={user?.email} />
+            <InfoItem icon={FiPhone} label="Téléphone" value={user?.phone} />
+          </div>
+          {/* "Gestion du compte" nichée dans cette colonne (plutôt qu'en
+              ligne à part sur toute la largeur) : avec un seul champ ici
+              contre 3 à gauche, une ligne pleine largeur en dessous des
+              deux colonnes aurait laissé cette colonne bien plus courte
+              que l'autre, tout cet espace perdu au-dessus d'elle. */}
+          <div className="space-y-1">
+            <InfoItem
+              icon={FiCalendar}
+              label="Année en poste"
+              value={tresorier.annee_en_poste || "Non renseignée"}
+              highlight
+            />
+            <AccountManagementCard user={user} className="mt-2" />
           </div>
         </div>
-        <div className="flex gap-2">
-          <Link
-            to={`/tresoriers/edit/${tresorier.id_tresorier}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 rounded-xl transition-colors duration-150"
-          >
-            <FiEdit className="w-4 h-4" />
-            Modifier
-          </Link>
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150"
-          >
-            <FiTrash2 className="w-4 h-4" />
-            Supprimer
-          </button>
-        </div>
-      </motion.div>
+      ),
+    },
+  ];
 
-      {/* Grille d'informations */}
-      <motion.div
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-      >
-        {/* Informations utilisateur */}
-        <SectionCard title="Informations du compte" icon={FiUser}>
-          <InfoItem icon={FiUser} label="Nom" value={user?.name} highlight />
-          <InfoItem icon={FiMail} label="Email" value={user?.email} />
-          <InfoItem icon={FiPhone} label="Téléphone" value={user?.phone} />
-        </SectionCard>
-
-        {/* Informations mandat */}
-        <SectionCard title="Mandat" icon={FiDollarSign}>
-          <InfoItem
-            icon={FiCalendar}
-            label="Année en poste"
-            value={tresorier.annee_en_poste || "Non renseignée"}
-            highlight
-          />
-        </SectionCard>
-      </motion.div>
+  return (
+    <>
+      <DetailsModal
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        title={user?.name || `Trésorier #${tresorier.id_tresorier}`}
+        subtitle={
+          tresorier.annee_en_poste
+            ? `Trésorier ${tresorier.annee_en_poste}`
+            : undefined
+        }
+        icon={FiDollarSign}
+        headerExtra={headerExtra}
+        pages={pages}
+      />
 
       <ConfirmModal
         isOpen={showDeleteModal}
@@ -187,7 +151,7 @@ const TresorierDetails = () => {
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteModal(false)}
       />
-    </motion.div>
+    </>
   );
 };
 

@@ -12,14 +12,17 @@ import {
   FiUser,
   FiCalendar,
   FiCreditCard,
-  FiChevronRight,
-  FiTag,
   FiSearch,
+  FiFilter,
+  FiList,
+  FiGrid,
+  FiRefreshCw,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
 import BulkActionBar from "../Common/BulkActionBar";
+import Pagination from "../Common/Pagination";
 import { usePaiements } from "../../hooks/Paiement/usePaiements";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useAuth } from "../../context/AuthContext";
@@ -28,6 +31,8 @@ import StatusBadge from "../Common/StatusBadge";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import paiementService from "../../services/Paiement/paiementService";
+import PaiementFormModal from "./PaiementFormModal";
+import PaiementDetails from "./PaiementDetails";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -39,7 +44,7 @@ const PaiementList = () => {
   const { useGetAll: useGetAllAdherents } = useAdherents();
 
   const { data, isLoading, error, refetch } = useGetAll();
-  const { data: adherentsData, isLoading: loadingAdherents } =
+  const { data: adherentsData } =
     useGetAllAdherents();
 
   const remove = useRemove();
@@ -48,13 +53,22 @@ const PaiementList = () => {
   const selection = useSelection();
 
   // Tous les useState
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
   const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+  // Clé de l'action en cours (`delete-<id>`, `process-<id>`, `cancel-<id>`) :
+  // seule l'icône de la ligne concernée passe en spinner (même motif que
+  // InscriptionList.jsx).
+  const [actionLoading, setActionLoading] = useState(null);
+  // Vue grille par défaut (cartes verticales, comme SortiesPage/AdherentList)
+  // : mieux adapté au mobile que les lignes horizontales de la vue liste.
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "grid" : "list",
+  );
   const itemsPerPage = 10;
 
   // Tous les useMemo
@@ -106,15 +120,17 @@ const PaiementList = () => {
 
   // Handlers (pas des hooks, donc peuvent être après les conditions)
   const handleDelete = async (id) => {
+    // Ferme la modale dès le lancement : elle masquerait sinon le spinner
+    // de la ligne pendant la requête.
+    setDeleteModal(null);
+    setActionLoading(`delete-${id}`);
     try {
-      setLoading(true);
       await remove.mutateAsync(id);
-      refetch();
-      setDeleteModal(null);
+      await refetch();
     } catch (error) {
       console.error("Échec de la suppression du paiement :", error);
     } finally {
-      setLoading(false);
+      setActionLoading(null);
     }
   };
 
@@ -134,33 +150,36 @@ const PaiementList = () => {
   };
 
   const handleProcess = async (id) => {
+    setActionLoading(`process-${id}`);
     try {
-      setLoading(true);
-      await process.mutateAsync(id);
-      refetch();
+      await process.mutateAsync({ id });
+      await refetch();
     } catch (error) {
       console.error("Échec du traitement du paiement :", error);
     } finally {
-      setLoading(false);
+      setActionLoading(null);
     }
   };
 
   const handleCancel = async (id) => {
     if (!window.confirm("Êtes-vous sûr de vouloir annuler ce paiement ?"))
       return;
+    setActionLoading(`cancel-${id}`);
     try {
-      setLoading(true);
       await cancel.mutateAsync(id);
-      refetch();
+      await refetch();
     } catch (error) {
       console.error("Échec de l'annulation du paiement :", error);
     } finally {
-      setLoading(false);
+      setActionLoading(null);
     }
   };
 
   // 2. RETOURS CONDITIONNELS APRÈS TOUS LES HOOKS
-  if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
+  // N'attend que la propre liste : adherentsData ne sert qu'aux noms
+  // affichés (adherentMap), avec repli "#<num_adherent>" déjà prévu tant
+  // qu'il n'est pas encore chargé — chargement progressif.
+  if (isLoading) return <LoadingSpinner variant="list" />;
   if (error) return <ErrorState onRetry={refetch} />;
 
   // 3. RENDU PRINCIPAL
@@ -205,14 +224,27 @@ const PaiementList = () => {
             <FiPlus className="w-4 h-4" /> Nouveau paiement
           </Link>
         )}
+        <PaiementFormModal />
+        <PaiementDetails />
       </motion.div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Barre de recherche et filtres */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+            {/* Bouton "Filtres" (mobile uniquement) : recherche + filtres
+          repliés par défaut pour ne pas encombrer l'écran — un tap les
+          affiche. Toujours visibles à partir de sm (recherche fréquente
+          sur grand écran, pas besoin de la cacher). */}
+      <button
+        type="button"
+        onClick={() => setShowFilters((v) => !v)}
+        className="sm:hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+      >
+        {showFilters ? <FiX className="w-4 h-4" /> : <FiFilter className="w-4 h-4" />}
+        Filtres
+      </button>
+      <div className={`${showFilters ? "flex" : "hidden"} flex-col gap-3 sm:flex sm:flex-row`}>
         <div className="relative flex-1">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -250,6 +282,32 @@ const PaiementList = () => {
               Nouveau
             </Link>
           )}
+          <div className="col-span-2 flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-100 p-1 dark:border-gray-700 dark:bg-gray-800 sm:col-auto">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              title="Vue grille"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "grid"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              title="Vue liste"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "list"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiList className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -296,9 +354,138 @@ const PaiementList = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid gap-3"
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                : "grid gap-3"
+            }
           >
-            {paginatedPaiements.map((paiement) => {
+            {viewMode === "grid"
+              ? paginatedPaiements.map((paiement) => {
+                  const adherentInfo = adherentMap[paiement.num_adherent] || {
+                    nom: `#${paiement.num_adherent}`,
+                    photo: null,
+                  };
+                  const adherentName = adherentInfo.nom;
+
+                  return (
+                    <motion.div
+                      key={paiement.id_paiement}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
+                    >
+                      {adherentInfo.photo ? (
+                        <img
+                          src={photoUrl(adherentInfo.photo)}
+                          alt={adherentName}
+                          className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/30 dark:to-blue-900/30 flex items-center justify-center border-2 border-indigo-200 dark:border-indigo-700 shadow-sm">
+                          <FiUser className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
+                        </div>
+                      )}
+                      <h3 className="font-semibold text-gray-900 dark:text-white mt-3 break-words w-full">
+                        {adherentName}
+                      </h3>
+                      <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                        {paiement.type_paiement}
+                      </p>
+                      {paiement.reference_id && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                          Réf: {paiement.reference_id}
+                        </p>
+                      )}
+                      <p className="flex items-center justify-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
+                        {formatDate(paiement.date_paiement)}
+                      </p>
+                      <p className="flex items-center justify-center gap-1 font-bold text-gray-700 dark:text-gray-300 mt-1">
+                        <FiDollarSign className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                        {formatCurrency(paiement.montant)}
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
+                        <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                          <FiCreditCard className="w-3.5 h-3.5 flex-shrink-0" />
+                          {paiement.mode}
+                        </span>
+                        <StatusBadge status={paiement.statut} />
+                      </div>
+                      <div className="flex items-center justify-center flex-wrap gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 w-full">
+                        {canManagePaiement && (
+                          <input
+                            type="checkbox"
+                            checked={selection.isSelected(paiement.id_paiement)}
+                            onChange={() => selection.toggle(paiement.id_paiement)}
+                            className="mr-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                            title="Sélectionner"
+                          />
+                        )}
+                        {canManagePaiement && paiement.statut === "En attente" && (
+                          <>
+                            <button
+                              onClick={() => handleProcess(paiement.id_paiement)}
+                              disabled={(actionLoading === `process-${paiement.id_paiement}` || actionLoading === `cancel-${paiement.id_paiement}` || actionLoading === `delete-${paiement.id_paiement}`)}
+                              className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Valider le paiement"
+                            >
+                              {actionLoading === `process-${paiement.id_paiement}` ? (
+                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FiCheck className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleCancel(paiement.id_paiement)}
+                              disabled={(actionLoading === `process-${paiement.id_paiement}` || actionLoading === `cancel-${paiement.id_paiement}` || actionLoading === `delete-${paiement.id_paiement}`)}
+                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Annuler le paiement"
+                            >
+                              {actionLoading === `cancel-${paiement.id_paiement}` ? (
+                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FiX className="w-4 h-4" />
+                              )}
+                            </button>
+                          </>
+                        )}
+                        <Link
+                          to={`/paiements/${paiement.id_paiement}`}
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title="Voir"
+                        >
+                          <FiEye className="w-4 h-4" />
+                        </Link>
+                        {canManagePaiement && (
+                          <>
+                            <Link
+                              to={`/paiements/edit/${paiement.id_paiement}`}
+                              className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                              title="Modifier"
+                            >
+                              <FiEdit className="w-4 h-4" />
+                            </Link>
+                            <button
+                              onClick={() => setDeleteModal(paiement.id_paiement)}
+                              disabled={(actionLoading === `process-${paiement.id_paiement}` || actionLoading === `cancel-${paiement.id_paiement}` || actionLoading === `delete-${paiement.id_paiement}`)}
+                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                              title="Supprimer"
+                            >
+                              {actionLoading === `delete-${paiement.id_paiement}` ? (
+                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FiTrash2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })
+              : paginatedPaiements.map((paiement) => {
               const adherentInfo = adherentMap[paiement.num_adherent] || {
                 nom: `#${paiement.num_adherent}`,
                 photo: null,
@@ -335,11 +522,6 @@ const PaiementList = () => {
                           <FiUser className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
                         </div>
                       )}
-                      <div className="text-center mt-1">
-                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                          #{paiement.num_adherent}
-                        </span>
-                      </div>
                     </div>
 
                     {/* Informations */}
@@ -347,7 +529,7 @@ const PaiementList = () => {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                            <h3 className="font-semibold text-gray-900 dark:text-white break-words">
                               {adherentName}
                             </h3>
                             <span className="text-sm text-gray-400 dark:text-gray-500">
@@ -392,24 +574,28 @@ const PaiementList = () => {
                           {canManagePaiement && paiement.statut === "En attente" && (
                             <>
                               <button
-                                onClick={() =>
-                                  handleProcess(paiement.id_paiement)
-                                }
-                                disabled={loading}
+                                onClick={() => handleProcess(paiement.id_paiement)}
+                                disabled={(actionLoading === `process-${paiement.id_paiement}` || actionLoading === `cancel-${paiement.id_paiement}` || actionLoading === `delete-${paiement.id_paiement}`)}
                                 className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors disabled:opacity-50"
                                 title="Valider le paiement"
                               >
-                                <FiCheck className="w-4 h-4" />
+                                {actionLoading === `process-${paiement.id_paiement}` ? (
+                                  <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <FiCheck className="w-4 h-4" />
+                                )}
                               </button>
                               <button
-                                onClick={() =>
-                                  handleCancel(paiement.id_paiement)
-                                }
-                                disabled={loading}
+                                onClick={() => handleCancel(paiement.id_paiement)}
+                                disabled={(actionLoading === `process-${paiement.id_paiement}` || actionLoading === `cancel-${paiement.id_paiement}` || actionLoading === `delete-${paiement.id_paiement}`)}
                                 className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                                 title="Annuler le paiement"
                               >
-                                <FiX className="w-4 h-4" />
+                                {actionLoading === `cancel-${paiement.id_paiement}` ? (
+                                  <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <FiX className="w-4 h-4" />
+                                )}
                               </button>
                             </>
                           )}
@@ -432,11 +618,15 @@ const PaiementList = () => {
                               </Link>
                               <button
                                 onClick={() => setDeleteModal(paiement.id_paiement)}
-                                disabled={loading}
+                                disabled={(actionLoading === `process-${paiement.id_paiement}` || actionLoading === `cancel-${paiement.id_paiement}` || actionLoading === `delete-${paiement.id_paiement}`)}
                                 className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                                 title="Supprimer"
                               >
-                                <FiTrash2 className="w-4 h-4" />
+                                {actionLoading === `delete-${paiement.id_paiement}` ? (
+                                  <FiRefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <FiTrash2 className="w-4 h-4" />
+                                )}
                               </button>
                             </>
                           )}
@@ -451,34 +641,11 @@ const PaiementList = () => {
         )}
       </AnimatePresence>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
-        >
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Précédent
-          </button>
-          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Suivant
-          </button>
-        </motion.div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Modal de confirmation de suppression */}
       <ConfirmModal
@@ -495,6 +662,9 @@ const PaiementList = () => {
         onCancel={() => setBulkDeleteModal(false)}
         onConfirm={handleBulkDelete}
       />
+
+      <PaiementFormModal />
+      <PaiementDetails />
     </div>
   );
 };

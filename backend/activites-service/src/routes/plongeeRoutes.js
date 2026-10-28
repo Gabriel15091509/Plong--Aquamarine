@@ -18,6 +18,13 @@ router.get(
   plongeeController.getNbInactifs.bind(plongeeController),
 );
 router.get("/trend", plongeeController.getTrend.bind(plongeeController));
+// Badge Sidebar : COUNT léger, voir PlongeeController.getAValiderCount.
+// Avant "/:id" pour ne pas être avalée par cette route générique.
+router.get(
+  "/a-valider-count",
+  AuthMiddleware.authenticate,
+  plongeeController.getAValiderCount.bind(plongeeController),
+);
 router.get(
   "/by-date-range",
   plongeeController.getByDateRange.bind(plongeeController),

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useScrollToHash } from "../../hooks/useScrollToHash";
@@ -30,24 +29,18 @@ import {
   FiHeart,
   FiDroplet,
   FiRefreshCw,
-  FiFileText,
-  FiInfo,
-  FiStar,
-  FiZap,
-  FiCompass,
   FiUsers,
-  FiBarChart2,
   FiDollarSign,
   FiBookOpen,
   FiCamera,
-  FiDownload,
   FiPackage,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
-import { formatDate, formatDateTime } from "../../utils/helpers";
+import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
 import LoadingSpinner from "../../components/Common/LoadingSpinner";
-import api from "../../services/api";
+import Breadcrumb from "../../components/Common/Breadcrumb";
+import Pagination from "../../components/Common/Pagination";
 
 const MAX_PHOTO_SIZE = 8 * 1024 * 1024; // 8 Mo, aligné sur la limite serveur (multer + ingress)
 
@@ -80,31 +73,16 @@ const ProfilePage = () => {
   });
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
-  const [exportingData, setExportingData] = useState(false);
-
-  // RGPD (droit d'accès/portabilité, exigence 4.4) : télécharge un export
-  // JSON des données personnelles du compte connecté.
-  const handleExportData = async () => {
-    setExportingData(true);
-    try {
-      const response = await api.get("/users/me/export");
-      const blob = new Blob([JSON.stringify(response.data.data, null, 2)], {
-        type: "application/json",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `mes-donnees-${user?.id || "compte"}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Impossible d'exporter vos données",
-      );
-    } finally {
-      setExportingData(false);
-    }
-  };
+  // "Mon matériel attribué" montre TOUT l'historique — un adhérent de
+  // longue date accumule des attributions rendues depuis des années, d'où
+  // le scroll interminable : paginé plutôt que capé, pour ne rien cacher.
+  const [materielPage, setMaterielPage] = useState(1);
+  const MATERIEL_PAR_PAGE = 5;
+  // "Dernières plongées" (ci-dessous) : même souci, plongées illimitées
+  // dans le temps — avant, capée à 3 sans aucun moyen de voir les plus
+  // anciennes (voir recentDives).
+  const [divesPage, setDivesPage] = useState(1);
+  const DIVES_PAR_PAGE = 5;
 
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0] || null;
@@ -347,13 +325,15 @@ const ProfilePage = () => {
     user?.role,
   ]);
 
-  // Dernières plongées (limité à 3)
+  // Toutes les plongées de l'adhérent, triées les plus récentes en premier —
+  // avant : limité à 3 (`.slice(0, 3)` ici même), sans aucun moyen de voir
+  // les plus anciennes depuis cette page. Paginé à l'affichage à la place
+  // (voir divesPage plus bas), même principe que "Mon matériel attribué".
   const recentDives = useMemo(() => {
     if (!currentAdherent) return [];
     const userPlongees = (plongeesData?.data || [])
       .filter((p) => p.num_adherent === currentAdherent.num_adherent)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 3);
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
 
     return userPlongees.map((p) => ({
       date: formatDate(p.date),
@@ -463,6 +443,12 @@ const ProfilePage = () => {
 
   const diveStats = getDiveStats();
 
+  // Les stats de plongée n'ont de sens que pour un adhérent (les autres
+  // rôles n'ont pas de fiche Adherent/historique de plongées à afficher) —
+  // utilisée à la fois pour la grille de statistiques et le bloc "Dernières
+  // plongées" ci-dessous.
+  const isAdherentRole = (user?.role || "adherent") === "adherent";
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -477,6 +463,8 @@ const ProfilePage = () => {
       animate={{ opacity: 1 }}
       className="space-y-6 px-4"
     >
+      <Breadcrumb current="Mon profil" />
+
       {/* En-tête */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -633,39 +621,45 @@ const ProfilePage = () => {
         </motion.div>
       )}
 
-      {/* Statistiques adaptées au rôle */}
-      <motion.div
-        variants={staggerContainer}
-        initial="initial"
-        animate="animate"
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
-      >
-        {diveStats.map((stat) => (
-          <motion.div
-            key={stat.label}
-            variants={fadeInUp}
-            whileHover={{ y: -2 }}
-            className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-4 text-center border border-gray-100/80 dark:border-gray-800/80 hover:shadow-md transition-shadow duration-150"
-          >
-            <div className="w-12 h-12 mx-auto rounded-xl bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center mb-3">
-              <stat.icon className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
-            </div>
-            <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-              {stat.value}
-            </p>
-            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">
-              {stat.label}
-            </p>
-          </motion.div>
-        ))}
-      </motion.div>
+      {/* Statistiques adaptées au rôle — réservées à l'adhérent (ses
+          propres plongées/sorties/formations) : pour le staff (président,
+          moniteur, trésorier), ces chiffres redondent avec leurs tableaux
+          de bord/pages dédiées, sans réel intérêt sur leur propre fiche
+          profil. */}
+      {isAdherentRole && (
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4"
+        >
+          {diveStats.map((stat) => (
+            <motion.div
+              key={stat.label}
+              variants={fadeInUp}
+              whileHover={{ y: -2 }}
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-4 text-center border border-gray-100/80 dark:border-gray-800/80 hover:shadow-md transition-shadow duration-150"
+            >
+              <div className="w-12 h-12 mx-auto rounded-xl bg-cyan-50 dark:bg-cyan-900/20 flex items-center justify-center mb-3">
+                <stat.icon className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
+              </div>
+              <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                {stat.value}
+              </p>
+              <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">
+                {stat.label}
+              </p>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
 
       {/* Informations personnelles et dernières plongées */}
       <motion.div
         variants={staggerContainer}
         initial="initial"
         animate="animate"
-        className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+        className={`grid grid-cols-1 gap-6 ${isAdherentRole ? "lg:grid-cols-2" : ""}`}
       >
         {/* Informations personnelles */}
         <motion.div
@@ -678,7 +672,16 @@ const ProfilePage = () => {
             </span>
             Informations personnelles
           </h3>
-          <div className="space-y-3">
+          {/* Seule dans sa rangée (rôle non-adhérent, pas de carte "Dernières
+              plongées" à côté — voir isAdherentRole) : 2 colonnes pour
+              combler la largeur au lieu de bandes étirées sur toute la
+              largeur ; empilé en une colonne quand la carte partage la
+              rangée avec "Dernières plongées". */}
+          {/* 2 colonnes même pour un adhérent (avant : 1 seule, réservée au
+              staff) : avec les champs administratifs ajoutés ci-dessous
+              (civilité, brevet, licence FFESM...), une seule colonne aurait
+              rendu la carte inutilement longue. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
               <FiMail className="w-5 h-5 text-blue-500 flex-shrink-0" />
               <div className="min-w-0">
@@ -734,57 +737,163 @@ const ProfilePage = () => {
                 </p>
               </div>
             </div>
+            {/* Champs administratifs visibles côté fiche adhérent
+                (AdherentDetails.jsx, page "Identité") mais absents de "Mon
+                profil" jusqu'ici — un adhérent n'avait aucun moyen de voir
+                si son dossier (brevet, licence FFESM...) était à jour ou à
+                compléter sans demander au président. Lecture seule ici :
+                la modification reste réservée au président (voir
+                AdherentForm.jsx). */}
+            {isAdherentRole && (
+              <>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+                  <FiUser className="w-5 h-5 text-indigo-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                      Civilité
+                    </p>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {currentAdherent?.civilite || "Non renseignée"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+                  <FiCalendar className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                      Date de naissance
+                    </p>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {currentAdherent?.date_naissance
+                        ? formatDate(currentAdherent.date_naissance)
+                        : "Non renseignée"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+                  <FiCheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                      Date d&apos;obtention du niveau
+                    </p>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {currentAdherent?.niveau === "Baptême"
+                        ? "Non applicable"
+                        : currentAdherent?.date_obtention_niveau
+                          ? formatDate(currentAdherent.date_obtention_niveau)
+                          : "Non renseignée"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+                  <FiBookOpen className="w-5 h-5 text-purple-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                      Brevet délivré
+                    </p>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {currentAdherent?.niveau === "Baptême"
+                        ? "Non applicable"
+                        : currentAdherent?.num_brevet || "Non renseigné"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+                  <FiShield className="w-5 h-5 text-cyan-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                      N° Licence FFESM
+                    </p>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {currentAdherent?.niveau === "Baptême"
+                        ? "Non applicable"
+                        : currentAdherent?.num_licence_ffesm || "Non renseigné"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800">
+                  <FiClock className="w-5 h-5 text-slate-500 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+                      Membre depuis le
+                    </p>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {currentAdherent?.date_inscription
+                        ? formatDate(currentAdherent.date_inscription)
+                        : "Non renseignée"}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </motion.div>
 
-        {/* Dernières plongées */}
-        <motion.div
-          variants={fadeInUp}
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100/80 dark:border-gray-800/80"
-        >
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
-              <FiDroplet className="w-5 h-5" />
-            </span>
-            Dernières plongées
-          </h3>
-          {recentDives.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <FiDroplet className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-              <p>Aucune plongée enregistrée</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {recentDives.map((dive, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors duration-300"
-                >
-                  <div>
-                    <p className="font-semibold text-gray-900 dark:text-white truncate">
-                      {dive.site}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {dive.date}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs sm:text-sm">
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">
-                      {dive.depth}
-                    </span>
-                    <span className="text-gray-300 dark:text-gray-600">•</span>
-                    <span className="text-gray-500 dark:text-gray-400">
-                      {dive.duration}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </motion.div>
+        {/* Disponibilité pour encadrer : déplacée dans le dropdown profil
+            (Header.jsx), accessible depuis n'importe quelle page — plus ici,
+            pour ne pas dupliquer le même geste à deux endroits. */}
+
+        {/* Dernières plongées — n'a de sens que pour un adhérent */}
+        {isAdherentRole && (
+          <motion.div
+            variants={fadeInUp}
+            className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm p-6 border border-gray-100/80 dark:border-gray-800/80"
+          >
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-3">
+              <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
+                <FiDroplet className="w-5 h-5" />
+              </span>
+              Dernières plongées
+            </h3>
+            {recentDives.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <FiDroplet className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                <p>Aucune plongée enregistrée</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentDives
+                  .slice(
+                    (divesPage - 1) * DIVES_PAR_PAGE,
+                    divesPage * DIVES_PAR_PAGE,
+                  )
+                  .map((dive, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-colors duration-300"
+                  >
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white truncate">
+                        {dive.site}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {dive.date}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs sm:text-sm">
+                      <span className="font-semibold text-blue-600 dark:text-blue-400">
+                        {dive.depth}
+                      </span>
+                      <span className="text-gray-300 dark:text-gray-600">•</span>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        {dive.duration}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+                <Pagination
+                  currentPage={divesPage}
+                  totalPages={Math.ceil(recentDives.length / DIVES_PAR_PAGE)}
+                  onPageChange={setDivesPage}
+                  scrollToTop={false}
+                />
+              </div>
+            )}
+          </motion.div>
+        )}
       </motion.div>
 
       {/* Matériel attribué */}
@@ -809,7 +918,12 @@ const ProfilePage = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {monMateriel.map((attribution) => {
+              {monMateriel
+                .slice(
+                  (materielPage - 1) * MATERIEL_PAR_PAGE,
+                  materielPage * MATERIEL_PAR_PAGE,
+                )
+                .map((attribution) => {
                 const enCours = !attribution.date_retour_reel;
                 return (
                   <div
@@ -842,38 +956,14 @@ const ProfilePage = () => {
               })}
             </div>
           )}
+          <Pagination
+            currentPage={materielPage}
+            totalPages={Math.ceil(monMateriel.length / MATERIEL_PAR_PAGE)}
+            onPageChange={setMaterielPage}
+            scrollToTop={false}
+          />
         </motion.div>
       )}
-
-      {/* Confidentialité & données personnelles (RGPD) */}
-      <motion.div
-        variants={fadeInUp}
-        className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 border border-gray-100/80 dark:border-gray-800/80"
-      >
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
-          <span className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400">
-            <FiShield className="w-5 h-5" />
-          </span>
-          Confidentialité & données personnelles
-        </h3>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <button
-            type="button"
-            onClick={handleExportData}
-            disabled={exportingData}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-          >
-            <FiDownload className="w-4 h-4" />
-            {exportingData ? "Export en cours..." : "Télécharger mes données"}
-          </button>
-          <Link
-            to="/confidentialite"
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
-          >
-            Consulter la politique de confidentialité
-          </Link>
-        </div>
-      </motion.div>
 
     </motion.div>
   );

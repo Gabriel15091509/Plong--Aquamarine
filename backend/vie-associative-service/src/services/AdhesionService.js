@@ -48,6 +48,9 @@ class AdhesionService extends BaseService {
 
     await this.assertNoOverlap(data.num_adherent, data.type, data.date_debut, data.date_fin);
     await this.assertLicenceUniquePerPersonne(data.num_adherent, data.num_licence_ffesm);
+    if (data.type === "Club") {
+      await this.assertPreviousClubSoldee(data.num_adherent);
+    }
 
     if (data.type !== "Club") {
       // Plus de validation manuelle du président pour une soumission
@@ -345,6 +348,27 @@ class AdhesionService extends BaseService {
     }
   }
 
+  // Le club veut être réglé avant de facturer une nouvelle année : une
+  // adhésion "Club" déjà en base pour cet adhérent, pas encore
+  // intégralement payée ("En attente"/"Partiel"), bloque la création d'une
+  // NOUVELLE adhésion Club tant qu'elle n'est pas soldée — plutôt que
+  // d'empiler les impayés d'année en année sans qu'aucun garde-fou ne le
+  // signale. "Annulé" est volontairement exclu (voir
+  // AdhesionRepository.findUnpaidClub) : un abandon ne doit pas bloquer un
+  // nouveau départ. Ne s'applique qu'au type "Club" : FFESM/Assurance
+  // restent "Payé" d'office dès leur création (voir plus haut), rien à
+  // régler pour eux.
+  async assertPreviousClubSoldee(num_adherent) {
+    const impayee = await this.adhesionRepository.findUnpaidClub(num_adherent);
+    if (impayee) {
+      const debut = new Date(impayee.date_debut).toLocaleDateString("fr-FR");
+      const fin = new Date(impayee.date_fin).toLocaleDateString("fr-FR");
+      throw new Error(
+        `L'adhésion "Club" du ${debut} au ${fin} n'est pas encore réglée (statut : "${impayee.statut_paiement}") : soldez-la avant d'en créer une nouvelle.`,
+      );
+    }
+  }
+
   async delete(id) {
     const adhesion = await this.adhesionRepository.findById(id);
     if (!adhesion) throw new Error("Adhésion non trouvée");
@@ -352,6 +376,61 @@ class AdhesionService extends BaseService {
       throw new Error("Adhésion validée : suppression impossible.");
     }
     return await this.adhesionRepository.delete(id);
+  }
+
+  // Appelé automatiquement par identite-service (AdherentService.
+  // updateNiveau, résolu par HTTP) quand un adhérent passe de "Baptême" à
+  // "Niveau 1" : jusqu'ici, le président/trésorier devait penser à saisir
+  // lui-même les 2 lignes FFESM + Assurance RC (l'Assurance RC est incluse
+  // dans la licence FFESM mais tracée à part — voir TYPES_OBLIGATOIRES plus
+  // haut) dès qu'un adhérent quittait le Baptême, sans quoi checkDossierValidity
+  // (donc l'inscription aux sorties, InscriptionService.js) le bloquait
+  // silencieusement pour un oubli administratif. Crée les 2 lignes "En
+  // attente" (comme une soumission adhérent, jamais "Validé" d'office) : le
+  // n° de licence FFESM n'est pas encore connu du système à cet instant, le
+  // président/trésorier doit compléter (n° de licence, ajuster les dates si
+  // besoin) puis valider via POST /:id/valider, exactement comme pour une
+  // pièce soumise par l'adhérent lui-même.
+  //
+  // Dates par défaut : année civile de l'obtention (1er janvier - 31
+  // décembre), même convention que les adhésions Club existantes (voir
+  // seedVieAssociative.js) — à ajuster par le staff si la validité réelle
+  // de la licence délivrée diffère.
+  //
+  // Best-effort et idempotent par construction : si une ligne FFESM ou
+  // Assurance RC couvrant déjà cette période existe (rejeu de l'appel,
+  // licence déjà saisie manuellement entre-temps...), assertNoOverlap
+  // l'empêcherait de toute façon — on l'ignore ici plutôt que de remonter en
+  // erreur une mise à jour de niveau par ailleurs déjà actée.
+  async creerLicenceAutomatique(num_adherent, dateObtention = new Date()) {
+    const annee = new Date(dateObtention).getFullYear();
+    const date_debut = new Date(annee, 0, 1);
+    const date_fin = new Date(annee, 11, 31);
+
+    const creees = [];
+    for (const type of ["FFESM", "Assurance RC"]) {
+      try {
+        await this.assertNoOverlap(num_adherent, type, date_debut, date_fin);
+      } catch (error) {
+        continue; // Déjà couvert pour cette période : rien à créer.
+      }
+      creees.push(
+        await this.adhesionRepository.create({
+          num_adherent,
+          type,
+          date_debut,
+          date_fin,
+          montant: 0,
+          montant_paye: 0,
+          statut_paiement: "Payé",
+          annee_adhesion: annee,
+          num_licence_ffesm: null,
+          statut_validation: "En attente",
+          soumis_par_adherent: false,
+        }),
+      );
+    }
+    return creees;
   }
 
   // Réservé au président/trésorier (voir routes) : bascule une soumission
@@ -422,6 +501,11 @@ class AdhesionService extends BaseService {
 
   async getAdhesionStats() {
     return await this.adhesionRepository.getAdhesionStats();
+  }
+
+  // Badge Sidebar : voir AdhesionRepository.countEnAttenteValidation.
+  async getEnAttenteValidationCount() {
+    return await this.adhesionRepository.countEnAttenteValidation();
   }
 
   // Vérifie que l'adhérent a bien, pour la date donnée, les éléments

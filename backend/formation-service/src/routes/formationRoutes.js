@@ -13,6 +13,12 @@ router.get(
 );
 router.get("/stats", formationController.getStats.bind(formationController));
 router.get("/trend", formationController.getTrend.bind(formationController));
+// Badge Sidebar (voir FormationController.getPretesATerminerCount) : même
+// convention que "/stats"/"/trend" ci-dessus, sans authenticate.
+router.get(
+  "/pretes-a-terminer-count",
+  formationController.getPretesATerminerCount.bind(formationController),
+);
 // authenticate (et non authorize) : ces 3 routes retournent la fiche
 // individuelle d'une formation, potentiellement consultée par l'adhérent
 // concerné (contrôle de propriété fait dans FormationService, pas ici) —

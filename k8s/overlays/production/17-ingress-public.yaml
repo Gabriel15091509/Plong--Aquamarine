@@ -14,6 +14,15 @@
 # admin ci-dessous (paiements, échéanciers, matériel, réparations,
 # users/moniteurs/président/trésoriers, attributions).
 #
+# Exception délibérée : /api/backups (sauvegarde/restauration complète de
+# la base, voir BackupService côté identite-service) reste ABSENTE d'ici
+# alors qu'elle est présente sur 08-ingress.yaml — une restauration écrase
+# la base en direct pour tous les services, un cran de risque au-dessus
+# des autres routes admin ci-dessus ; réservée au réseau local même si
+# l'accès applicatif (JWT + rôle président) la protège déjà. À revoir
+# seulement si ce choix doit changer, pas par simple copier-coller de
+# 08-ingress.yaml.
+#
 # Pourquoi un deuxième contrôleur plutôt qu'un Ingress de plus sur le
 # même contrôleur que 08-ingress.yaml : celui-ci reste local uniquement
 # (pas de LoadBalancer/NodePort exposé), donc même en cas d'oubli de

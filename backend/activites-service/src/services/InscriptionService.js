@@ -63,21 +63,106 @@ class InscriptionService extends BaseService {
     }
   }
 
+  // Un moniteur ne peut GÉRER (confirmer/annuler/supprimer/modifier le
+  // statut ou la présence) QUE les inscriptions des sorties où il est
+  // lui-même désigné encadrant (Sortie.encadrants, choisi par le président à
+  // la planification) — le président et le trésorier gardent un accès total
+  // (le trésorier n'encadre jamais de sortie lui-même, sa gestion des
+  // inscriptions relève du suivi des paiements, pas de l'encadrement
+  // terrain). Même garde-fou que SortieService.assertCanManageSortie /
+  // PlongeeService.assertCanManagePlongee, appliqué ici aux ACTIONS sur une
+  // inscription EXISTANTE seulement (pas à createInscription, qui reste
+  // ouverte à tout moniteur — préinscrire un adhérent au guichet ne
+  // présuppose pas d'être l'encadrant désigné de sa sortie). Avant ce
+  // correctif, canManageInscriptions (rôle générique) ouvrait ces actions à
+  // n'importe quel moniteur sur n'importe quelle inscription, y compris
+  // celles d'une sortie confiée à un autre.
+  //
+  // `inscription.sortie` doit être chargée (voir InscriptionRepository.
+  // findById, qui l'inclut déjà par défaut) — Sortie vit dans ce même
+  // service/schéma que Inscription, pas d'appel HTTP nécessaire pour lire
+  // ses encadrants, contrairement au moniteur lui-même (identite-service).
+  async assertCanManageInscription(inscription, user) {
+    if (!user || user.role === "president" || user.role === "tresorier") return;
+    if (user.role !== "moniteur") {
+      throw new Error(
+        "Seuls le président, le trésorier ou un moniteur désigné encadrant de cette sortie peuvent gérer cette inscription",
+      );
+    }
+    const moniteur = await identiteClient.getMoniteurByUserId(user.id);
+    const encadrants = inscription.sortie?.encadrants;
+    const estEncadrantDesigne =
+      moniteur && Array.isArray(encadrants) && encadrants.includes(moniteur.id_moniteur);
+    if (!estEncadrantDesigne) {
+      throw new Error(
+        "Seul le président, le trésorier ou un moniteur désigné encadrant de cette sortie peut gérer cette inscription",
+      );
+    }
+  }
+
   async getByAdherent(num_adherent) {
     return await this.inscriptionRepository.findByAdherent(num_adherent);
   }
 
-  async getAll(user = null, authHeader = null) {
+  // Un moniteur ne voit que les inscriptions des sorties dont il est
+  // désigné encadrant (Sortie.encadrants) — comme pour la gestion
+  // (assertCanManageInscription) ; le président et le trésorier voient tout,
+  // un adhérent ses propres inscriptions. Un moniteur sans fiche
+  // identifiable ne voit rien.
+  async filterForMoniteur(inscriptions, user) {
+    const moniteur = await identiteClient.getMoniteurByUserId(user.id);
+    if (!moniteur) return [];
+    return inscriptions.filter(
+      (i) =>
+        Array.isArray(i.sortie?.encadrants) && i.sortie.encadrants.includes(moniteur.id_moniteur),
+    );
+  }
+
+  // Recomposer `.adherent` sur chaque ligne coûte un appel HTTP par
+  // adhérent distinct vers identite-service (des centaines pour la liste
+  // complète, ~3 s et une réponse de plusieurs Mo) — or la liste des
+  // inscriptions n'en a pas besoin : le frontend résout les noms depuis la
+  // liste des adhérents qu'il charge déjà. Donc opt-in (`withAdherentInfo`,
+  // ?include_adherent=true côté route), et jamais bloquant : si
+  // identite-service échoue sur un adhérent, la liste ne devient plus vide.
+  async getAll(user = null, authHeader = null, { withAdherentInfo = false } = {}) {
     try {
       const adherent = await this.getAdherentForUser(user);
-      const results = adherent
+      let results = adherent
         ? await this.inscriptionRepository.findByAdherent(adherent.num_adherent)
         : await this.inscriptionRepository.findAll();
+      if (!adherent && user?.role === "moniteur") {
+        results = await this.filterForMoniteur(results, user);
+      }
+      if (!withAdherentInfo) return results.map((r) => (r?.toJSON ? r.toJSON() : r));
       return await withAdherent(results, { authHeader });
     } catch (error) {
       console.error("Erreur lors de la récupération des inscriptions :", error);
       return [];
     }
+  }
+
+  // Compteur "nouvelles inscriptions" du badge Sidebar.jsx — réservé au
+  // staff (président/moniteur, voir canManageInscriptionsBadge côté
+  // frontend), jamais appelé pour un simple adhérent. this.getAll() ci-
+  // dessus charge TOUTES les inscriptions puis recompose `.adherent` de
+  // chacune par HTTP (withAdherent) rien que pour ensuite les jeter et n'en
+  // garder que la longueur filtrée par statut — sur un club avec un peu
+  // d'historique (des centaines d'inscriptions, autant d'adhérents
+  // distincts), cet appel à lui seul dépassait 8s et, avec la limite de 6
+  // connexions/origine de Chrome, mettait en file d'attente toutes les
+  // autres requêtes de la page derrière lui (dont /api/plongees, /api/
+  // sorties...) sur CHAQUE page de l'appli (la Sidebar est toujours montée).
+  // Un simple COUNT ne nécessite ni les lignes ni identite-service.
+  // Pour un moniteur, seules comptent les inscriptions de ses sorties (même
+  // périmètre que getAll) : sinon le badge afficherait des demandes qu'il ne
+  // voit ni ne peut traiter.
+  async getPendingCount(user = null) {
+    if (user?.role === "moniteur") {
+      const pending = await this.inscriptionRepository.findPending();
+      return (await this.filterForMoniteur(pending, user)).length;
+    }
+    return await this.inscriptionRepository.countPending();
   }
 
   async getById(id, user = null) {
@@ -100,6 +185,7 @@ class InscriptionService extends BaseService {
       if (!this.canManageInscriptions(user?.role)) {
         throw new Error("Seul un gestionnaire peut supprimer une inscription");
       }
+      await this.assertCanManageInscription(inscription, user);
 
       const oldStatus = inscription.statut;
       const idSortie = inscription.id_sortie;
@@ -125,7 +211,9 @@ class InscriptionService extends BaseService {
     }
 
     const canManage = this.canManageInscriptions(data.role);
-    if (!canManage) {
+    if (canManage) {
+      await this.assertCanManageInscription(inscription, data.user);
+    } else {
       await this.assertCanAccessInscription(inscription, data.user);
     }
     const managerFields = [
@@ -207,6 +295,11 @@ class InscriptionService extends BaseService {
         updateData.date_confirmation = updateData.date_confirmation || new Date();
         return await this.inscriptionRepository.update(id, updateData, { transaction });
       });
+      await this.waitlistService.cancelOverlappingOthers(
+        inscription.num_adherent,
+        inscription.sortie,
+        id,
+      );
     } else {
       updated = await this.inscriptionRepository.update(id, updateData);
     }
@@ -454,6 +547,27 @@ class InscriptionService extends BaseService {
       paye: montantDu <= 0,
     };
 
+    // Un moniteur peut préinscrire un adhérent même s'il n'est pas
+    // l'encadrant désigné de cette sortie (voir assertCanManageInscription
+    // plus haut — createInscription reste volontairement ouverte à tout
+    // moniteur), mais il ne peut alors PAS choisir le statut : seul le
+    // président/trésorier, ou le moniteur désigné encadrant de CETTE
+    // sortie, peut confirmer/placer en liste d'attente directement. Sans ce
+    // verrou, n'importe quel moniteur pourrait confirmer une inscription
+    // sur une sortie qu'il n'encadre pas, court-circuitant l'encadrant
+    // réellement responsable de la capacité/composition de palanquées.
+    let statutForceEnAttente = false;
+    if (canManage && data.role === "moniteur") {
+      const moniteur = await identiteClient.getMoniteurByUserId(data.user?.id);
+      const estEncadrantDesigne =
+        moniteur &&
+        Array.isArray(sortie.encadrants) &&
+        sortie.encadrants.includes(moniteur.id_moniteur);
+      if (!estEncadrantDesigne) {
+        statutForceEnAttente = true;
+      }
+    }
+
     let inscription;
     if (!canManage) {
       // Auto-inscription : toujours "En attente" quelle que soit la
@@ -482,7 +596,7 @@ class InscriptionService extends BaseService {
           transaction,
         );
 
-        let statut = data.statut || "Confirmée";
+        let statut = statutForceEnAttente ? "En attente" : data.statut || "Confirmée";
         let rangListeAttente = null;
 
         if (placesDisponibles <= 0 && statut !== "En attente") {
@@ -508,6 +622,14 @@ class InscriptionService extends BaseService {
       });
     }
 
+    if (inscription.statut === "Confirmée") {
+      await this.waitlistService.cancelOverlappingOthers(
+        num_adherent,
+        sortie,
+        inscription.id_inscription,
+      );
+    }
+
     if (adherentRecord?.email) {
       sendInscriptionConfirmationEmail({
         to: adherentRecord.email,
@@ -522,11 +644,22 @@ class InscriptionService extends BaseService {
   }
 
   async confirmInscription(id, user = null) {
-    if (!this.canManageInscriptions(user?.role)) {
-      throw new Error("Seul un gestionnaire peut confirmer une inscription");
-    }
     const inscription = await this.getById(id);
     if (!inscription) throw new Error("Inscription non trouvée");
+
+    if (this.canManageInscriptions(user?.role)) {
+      await this.assertCanManageInscription(inscription, user);
+    } else {
+      // Seule exception à "un adhérent ne peut jamais s'auto-confirmer"
+      // (voir createInscription) : reconfirmer une place qu'il avait déjà
+      // avant une replanification météo (Sortie.reconfirmation_requise posé
+      // par SortieService.replanifier) — jamais une confirmation initiale,
+      // qui reste réservée à un gestionnaire.
+      if (!inscription.reconfirmation_requise) {
+        throw new Error("Seul un gestionnaire peut confirmer une inscription");
+      }
+      await this.assertCanAccessInscription(inscription, user);
+    }
 
     if (inscription.statut === "Confirmée") {
       return inscription;
@@ -559,9 +692,15 @@ class InscriptionService extends BaseService {
       inscription.statut = "Confirmée";
       inscription.rang_liste_attente = null;
       inscription.date_confirmation = new Date();
+      inscription.reconfirmation_requise = false;
       await inscription.save({ transaction });
     });
     await this.waitlistService.normalizeWaitlistRanks(inscription.id_sortie);
+    await this.waitlistService.cancelOverlappingOthers(
+      inscription.num_adherent,
+      inscription.sortie,
+      id,
+    );
 
     return inscription;
   }
@@ -569,12 +708,17 @@ class InscriptionService extends BaseService {
   async cancelInscription(id, user = null, authHeader = null) {
     const inscription = await this.getById(id);
     if (!inscription) throw new Error("Inscription non trouvée");
-    await this.assertCanAccessInscription(inscription, user);
+    if (this.canManageInscriptions(user?.role)) {
+      await this.assertCanManageInscription(inscription, user);
+    } else {
+      await this.assertCanAccessInscription(inscription, user);
+    }
 
     const oldStatus = inscription.statut;
 
     inscription.statut = "Annulée";
     inscription.rang_liste_attente = null;
+    inscription.reconfirmation_requise = false;
     await inscription.save();
 
     if (oldStatus === "Confirmée") {

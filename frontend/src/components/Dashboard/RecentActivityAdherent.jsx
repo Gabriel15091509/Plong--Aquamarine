@@ -87,6 +87,14 @@ const RecentActivityAdherent = ({ numAdherent }) => {
           >
             <activity.icon className={`w-5 h-5 ${activity.iconColor}`} />
           </div>
+          {/* "time" replié sous la description (au lieu d'une colonne à part
+              sur la même ligne que le titre) : sur mobile, ce texte
+              partageait l'espace du titre dans un flex-1 devenu trop étroit
+              — le titre se retrouvait forcé sur plusieurs lignes très
+              courtes, et le "time" (centré verticalement sur toute la
+              hauteur de la ligne) atterrissait visuellement au milieu de ce
+              titre éclaté, donnant une impression de chevauchement — voir
+              RecentActivity.jsx (même correctif). */}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-800 dark:text-white">
               {activity.title}
@@ -94,10 +102,10 @@ const RecentActivityAdherent = ({ numAdherent }) => {
             <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
               {activity.description}
             </p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+              {formatRelativeTime(activity.date)}
+            </p>
           </div>
-          <span className="text-xs text-gray-400 dark:text-slate-500 flex-shrink-0">
-            {formatRelativeTime(activity.date)}
-          </span>
         </motion.div>
       ))}
     </div>

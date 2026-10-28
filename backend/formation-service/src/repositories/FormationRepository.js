@@ -1,6 +1,6 @@
 const BaseRepository = require("./BaseRepository");
 const { Formation, Competence } = require("../models");
-const { Op } = require("sequelize");
+const { Op, where, col } = require("sequelize");
 
 class FormationRepository extends BaseRepository {
   constructor() {
@@ -57,6 +57,24 @@ class FormationRepository extends BaseRepository {
   async countInPeriod(dateField, start, end) {
     return await this.model.count({
       where: { [dateField]: { [Op.gte]: start, [Op.lte]: end } },
+    });
+  }
+
+  // Badge Sidebar ("formations prêtes à terminer") : COUNT léger côté
+  // serveur — même motif que InscriptionRepository.countPending. Même
+  // filtre que FormationService.tryAutoComplete côté "séances" (celui-ci
+  // vérifie aussi les compétences, non exprimable ici sans jointure ; une
+  // formation qui reste comptée ici après un tryAutoComplete manqué est
+  // justement celle qui a besoin d'une action manuelle du moniteur).
+  // nb_seances_prevues > 0 exclut à la fois null et 0 (comparaison SQL avec
+  // NULL toujours fausse) — équivalent au test JS `f.nb_seances_prevues`.
+  async countPretesATerminer() {
+    return await this.model.count({
+      where: {
+        statut: "En cours",
+        nb_seances_prevues: { [Op.gt]: 0 },
+        [Op.and]: [where(col("nb_seances_realisees"), Op.gte, col("nb_seances_prevues"))],
+      },
     });
   }
 }

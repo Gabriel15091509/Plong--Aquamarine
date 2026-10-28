@@ -36,6 +36,18 @@ class MoniteurService {
     return response.data;
   }
 
+  // Distinct de update() ci-dessus (PUT général, président uniquement) :
+  // ouvert au moniteur lui-même côté backend (self-check dans
+  // MoniteurService.updateDisponibilite) pour qu'il se déclare
+  // indisponible sans dépendre du président.
+  async updateDisponibilite(id, { disponible, cause }) {
+    const response = await api.patch(`/moniteurs/${id}/disponibilite`, {
+      disponible,
+      cause,
+    });
+    return response.data;
+  }
+
   async delete(id) {
     const response = await api.delete(`/moniteurs/${id}`);
     return response.data;

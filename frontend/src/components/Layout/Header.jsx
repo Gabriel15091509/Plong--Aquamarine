@@ -4,18 +4,13 @@ import {
   FiMenu,
   FiBell,
   FiUser,
-  FiSearch,
   FiLogOut,
-  FiSettings,
-  FiUserPlus,
-  FiMail,
   FiCalendar,
   FiX,
   FiChevronRight,
   FiSun,
   FiMoon,
-  FiCheckCircle,
-  FiKey,
+  FiSettings,
 } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
@@ -26,16 +21,25 @@ import { useAlertes } from "../../hooks/Alerte/useAlertes";
 import { formatRelativeTime } from "../../utils/helpers";
 import { getAlertIcon, getAlertDescription } from "../../utils/alerteDisplay";
 import { photoUrl } from "../../utils/photoUrl";
-import Logo from "../Common/Logo";
 import AlerteDetailsModal from "../Alerte/AlerteDetailsModal";
+import MoniteurAvailabilityToggle from "../Moniteur/MoniteurAvailabilityToggle";
+import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 
-const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
-  const { user, logout, hasPermission } = useAuth();
+const Header = ({ onOpenMobileMenu, sidebarOpen }) => {
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedAlerte, setSelectedAlerte] = useState(null);
+
+  // Fiche moniteur du compte connecté, pour la bascule "disponible pour
+  // encadrer" dans le dropdown profil ci-dessous — déplacée depuis "Mon
+  // profil" (ProfilePage.jsx) : accessible directement depuis n'importe
+  // quelle page, sans avoir à ouvrir la fiche complète pour ce seul geste.
+  const { useGetByUserId: useGetMoniteurByUserId } = useMoniteurs();
+  const { data: currentMoniteurData } = useGetMoniteurByUserId(
+    user?.role === "moniteur" ? user?.id : undefined,
+  );
 
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
@@ -43,8 +47,13 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
   const profileButtonRef = useRef(null);
 
   // Récupération des alertes
-  const { useGetUnread, useGetStats, useMarkAsRead, useMarkAllAsRead, useRemove } =
-    useAlertes();
+  const {
+    useGetUnread,
+    useGetStats,
+    useMarkAsRead,
+    useMarkAllAsRead,
+    useRemove,
+  } = useAlertes();
   const { data: unreadData, isLoading: loadingUnread } = useGetUnread();
   const { data: statsData } = useGetStats();
   const markAsRead = useMarkAsRead();
@@ -114,9 +123,30 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
 
   const today = format(new Date(), "EEEE d MMMM yyyy", { locale: fr });
   const formattedToday = today.charAt(0).toUpperCase() + today.slice(1);
+  // Format court pour mobile (ex. "18 sept.") — le format complet ci-dessus
+  // ("Vendredi 18 septembre 2026") n'a pas la place à côté du bouton menu
+  // ET des icônes de droite (thème/notifications/profil) sur un écran de
+  // téléphone : plutôt que de le masquer entièrement en dessous de `sm`
+  // (comme avant), on garde la date visible partout mais raccourcie tant
+  // que la place manque.
+  const formattedTodayShort = format(new Date(), "d MMM", { locale: fr });
 
+  // `fixed` échappe au `md:ml-[260px]`/`md:ml-[72px]` du wrapper parent
+  // (voir Layout.jsx) : un élément `fixed` se positionne toujours par
+  // rapport au viewport, jamais par rapport à son parent, marge comprise —
+  // sans ce même décalage posé ICI en `left`, le header restait plaqué à
+  // gauche (x=0) à TOUTE largeur d'écran, y compris derrière la Sidebar
+  // (elle-même `fixed`, z-50 > z-40 du header) sur desktop. Résultat :
+  // l'icône + la date tout à gauche du header (voir plus bas) se
+  // retrouvaient partiellement recouvertes par la Sidebar, ne laissant
+  // dépasser que leur fin ("...dredi 18 septembre 2026" au lieu de
+  // "Vendredi..."). Corrigé en répétant ici exactement la même bascule
+  // que Layout.jsx selon `sidebarOpen` (passé par Layout.jsx, jusque-là
+  // ignoré par ce composant).
   return (
-    <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200/80 sticky top-0 z-40 transition-colors duration-300 dark:bg-gray-800/80 dark:border-gray-700/80 h-16">
+    <header
+      className={`fixed top-0 right-0 left-0 ${sidebarOpen ? "md:left-[260px]" : "md:left-[72px]"} bg-white/80 backdrop-blur-lg border-b border-gray-200/80 z-40 transition-[left] duration-300 dark:bg-gray-800/80 dark:border-gray-700/80 h-16`}
+    >
       <div className="px-4 sm:px-6 h-full flex items-center justify-between">
         <div className="flex items-center gap-3 sm:gap-4">
           <motion.button
@@ -128,9 +158,10 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
           >
             <FiMenu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </motion.button>
-          <span className="hidden sm:flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400">
-            <FiCalendar className="w-4 h-4 text-cyan-500" />
-            {formattedToday}
+          <span className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 shrink-0">
+            <FiCalendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-500 shrink-0" />
+            <span className="sm:hidden">{formattedTodayShort}</span>
+            <span className="hidden sm:inline">{formattedToday}</span>
           </span>
         </div>
 
@@ -251,7 +282,8 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                                 )}
                               </p>
                               <p className="text-xs text-gray-600 dark:text-gray-300 truncate font-medium">
-                                {notification.adherent_nom || notification.num_adherent}
+                                {notification.adherent_nom ||
+                                  notification.num_adherent}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                 {getAlertDescription(notification)}
@@ -285,7 +317,8 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                   <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 dark:bg-gray-700/50 dark:border-gray-700">
                     {autresNonLues > 0 && (
                       <p className="text-center text-xs text-gray-500 dark:text-gray-400 mb-1.5">
-                        + {autresNonLues} autre{autresNonLues > 1 ? "s" : ""} non lue
+                        + {autresNonLues} autre{autresNonLues > 1 ? "s" : ""}{" "}
+                        non lue
                         {autresNonLues > 1 ? "s" : ""}
                       </p>
                     )}
@@ -371,10 +404,30 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                     </div>
                   </div>
 
-                  {/* Menu profil avec tous les liens */}
+                  {/* Disponibilité pour encadrer — réservée au moniteur,
+                      sur SA PROPRE fiche (canEdit : le backend refait de
+                      toute façon le contrôle self-or-président, voir
+                      MoniteurService.updateDisponibilite). Un moniteur
+                      indisponible ne peut plus être désigné encadrant d'une
+                      sortie (voir SortieForm.jsx). */}
+                  {user?.role === "moniteur" && (
+                    <div className="px-3 pt-3">
+                      <MoniteurAvailabilityToggle
+                        moniteur={currentMoniteurData?.data}
+                        canEdit
+                      />
+                    </div>
+                  )}
+
+                  {/* Menu profil avec tous les liens — chaque lien ferme le
+                      dropdown au clic (onClick setIsProfileOpen(false)),
+                      manquant jusqu'ici : rien ne le refermait, il restait
+                      ouvert par-dessus la page de destination après
+                      navigation. */}
                   <div className="p-2">
                     <Link
                       to="/profile"
+                      onClick={() => setIsProfileOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <FiUser className="w-4 h-4 text-gray-500 dark:text-gray-400" />
@@ -383,35 +436,14 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                       </span>
                     </Link>
 
+                    {/* Paramètres : point d'entrée unique pour tout ce qui
+                        EST du paramétrage (thème, mot de passe, créer un
+                        utilisateur, confidentialité/RGPD — voir
+                        ParametresPage.jsx), plutôt que "Changer mot de
+                        passe"/"Créer un utilisateur" éparpillés ici. */}
                     <Link
-                      to="/change-password"
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <FiKey className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        Changer mot de passe
-                      </span>
-                    </Link>
-
-                    {/* Lien Créer un utilisateur (visible uniquement pour le DT) */}
-                    {hasPermission("manage_users") && (
-                      <Link
-                        to="/users/create"
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        <FiUserPlus className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          Créer un utilisateur
-                        </span>
-                      </Link>
-                    )}
-
-                    {/* Séparateur */}
-                    <div className="border-t border-gray-100 dark:border-gray-700 my-2" />
-
-                    {/* Paramètres */}
-                    <Link
-                      to="/settings"
+                      to="/parametres"
+                      onClick={() => setIsProfileOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <FiSettings className="w-4 h-4 text-gray-500 dark:text-gray-400" />
@@ -428,7 +460,10 @@ const Header = ({ sidebarOpen, setSidebarOpen, onOpenMobileMenu }) => {
                   <div className="p-2">
                     <motion.button
                       whileHover={{ x: 5, backgroundColor: "#fef2f2" }}
-                      onClick={logout}
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        logout();
+                      }}
                       className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-600 hover:text-red-700 transition-colors dark:text-red-400 dark:hover:bg-red-900/20"
                     >
                       <FiLogOut className="w-4 h-4" />

@@ -118,12 +118,46 @@ app.use("/api", routes);
 app.use(ErrorHandler.notFound);
 app.use(ErrorHandler.handle);
 
+// Rattrapage ponctuel (pas un ADD COLUMN, une donnée) : le niveau requis
+// d'une compétence n'est plus jamais saisi à la main, toujours recopié
+// depuis Formation.niveau_vise à la création (voir CompetenceService.create)
+// — mais les compétences créées AVANT ce changement peuvent porter une
+// valeur différente (saisie libre à l'époque). Idempotent (`IS DISTINCT
+// FROM` ne touche que les lignes qui divergent encore) et sans risque
+// applicatif à rejouer, donc appliqué automatiquement au démarrage plutôt
+// qu'à la main via psql — même raisonnement que les migrations
+// identite-service (accès externe à la base Render bloqué par défaut,
+// voir son app.js). N'échoue jamais le démarrage : une erreur ici laisse
+// simplement les lignes concernées désynchronisées jusqu'au prochain
+// redémarrage.
+const runPendingMigrations = async () => {
+  const schema = process.env.DB_SCHEMA || "formation";
+  try {
+    const [, meta] = await sequelize.query(`
+      UPDATE ${schema}.competences AS c
+      SET niveau_requis = f.niveau_vise
+      FROM ${schema}.formations AS f
+      WHERE c.id_formation = f.id_formation
+        AND c.niveau_requis IS DISTINCT FROM f.niveau_vise
+    `);
+    logger.info(
+      `[formation-service] Rattrapage competences.niveau_requis : ${meta.rowCount ?? 0} ligne(s) resynchronisée(s) sur Formation.niveau_vise`,
+    );
+  } catch (error) {
+    logger.error(
+      "[formation-service] Échec rattrapage competences.niveau_requis :",
+      error,
+    );
+  }
+};
+
 const initializeApp = async () => {
   const connected = await testConnection();
   if (!connected) {
     logger.error("[formation-service] Database connection failed");
     process.exit(1);
   }
+  await runPendingMigrations();
 };
 
 process.on("unhandledRejection", (err) => {

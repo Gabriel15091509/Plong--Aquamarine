@@ -140,6 +140,22 @@ const runPendingMigrations = async () => {
   } catch (error) {
     logger.error("[activites-service] Échec migration alerte_remplissage_envoyee :", error);
   }
+  try {
+    await sequelize.query(
+      `ALTER TABLE ${schema}.inscriptions ADD COLUMN IF NOT EXISTS reconfirmation_requise BOOLEAN NOT NULL DEFAULT false`,
+    );
+    logger.info("[activites-service] Migration reconfirmation_requise vérifiée/appliquée");
+  } catch (error) {
+    logger.error("[activites-service] Échec migration reconfirmation_requise :", error);
+  }
+  try {
+    await sequelize.query(
+      `ALTER TABLE ${schema}.sorties ADD COLUMN IF NOT EXISTS photos JSON`,
+    );
+    logger.info("[activites-service] Migration sorties.photos vérifiée/appliquée");
+  } catch (error) {
+    logger.error("[activites-service] Échec migration sorties.photos :", error);
+  }
 };
 
 // Correction de données ponctuelle (pas un changement de schéma) : aligne
@@ -186,6 +202,41 @@ const corrigerProfondeurMaxPlanifiees = async () => {
   }
 };
 
+// Backfill ponctuel (pas un changement de schéma) : applique rétroactivement
+// aux données déjà en base la règle introduite le 2026-09-07
+// (SortieService.annulerInscriptionsNonConfirmees) — sans ce backfill, seules
+// les sorties qui passeraient "En cours" APRÈS ce déploiement en
+// bénéficieraient, laissant les inscriptions déjà orphelines des sorties
+// passées En cours/Terminée avant intacte. Volontairement étendu aux
+// sorties "Terminée" en plus de "En cours" : l'une comme l'autre ont déjà
+// dépassé le moment du départ, une inscription encore En attente/Liste
+// d'attente n'y a plus de sens dans les deux cas (demande explicite,
+// 2026-09-07). Idempotent (le WHERE ne retrouve plus rien dès la première
+// exécution réussie, comme corrigerProfondeurMaxPlanifiees ci-dessus) —
+// sûr à rejouer à chaque démarrage plutôt qu'un script psql à lancer à la
+// main : Render bloque l'accès externe à la base par défaut.
+const annulerInscriptionsNonConfirmeesRetroactif = async () => {
+  const schema = process.env.DB_SCHEMA || "activites";
+  try {
+    const [, metadata] = await sequelize.query(
+      `UPDATE ${schema}.inscriptions i
+         SET statut = 'Annulée', rang_liste_attente = NULL
+         FROM ${schema}.sorties s
+         WHERE i.id_sortie = s.id_sortie
+           AND s.statut IN ('En cours', 'Terminée')
+           AND i.statut IN ('En attente', 'Liste d''attente')`,
+    );
+    const nb = metadata?.rowCount || 0;
+    if (nb > 0) {
+      logger.info(
+        `[activites-service] ${nb} inscription(s) non confirmée(s) annulée(s) rétroactivement (sorties déjà En cours/Terminée)`,
+      );
+    }
+  } catch (error) {
+    logger.error("[activites-service] Échec backfill annulation inscriptions non confirmées :", error);
+  }
+};
+
 const initializeApp = async () => {
   const connected = await testConnection();
   if (!connected) {
@@ -194,6 +245,7 @@ const initializeApp = async () => {
   }
   await runPendingMigrations();
   await corrigerProfondeurMaxPlanifiees();
+  await annulerInscriptionsNonConfirmeesRetroactif();
 };
 
 // Jobs de fond : volontairement séparés de initializeApp() et jamais

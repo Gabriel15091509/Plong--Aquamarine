@@ -8,6 +8,7 @@ const inscriptionController = new InscriptionController();
 
 router.get('/', AuthMiddleware.authenticate, inscriptionController.getAll.bind(inscriptionController));
 router.get('/stats', AuthMiddleware.authenticate, inscriptionController.getStats.bind(inscriptionController));
+router.get('/pending-count', AuthMiddleware.authenticate, inscriptionController.getPendingCount.bind(inscriptionController));
 router.get('/sortie/:id_sortie', AuthMiddleware.authenticate, inscriptionController.getBySortie.bind(inscriptionController));
 router.get('/sortie/:id_sortie/waitlist', AuthMiddleware.authenticate, inscriptionController.getWaitlist.bind(inscriptionController));
 router.get('/sortie/:id_sortie/capacity', AuthMiddleware.authenticate, inscriptionController.getCapacity.bind(inscriptionController));

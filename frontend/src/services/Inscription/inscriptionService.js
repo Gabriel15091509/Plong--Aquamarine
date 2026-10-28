@@ -11,6 +11,15 @@ class InscriptionService {
     return response.data;
   }
 
+  // Compteur "En attente" (badge Sidebar.jsx) — voir useInscriptions.
+  // useGetPendingCount : un COUNT léger, à ne jamais remplacer par getAll()
+  // filtré côté client (celui-ci recompose `.adherent` par HTTP pour
+  // chaque inscription, bien trop coûteux pour n'en garder qu'un chiffre).
+  async getPendingCount() {
+    const response = await api.get("/inscriptions/pending-count");
+    return response.data;
+  }
+
   async create(data) {
     const response = await api.post("/inscriptions", data);
     return response.data;

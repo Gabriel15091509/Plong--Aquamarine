@@ -41,11 +41,29 @@ class IncidentController extends BaseController {
     try {
       const { id } = req.params;
       const { mesures_prises } = req.body;
-      const result = await this.incidentService.cloturer(id, mesures_prises);
+      const result = await this.incidentService.cloturer(id, mesures_prises, req.user);
       res.json({
         success: true,
         data: result,
         message: 'Incident clôturé avec succès'
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  // Surcharge BaseController.update : celui-ci n'a jamais transmis req.user
+  // au service (aucun contrôleur n'en avait besoin avant ce garde-fou), or
+  // IncidentService.update en a désormais besoin pour vérifier que
+  // l'appelant est bien encadrant désigné de la sortie de l'incident.
+  async update(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await this.incidentService.update(id, req.body, req.user);
+      res.json({
+        success: true,
+        data: result,
+        message: 'Mis à jour avec succès'
       });
     } catch (error) {
       next(withStatus(error, 400));
@@ -64,7 +82,7 @@ class IncidentController extends BaseController {
         req.body.declared_by = id_president;
       }
 
-      const result = await this.incidentService.create(req.body);
+      const result = await this.incidentService.create(req.body, req.user);
       res.status(201).json({
         success: true,
         data: result,

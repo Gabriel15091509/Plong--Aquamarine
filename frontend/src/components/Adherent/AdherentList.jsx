@@ -16,18 +16,28 @@ import {
   FiGrid,
   FiX,
   FiSearch,
+  FiFilter,
+  FiRefreshCw,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
 import BulkActionBar from "../Common/BulkActionBar";
+import Pagination from "../Common/Pagination";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
+import { useUsers } from "../../hooks/User/useUsers";
 import { useAuth } from "../../context/AuthContext";
 import { useSelection } from "../../hooks/useSelection";
 import StatusBadge from "../Common/StatusBadge";
 import { photoUrl } from "../../utils/photoUrl";
-import { STATUT_ADHERENT_OPTIONS } from "../../utils/constants";
+import { STATUT_ADHERENT_OPTIONS, NIVEAU_OPTIONS } from "../../utils/constants";
 import adherentService from "../../services/Adherent/adherentService";
+import AdherentFormModal from "./AdherentFormModal";
+import AdherentCommunicationModal from "./AdherentCommunicationModal";
+import AdherentDetails from "./AdherentDetails";
+import TabBar from "../Common/TabBar";
+import { ROLE_TABS } from "../../constants/roleTabs";
+import AccountActionsMenu from "../User/AccountActionsMenu";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -39,21 +49,46 @@ const AdherentList = () => {
   const { data, isLoading, error, refetch } = useGetAll();
   const remove = useRemove();
   const selection = useSelection();
+  // Gestion du compte de connexion (ex-page "Utilisateurs", voir
+  // AccountActionsMenu.jsx) : `GET /users` est réservé président côté
+  // backend — `enabled` évite un 403 pour cette liste, aussi visible aux
+  // moniteur/trésorier (ProtectedRoute), qui de toute façon n'ont pas
+  // accès à ce menu (canManageAdherent && plus bas).
+  const { useGetAll: useGetAllUsers } = useUsers();
+  const { data: usersData } = useGetAllUsers({}, { enabled: canManageAdherent });
 
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+  const [niveauFilter, setNiveauFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
   const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  // Clé de l'action en cours (`delete-<id>`) : seule l'icône de la ligne
+  // concernée passe en spinner (même motif que InscriptionList.jsx).
+  const [actionLoading, setActionLoading] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState("list");
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "grid" : "list",
+  );
   const itemsPerPage = 10;
 
   const allAdherents = data?.data || [];
 
+  const userMap = useMemo(() => {
+    const map = {};
+    if (usersData?.data) {
+      usersData.data.forEach((u) => {
+        map[u.id] = u;
+      });
+    }
+    return map;
+  }, [usersData]);
+
   const filteredAdherents = useMemo(() => {
     return allAdherents.filter((adherent) => {
       if (filter !== "all" && adherent.statut !== filter) return false;
+      if (niveauFilter !== "all" && adherent.niveau !== niveauFilter) return false;
 
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -66,7 +101,7 @@ const AdherentList = () => {
       }
       return true;
     });
-  }, [allAdherents, filter, searchTerm]);
+  }, [allAdherents, filter, niveauFilter, searchTerm]);
 
   if (isLoading) return <LoadingSpinner variant="list" />;
   if (error) return <ErrorState onRetry={refetch} />;
@@ -79,12 +114,17 @@ const AdherentList = () => {
   );
 
   const handleDelete = async (id) => {
+    // Ferme la modale dès le lancement : elle masquerait sinon le spinner
+    // de la ligne pendant la requête.
+    setDeleteModal(null);
+    setActionLoading(`delete-${id}`);
     try {
       await remove.mutateAsync(id);
-      refetch();
-      setDeleteModal(null);
+      await refetch();
     } catch (error) {
       console.error("Échec de la suppression de l'adhérent :", error);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -105,7 +145,9 @@ const AdherentList = () => {
 
   if (filteredAdherents.length === 0) {
     return (
-      <motion.div
+      <div className="space-y-4">
+        {canManageAdherent && <TabBar tabs={ROLE_TABS} />}
+        <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg"
@@ -117,16 +159,17 @@ const AdherentList = () => {
           Aucun adhérent trouvé
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          {searchTerm || filter !== "all"
+          {searchTerm || filter !== "all" || niveauFilter !== "all"
             ? "Aucun résultat pour vos critères"
             : "Commencez par ajouter votre premier adhérent"}
         </p>
-        {(searchTerm || filter !== "all") && (
+        {(searchTerm || filter !== "all" || niveauFilter !== "all") && (
           <button
             type="button"
             onClick={() => {
               setSearchTerm("");
               setFilter("all");
+              setNiveauFilter("all");
               setCurrentPage(1);
             }}
             className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -142,14 +185,30 @@ const AdherentList = () => {
             <FiPlus className="w-4 h-4" /> Ajouter un adhérent
           </Link>
         )}
+        <AdherentFormModal />
+        <AdherentCommunicationModal />
+        <AdherentDetails />
       </motion.div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Barre de recherche et filtres */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+      {canManageAdherent && <TabBar tabs={ROLE_TABS} />}
+            {/* Bouton "Filtres" (mobile uniquement) : recherche + filtres
+          repliés par défaut pour ne pas encombrer l'écran — un tap les
+          affiche. Toujours visibles à partir de sm (recherche fréquente
+          sur grand écran, pas besoin de la cacher). */}
+      <button
+        type="button"
+        onClick={() => setShowFilters((v) => !v)}
+        className="sm:hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+      >
+        {showFilters ? <FiX className="w-4 h-4" /> : <FiFilter className="w-4 h-4" />}
+        Filtres
+      </button>
+      <div className={`${showFilters ? "flex" : "hidden"} flex-col gap-3 sm:flex sm:flex-row`}>
         <div className="relative flex-1">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -176,6 +235,21 @@ const AdherentList = () => {
             {STATUT_ADHERENT_OPTIONS.map((statut) => (
               <option key={statut} value={statut}>
                 {statut}
+              </option>
+            ))}
+          </select>
+          <select
+            value={niveauFilter}
+            onChange={(e) => {
+              setNiveauFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white sm:w-auto"
+          >
+            <option value="all">Tous niveaux</option>
+            {NIVEAU_OPTIONS.map((niveau) => (
+              <option key={niveau} value={niveau}>
+                {niveau}
               </option>
             ))}
           </select>
@@ -260,7 +334,7 @@ const AdherentList = () => {
               Aucun adhérent trouvé
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-              {searchTerm || filter !== "all"
+              {searchTerm || filter !== "all" || niveauFilter !== "all"
                 ? "Essayez de modifier vos filtres"
                 : "Aucun adhérent pour le moment"}
             </p>
@@ -271,7 +345,7 @@ const AdherentList = () => {
             animate={{ opacity: 1 }}
             className={
               viewMode === "grid"
-                ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
                 : "grid gap-3"
             }
           >
@@ -348,11 +422,17 @@ const AdherentList = () => {
                           </Link>
                           <button
                             onClick={() => setDeleteModal(adherent.num_adherent)}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            disabled={actionLoading === `delete-${adherent.num_adherent}`}
+                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                             title="Supprimer"
                           >
-                            <FiTrash2 className="w-4 h-4" />
+                            {actionLoading === `delete-${adherent.num_adherent}` ? (
+                              <FiRefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <FiTrash2 className="w-4 h-4" />
+                            )}
                           </button>
+                          <AccountActionsMenu user={userMap[adherent.user_id]} />
                         </>
                       )}
                     </div>
@@ -394,7 +474,22 @@ const AdherentList = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                        {/* break-words : sans ça, un nom composé très long
+                            (courant à La Réunion/Madagascar, ex. noms à
+                            rallonge avec tirets) ne trouvait pas de point de
+                            coupure suffisant pour tenir dans la colonne sur
+                            mobile — le filet de sécurité anti-scroll
+                            horizontal global (overflow-x:hidden sur html/
+                            body, voir index.css) masquait alors purement et
+                            simplement le morceau de texte en trop, sans
+                            ellipse ni indication, au lieu de le faire
+                            passer à la ligne. Vérifié en conditions réelles
+                            (rendu mobile avec un nom délibérément extrême) —
+                            même correctif appliqué à tous les autres
+                            listages affichant un nom/libellé libre
+                            potentiellement long (matériel, paiements,
+                            inscriptions...). */}
+                        <h3 className="font-semibold text-gray-900 dark:text-white break-words">
                           {adherent.civilite} {adherent.nom} {adherent.prenom}
                         </h3>
                         <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -456,11 +551,17 @@ const AdherentList = () => {
                             </Link>
                             <button
                               onClick={() => setDeleteModal(adherent.num_adherent)}
-                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                              disabled={actionLoading === `delete-${adherent.num_adherent}`}
+                              className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                               title="Supprimer"
                             >
-                              <FiTrash2 className="w-4 h-4" />
+                              {actionLoading === `delete-${adherent.num_adherent}` ? (
+                                <FiRefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <FiTrash2 className="w-4 h-4" />
+                              )}
                             </button>
+                            <AccountActionsMenu user={userMap[adherent.user_id]} />
                           </>
                         )}
                       </div>
@@ -473,34 +574,11 @@ const AdherentList = () => {
         )}
       </AnimatePresence>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
-        >
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Précédent
-          </button>
-          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Suivant
-          </button>
-        </motion.div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Modal de confirmation de suppression */}
       <ConfirmModal
@@ -518,6 +596,10 @@ const AdherentList = () => {
         onCancel={() => setBulkDeleteModal(false)}
         onConfirm={handleBulkDelete}
       />
+
+      <AdherentFormModal />
+      <AdherentCommunicationModal />
+      <AdherentDetails />
     </div>
   );
 };

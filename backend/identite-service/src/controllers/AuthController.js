@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { User } = require("../models");
 const { sendPasswordResetEmail } = require("../utils/email");
+const { getPasswordPolicyErrors } = require("../utils/passwordPolicy");
 // OTP président désactivé (2026-08-22, voir plus bas dans login()) : ces
 // deux imports/constantes ne servent plus qu'au bloc commenté, laissés en
 // commentaire eux aussi pour repartir tel quel à la réactivation.
@@ -280,10 +281,11 @@ class AuthController {
           .status(400)
           .json({ success: false, message: "Jeton et nouveau mot de passe requis" });
       }
-      if (newPassword.length < 6) {
+      const passwordErrors = getPasswordPolicyErrors(newPassword);
+      if (passwordErrors.length > 0) {
         return res.status(400).json({
           success: false,
-          message: "Le nouveau mot de passe doit contenir au moins 6 caractères",
+          message: `Le nouveau mot de passe doit contenir ${passwordErrors.join(", ")}.`,
         });
       }
 
@@ -328,14 +330,12 @@ class AuthController {
       const { oldPassword, newPassword } = req.body;
       const userId = req.user.id;
 
-      if (!newPassword || newPassword.length < 6) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message:
-              "Le nouveau mot de passe doit contenir au moins 6 caractères",
-          });
+      const passwordErrors = getPasswordPolicyErrors(newPassword);
+      if (passwordErrors.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Le nouveau mot de passe doit contenir ${passwordErrors.join(", ")}.`,
+        });
       }
 
       const user = await User.findByPk(userId);

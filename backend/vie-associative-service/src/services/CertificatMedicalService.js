@@ -200,6 +200,11 @@ class CertificatMedicalService extends BaseService {
     return await this.certificatRepository.findValidCertificates();
   }
 
+  // Badge Sidebar : voir CertificatMedicalRepository.countEnAttenteValidation.
+  async getEnAttenteValidationCount() {
+    return await this.certificatRepository.countEnAttenteValidation();
+  }
+
   async getExpiredCertificates() {
     const certificats = await this.certificatRepository.findExpiredCertificates();
     return certificats.map((c) => this.deriveStatut(c));

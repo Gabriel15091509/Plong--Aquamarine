@@ -19,12 +19,17 @@ import {
   FiGrid,
   FiX,
   FiSearch,
+  FiFilter,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
 import ConfirmModal from "../Common/ConfirmModal";
 import BulkActionBar from "../Common/BulkActionBar";
+import Pagination from "../Common/Pagination";
+import ModalLink from "../Common/ModalLink";
+import TabBar from "../Common/TabBar";
+import { getFormationTabs } from "../../constants/formationTabs";
 import { useFormations } from "../../hooks/Formation/useFormations";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
@@ -33,7 +38,10 @@ import { useSelection } from "../../hooks/useSelection";
 import StatusBadge from "../Common/StatusBadge";
 import { formatDate } from "../../utils/helpers";
 import { photoUrl } from "../../utils/photoUrl";
+import { NIVEAU_FORMATION_OPTIONS } from "../../utils/constants";
 import formationService from "../../services/Formation/formationService";
+import FormationFormModal from "./FormationFormModal";
+import FormationDetails from "./FormationDetails";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -48,7 +56,7 @@ const FormationList = () => {
   const { useGetAll: useGetAllAdherents } = useAdherents();
   const { useGetAll: useGetAllMoniteurs } = useMoniteurs();
 
-  const { data: adherentsData, isLoading: loadingAdherents } =
+  const { data: adherentsData } =
     useGetAllAdherents();
   // Uniquement pour le sous-menu "Formations que j'encadre" (voir
   // Sidebar.jsx) — résoudre le moniteur connecté (id_moniteur).
@@ -73,8 +81,13 @@ const FormationList = () => {
   const ajourner = useAjourner();
   const selection = useSelection();
 
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+  // Niveau VISÉ par la formation (N1/N2/N3/N4/MF1) — distinct du niveau
+  // ACTUEL de l'adhérent (voir AdherentList.jsx) : ici on filtre les
+  // formations elles-mêmes, pas les personnes.
+  const [niveauViseFilter, setNiveauViseFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
   const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -85,12 +98,18 @@ const FormationList = () => {
   const [motifAjournement, setMotifAjournement] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [actionLoading, setActionLoading] = useState(null);
-  const [viewMode, setViewMode] = useState("list");
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "grid" : "list",
+  );
   // Sous-menu sidebar "Formations que j'encadre" (?filtre=mes-formations-
   // encadrees, réservé au moniteur, voir Sidebar.jsx).
-  const [mesFormationsEncadreesOnly, setMesFormationsEncadreesOnly] = useState(
+  const [mesFormationsEncadreesFiltre, setMesFormationsEncadreesOnly] = useState(
     searchParams.get("filtre") === "mes-formations-encadrees",
   );
+  // Un moniteur ne voit jamais "toutes les formations" : sa liste est
+  // toujours limitée à celles qu'il encadre.
+  const isMoniteurSeul = user?.role === "moniteur";
+  const mesFormationsEncadreesOnly = isMoniteurSeul || mesFormationsEncadreesFiltre;
   useEffect(() => {
     setMesFormationsEncadreesOnly(
       searchParams.get("filtre") === "mes-formations-encadrees",
@@ -99,11 +118,31 @@ const FormationList = () => {
   }, [searchParams]);
   const itemsPerPage = 10;
 
+  // Onglets remplaçant l'ancien sous-menu dépliable "Formations que
+  // j'encadre" de la Sidebar (voir Sidebar.jsx, canSeeMoniteurSousMenus —
+  // mêmes rôles), désormais fusionnés avec la navigation entre Formations/
+  // Spécialités/Brevets (voir constants/formationTabs.js et
+  // pages/Formation/FormationGroupPage.jsx) : un seul et même TabBar sert
+  // les deux usages plutôt que d'en empiler deux.
+  const formationTabs = getFormationTabs(canManage, isMoniteurSeul);
+
   const currentMoniteurId = useMemo(() => {
     if (!user || !moniteursData?.data) return null;
     const moniteur = moniteursData.data.find((m) => m.user?.email === user.email);
     return moniteur?.id_moniteur || null;
   }, [user, moniteursData]);
+
+  // Seul le moniteur assigné à CETTE formation (jamais n'importe quel
+  // moniteur) peut la modifier/supprimer/terminer/ajourner — même règle que
+  // FormationService.assertCanModifyFormation côté backend. Le président
+  // garde un accès total. `canManage` (rôle seul, ci-dessus) reste utilisé
+  // pour ce qui ne dépend d'aucune formation précise (ex. "Nouvelle
+  // formation", ou le choix de la requête "toutes les formations" côté
+  // liste — un moniteur doit pouvoir les parcourir même sans pouvoir toutes
+  // les modifier).
+  const canManageFormation = (formation) =>
+    hasRole(["president"]) ||
+    (isMoniteur && currentMoniteurId != null && formation.id_moniteur === currentMoniteurId);
 
   // Map des adhérents avec leurs infos
   const adherentMap = useMemo(() => {
@@ -134,6 +173,7 @@ const FormationList = () => {
         const adherentName = adherentInfo.nom;
 
         if (filter !== "all" && f.statut !== filter) return false;
+        if (niveauViseFilter !== "all" && f.niveau_vise !== niveauViseFilter) return false;
 
         if (mesFormationsEncadreesOnly) {
           if (currentMoniteurId == null || f.id_moniteur !== currentMoniteurId) return false;
@@ -157,12 +197,17 @@ const FormationList = () => {
     allFormations,
     adherentMap,
     filter,
+    niveauViseFilter,
     searchTerm,
     mesFormationsEncadreesOnly,
     currentMoniteurId,
   ]);
 
-  if (isLoading || loadingAdherents) return <LoadingSpinner variant="list" />;
+  // N'attend que la propre liste : adherentsData ne sert qu'aux noms
+  // affichés (adherentMap) et à identifier l'adhérent connecté, avec repli
+  // "#<num_adherent>" déjà prévu tant qu'il n'est pas encore chargé —
+  // chargement progressif, pas de blocage.
+  if (isLoading) return <LoadingSpinner variant="list" />;
   if (error) return <ErrorState onRetry={refetch} />;
 
   const totalPages = Math.ceil(filteredFormations.length / itemsPerPage);
@@ -238,6 +283,8 @@ const FormationList = () => {
 
   if (filteredFormations.length === 0) {
     return (
+      <div className="space-y-4">
+      <TabBar tabs={formationTabs} />
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -254,18 +301,19 @@ const FormationList = () => {
         <p className="text-gray-500 dark:text-gray-400 mt-1">
           {mesFormationsEncadreesOnly
             ? "Aucune formation dont vous êtes le moniteur référent"
-            : searchTerm || filter !== "all"
+            : searchTerm || filter !== "all" || niveauViseFilter !== "all"
               ? "Aucun résultat pour vos critères"
               : canManage
                 ? "Commencez par créer une nouvelle formation"
                 : "Vous n'êtes inscrit à aucune formation pour le moment"}
         </p>
-        {(searchTerm || filter !== "all" || mesFormationsEncadreesOnly) && (
+        {(searchTerm || filter !== "all" || niveauViseFilter !== "all" || mesFormationsEncadreesFiltre) && (
           <button
             type="button"
             onClick={() => {
               setSearchTerm("");
               setFilter("all");
+              setNiveauViseFilter("all");
               setMesFormationsEncadreesOnly(false);
               setCurrentPage(1);
             }}
@@ -275,19 +323,23 @@ const FormationList = () => {
           </button>
         )}
         {canManage && (
-          <Link
+          <ModalLink
             to="/formations/create"
             className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
           >
             <FiPlus className="w-4 h-4" /> Nouvelle formation
-          </Link>
+          </ModalLink>
         )}
+        <FormationFormModal />
+        <FormationDetails />
       </motion.div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      <TabBar tabs={formationTabs} />
       {mesFormationsEncadreesOnly && (
         <p className="text-sm text-gray-500 dark:text-gray-400">
           <FiUser className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
@@ -296,8 +348,19 @@ const FormationList = () => {
           moniteur référent
         </p>
       )}
-      {/* Barre de recherche et filtres */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+            {/* Bouton "Filtres" (mobile uniquement) : recherche + filtres
+          repliés par défaut pour ne pas encombrer l'écran — un tap les
+          affiche. Toujours visibles à partir de sm (recherche fréquente
+          sur grand écran, pas besoin de la cacher). */}
+      <button
+        type="button"
+        onClick={() => setShowFilters((v) => !v)}
+        className="sm:hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+      >
+        {showFilters ? <FiX className="w-4 h-4" /> : <FiFilter className="w-4 h-4" />}
+        Filtres
+      </button>
+      <div className={`${showFilters ? "flex" : "hidden"} flex-col gap-3 sm:flex sm:flex-row`}>
         <div className="relative flex-1">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -327,6 +390,21 @@ const FormationList = () => {
             <option value="Suspendue">Suspendues</option>
             <option value="Ajournée">Ajournées</option>
           </select>
+          <select
+            value={niveauViseFilter}
+            onChange={(e) => {
+              setNiveauViseFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white sm:w-auto"
+          >
+            <option value="all">Tous niveaux visés</option>
+            {NIVEAU_FORMATION_OPTIONS.map((niveau) => (
+              <option key={niveau} value={niveau}>
+                {niveau}
+              </option>
+            ))}
+          </select>
           <div className="flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-100 p-1 dark:border-gray-700 dark:bg-gray-800">
             <button
               type="button"
@@ -354,22 +432,29 @@ const FormationList = () => {
             </button>
           </div>
           {canManage && (
-            <Link
+            <ModalLink
               to="/formations/create"
               className="col-span-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700 sm:col-auto sm:w-auto"
             >
               <FiPlus className="w-4 h-4" />
               Nouvelle
-            </Link>
+            </ModalLink>
           )}
         </div>
       </div>
 
-      {/* Sélection multiple / actions groupées (formations "Terminée" exclues :
-          non supprimables individuellement non plus) */}
+      {/* Sélection multiple / actions groupées ("Terminée"/"Abandonnée"
+          exclues : verrouillées côté serveur, voir FormationService.
+          assertFormationModifiable — non supprimables individuellement non
+          plus). */}
       {canManage && (() => {
         const selectableIds = paginatedFormations
-          .filter((f) => f.statut !== "Terminée")
+          .filter(
+            (f) =>
+              f.statut !== "Terminée" &&
+              f.statut !== "Abandonnée" &&
+              canManageFormation(f),
+          )
           .map((f) => f.id_formation || f.id);
         return (
           <>
@@ -407,7 +492,7 @@ const FormationList = () => {
               Aucune formation trouvée
             </p>
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-              {searchTerm || filter !== "all"
+              {searchTerm || filter !== "all" || niveauViseFilter !== "all"
                 ? "Essayez de modifier vos filtres"
                 : "Aucune formation pour le moment"}
             </p>
@@ -436,7 +521,11 @@ const FormationList = () => {
               const seancesManquantes =
                 formation.nb_seances_prevues &&
                 formation.nb_seances_realisees < formation.nb_seances_prevues;
-              const isTerminee = formation.statut === "Terminée";
+              // "Terminée"/"Abandonnée" : parcours clos, verrouillé côté
+              // serveur (voir FormationService.assertFormationModifiable) —
+              // "Ajournée"/"Suspendue" restent volontairement modifiables,
+              // ce sont des pauses, pas des fins de parcours.
+              const isCloturee = formation.statut === "Terminée" || formation.statut === "Abandonnée";
 
               if (viewMode === "grid") {
                 return (
@@ -476,10 +565,7 @@ const FormationList = () => {
 
                     {/* Contenu */}
                     <div className="p-4 flex flex-col flex-1">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
-                        #{formation.num_adherent}
-                      </span>
-                      <h3 className="font-semibold text-gray-900 dark:text-white mt-1 truncate">
+                      <h3 className="font-semibold text-gray-900 dark:text-white truncate">
                         {adherentName}
                       </h3>
                       <p className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mt-0.5">
@@ -504,7 +590,7 @@ const FormationList = () => {
                       </div>
 
                       <div className="flex items-center justify-end gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                        {canManage && !isTerminee && (
+                        {canManageFormation(formation) && !isCloturee && (
                           <input
                             type="checkbox"
                             checked={selection.isSelected(formationId)}
@@ -513,7 +599,7 @@ const FormationList = () => {
                             title="Sélectionner"
                           />
                         )}
-                        {canManage && formation.statut === "En cours" && (
+                        {canManageFormation(formation) && formation.statut === "En cours" && (
                           <button
                             onClick={() => {
                               setCompleteModal(formationId);
@@ -537,7 +623,7 @@ const FormationList = () => {
                             )}
                           </button>
                         )}
-                        {canManage && formation.statut === "En cours" && (
+                        {canManageFormation(formation) && formation.statut === "En cours" && (
                           <button
                             onClick={() => setAjournerModal(formationId)}
                             disabled={isLoading}
@@ -558,31 +644,31 @@ const FormationList = () => {
                         >
                           <FiEye className="w-4 h-4" />
                         </Link>
-                        {canManage && (
+                        {canManageFormation(formation) && (
                           <>
-                            {isTerminee ? (
+                            {isCloturee ? (
                               <span
                                 className="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                                title="Formation terminée : modification impossible"
+                                title="Formation terminée ou abandonnée : modification impossible"
                               >
                                 <FiEdit className="w-4 h-4" />
                               </span>
                             ) : (
-                              <Link
+                              <ModalLink
                                 to={`/formations/edit/${formationId}`}
                                 className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
                                 title="Modifier"
                               >
                                 <FiEdit className="w-4 h-4" />
-                              </Link>
+                              </ModalLink>
                             )}
                             <button
                               onClick={() => setDeleteModal(formationId)}
-                              disabled={isLoading || isTerminee}
+                              disabled={isLoading || isCloturee}
                               className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               title={
-                                isTerminee
-                                  ? "Formation terminée : suppression impossible"
+                                isCloturee
+                                  ? "Formation terminée ou abandonnée : suppression impossible"
                                   : "Supprimer"
                               }
                             >
@@ -609,7 +695,7 @@ const FormationList = () => {
                   className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-4">
-                    {canManage && !isTerminee && (
+                    {canManageFormation(formation) && !isCloturee && (
                       <input
                         type="checkbox"
                         checked={selection.isSelected(formationId)}
@@ -630,11 +716,6 @@ const FormationList = () => {
                           <FiUser className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
                         </div>
                       )}
-                      <div className="text-center mt-1">
-                        <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                          #{formation.num_adherent}
-                        </span>
-                      </div>
                     </div>
 
                     {/* Informations */}
@@ -642,7 +723,7 @@ const FormationList = () => {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                            <h3 className="font-semibold text-gray-900 dark:text-white break-words">
                               {adherentName}
                             </h3>
                             <span className="text-sm text-gray-400 dark:text-gray-500">
@@ -654,7 +735,15 @@ const FormationList = () => {
                             </span>
                           </div>
                           <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            <span className="flex items-center gap-1">
+                            {/* flex-wrap : sans ça, la plage de dates ("→")
+                                est un flex-item unique qui ne peut pas
+                                passer à la ligne — sur mobile, une colonne
+                                trop étroite la faisait déborder du côté
+                                droit de la carte, silencieusement coupée
+                                par le filet anti-scroll horizontal global
+                                (overflow-x:hidden). Vérifié en conditions
+                                réelles. */}
+                            <span className="flex items-center gap-1 flex-wrap">
                               <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
                               {formatDate(formation.date_debut)}
                               <span>→</span>
@@ -677,7 +766,7 @@ const FormationList = () => {
                         {/* Actions */}
                         <div className="flex items-center gap-1 flex-shrink-0">
                           {/* Terminer */}
-                          {canManage && formation.statut === "En cours" && (
+                          {canManageFormation(formation) && formation.statut === "En cours" && (
                             <button
                               onClick={() => {
                                 setCompleteModal(formationId);
@@ -701,7 +790,7 @@ const FormationList = () => {
                           )}
 
                           {/* Ajourner (recaler) */}
-                          {canManage && formation.statut === "En cours" && (
+                          {canManageFormation(formation) && formation.statut === "En cours" && (
                             <button
                               onClick={() => setAjournerModal(formationId)}
                               disabled={isLoading}
@@ -723,30 +812,30 @@ const FormationList = () => {
                           >
                             <FiEye className="w-4 h-4" />
                           </Link>
-                          {canManage && (
+                          {canManageFormation(formation) && (
                             <>
-                              {isTerminee ? (
+                              {isCloturee ? (
                                 <span
                                   className="p-2 text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                                  title="Formation terminée : modification impossible"
+                                  title="Formation terminée ou abandonnée : modification impossible"
                                 >
                                   <FiEdit className="w-4 h-4" />
                                 </span>
                               ) : (
-                                <Link
+                                <ModalLink
                                   to={`/formations/edit/${formationId}`}
                                   className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
                                   title="Modifier"
                                 >
                                   <FiEdit className="w-4 h-4" />
-                                </Link>
+                                </ModalLink>
                               )}
                               <button
                                 onClick={() => setDeleteModal(formationId)}
-                                disabled={isLoading || isTerminee}
+                                disabled={isLoading || isCloturee}
                                 className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title={
-                                  isTerminee
+                                  isCloturee
                                     ? "Formation terminée : suppression impossible"
                                     : "Supprimer"
                                 }
@@ -770,34 +859,11 @@ const FormationList = () => {
         )}
       </AnimatePresence>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
-        >
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Précédent
-          </button>
-          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Suivant
-          </button>
-        </motion.div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Modal de confirmation de suppression */}
       {deleteModal && (
@@ -968,6 +1034,9 @@ const FormationList = () => {
         onCancel={() => setBulkDeleteModal(false)}
         onConfirm={handleBulkDelete}
       />
+
+      <FormationFormModal />
+      <FormationDetails />
     </div>
   );
 };

@@ -6,8 +6,6 @@ import {
   FiEdit,
   FiTrash2,
   FiPlus,
-  FiUsers,
-  FiUser,
   FiCalendar,
   FiDollarSign,
   FiList,
@@ -15,17 +13,25 @@ import {
   FiMail,
   FiX,
   FiSearch,
+  FiFilter,
+  FiRefreshCw,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ModalOverlay from "../Common/ModalOverlay";
 import ConfirmModal from "../Common/ConfirmModal";
 import BulkActionBar from "../Common/BulkActionBar";
+import Pagination from "../Common/Pagination";
 import { useTresoriers } from "../../hooks/Tresorier/useTresoriers";
 import { useUsers } from "../../hooks/User/useUsers";
 import { useSelection } from "../../hooks/useSelection";
 import { photoUrl } from "../../utils/photoUrl";
 import tresorierService from "../../services/Tresorier/tresorierService";
+import TresorierFormModal from "./TresorierFormModal";
+import TresorierDetails from "./TresorierDetails";
+import TabBar from "../Common/TabBar";
+import { ROLE_TABS } from "../../constants/roleTabs";
+import AccountActionsMenu from "../User/AccountActionsMenu";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -35,16 +41,22 @@ const TresorierList = () => {
   const { useGetAll: useGetAllUsers } = useUsers();
 
   const { data, isLoading, error, refetch } = useGetAll();
-  const { data: usersData, isLoading: loadingUsers } = useGetAllUsers();
+  const { data: usersData } = useGetAllUsers();
   const remove = useRemove();
   const selection = useSelection();
 
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteModal, setDeleteModal] = useState(null);
   const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  // Clé de l'action en cours (`delete-<id>`) : seule l'icône de la ligne
+  // concernée passe en spinner (même motif que InscriptionList.jsx).
+  const [actionLoading, setActionLoading] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState("list");
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "grid" : "list",
+  );
   const itemsPerPage = 10;
 
   const userMap = useMemo(() => {
@@ -82,12 +94,17 @@ const TresorierList = () => {
   );
 
   const handleDelete = async (id) => {
+    // Ferme la modale dès le lancement : elle masquerait sinon le spinner
+    // de la ligne pendant la requête.
+    setDeleteModal(null);
+    setActionLoading(`delete-${id}`);
     try {
       await remove.mutateAsync(id);
-      refetch();
-      setDeleteModal(null);
+      await refetch();
     } catch (err) {
       console.error("Échec de la suppression du trésorier :", err);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -107,12 +124,17 @@ const TresorierList = () => {
   };
 
   // RETOUR CONDITIONNEL APRÈS TOUS LES HOOKS
-  if (isLoading || loadingUsers) return <LoadingSpinner variant="list" />;
+  // N'attend que la propre liste : usersData ne sert qu'au nom/photo
+  // affichés (userMap), avec repli via optional chaining déjà prévu tant
+  // qu'il n'est pas encore chargé — chargement progressif.
+  if (isLoading) return <LoadingSpinner variant="list" />;
   if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredTresoriers.length === 0) {
     return (
-      <motion.div
+      <div className="space-y-4">
+        <TabBar tabs={ROLE_TABS} />
+        <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg"
@@ -146,14 +168,30 @@ const TresorierList = () => {
         >
           <FiPlus className="w-4 h-4" /> Nouveau trésorier
         </Link>
+        <TresorierFormModal />
+        <TresorierDetails />
       </motion.div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      <TabBar tabs={ROLE_TABS} />
       {/* Barre de recherche */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+      {/* Bouton "Filtres" (mobile uniquement) : recherche + filtres
+          repliés par défaut pour ne pas encombrer l'écran — un tap les
+          affiche. Toujours visibles à partir de sm (recherche fréquente
+          sur grand écran, pas besoin de la cacher). */}
+      <button
+        type="button"
+        onClick={() => setShowFilters((v) => !v)}
+        className="sm:hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+      >
+        {showFilters ? <FiX className="w-4 h-4" /> : <FiFilter className="w-4 h-4" />}
+        Filtres
+      </button>
+      <div className={`${showFilters ? "flex" : "hidden"} flex-col gap-3 sm:flex sm:flex-row`}>
         <div className="relative flex-1">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -240,7 +278,7 @@ const TresorierList = () => {
             animate={{ opacity: 1 }}
             className={
               viewMode === "grid"
-                ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
                 : "grid gap-3"
             }
           >
@@ -305,11 +343,17 @@ const TresorierList = () => {
                       </Link>
                       <button
                         onClick={() => setDeleteModal(tresorier.id_tresorier)}
-                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        disabled={actionLoading === `delete-${tresorier.id_tresorier}`}
+                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                         title="Supprimer"
                       >
-                        <FiTrash2 className="w-4 h-4" />
+                        {actionLoading === `delete-${tresorier.id_tresorier}` ? (
+                          <FiRefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FiTrash2 className="w-4 h-4" />
+                        )}
                       </button>
+                      <AccountActionsMenu user={user} />
                     </div>
                   </motion.div>
                 );
@@ -353,7 +397,7 @@ const TresorierList = () => {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                            <h3 className="font-semibold text-gray-900 dark:text-white break-words">
                               {user?.name || `Utilisateur #${tresorier.user_id}`}
                             </h3>
                             {tresorier.annee_en_poste && (
@@ -395,11 +439,17 @@ const TresorierList = () => {
                           </Link>
                           <button
                             onClick={() => setDeleteModal(tresorier.id_tresorier)}
-                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            disabled={actionLoading === `delete-${tresorier.id_tresorier}`}
+                            className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                             title="Supprimer"
                           >
-                            <FiTrash2 className="w-4 h-4" />
+                            {actionLoading === `delete-${tresorier.id_tresorier}` ? (
+                              <FiRefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <FiTrash2 className="w-4 h-4" />
+                            )}
                           </button>
+                          <AccountActionsMenu user={user} />
                         </div>
                       </div>
                     </div>
@@ -411,34 +461,11 @@ const TresorierList = () => {
         )}
       </AnimatePresence>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex justify-center items-center gap-2 pt-4 border-t border-gray-200 dark:border-gray-700"
-        >
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Précédent
-          </button>
-          <span className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Suivant
-          </button>
-        </motion.div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Modal de confirmation de suppression */}
       {deleteModal && (
@@ -486,6 +513,9 @@ const TresorierList = () => {
         onCancel={() => setBulkDeleteModal(false)}
         onConfirm={handleBulkDelete}
       />
+
+      <TresorierFormModal />
+      <TresorierDetails />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 const BaseService = require('./BaseService');
 const AttributionRepository = require('../repositories/AttributionRepository');
+const SortieRepository = require('../repositories/SortieRepository');
 const materielClient = require('../utils/serviceClients/materielClient');
 const paiementClient = require('../utils/serviceClients/paiementClient');
 const identiteClient = require('../utils/serviceClients/identiteClient');
@@ -11,6 +12,30 @@ class AttributionService extends BaseService {
     const repository = new AttributionRepository();
     super(repository);
     this.attributionRepository = repository;
+    this.sortieRepository = new SortieRepository();
+  }
+
+  // Liste scopée par rôle — même principe que InscriptionService/
+  // PlongeeService/PalanqueeService.getAll : un adhérent ne voit que ses
+  // propres attributions, un moniteur celles des adhérents des sorties
+  // qu'il encadre (Sortie.encadrants), le reste du staff (président/
+  // trésorier, ou rôle non résolu) garde la vue complète. Pas
+  // d'enrichissement `.materiel`/`.adherent` ici : AttributionList.jsx/
+  // AttributionsPage.jsx recomposent déjà ces libellés côté client
+  // (materielMap/adherentMap) à partir de useGetAllMateriels/useGetAllAdherents,
+  // comme pour la vue président existante.
+  async getAll(user = null) {
+    const adherent = await identiteClient.getAdherentForUser(user);
+    if (adherent) {
+      return await this.attributionRepository.findByAdherent(adherent.num_adherent);
+    }
+    if (user?.role === 'moniteur') {
+      const moniteur = await identiteClient.getMoniteurByUserId(user.id);
+      if (!moniteur) return [];
+      const idSorties = await this.sortieRepository.findIdsByEncadrant(moniteur.id_moniteur);
+      return await this.attributionRepository.findBySorties(idSorties);
+    }
+    return await this.attributionRepository.findAll();
   }
 
   // Un adhérent ne peut consulter que ses propres attributions ; le staff
@@ -34,13 +59,26 @@ class AttributionService extends BaseService {
   // Même garde que getByAdherent ci-dessus, mais pour l'accès direct par id
   // (BaseService.getById hérité ne vérifiait rien : un adhérent pouvait
   // consulter l'attribution — et la caution — de n'importe qui d'autre en
-  // changeant juste l'id dans l'URL).
+  // changeant juste l'id dans l'URL). Le moniteur est scopé exactement comme
+  // dans getAll ci-dessus (attributions des sorties qu'il encadre) : sans ce
+  // second garde-fou, un moniteur passait au travers (getAdherentForUser ne
+  // résout rien pour lui) et consultait n'importe quelle attribution par id,
+  // y compris sur une sortie confiée à un autre moniteur.
   async getById(id, user = null) {
     const attribution = await this.attributionRepository.findById(id);
     if (attribution) {
       const adherent = await identiteClient.getAdherentForUser(user);
       if (adherent && attribution.num_adherent !== adherent.num_adherent) {
         throw new Error("Accès refusé à cette attribution");
+      }
+      if (!adherent && user?.role === 'moniteur') {
+        const moniteur = await identiteClient.getMoniteurByUserId(user.id);
+        const idSorties = moniteur
+          ? await this.sortieRepository.findIdsByEncadrant(moniteur.id_moniteur)
+          : [];
+        if (!attribution.id_sortie || !idSorties.includes(attribution.id_sortie)) {
+          throw new Error("Accès refusé à cette attribution");
+        }
       }
     }
     return attribution;

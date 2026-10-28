@@ -14,7 +14,7 @@ import React from "react";
 //   - "form"    : paires label/champ + boutons d'action (formulaires)
 //   - "details"  : en-tête + sections d'informations (fiches détail)
 //   - "dashboard" (défaut) : cartes de statistiques + graphiques
-//   - "calendar" : navigation mois + stats + légende + grille (SortieCalendar)
+//   - "calendar" : titre + navigation mois + grille (SortieCalendar)
 const ListSkeleton = () => (
   <div className="w-full space-y-4">
     <div className="flex flex-wrap gap-3">
@@ -209,59 +209,39 @@ const DashboardSkeleton = () => (
   </div>
 );
 
-// Reprend la structure exacte de SortieCalendar.jsx (barre de navigation
-// mois précédent/suivant + "Aujourd'hui", 5 cartes de statistiques, barre
-// de légende, puis grille 7 colonnes des jours du mois) — utiliser
-// ListSkeleton ici (pensé pour une page de liste, filtre + lignes de
-// tableau) n'avait aucun rapport avec cette mise en page et créait un
-// décalage visuel disgracieux au chargement (forme de liste plaquée
-// au-dessus d'un contenu qui n'en est pas une).
+// Reprend la structure de SortieCalendar.jsx (titre + sous-titre, navigation
+// mois, grille 7 colonnes des jours, légende) — utiliser ListSkeleton ici
+// (pensé pour une page de liste, filtre + lignes de tableau) créait un
+// décalage visuel au chargement. Mêmes hauteurs de cellule (52px/104px)
+// que le vrai contenu pour qu'il n'y ait aucun saut au remplacement.
 const CalendarSkeleton = () => (
-  <div className="w-full space-y-6">
-    {/* Barre de navigation (mois précédent/suivant + Aujourd'hui) */}
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 bg-white dark:bg-gray-900 p-3 sm:p-4 rounded-2xl border border-gray-100/80 dark:border-gray-800/80">
-      <div className="flex items-center gap-2 sm:gap-4">
-        <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 animate-pulse" />
-        <div className="h-6 w-32 sm:w-44 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
-        <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-700 animate-pulse" />
+  <div className="w-full space-y-4">
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+      <div className="space-y-2">
+        <div className="h-7 w-32 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
+        <div className="h-4 w-44 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
       </div>
-      <div className="h-10 w-full sm:w-36 rounded-xl bg-gray-100 dark:bg-gray-700 animate-pulse" />
+      <div className="flex items-center gap-2">
+        <div className="h-9 w-24 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse" />
+        <div className="h-9 w-48 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse" />
+      </div>
     </div>
 
-    {/* Cartes de statistiques */}
-    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-      {[0, 1, 2, 3, 4].map((i) => (
-        <div
-          key={i}
-          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 space-y-1.5"
-        >
-          <div className="h-5 w-1/2 mx-auto rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
-          <div className="h-3 w-3/4 mx-auto rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
-        </div>
-      ))}
-    </div>
-
-    {/* Légende */}
-    <div className="h-11 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 animate-pulse" />
-
-    {/* Grille du calendrier — mêmes hauteurs de cellule (52px/110px) que
-        SortieCalendar.jsx pour qu'il n'y ait aucun saut de mise en page au
-        remplacement du squelette par le vrai contenu. */}
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
-      <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700">
+    <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+      <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
         {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="py-2 sm:py-3 bg-gray-50 dark:bg-gray-800 flex justify-center">
-            <div className="h-3 w-6 rounded bg-gray-200 dark:bg-gray-600 animate-pulse" />
+          <div key={i} className="py-2.5 flex justify-center">
+            <div className="h-3 w-6 rounded bg-gray-100 dark:bg-gray-700 animate-pulse" />
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700">
+      <div className="grid grid-cols-7">
         {Array.from({ length: 35 }).map((_, i) => (
           <div
             key={i}
-            className="min-h-[52px] sm:min-h-[110px] p-1.5 sm:p-2 bg-white dark:bg-gray-800"
+            className="min-h-[52px] sm:min-h-[104px] p-1.5 border-b border-r border-gray-100 dark:border-gray-700/60"
           >
-            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gray-100 dark:bg-gray-700 animate-pulse" />
+            <div className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-700 animate-pulse" />
           </div>
         ))}
       </div>

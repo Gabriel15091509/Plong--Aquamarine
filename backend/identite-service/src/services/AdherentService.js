@@ -205,6 +205,30 @@ class AdherentService extends BaseService {
       });
     }
 
+    // Premier vrai brevet (le Baptême n'est pas licencié FFESM) : le
+    // président/trésorier devait jusqu'ici penser à saisir lui-même les
+    // lignes Adhesion "FFESM" et "Assurance RC" (incluse dans la licence
+    // FFESM, voir AdhesionService.TYPES_OBLIGATOIRES côté vie-associative-
+    // service) dès qu'un adhérent quittait le Baptême — un oubli bloquait
+    // silencieusement ses inscriptions aux sorties (checkDossierValidity).
+    // Créées "En attente" (n° de licence pas encore connu ici) : le staff
+    // n'a plus qu'à les compléter puis valider. Best-effort : ne doit jamais
+    // faire échouer la mise à jour du niveau elle-même si vie-associative-
+    // service est injoignable.
+    if (ancienNiveau === "Baptême" && niveau === "Niveau 1") {
+      try {
+        await vieAssociativeClient.creerLicenceAutomatique(
+          num_adherent,
+          adherent.date_obtention_niveau,
+        );
+      } catch (error) {
+        console.error(
+          `Erreur création automatique licence FFESM/Assurance RC (adhérent ${num_adherent}):`,
+          error.message,
+        );
+      }
+    }
+
     return adherent;
   }
 

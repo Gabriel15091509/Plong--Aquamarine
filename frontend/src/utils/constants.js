@@ -37,6 +37,17 @@ export const STATUT_ADHERENT_OPTIONS = [
   'Ancien'
 ];
 
+// Statuts d'adhérent qui ne doivent plus pouvoir être choisis pour une
+// NOUVELLE inscription/formation/attribution matériel/adhésion — un ancien
+// membre (RGPD ou parti du club) ou un membre suspendu ne doit pas être
+// réengagé dans une nouvelle activité sans qu'on repasse d'abord son statut
+// à "Actif" dans sa fiche. Utilisée par InscriptionForm/FormationForm/
+// AttributionForm/AdhesionForm pour filtrer les options de leur
+// SearchableSelect "Adhérent" — la valeur déjà sélectionnée (mode édition)
+// reste affichée même si son statut est désormais dans cette liste, seule
+// la sélection d'une NOUVELLE valeur exclue est empêchée.
+export const STATUTS_ADHERENT_EXCLUS_SELECTION = ['Ancien', 'Suspendu'];
+
 // Minimum réaliste de plongées par niveau (Baptême exclu, pas de minimum) :
 // Niveau 1 initiation, Niveau 2 autonomie 20m, Niveau 3 autonomie 40m,
 // Niveau 4, Moniteur (bien au-delà du minimum Niveau 4 en pratique).
@@ -137,6 +148,24 @@ export const TYPE_ACTIVITE_OPTIONS = [
 
 export const TYPE_SORTIE_OPTIONS = TYPE_ACTIVITE_OPTIONS;
 
+// Niveau minimum compatible avec chaque type de sortie — évite par exemple
+// qu'une "Plongée technique" (plus exigeante) reste accessible à un Baptême,
+// ou qu'une sortie "Baptême" (réservée aux non-plongeurs découvrant
+// l'activité) exige un niveau déjà acquis. Même grille côté backend, voir
+// backend/activites-service/src/utils/roleScope.js NIVEAU_MIN_PAR_TYPE_SORTIE
+// — à faire évoluer en même temps si jamais modifiée. "Baptême" est un cas à
+// part (voir isTypeNiveauCompatible, utils/helpers.js) : seul niveau
+// compatible avec ce type, pas un simple minimum.
+export const NIVEAU_MIN_PAR_TYPE_SORTIE = {
+  'Baptême': 'Baptême',
+  'Formation': 'Baptême',
+  'Sortie bateau': 'Baptême',
+  'Nettoyage': 'Baptême',
+  "Plongée d'exploration": 'Niveau 1',
+  'Plongée de nuit': 'Niveau 1',
+  'Plongée technique': 'Niveau 2',
+};
+
 export const STATUT_SORTIE_OPTIONS = Object.values(STATUT_SORTIE);
 
 export const TYPE_PLONGEE_OPTIONS = TYPE_ACTIVITE_OPTIONS;
@@ -189,6 +218,38 @@ export const NIVEAU_FORMATION_OPTIONS = [
   'MF1'
 ];
 
+// Prochain niveau de formation (code FFESM abrégé, NIVEAU_FORMATION_OPTIONS)
+// à partir du niveau actuel de l'adhérent (NIVEAU_OPTIONS) — utilisée par
+// FormationForm.jsx pour pré-remplir "Niveau visé" dès qu'un adhérent est
+// sélectionné (celui qu'il vise logiquement ensuite), même principe que
+// PROFONDEUR_MAX_PAR_NIVEAU ci-dessus : le champ reste modifiable ensuite
+// (rattrapage, spécialisation...). Un Moniteur n'a pas de "niveau supérieur"
+// prévu ici, la clé est donc absente pour ce cas.
+export const NIVEAU_VISE_SUIVANT = {
+  'Baptême': 'N1',
+  'Niveau 1': 'N2',
+  'Niveau 2': 'N3',
+  'Niveau 3': 'N4',
+  'Niveau 4': 'MF1',
+};
+
+// Inverse de NIVEAU_VISE_SUIVANT ci-dessus : niveau (NIVEAU_OPTIONS) qu'un
+// stagiaire a déjà au minimum en entrant dans une formation visant ce niveau
+// (même grille que backend/formation-service/src/services/FormationService.js
+// PREREQUIS_FORMATION[niveau_vise].niveauMin, "Baptême" au lieu de `null`
+// pour N1 — pas de plancher réel, mais aucun stagiaire n'a moins que ça).
+// Sert à FormationSeances.jsx pour ne proposer, comme sortie support d'une
+// séance pratique, que des sorties dont le niveau requis reste accessible à
+// ce niveau d'entrée — sinon le stagiaire ne pourrait de toute façon pas s'y
+// inscrire (voir isNiveauCompatible, même règle serveur).
+export const NIVEAU_ENTREE_FORMATION = {
+  N1: 'Baptême',
+  N2: 'Niveau 1',
+  N3: 'Niveau 2',
+  N4: 'Niveau 3',
+  MF1: 'Niveau 4',
+};
+
 export const STATUT_FORMATION_OPTIONS = Object.values(STATUT_FORMATION);
 
 export const APPRECIATION_MONITEUR_OPTIONS = [
@@ -196,6 +257,19 @@ export const APPRECIATION_MONITEUR_OPTIONS = [
   'Satisfaisant',
   'Bien',
   'Excellent'
+];
+
+// Seuils utilisés pour SUGGÉRER une appréciation à partir de la moyenne des
+// notes de séance /20 une fois toutes les séances réalisées (voir
+// suggestAppreciationMoniteur dans utils/helpers.js, utilisé par
+// FormationForm.jsx pour pré-remplir le select ci-dessus tant qu'aucune
+// appréciation n'a encore été enregistrée) — le moniteur reste toujours
+// libre de choisir une autre valeur, ce n'est qu'une proposition.
+export const SEUILS_APPRECIATION_MONITEUR = [
+  { seuil: 16, appreciation: 'Excellent' },
+  { seuil: 14, appreciation: 'Bien' },
+  { seuil: 10, appreciation: 'Satisfaisant' },
+  { seuil: 0, appreciation: 'Insuffisant' },
 ];
 
 export const TYPE_SPECIALITE_OPTIONS = [
@@ -221,6 +295,21 @@ export const SPECIALITE_ENCADREMENT_OPTIONS = [
   'Encadrant N2',
   'Encadrant N3',
   'Encadrant baptême'
+];
+
+// Disponibilités d'un moniteur (MoniteurForm.jsx) — jours de la semaine à
+// cocher plutôt qu'un texte libre séparé par des virgules, pour éviter les
+// variantes de saisie ("samedi" / "Samedi" / "Sam.") qui rendaient tout
+// filtrage/affichage peu fiable (voir aussi randomDisponibilites() dans
+// backend/gateway-service/scripts/seedAll.js, sur le même référentiel).
+export const DISPONIBILITE_MONITEUR_OPTIONS = [
+  'Lundi',
+  'Mardi',
+  'Mercredi',
+  'Jeudi',
+  'Vendredi',
+  'Samedi',
+  'Dimanche'
 ];
 
 // Point de départ de l'itinéraire affiché vers le site d'une sortie — mêmes

@@ -6,6 +6,7 @@ import { FiX, FiMail, FiUser, FiClock, FiSend, FiExternalLink, FiMessageSquare }
 import { formatDateTime } from "../../utils/helpers";
 import { useAlertes } from "../../hooks/Alerte/useAlertes";
 import { useAuth } from "../../context/AuthContext";
+import { useModalNavigate } from "../../hooks/useModalNavigate";
 
 const ALERT_DESCRIPTIONS = {
   "Certificat expiré": "Le certificat médical a expiré",
@@ -16,6 +17,7 @@ const ALERT_DESCRIPTIONS = {
   Formation: "Une formation est disponible",
   "Materiel en retard": "Du matériel emprunté n'a pas été retourné à temps",
   "Inactivite plongee": "Aucune plongée enregistrée depuis longtemps",
+  "Sortie modifiée": "Une sortie où vous êtes inscrit(e) a été modifiée",
 };
 
 const AlerteDetailsModal = ({ alerte, onClose }) => {
@@ -24,6 +26,16 @@ const AlerteDetailsModal = ({ alerte, onClose }) => {
   const relancerSms = useRelancerSms();
   const { user } = useAuth();
   const navigate = useNavigate();
+  // Cette modale (portée sur document.body, hors de l'arbre de routes — voir
+  // NotificationsPage.jsx/Header.jsx) peut être ouverte depuis N'IMPORTE
+  // QUELLE page de l'appli. Un simple navigate() vers une fiche qui s'ouvre
+  // normalement EN MODALE (sorties/:id, adherents/:id, inscriptions/:id —
+  // voir les routes "modale seule" de App.jsx) écraserait alors la page
+  // d'origine au lieu de garder cette fiche par-dessus (voir ModalLink.jsx) :
+  // modalNavigate pose le state.backgroundLocation attendu. /profile n'est
+  // PAS une de ces routes modale (page à part entière) — reste sur
+  // `navigate` normal, ci-dessous.
+  const modalNavigate = useModalNavigate();
 
   if (!alerte) return null;
 
@@ -34,19 +46,100 @@ const AlerteDetailsModal = ({ alerte, onClose }) => {
   // relancer lui-même.
   const canRelancer = user?.role !== "adherent";
 
+  // "Voir plus de détails" mène directement à la section concernée par
+  // l'alerte, selon son type — jamais à une fiche adhérent générique :
+  //  - Certificat / Adhésion : la fiche de la ligne source précise quand
+  //    l'alerte la référence (reference_type/reference_id, posés par
+  //    AlerteService.syncExpirationAlertes), sinon la liste correspondante.
+  //  - Paiement en retard : la section Paiements de la fiche de l'adhérent.
+  //  - Formation : la liste des formations.
+  //  - Matériel en retard : la section "matériel attribué".
+  //  - Inactivité plongée : les plongées de l'adhérent (son carnet).
+  //  - Sortie modifiée : la sortie, ou l'inscription à reconfirmer.
+  // Fiches qui s'ouvrent en modale par-dessus la page d'origine
+  // (modalNavigate, voir plus haut) vs pages entières (navigate).
   const handleVoirFiche = () => {
     onClose();
-    if (alerte.type === "Materiel en retard") {
-      // Direct vers la section "matériel attribué" plutôt que le haut de
-      // la fiche : c'est le prêt en retard qu'on veut voir, pas la fiche
-      // dans sa globalité. Un adhérent ouvrant sa propre alerte n'a pas de
-      // fiche /adherents/:id (réservée au staff) — direction "Mon profil".
-      const target =
-        user?.role === "adherent" ? "/profile" : `/adherents/${alerte.num_adherent}`;
-      navigate(`${target}#materiel-attribue`);
-      return;
+    const isAdherent = user?.role === "adherent";
+    const refId = alerte.reference_id;
+
+    switch (alerte.type) {
+      case "Certificat expiré":
+      case "Certificat expire bientot":
+        if (refId && alerte.reference_type === "CertificatMedical") {
+          modalNavigate(`/certificats/${refId}`);
+        } else {
+          navigate("/certificats");
+        }
+        return;
+
+      case "Adhésion expirée":
+      case "Adhesion expire bientot":
+        if (refId && alerte.reference_type === "Adhesion") {
+          modalNavigate(`/adhesions/${refId}`);
+        } else {
+          navigate("/adhesions");
+        }
+        return;
+
+      case "Paiement en retard":
+        // Section "Paiements" de la fiche adhérent (page "Dossier complet",
+        // même mécanisme que #materiel-attribue). Un adhérent n'a pas de
+        // fiche /adherents/:id (réservée au staff) : sa propre liste de
+        // paiements.
+        if (isAdherent) {
+          navigate("/paiements");
+        } else {
+          modalNavigate(`/adherents/${alerte.num_adherent}#paiements`);
+        }
+        return;
+
+      case "Formation":
+        navigate("/formations");
+        return;
+
+      case "Materiel en retard":
+        // Direct vers la section "matériel attribué" plutôt que le haut de
+        // la fiche : c'est le prêt en retard qu'on veut voir. Un adhérent
+        // n'a pas de fiche /adherents/:id (réservée au staff) — direction
+        // "Mon profil" (page à part entière : navigate normal).
+        if (isAdherent) {
+          navigate("/profile#materiel-attribue");
+        } else {
+          modalNavigate(`/adherents/${alerte.num_adherent}#materiel-attribue`);
+        }
+        return;
+
+      case "Inactivite plongee":
+        if (isAdherent) {
+          navigate("/plongees?filtre=mes-plongees");
+        } else {
+          modalNavigate(`/adherents/${alerte.num_adherent}`);
+        }
+        return;
+
+      case "Sortie modifiée":
+        // C'est la sortie modifiée qu'on veut voir (SortieService.
+        // notifierModificationSortie pose reference_type="Sortie"/
+        // reference_id=id_sortie) — accessible aussi à l'adhérent. Cas
+        // particulier : reconfirmation attendue après une replanification
+        // météo (reference_type="Inscription") — direction la fiche
+        // inscription, où se trouve le bouton "Reconfirmer".
+        if (refId) {
+          modalNavigate(
+            alerte.reference_type === "Inscription"
+              ? `/inscriptions/${refId}`
+              : `/sorties/${refId}`,
+          );
+          return;
+        }
+        navigate("/sorties");
+        return;
+
+      default:
+        if (isAdherent) navigate("/profile");
+        else modalNavigate(`/adherents/${alerte.num_adherent}`);
     }
-    navigate(`/adherents/${alerte.num_adherent}`);
   };
 
   return createPortal(

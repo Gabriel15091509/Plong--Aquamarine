@@ -18,6 +18,16 @@ class ReparationRepository extends BaseRepository {
       where: { statut: 'En cours' }
     });
   }
+
+  // Réparation "En cours" pour CE matériel précis — voir
+  // MaterielService.assertPasDeReparationActive, qui s'en sert pour
+  // empêcher de remettre un matériel "Bon"/"Neuf"/"Local" tant que sa
+  // réparation n'est pas terminée.
+  async findActiveByMateriel(num_inventaire) {
+    return await this.model.findOne({
+      where: { num_inventaire, statut: 'En cours' },
+    });
+  }
 }
 
 module.exports = ReparationRepository;

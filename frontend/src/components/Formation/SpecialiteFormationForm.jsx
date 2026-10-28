@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   FiAward,
@@ -8,13 +8,14 @@ import {
   FiFileText,
   FiSave,
   FiX,
-  FiBookOpen,
 } from "react-icons/fi";
 import { useSpecialitesFormation } from "../../hooks/Formation/useSpecialitesFormation";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import { useAdherents } from "../../hooks/Adherent/useAdherents";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import SearchableSelect from "../Common/SearchableSelect";
+import { isNiveauCompatible } from "../../utils/helpers";
 import {
   TYPE_SPECIALITE_OPTIONS,
   STATUT_SPECIALITE_OPTIONS,
@@ -26,8 +27,17 @@ const fadeInUp = {
   transition: { duration: 0.3 },
 };
 
+// Même règle que FormationSpecialiteService.NIVEAU_MIN_SPECIALITE
+// (backend) : niveau 2 minimum, unique pour les 4 spécialités. Le backend
+// reste l'autorité finale (checkPrerequis rejette toute inscription en
+// dessous à la création) — ce n'est ici qu'un filtre d'affichage pour ne
+// pas proposer, dans le select "Adhérent", un choix de toute façon refusé.
+const NIVEAU_MIN_SPECIALITE = "Niveau 2";
+
 const SpecialiteFormationForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte si elle
+  // vient de là, sinon sur la liste des spécialités — voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/specialites-formation");
   const { id } = useParams();
   const editMode = !!id;
 
@@ -108,7 +118,7 @@ const SpecialiteFormationForm = () => {
       } else {
         await create.mutateAsync(formData);
       }
-      navigate("/specialites-formation");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement de la spécialité :", error);
     } finally {
@@ -125,6 +135,15 @@ const SpecialiteFormationForm = () => {
     label: m.user?.name || `Moniteur #${m.id_moniteur}`,
   }));
 
+  // Sous le niveau minimum, l'adhérent reste visible seulement si c'est déjà
+  // le sien sur cette spécialité (édition) — jamais retiré du select sous
+  // ses propres pieds, mais jamais proposable pour une NOUVELLE spécialité.
+  const adherentOptions = (adherentsData?.data || []).filter(
+    (a) =>
+      isNiveauCompatible(a.niveau, NIVEAU_MIN_SPECIALITE) ||
+      a.num_adherent === formData.num_adherent,
+  );
+
   const inputClasses = (fieldName) =>
     `w-full pl-4 pr-4 py-2.5 text-sm border rounded-lg focus:outline-none transition-all duration-200 bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
       errors[fieldName]
@@ -138,31 +157,7 @@ const SpecialiteFormationForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier la spécialité" : "Nouvelle spécialité"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {editMode
-                ? "Mettez à jour cette formation de spécialité"
-                : "Inscrivez un adhérent à une formation de spécialité"}
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiBookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       <div className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <motion.div {...fadeInUp}>
@@ -174,7 +169,7 @@ const SpecialiteFormationForm = () => {
                 if (errors.num_adherent)
                   setErrors((prev) => ({ ...prev, num_adherent: "" }));
               }}
-              options={adherentsData?.data || []}
+              options={adherentOptions}
               getOptionLabel={(a) =>
                 `${a.civilite} ${a.nom} ${a.prenom} - ${a.email}`
               }
@@ -183,6 +178,10 @@ const SpecialiteFormationForm = () => {
               error={errors.num_adherent}
               required={true}
             />
+            <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
+              Seuls les adhérents {NIVEAU_MIN_SPECIALITE} et au-dessus sont
+              proposés (niveau minimum requis pour une spécialité).
+            </p>
           </motion.div>
 
           <motion.div {...fadeInUp}>
@@ -309,10 +308,10 @@ const SpecialiteFormationForm = () => {
         </div>
       </div>
 
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/specialites-formation")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -332,7 +331,7 @@ const SpecialiteFormationForm = () => {
           {editMode ? "Mettre à jour" : "Créer la spécialité"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

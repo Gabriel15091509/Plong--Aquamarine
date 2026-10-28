@@ -31,11 +31,23 @@ function makeUploader(
     allowedMimetypes = ALLOWED_MIMETYPES,
     errorMessage = "Format de fichier non autorisé (image ou PDF uniquement)",
     encrypt = false,
+    // Champs fichier optionnels supplémentaires, chacun indépendant du
+    // premier (ex. verso d'un document recto/verso — voir
+    // uploadAdhesionDocument ci-dessous) : [{ fileField, bodyKey }, ...].
+    // Vide par défaut, ce qui garde `.single(fileField)` (req.file) pour
+    // tous les autres appelants (ex. certificat médical) — comportement
+    // strictement inchangé pour eux.
+    extraFields = [],
   } = {},
 ) {
+  const allFields = [{ fileField, bodyKey }, ...extraFields];
+
   // Toujours en mémoire (que ce soit pour chiffrer avant écriture, ou pour
-  // choisir R2 vs disque local une fois le buffer en main).
-  const upload = multer({
+  // choisir R2 vs disque local une fois le buffer en main). `.fields(...)`
+  // uniquement si des champs supplémentaires existent : `.single(...)`
+  // sinon, pour ne rien changer à req.file côté appelants existants
+  // (certificat médical notamment, qui n'en a pas besoin).
+  const multerInstance = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_FILE_SIZE },
     fileFilter: (req, file, cb) => {
@@ -44,51 +56,71 @@ function makeUploader(
       }
       cb(null, true);
     },
-  }).single(fileField);
+  });
+  const upload =
+    extraFields.length === 0
+      ? multerInstance.single(fileField)
+      : multerInstance.fields(allFields.map((f) => ({ name: f.fileField, maxCount: 1 })));
 
-  const attachFilePath = async (req, res, next) => {
-    if (!req.file) return next();
-
-    const ext = path.extname(req.file.originalname);
+  // Un seul fichier à écrire (nom de champ + buffer + bodyKey où stocker le
+  // chemin résultant) — factorisé pour être appelé une fois par champ
+  // présent (extraFields.length === 0 : un seul appel, req.file ; sinon un
+  // appel par entrée de req.files[...] fournie).
+  const writeOneFile = async (req, file, bkey) => {
+    const ext = path.extname(file.originalname);
     const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
 
+    if (!encrypt) {
+      // Document public (adhésion) : même logique que
+      // identite-service/materiel-service — URL R2 complète en base si
+      // configuré, sinon chemin relatif servi par express.static.
+      if (objectStorage.isConfigured) {
+        req.body[bkey] = await objectStorage.uploadBuffer(
+          `${subfolder}/${filename}`,
+          file.buffer,
+          file.mimetype,
+        );
+      } else {
+        const destination = path.join(UPLOADS_ROOT, subfolder);
+        fs.mkdirSync(destination, { recursive: true });
+        fs.writeFileSync(path.join(destination, filename), file.buffer);
+        req.body[bkey] = `/uploads/${subfolder}/${filename}`;
+      }
+      return;
+    }
+
+    // Document chiffré (certificat médical) : le buffer chiffré part
+    // vers R2 si configuré (clé "certificats/<fichier>", jamais rendue
+    // publique — pas d'URL construite), sinon vers secure-uploads/ en
+    // local. Dans les deux cas, seul le nom de fichier opaque est stocké
+    // en base (pas d'URL) : le document ne se récupère que via la route
+    // authentifiée dédiée (readEncryptedDocument), jamais en direct.
+    // L'extension d'origine est conservée pour retrouver le
+    // Content-Type au téléchargement (pas de colonne mimetype dédiée).
+    const encrypted = encryptBuffer(file.buffer);
+    if (objectStorage.isConfigured) {
+      await objectStorage.uploadBuffer(`${subfolder}/${filename}`, encrypted);
+    } else {
+      const destination = path.join(SECURE_UPLOADS_ROOT, subfolder);
+      fs.mkdirSync(destination, { recursive: true });
+      fs.writeFileSync(path.join(destination, filename), encrypted);
+    }
+    req.body[bkey] = filename;
+  };
+
+  const attachFilePath = async (req, res, next) => {
     try {
-      if (!encrypt) {
-        // Document public (adhésion) : même logique que
-        // identite-service/materiel-service — URL R2 complète en base si
-        // configuré, sinon chemin relatif servi par express.static.
-        if (objectStorage.isConfigured) {
-          req.body[bodyKey] = await objectStorage.uploadBuffer(
-            `${subfolder}/${filename}`,
-            req.file.buffer,
-            req.file.mimetype,
-          );
-        } else {
-          const destination = path.join(UPLOADS_ROOT, subfolder);
-          fs.mkdirSync(destination, { recursive: true });
-          fs.writeFileSync(path.join(destination, filename), req.file.buffer);
-          req.body[bodyKey] = `/uploads/${subfolder}/${filename}`;
-        }
+      if (extraFields.length === 0) {
+        if (req.file) await writeOneFile(req, req.file, bodyKey);
         return next();
       }
-
-      // Document chiffré (certificat médical) : le buffer chiffré part
-      // vers R2 si configuré (clé "certificats/<fichier>", jamais rendue
-      // publique — pas d'URL construite), sinon vers secure-uploads/ en
-      // local. Dans les deux cas, seul le nom de fichier opaque est stocké
-      // en base (pas d'URL) : le document ne se récupère que via la route
-      // authentifiée dédiée (readEncryptedDocument), jamais en direct.
-      // L'extension d'origine est conservée pour retrouver le
-      // Content-Type au téléchargement (pas de colonne mimetype dédiée).
-      const encrypted = encryptBuffer(req.file.buffer);
-      if (objectStorage.isConfigured) {
-        await objectStorage.uploadBuffer(`${subfolder}/${filename}`, encrypted);
-      } else {
-        const destination = path.join(SECURE_UPLOADS_ROOT, subfolder);
-        fs.mkdirSync(destination, { recursive: true });
-        fs.writeFileSync(path.join(destination, filename), encrypted);
+      // `.fields(...)` : req.files est un objet { fieldname: [file] },
+      // chaque champ facultatif et indépendant des autres (ex. recto
+      // fourni sans verso, ou l'inverse en modification).
+      for (const { fileField: fname, bodyKey: bkey } of allFields) {
+        const file = req.files?.[fname]?.[0];
+        if (file) await writeOneFile(req, file, bkey);
       }
-      req.body[bodyKey] = filename;
       next();
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
@@ -161,7 +193,13 @@ function handleAnalysePhotoUpload(req, res, next) {
 }
 
 module.exports = {
-  uploadAdhesionDocument: makeUploader("adhesions"),
+  // Verso facultatif (recto/verso d'une carte d'identité/licence FFESM,
+  // voir AdhesionForm.jsx) : champ multipart "document_verso" séparé,
+  // stocké dans document_path_verso — voir models/Adhesion.js. Absent de
+  // uploadCertificatDocument, qui reste un document à une seule face.
+  uploadAdhesionDocument: makeUploader("adhesions", {
+    extraFields: [{ fileField: "document_verso", bodyKey: "document_path_verso" }],
+  }),
   uploadCertificatDocument: makeUploader("certificats", { encrypt: true }),
   readEncryptedDocument,
   readAdhesionDocument,

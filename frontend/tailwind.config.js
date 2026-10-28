@@ -27,8 +27,37 @@ export default {
           "Arial",
           "sans-serif",
         ],
+        // Réservée à l'habillage éditorial "site vitrine" (AboutPage /
+        // PublicAboutPage) : une serif chaleureuse pour les titres, jamais
+        // utilisée dans le reste de l'application (formulaires, tableaux...)
+        // qui reste entièrement en font-sans. Même pile de repli que
+        // font-sans si Google Fonts ne charge pas.
+        display: [
+          '"Fraunces"',
+          "ui-serif",
+          "Georgia",
+          '"Times New Roman"',
+          "serif",
+        ],
       },
       colors: {
+        // Accent chaleureux de la page vitrine (corail — écho littéral aux
+        // récifs coralliens du texte), distinct de primary/ocean qui restent
+        // la palette de TOUTE l'application : ne pas réutiliser ailleurs
+        // sans une raison consciente, pour que ce corail reste identifiant
+        // de la vitrine plutôt que dilué partout.
+        coral: {
+          50: '#fff4ed',
+          100: '#ffe6d5',
+          200: '#fecdaa',
+          300: '#fdad74',
+          400: '#fb8a3c',
+          500: '#f66d1a',
+          600: '#e75410',
+          700: '#c03e10',
+          800: '#983215',
+          900: '#7b2b14',
+        },
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',

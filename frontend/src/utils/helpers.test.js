@@ -9,8 +9,11 @@ import {
   formatPhoneNumber,
   isSortieSelectionnable,
   isNiveauCompatible,
+  isTypeNiveauCompatible,
   joursRestants,
   formatCompteARebours,
+  computeNoteMoyenneSeances,
+  suggestAppreciationMoniteur,
 } from "./helpers";
 
 describe("formatDate", () => {
@@ -135,6 +138,39 @@ describe("isNiveauCompatible", () => {
   });
 });
 
+describe("isTypeNiveauCompatible", () => {
+  it('refuse un niveau requis différent de "Baptême" pour le type Baptême', () => {
+    expect(isTypeNiveauCompatible("Baptême", "Niveau 2")).toBe(false);
+  });
+
+  it('accepte "Baptême" comme seul niveau requis pour le type Baptême', () => {
+    expect(isTypeNiveauCompatible("Baptême", "Baptême")).toBe(true);
+  });
+
+  it("refuse une Plongée technique en dessous de son minimum (Niveau 2)", () => {
+    expect(isTypeNiveauCompatible("Plongée technique", "Niveau 1")).toBe(false);
+  });
+
+  it("accepte une Plongée technique au niveau minimum ou au-dessus", () => {
+    expect(isTypeNiveauCompatible("Plongée technique", "Niveau 2")).toBe(true);
+    expect(isTypeNiveauCompatible("Plongée technique", "Niveau 4")).toBe(true);
+  });
+
+  it("laisse une Formation ouverte à tous les niveaux, y compris Baptême", () => {
+    expect(isTypeNiveauCompatible("Formation", "Baptême")).toBe(true);
+    expect(isTypeNiveauCompatible("Formation", "Moniteur")).toBe(true);
+  });
+
+  it("accepte tout le monde quand le type ou le niveau requis est absent", () => {
+    expect(isTypeNiveauCompatible(null, "Niveau 2")).toBe(true);
+    expect(isTypeNiveauCompatible("Baptême", null)).toBe(true);
+  });
+
+  it("accepte par défaut un type inconnu de la grille (fail-open, cohérent avec le backend)", () => {
+    expect(isTypeNiveauCompatible("Type inconnu", "Baptême")).toBe(true);
+  });
+});
+
 describe("joursRestants", () => {
   // Horloge système figée à 10h — "aujourd'hui + 3h" (13h) reste alors
   // toujours le même jour calendaire. Sans ça, ce test dépendait de l'heure
@@ -185,5 +221,55 @@ describe("formatCompteARebours", () => {
 
   it("affiche 'Dans N jours' au-delà", () => {
     expect(formatCompteARebours(5)).toBe("Dans 5 jours");
+  });
+});
+
+describe("computeNoteMoyenneSeances", () => {
+  it("retourne null sans aucune séance notée", () => {
+    expect(computeNoteMoyenneSeances([])).toBeNull();
+    expect(computeNoteMoyenneSeances([{ statut: "Planifiée", note: null }])).toBeNull();
+  });
+
+  it("ignore les séances Absence, même si une note leur est associée par erreur", () => {
+    const seances = [
+      { statut: "Réalisée", note: 10 },
+      { statut: "Absence", note: 0 },
+    ];
+    expect(computeNoteMoyenneSeances(seances)).toBe(10);
+  });
+
+  it("ignore les séances Réalisée sans note (pas encore notées)", () => {
+    const seances = [
+      { statut: "Réalisée", note: 12 },
+      { statut: "Réalisée", note: null },
+    ];
+    expect(computeNoteMoyenneSeances(seances)).toBe(12);
+  });
+
+  it("moyenne plusieurs séances notées", () => {
+    const seances = [
+      { statut: "Réalisée", note: 10 },
+      { statut: "Réalisée", note: 14 },
+      { statut: "Réalisée", note: 18 },
+    ];
+    expect(computeNoteMoyenneSeances(seances)).toBe(14);
+  });
+});
+
+describe("suggestAppreciationMoniteur", () => {
+  it("retourne null sans moyenne", () => {
+    expect(suggestAppreciationMoniteur(null)).toBeNull();
+    expect(suggestAppreciationMoniteur(undefined)).toBeNull();
+  });
+
+  it("applique les seuils Insuffisant/Satisfaisant/Bien/Excellent", () => {
+    expect(suggestAppreciationMoniteur(5)).toBe("Insuffisant");
+    expect(suggestAppreciationMoniteur(9.99)).toBe("Insuffisant");
+    expect(suggestAppreciationMoniteur(10)).toBe("Satisfaisant");
+    expect(suggestAppreciationMoniteur(13.99)).toBe("Satisfaisant");
+    expect(suggestAppreciationMoniteur(14)).toBe("Bien");
+    expect(suggestAppreciationMoniteur(15.99)).toBe("Bien");
+    expect(suggestAppreciationMoniteur(16)).toBe("Excellent");
+    expect(suggestAppreciationMoniteur(20)).toBe("Excellent");
   });
 });

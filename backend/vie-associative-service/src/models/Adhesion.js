@@ -48,6 +48,15 @@ const Adhesion = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    // Verso du document ci-dessus (ex. carte d'identité/licence FFESM
+    // recto-verso) — facultatif et indépendant : un document à une seule
+    // face n'utilise que document_path, exactement comme avant l'ajout de
+    // ce champ (voir middlewares/upload.js, extraFields sur
+    // uploadAdhesionDocument).
+    document_path_verso: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
     montant_paye: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,

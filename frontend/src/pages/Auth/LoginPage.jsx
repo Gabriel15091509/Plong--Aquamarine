@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
+import toast from "react-hot-toast";
 import {
   FiMail,
   FiLock,
@@ -17,6 +18,7 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import Logo from "../../components/Common/Logo";
+import SwimmingSeaLifeBackground from "../../components/Common/SwimmingSeaLifeBackground";
 
 // Libellés de rôle courts, cohérents avec Sidebar.jsx (footer profil).
 const ROLE_LABELS = {
@@ -53,6 +55,40 @@ const LoginPage = () => {
   // propre animation d'entrée habituelle.
   const [transitioning, setTransitioning] = useState(false);
   const LOGIN_TRANSITION_MS = 500;
+
+  // Limite d'essais côté client : le limiteur serveur (authLimiter,
+  // authRoutes.js) protège contre le brute-force mais reste large (20
+  // essais/15min) et coupé en dehors de la prod — sans blocage visible
+  // ici, un mot de passe oublié pouvait être ressaisi indéfiniment sans
+  // aucune friction ni retour clair. Verrouillage progressif : la durée
+  // double à chaque nouvelle série de tentatives échouées (30s, 60s,
+  // 120s...) plutôt qu'un palier fixe, pour décourager un script qui
+  // attendrait juste la fin du délai.
+  const MAX_LOGIN_ATTEMPTS = 5;
+  const BASE_LOCKOUT_MS = 30000;
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutCount, setLockoutCount] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState(null);
+  const [lockCountdown, setLockCountdown] = useState(0);
+
+  useEffect(() => {
+    if (!lockedUntil) return undefined;
+    const tick = () => {
+      const remaining = Math.ceil((lockedUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setLockedUntil(null);
+        setLockCountdown(0);
+        setFailedAttempts(0);
+      } else {
+        setLockCountdown(remaining);
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [lockedUntil]);
+
+  const isLocked = Boolean(lockedUntil);
 
   const goToDashboardWithTransition = () => {
     setTransitioning(true);
@@ -112,11 +148,14 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLocked) return;
     setLoading(true);
     let navigating = false;
 
     try {
       const result = await login(formData.email, formData.password);
+      setFailedAttempts(0);
+      setLockoutCount(0);
 
       if (result?.otpRequired) {
         setOtpEmail(result.email);
@@ -131,7 +170,21 @@ const LoginPage = () => {
         goToDashboardWithTransition();
       }
     } catch (error) {
-      // toast.error déjà géré dans AuthContext.login()
+      // toast.error déjà géré dans AuthContext.login() pour le message
+      // d'erreur lui-même ; on ajoute ici uniquement le compteur de
+      // tentatives et le verrouillage.
+      const attempts = failedAttempts + 1;
+      if (attempts >= MAX_LOGIN_ATTEMPTS) {
+        const duration = BASE_LOCKOUT_MS * 2 ** lockoutCount;
+        setLockoutCount((prev) => prev + 1);
+        setFailedAttempts(0);
+        setLockedUntil(Date.now() + duration);
+        toast.error(
+          `Trop de tentatives échouées. Réessayez dans ${Math.round(duration / 1000)} secondes.`,
+        );
+      } else {
+        setFailedAttempts(attempts);
+      }
     } finally {
       // On laisse le bouton en état "chargement" pendant la transition vers
       // le tableau de bord plutôt que de le faire clignoter avant la
@@ -167,6 +220,11 @@ const LoginPage = () => {
       {/* Formes d'arrière-plan (statiques, discrètes) */}
       <div className="absolute top-10 left-10 w-32 h-32 bg-primary-200/20 rounded-full blur-2xl dark:bg-primary-900/20 pointer-events-none" />
       <div className="absolute bottom-20 right-10 w-40 h-40 bg-ocean-200/20 rounded-full blur-2xl dark:bg-ocean-900/20 pointer-events-none" />
+
+      {/* Faune marine (poissons, méduses, tortue) qui anime le fond, derrière
+          la carte (z-20) et l'aperçu du tableau de bord (z-10) — décor pur,
+          voir SwimmingSeaLifeBackground pour le détail de l'animation. */}
+      <SwimmingSeaLifeBackground />
 
       {/* Aperçu du tableau de bord : apparaît en fondu dès que les battants
           commencent à s'écarter, pour que le dashboard se révèle
@@ -216,11 +274,12 @@ const LoginPage = () => {
             ? { duration: 0.4, ease: "easeOut" }
             : { duration: 0.3, ease: "easeOut" }
         }
-        // 2/3 de la largeur d'écran sur ordinateur (md+), quelle que soit sa
-        // taille réelle (petit laptop ou grand moniteur) — réduit depuis
-        // 4/5, jugé trop large. Pleine largeur conservée en dessous de md
-        // (mobile) : 2/3 y serait trop étroit pour le formulaire.
-        className="relative z-20 w-full md:w-2/3 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
+        // ~63% de la largeur d'écran sur ordinateur (md+), plafonnée par
+        // max-w-5xl sur très grand moniteur — légèrement rouvert depuis 3/5
+        // (60%, jugé un peu trop étroit une fois la hauteur resserrée), entre
+        // 3/5 et 2/3. Pleine largeur conservée en dessous de md (mobile) :
+        // plus petit y serait trop étroit pour le formulaire.
+        className="relative z-20 w-full md:w-[63%] md:max-w-5xl bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20 dark:bg-gray-800/95 dark:border-gray-700/50"
       >
         {/* Découvrir le club - mobile uniquement : le bouton équivalent vit
             dans le volet de marque (photo à droite), qui est "hidden
@@ -244,10 +303,10 @@ const LoginPage = () => {
           initial="hidden"
           animate={transitioning ? { opacity: 0, x: "-100%" } : "visible"}
           transition={transitioning ? { duration: 0.4, ease: "easeIn" } : undefined}
-          className="w-full md:w-1/2 p-8 md:p-12 lg:p-16 dark:bg-gray-800/50"
+          className="w-full md:w-1/2 p-6 md:p-8 lg:p-10 dark:bg-gray-800/50"
         >
           {/* Logo */}
-          <motion.div variants={itemVariants} className="flex items-center gap-3 mb-8">
+          <motion.div variants={itemVariants} className="flex items-center gap-3 mb-6">
             <Logo size="lg" />
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-ocean-600 bg-clip-text text-transparent dark:from-primary-400 dark:to-ocean-400">
@@ -260,7 +319,7 @@ const LoginPage = () => {
           </motion.div>
 
           {/* Titre */}
-          <motion.div variants={itemVariants} className="mb-8">
+          <motion.div variants={itemVariants} className="mb-6">
             <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
               {alreadyLoggedIn ? "Déjà connecté" : otpEmail ? "Vérification" : "Connexion"}
             </h2>
@@ -282,7 +341,7 @@ const LoginPage = () => {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="space-y-6"
+              className="space-y-5"
             >
               <motion.div
                 variants={itemVariants}
@@ -334,7 +393,7 @@ const LoginPage = () => {
               initial="hidden"
               animate="visible"
               onSubmit={handleVerifyOtp}
-              className="space-y-6"
+              className="space-y-5"
             >
               <motion.div variants={itemVariants}>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -387,7 +446,7 @@ const LoginPage = () => {
           <motion.form
             variants={containerVariants}
             onSubmit={handleSubmit}
-            className="space-y-6"
+            className="space-y-5"
           >
             {/* Email */}
             <motion.div variants={itemVariants}>
@@ -401,12 +460,13 @@ const LoginPage = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  disabled={isLocked}
                   placeholder="exemple@email.com"
                   className={`w-full pl-10 pr-4 py-3 border ${
                     errors.email
                       ? "border-red-500"
                       : "border-gray-300 dark:border-gray-600"
-                  } rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400`}
+                  } rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:opacity-60 disabled:cursor-not-allowed`}
                 />
               </div>
               {errors.email && (
@@ -433,12 +493,13 @@ const LoginPage = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
+                  disabled={isLocked}
                   placeholder="••••••••"
                   className={`w-full pl-10 pr-12 py-3 border ${
                     errors.password
                       ? "border-red-500"
                       : "border-gray-300 dark:border-gray-600"
-                  } rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400`}
+                  } rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:opacity-60 disabled:cursor-not-allowed`}
                 />
                 <button
                   type="button"
@@ -489,13 +550,26 @@ const LoginPage = () => {
               </Link>
             </motion.div>
 
+            {/* Verrouillage temporaire après trop d'essais échoués */}
+            {isLocked && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/40 text-sm text-red-600 dark:text-red-400"
+              >
+                <FiShield className="w-4 h-4 shrink-0" />
+                Trop de tentatives échouées. Réessayez dans {lockCountdown}{" "}
+                seconde{lockCountdown > 1 ? "s" : ""}.
+              </motion.div>
+            )}
+
             {/* Bouton de connexion */}
             <motion.div variants={itemVariants}>
               <motion.button
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
                 type="submit"
-                disabled={loading}
+                disabled={loading || isLocked}
                 className="w-full py-3 bg-gradient-to-r from-primary-500 to-ocean-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {loading ? (
@@ -511,6 +585,11 @@ const LoginPage = () => {
                     />
                     Connexion en cours...
                   </>
+                ) : isLocked ? (
+                  <>
+                    <FiLock className="w-5 h-5" />
+                    Verrouillé ({lockCountdown}s)
+                  </>
                 ) : (
                   <>
                     <FiLogIn className="w-5 h-5" />
@@ -523,11 +602,11 @@ const LoginPage = () => {
           )}
 
           {/* Footer */}
-          <motion.div variants={itemVariants} className="mt-8 text-center">
+          <motion.div variants={itemVariants} className="mt-6 text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">
               © 2024 Plongée Club. Tous droits réservés.
             </p>
-            <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-400 dark:text-gray-500">
+            <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-400 dark:text-gray-500">
               {[
                 { Icon: FiLock, text: "Connexion sécurisée" },
                 { Icon: FiCreditCard, text: "Paiement sécurisé" },
@@ -552,7 +631,7 @@ const LoginPage = () => {
               ? { duration: 0.4, ease: "easeIn" }
               : { duration: 0.3, delay: 0.1, ease: "easeOut" }
           }
-          className="hidden md:flex w-1/2 relative bg-primary-900 p-8 overflow-hidden items-center justify-center"
+          className="hidden md:flex w-1/2 relative bg-primary-900 p-6 overflow-hidden items-center justify-center"
         >
           {/* Photo de fond (plongeur en eau bleue) : remplace l'ancien
               aplat "tout dégradé" par une image de notre domaine, plus
@@ -607,7 +686,7 @@ const LoginPage = () => {
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: 0.15, ease: "easeOut" }}
-              className="relative w-80 h-80 mx-auto -mt-8 flex items-center justify-center"
+              className="relative w-64 h-64 mx-auto -mt-4 flex items-center justify-center"
             >
               <motion.div
                 animate={{ scale: [1, 1.08, 1], opacity: [0.2, 0.4, 0.2] }}
@@ -619,7 +698,7 @@ const LoginPage = () => {
                 transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
                 className="relative"
               >
-                <Logo size="xl" className="w-64 h-64" />
+                <Logo size="xl" className="w-48 h-48" />
               </motion.div>
 
               {/* Icônes décoratives, flottement discret */}
@@ -657,7 +736,7 @@ const LoginPage = () => {
                 de AboutPage.jsx (pastille verre dépoli + titre large en
                 drop-shadow, pour rester lisible sur la photo). */}
             <motion.div
-              className="text-center mt-6 px-6"
+              className="text-center mt-4 px-6"
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: 0.25, ease: "easeOut" }}
@@ -665,7 +744,7 @@ const LoginPage = () => {
               <span className="inline-block px-3 py-1 mb-3 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full text-[11px] font-semibold uppercase tracking-widest text-white/90">
                 Aquanature Plongée
               </span>
-              <h2 className="text-4xl font-bold text-white mb-3 tracking-tight text-balance drop-shadow-sm">
+              <h2 className="text-3xl font-bold text-white mb-3 tracking-tight text-balance drop-shadow-sm">
                 Bienvenue dans le club
               </h2>
               <p className="text-white/80 text-base leading-relaxed max-w-xs mx-auto">

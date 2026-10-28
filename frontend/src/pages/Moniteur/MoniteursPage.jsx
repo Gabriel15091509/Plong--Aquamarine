@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiPlus, FiAward } from "react-icons/fi";
 import { useMoniteurs } from "../../hooks/Moniteur/useMoniteurs";
+import { usePresidents } from "../../hooks/President/usePresidents";
 import MoniteurList from "../../components/Moniteur/MoniteurList";
 
 import ErrorState from "../../components/Common/ErrorState";
@@ -13,9 +14,19 @@ import ErrorState from "../../components/Common/ErrorState";
  */
 const MoniteursPage = () => {
   const { useGetAll } = useMoniteurs();
+  const { useGetAll: useGetAllPresidents } = usePresidents();
   const { data, isLoading, error } = useGetAll();
+  const { data: presidentsData } = useGetAllPresidents();
 
-  const moniteurs = data?.data || [];
+  // Même exclusion que MoniteurList.jsx (un président est nécessairement
+  // aussi moniteur, President.id_moniteur) : ce compteur doit refléter ce
+  // qui est réellement listé en dessous, pas la table brute.
+  const idsMoniteursPresidents = new Set(
+    (presidentsData?.data || []).map((p) => p.id_moniteur),
+  );
+  const moniteurs = (data?.data || []).filter(
+    (m) => !idsMoniteursPresidents.has(m.id_moniteur),
+  );
 
   // Gestion de l'état d'erreur — le chargement est géré par MoniteurList
   // elle-même (son propre squelette liste), pour éviter un double reflet.

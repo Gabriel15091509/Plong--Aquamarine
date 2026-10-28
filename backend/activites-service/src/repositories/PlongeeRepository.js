@@ -70,6 +70,14 @@ class PlongeeRepository extends BaseRepository {
     });
   }
 
+  // COUNT léger pour le badge Sidebar (voir InscriptionRepository.
+  // countPending, même motif) : évite de rapatrier tout `findAll()` (déjà
+  // club-wide, non filtré par rôle — voir PlongeeService.getAll) juste pour
+  // en compter les lignes non validées côté client.
+  async countAValider() {
+    return await this.model.count({ where: { id_moniteur_validateur: null } });
+  }
+
   // Un adhérent par ligne, avec la date de sa dernière plongée enregistrée —
   // ne couvre que les adhérents ayant déjà plongé au moins une fois (un
   // adhérent qui n'a jamais plongé n'a pas de "dernière plongée" à comparer).

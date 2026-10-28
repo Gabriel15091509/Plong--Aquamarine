@@ -55,6 +55,27 @@ class MoniteurController extends BaseController {
     }
   }
 
+  async updateDisponibilite(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { disponible, cause } = req.body;
+      const result = await this.moniteurService.updateDisponibilite(
+        id,
+        { disponible, cause },
+        req.user,
+      );
+      res.json({
+        success: true,
+        data: result,
+        message: disponible
+          ? "Moniteur marqué disponible"
+          : "Moniteur marqué indisponible",
+      });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async validateBeforeCreate(req, res, next) {
     const errors = await this.moniteurService.validateMoniteurData(req.body);
     if (errors.length > 0) {

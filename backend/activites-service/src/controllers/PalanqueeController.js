@@ -18,6 +18,17 @@ class PalanqueeController extends BaseController {
     }
   }
 
+  // Voir PalanqueeService.getAllLight — libellés seuls (id/nom/sortie/
+  // statut), sans composers ni enrichissement adhérent.
+  async getAllLight(req, res, next) {
+    try {
+      const results = await this.palanqueeService.getAllLight();
+      res.json({ success: true, data: results, count: results.length });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async getById(req, res, next) {
     try {
       const { id } = req.params;

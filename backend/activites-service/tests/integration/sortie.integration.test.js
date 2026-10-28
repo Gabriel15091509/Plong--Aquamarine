@@ -11,7 +11,7 @@
 const jwt = require("jsonwebtoken");
 const request = require("supertest");
 const { app } = require("../../src/app");
-const { sequelize, Sortie } = require("../../src/models");
+const { sequelize, Sortie, Inscription } = require("../../src/models");
 
 function tokenFor(role) {
   return jwt.sign(
@@ -143,4 +143,64 @@ test("cycle complet POST → GET → PUT → DELETE pour une sortie", async () =
     .get(`/api/sorties/${id}`)
     .set("Authorization", `Bearer ${presidentToken}`);
   expect(getAfterDelete.status).toBe(404);
+});
+
+test("passage manuel du statut à 'En cours' annule les inscriptions non confirmées, sans toucher les Confirmée", async () => {
+  const sortie = await Sortie.create({
+    type: "Plongée",
+    lieu: "Saint-Leu",
+    site: "Fixture intégration (En cours)",
+    date_heure: "2026-12-15T08:00:00.000Z",
+    nb_places: 6,
+    niveau_requis: "Niveau 1",
+    profondeur_max: 15,
+    duree_estimee: "00:40:00",
+    date_ouverture_inscriptions: "2026-11-15T00:00:00.000Z",
+  });
+
+  // num_adherent est un VARCHAR(20) (voir Inscription.js) — valeurs de
+  // fixture volontairement courtes pour y tenir.
+  const enAttente = await Inscription.create({
+    num_adherent: "TEST-EN-ATTENTE",
+    id_sortie: sortie.id_sortie,
+    statut: "En attente",
+  });
+  const listeAttente = await Inscription.create({
+    num_adherent: "TEST-LISTE-ATT",
+    id_sortie: sortie.id_sortie,
+    statut: "Liste d'attente",
+    rang_liste_attente: 1,
+  });
+  const confirmee = await Inscription.create({
+    num_adherent: "TEST-CONFIRMEE",
+    id_sortie: sortie.id_sortie,
+    statut: "Confirmée",
+  });
+
+  try {
+    const putRes = await request(app)
+      .put(`/api/sorties/${sortie.id_sortie}`)
+      .set("Authorization", `Bearer ${presidentToken}`)
+      .send({ statut: "En cours" });
+    expect(putRes.status).toBe(200);
+    expect(putRes.body.data.statut).toBe("En cours");
+
+    await enAttente.reload();
+    await listeAttente.reload();
+    await confirmee.reload();
+
+    expect(enAttente.statut).toBe("Annulée");
+    expect(enAttente.rang_liste_attente).toBeNull();
+    expect(listeAttente.statut).toBe("Annulée");
+    expect(listeAttente.rang_liste_attente).toBeNull();
+    // La seule qui ne doit jamais être touchée par ce mécanisme.
+    expect(confirmee.statut).toBe("Confirmée");
+  } finally {
+    await Promise.all([
+      enAttente.destroy(),
+      listeAttente.destroy(),
+      confirmee.destroy(),
+    ]);
+    await sortie.destroy();
+  }
 });

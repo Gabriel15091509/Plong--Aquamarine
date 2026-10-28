@@ -14,6 +14,7 @@ class InscriptionController extends BaseController {
       const results = await this.inscriptionService.getAll(
         req.user,
         req.headers.authorization,
+        { withAdherentInfo: req.query.include_adherent === "true" },
       );
       res.json({
         success: true,
@@ -27,6 +28,16 @@ class InscriptionController extends BaseController {
         message: error.message,
         data: [],
       });
+    }
+  }
+
+  async getPendingCount(req, res) {
+    try {
+      const count = await this.inscriptionService.getPendingCount(req.user);
+      res.json({ success: true, data: { count } });
+    } catch (error) {
+      console.error("Erreur getPendingCount:", error);
+      res.status(500).json({ success: false, message: error.message, data: { count: 0 } });
     }
   }
 

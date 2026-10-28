@@ -132,6 +132,56 @@ class SortieController extends BaseController {
     }
   }
 
+  async annulerPourMeteo(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await this.sortieService.annulerPourMeteo(
+        parseInt(id),
+        req.headers.authorization,
+        req.user,
+      );
+      res.json({
+        success: true,
+        data: result,
+        message: "Sortie annulée pour cause météorologique.",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  async getPropositionsReprogrammation(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await this.sortieService.getPropositionsReprogrammation(parseInt(id));
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  async replanifier(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await this.sortieService.replanifier(
+        parseInt(id),
+        req.body,
+        req.user,
+        req.headers.authorization,
+      );
+      res.json({
+        success: true,
+        data: result,
+        message: "Sortie replanifiée.",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async getPointage(req, res, next) {
     try {
       const { id } = req.params;
@@ -165,6 +215,7 @@ class SortieController extends BaseController {
         inscriptions,
         userId,
         req.headers.authorization,
+        req.user,
       );
 
       res.json({
@@ -188,6 +239,7 @@ class SortieController extends BaseController {
         parseInt(id_inscription),
         data,
         userId,
+        req.user,
       );
 
       res.json({
@@ -209,6 +261,7 @@ class SortieController extends BaseController {
       const result = await this.sortieService.annulerPointage(
         parseInt(id_inscription),
         userId,
+        req.user,
       );
 
       res.json({
@@ -243,6 +296,59 @@ class SortieController extends BaseController {
     }
   }
 
+  // Réservé aux participants de la sortie (voir SortieService
+  // .assertCanAccessPhotos) — jamais renvoyé par getById ci-dessus, qui
+  // s'adresse à n'importe quel authentifié parcourant la liste.
+  async getPhotos(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await this.sortieService.getPhotos(parseInt(id), req.user);
+      res.json({
+        success: true,
+        data: result,
+        count: result.length,
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  async addPhotos(req, res, next) {
+    try {
+      const { id } = req.params;
+      const result = await this.sortieService.addPhotos(
+        parseInt(id),
+        req.body.urls,
+        req.user,
+      );
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: "Photo(s) ajoutée(s) avec succès",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
+  async removePhoto(req, res, next) {
+    try {
+      const { id, photoId } = req.params;
+      const result = await this.sortieService.removePhoto(
+        parseInt(id),
+        photoId,
+        req.user,
+      );
+      res.json({
+        success: true,
+        data: result,
+        message: "Photo supprimée avec succès",
+      });
+    } catch (error) {
+      next(withStatus(error, 400));
+    }
+  }
+
   async create(req, res, next) {
     try {
       const result = await this.sortieService.create(req.body);
@@ -259,7 +365,12 @@ class SortieController extends BaseController {
   async update(req, res, next) {
     try {
       const { id } = req.params;
-      const result = await this.sortieService.update(parseInt(id), req.body);
+      const result = await this.sortieService.update(
+        parseInt(id),
+        req.body,
+        req.user,
+        req.headers.authorization,
+      );
       res.json({
         success: true,
         data: result,
@@ -273,7 +384,7 @@ class SortieController extends BaseController {
   async delete(req, res, next) {
     try {
       const { id } = req.params;
-      await this.sortieService.delete(parseInt(id));
+      await this.sortieService.delete(parseInt(id), req.user);
       res.json({
         success: true,
         message: "Sortie supprimée avec succès",

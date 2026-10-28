@@ -325,6 +325,12 @@ services:
         sync: false
       - key: EMAIL_FROM
         value: Club de Plongée <no-reply@aquanature-plongee.fr>
+      # Lien "Reconfirmer mon inscription" dans l'email de replanification
+      # météo (utils/email.js:sendReconfirmationInscriptionEmail) — même
+      # valeur que gateway-service (voir son propre bloc plus bas), à
+      # ajuster pareillement si le nom du projet Cloudflare Pages change.
+      - key: FRONTEND_URL
+        value: https://aquanature-plongee.pages.dev
 
   # ==================== GATEWAY (passerelle publique) ====================
   - type: web

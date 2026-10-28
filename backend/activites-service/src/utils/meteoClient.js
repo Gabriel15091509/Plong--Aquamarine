@@ -102,7 +102,7 @@ async function getForecastForDate({ latitude, longitude, date }) {
       `${FORECAST_URL}?latitude=${latitude}&longitude=${longitude}&daily=weathercode,windspeed_10m_max,windgusts_10m_max,precipitation_sum&timezone=auto&past_days=${pastDays}&forecast_days=${Math.min(forecastDays, 16)}`,
     ),
     fetchJson(
-      `${MARINE_URL}?latitude=${latitude}&longitude=${longitude}&daily=wave_height_max&timezone=auto&past_days=${pastDays}&forecast_days=${Math.min(forecastDays, MARINE_FORECAST_DAYS_MAX)}`,
+      `${MARINE_URL}?latitude=${latitude}&longitude=${longitude}&daily=wave_height_max&hourly=ocean_current_velocity&timezone=auto&past_days=${pastDays}&forecast_days=${Math.min(forecastDays, MARINE_FORECAST_DAYS_MAX)}`,
     ).catch(() => null),
   ]);
 
@@ -111,6 +111,13 @@ async function getForecastForDate({ latitude, longitude, date }) {
   const weathercode = extractDayValue(forecast?.daily, dateStr, "weathercode");
   const precipitation = extractDayValue(forecast?.daily, dateStr, "precipitation_sum");
   const waveHeight = marine ? extractDayValue(marine.daily, dateStr, "wave_height_max") : null;
+  // Courant de surface (km/h) : max des relevés horaires du jour — l'API
+  // marine ne le propose pas en agrégat quotidien. Sert à pré-remplir le
+  // champ "Courant" d'une plongée (voir PlongeeList.jsx).
+  const courants = (marine?.hourly?.time || [])
+    .map((t, i) => (t.startsWith(dateStr) ? marine.hourly.ocean_current_velocity?.[i] : null))
+    .filter((v) => typeof v === "number");
+  const currentVelocity = courants.length > 0 ? Math.max(...courants) : null;
 
   if (windspeed === null && weathercode === null && waveHeight === null) {
     return null;
@@ -123,6 +130,7 @@ async function getForecastForDate({ latitude, longitude, date }) {
     weathercode,
     precipitation,
     waveHeight,
+    currentVelocity,
     ...(offset < 0 ? { historique: true } : {}),
   };
 }

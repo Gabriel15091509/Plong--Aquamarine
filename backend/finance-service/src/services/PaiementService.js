@@ -315,12 +315,41 @@ class PaiementService extends BaseService {
     return paiement;
   }
 
-  async processPayment(id) {
+  // `ajustements` (optionnel) : ce que le trésorier corrige au moment
+  // d'encaisser — montant réellement reçu, mode de règlement, référence
+  // (n° de chèque/virement), date d'encaissement. Sans ajustement, valide
+  // le paiement tel qu'enregistré.
+  async processPayment(id, ajustements = {}) {
     const payment = await this.getById(id);
     if (!payment) throw new Error('Paiement non trouvé');
 
     if (payment.statut === 'Payé') {
       throw new Error('Ce paiement a déjà été validé');
+    }
+
+    const { montant, mode, reference_id, date_paiement } = ajustements;
+    if (montant !== undefined && montant !== null && montant !== '') {
+      const value = Number(montant);
+      if (!Number.isFinite(value) || value <= 0) {
+        throw new Error('Le montant doit être un nombre positif');
+      }
+      payment.montant = value;
+    }
+    if (mode !== undefined && mode !== null && mode !== '') {
+      if (!['Espèces', 'Carte', 'Chèque', 'Virement'].includes(mode)) {
+        throw new Error('Mode de paiement invalide');
+      }
+      payment.mode = mode;
+    }
+    if (reference_id !== undefined) {
+      payment.reference_id = String(reference_id).trim().slice(0, 50) || null;
+    }
+    if (date_paiement) {
+      const date = new Date(date_paiement);
+      if (Number.isNaN(date.getTime())) {
+        throw new Error("La date d'encaissement est invalide");
+      }
+      payment.date_paiement = date;
     }
 
     payment.statut = 'Payé';

@@ -7,11 +7,20 @@ class MaterielRepository extends BaseRepository {
     super(Materiel);
   }
 
+  // "Disponible" = en bon état, pas de révision technique en retard, ET
+  // physiquement au club (pas déjà prêté, pas en réparation — voir
+  // LOCALISATION_MATERIEL_OPTIONS côté frontend). Un matériel sans échéance
+  // programmée (masque, palmes...) reste disponible : Op.gte sur une colonne
+  // NULL vaudrait NULL (donc exclu à tort) sans le Op.or ci-dessous.
   async findAvailableMateriel() {
     return await this.model.findAll({
       where: {
         etat: ["Neuf", "Bon"],
-        date_prochaine_echeance: { [Op.gte]: new Date() },
+        localisation: "Local",
+        [Op.or]: [
+          { date_prochaine_echeance: null },
+          { date_prochaine_echeance: { [Op.gte]: new Date() } },
+        ],
       },
     });
   }

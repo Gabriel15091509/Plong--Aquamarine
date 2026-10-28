@@ -97,6 +97,15 @@ class CertificatMedicalController extends BaseController {
     }
   }
 
+  async getEnAttenteValidationCount(req, res, next) {
+    try {
+      const count = await this.certificatService.getEnAttenteValidationCount();
+      res.json({ success: true, data: { count } });
+    } catch (error) {
+      next(withStatus(error, 500));
+    }
+  }
+
   async getValidCertificates(req, res, next) {
     try {
       const results = await this.certificatService.getValidCertificates();

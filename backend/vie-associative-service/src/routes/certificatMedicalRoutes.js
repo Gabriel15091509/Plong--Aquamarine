@@ -9,6 +9,9 @@ const certificatController = new CertificatMedicalController();
 
 router.get('/', AuthMiddleware.authenticate, certificatController.getAll.bind(certificatController));
 router.get('/valid', AuthMiddleware.authenticate, certificatController.getValidCertificates.bind(certificatController));
+// Badge Sidebar (voir CertificatMedicalController.getEnAttenteValidationCount)
+// — avant "/:id" pour ne pas être avalée par cette route générique.
+router.get('/en-attente-validation-count', AuthMiddleware.authenticate, certificatController.getEnAttenteValidationCount.bind(certificatController));
 router.get('/expired', AuthMiddleware.authenticate, certificatController.getExpiredCertificates.bind(certificatController));
 router.get('/expiring-soon', certificatController.getExpiringSoon.bind(certificatController));
 router.get('/adherent/:num_adherent', AuthMiddleware.authenticate, certificatController.getByAdherent.bind(certificatController));

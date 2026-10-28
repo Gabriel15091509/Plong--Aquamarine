@@ -13,16 +13,25 @@ import {
   FiDollarSign,
   FiX,
   FiSearch,
+  FiFilter,
+  FiList,
+  FiGrid,
+  FiRefreshCw,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import ConfirmModal from "../Common/ConfirmModal";
 import BulkActionBar from "../Common/BulkActionBar";
+import Pagination from "../Common/Pagination";
 import { useReparations } from "../../hooks/Reparation/useReparations";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
 import { useSelection } from "../../hooks/useSelection";
 import { formatDate, formatCurrency } from "../../utils/helpers";
 import reparationService from "../../services/Reparation/reparationService";
+import ReparationFormModal from "./ReparationFormModal";
+import ReparationDetails from "./ReparationDetails";
+import TabBar from "../Common/TabBar";
+import { MATERIEL_TABS } from "../../constants/materielTabs";
 
 import ErrorState from "../Common/ErrorState";
 
@@ -31,16 +40,27 @@ const ReparationList = () => {
   const { useGetAll: useGetAllMateriels } = useMateriels();
 
   const { data, isLoading, error, refetch } = useGetAll();
-  const { data: materielsData, isLoading: loadingMateriels } =
+  const { data: materielsData } =
     useGetAllMateriels();
   const remove = useRemove();
   const selection = useSelection();
 
+  const [showFilters, setShowFilters] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
   const [deleteModal, setDeleteModal] = useState(null);
   const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  // Clé de l'action en cours (`delete-<id>`) : seule l'icône de la ligne
+  // concernée passe en spinner (même motif que InscriptionList.jsx).
+  const [actionLoading, setActionLoading] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  // Vue grille par défaut (cartes verticales, comme SortiesPage/AdherentList)
+  // : mieux adapté au mobile que les lignes horizontales de la vue liste.
+  const [viewMode, setViewMode] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth < 640 ? "grid" : "list",
+  );
 
   const materielMap = useMemo(() => {
     const map = {};
@@ -71,12 +91,45 @@ const ReparationList = () => {
     });
   }, [allReparations, materielMap, filter, searchTerm]);
 
+  // Regroupement par matériel (même principe que AdhesionList, regroupé par
+  // adhérent) : les réparations d'un même matériel doivent apparaître
+  // ensemble à l'affichage — ça suppose qu'elles soient déjà contiguës dans
+  // la liste, d'où ce tri par nom de matériel (alphabétique), puis par date
+  // de constat la plus récente en premier au sein d'un même matériel
+  // (historique de pannes successives sur le même équipement).
+  const sortedReparations = useMemo(() => {
+    return [...filteredReparations].sort((a, b) => {
+      const nameA = (
+        materielMap[a.num_inventaire] || `Matériel #${a.num_inventaire}`
+      ).toLowerCase();
+      const nameB = (
+        materielMap[b.num_inventaire] || `Matériel #${b.num_inventaire}`
+      ).toLowerCase();
+      const cmp = nameA.localeCompare(nameB, "fr");
+      if (cmp !== 0) return cmp;
+      return new Date(b.date_constat || 0) - new Date(a.date_constat || 0);
+    });
+  }, [filteredReparations, materielMap]);
+
+  const totalPages = Math.ceil(sortedReparations.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedReparations = sortedReparations.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
   const handleDelete = async (id) => {
+    // Ferme la modale dès le lancement : elle masquerait sinon le spinner
+    // de la ligne pendant la requête.
+    setDeleteModal(null);
+    setActionLoading(`delete-${id}`);
     try {
       await remove.mutateAsync(id);
-      setDeleteModal(null);
+      await refetch();
     } catch (error) {
       // toast déjà géré par le hook useRemove
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -95,12 +148,17 @@ const ReparationList = () => {
     }
   };
 
-  if (isLoading || loadingMateriels) return <LoadingSpinner variant="list" />;
+  // N'attend que la propre liste : materielsData ne sert qu'au libellé
+  // affiché (materielMap), avec repli "Matériel #<num_inventaire>" déjà
+  // prévu tant qu'il n'est pas encore chargé — chargement progressif.
+  if (isLoading) return <LoadingSpinner variant="list" />;
   if (error) return <ErrorState onRetry={refetch} />;
 
   if (filteredReparations.length === 0) {
     return (
-      <motion.div
+      <div className="space-y-4">
+        <TabBar tabs={MATERIEL_TABS} />
+        <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-lg"
@@ -134,13 +192,29 @@ const ReparationList = () => {
         >
           <FiPlus className="w-4 h-4" /> Nouvelle réparation
         </Link>
-      </motion.div>
+        <ReparationFormModal />
+        <ReparationDetails />
+        </motion.div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <TabBar tabs={MATERIEL_TABS} />
+      {/* Bouton "Filtres" (mobile uniquement) : recherche + filtres
+          repliés par défaut pour ne pas encombrer l'écran — un tap les
+          affiche. Toujours visibles à partir de sm (recherche fréquente
+          sur grand écran, pas besoin de la cacher). */}
+      <button
+        type="button"
+        onClick={() => setShowFilters((v) => !v)}
+        className="sm:hidden inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+      >
+        {showFilters ? <FiX className="w-4 h-4" /> : <FiFilter className="w-4 h-4" />}
+        Filtres
+      </button>
+      <div className={`${showFilters ? "flex" : "hidden"} flex-col gap-3 sm:flex sm:flex-row`}>
         <div className="relative flex-1">
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -168,17 +242,45 @@ const ReparationList = () => {
             <FiPlus className="w-4 h-4" />
             Nouvelle
           </Link>
+          <div className="col-span-2 flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-gray-100 p-1 dark:border-gray-700 dark:bg-gray-800 sm:col-auto">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              title="Vue grille"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "grid"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              title="Vue liste"
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "list"
+                  ? "bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+            >
+              <FiList className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="flex items-center gap-2 px-1">
         <input
           type="checkbox"
-          checked={selection.allSelected(filteredReparations.map((r) => r.id_reparation))}
-          onChange={() => selection.toggleAll(filteredReparations.map((r) => r.id_reparation))}
+          checked={selection.allSelected(paginatedReparations.map((r) => r.id_reparation))}
+          onChange={() => selection.toggleAll(paginatedReparations.map((r) => r.id_reparation))}
           className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
         />
-        <span className="text-sm text-gray-500 dark:text-gray-400">Tout sélectionner</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          Tout sélectionner (page courante)
+        </span>
       </div>
       <BulkActionBar
         count={selection.selectedCount}
@@ -187,12 +289,150 @@ const ReparationList = () => {
       />
 
       <AnimatePresence>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid gap-3">
-          {filteredReparations.map((reparation) => {
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className={
+            viewMode === "grid"
+              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              : "grid gap-3"
+          }
+        >
+          {(() => {
+            // En-tête de groupe seulement s'il y a plus d'un matériel sur la
+            // page courante — avec un seul groupe (ex. recherche déjà ciblée
+            // sur un matériel), un unique en-tête ne ferait que répéter ce
+            // qu'affiche déjà le contexte. paginatedReparations est trié par
+            // matériel (voir sortedReparations plus haut), donc un même
+            // matériel y est toujours contigu : comparer au précédent
+            // suffit à détecter chaque changement de groupe. Fonction
+            // partagée entre les deux modes d'affichage (grille/liste)
+            // ci-dessous — même logique, même en-tête.
+            const showGroupHeaders =
+              new Set(paginatedReparations.map((r) => r.num_inventaire)).size >
+              1;
+            let previousNumInventaire;
+            const renderGroupHeader = (reparation, materielName) => {
+              const isNewGroup =
+                showGroupHeaders &&
+                reparation.num_inventaire !== previousNumInventaire;
+              previousNumInventaire = reparation.num_inventaire;
+              if (!isNewGroup) return null;
+              return (
+                <div className="col-span-full flex items-center gap-2 px-1 pt-4 mt-1 border-t border-gray-100 dark:border-gray-700 first:mt-0 first:pt-0 first:border-t-0">
+                  <FiTool className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                  <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                    {materielName}
+                  </h3>
+                </div>
+              );
+            };
+
+            return viewMode === "grid"
+            ? paginatedReparations.map((reparation) => {
+                const isEnCours = !reparation.date_retour;
+                const materielName =
+                  materielMap[reparation.num_inventaire] ||
+                  `Matériel #${reparation.num_inventaire}`;
+                const groupHeader = renderGroupHeader(reparation, materielName);
+                return (
+                  <React.Fragment key={reparation.id_reparation}>
+                  {groupHeader}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
+                  >
+                    <div
+                      className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                        isEnCours
+                          ? "bg-orange-100 dark:bg-orange-900/30"
+                          : "bg-green-100 dark:bg-green-900/30"
+                      }`}
+                    >
+                      {isEnCours ? (
+                        <FiClock className="w-7 h-7 text-orange-600 dark:text-orange-400" />
+                      ) : (
+                        <FiCheckCircle className="w-7 h-7 text-green-600 dark:text-green-400" />
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-indigo-700 dark:text-indigo-400 mt-3 break-words w-full">
+                      {reparation.prestataire}
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                      {reparation.description_panne}
+                    </p>
+                    <p className="flex items-center justify-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <FiCalendar className="w-3.5 h-3.5 flex-shrink-0" />
+                      {formatDate(reparation.date_constat)}
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
+                      {reparation.cout && (
+                        <span className="flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-gray-300">
+                          <FiDollarSign className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                          {formatCurrency(reparation.cout)}
+                        </span>
+                      )}
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          isEnCours
+                            ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                            : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        }`}
+                      >
+                        {isEnCours ? "En cours" : "Terminée"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-center gap-1 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 w-full">
+                      <input
+                        type="checkbox"
+                        checked={selection.isSelected(reparation.id_reparation)}
+                        onChange={() => selection.toggle(reparation.id_reparation)}
+                        className="mr-1 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                        title="Sélectionner"
+                      />
+                      <Link
+                        to={`/reparations/${reparation.id_reparation}`}
+                        className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                        title="Voir"
+                      >
+                        <FiEye className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        to={`/reparations/edit/${reparation.id_reparation}`}
+                        className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                        title="Modifier"
+                      >
+                        <FiEdit className="w-4 h-4" />
+                      </Link>
+                      <button
+                        onClick={() => setDeleteModal(reparation.id_reparation)}
+                        disabled={actionLoading === `delete-${reparation.id_reparation}`}
+                        className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                        title="Supprimer"
+                      >
+                        {actionLoading === `delete-${reparation.id_reparation}` ? (
+                          <FiRefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <FiTrash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </motion.div>
+                  </React.Fragment>
+                );
+              })
+            : paginatedReparations.map((reparation) => {
             const isEnCours = !reparation.date_retour;
+            const materielName =
+              materielMap[reparation.num_inventaire] ||
+              `Matériel #${reparation.num_inventaire}`;
+            const groupHeader = renderGroupHeader(reparation, materielName);
             return (
+              <React.Fragment key={reparation.id_reparation}>
+              {groupHeader}
               <motion.div
-                key={reparation.id_reparation}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
@@ -225,14 +465,9 @@ const ReparationList = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-gray-900 dark:text-white">
-                            {materielMap[reparation.num_inventaire] ||
-                              `Matériel #${reparation.num_inventaire}`}
-                          </h3>
-                          <span className="text-sm text-gray-400 dark:text-gray-500">•</span>
-                          <span className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
+                          <h3 className="font-semibold text-indigo-700 dark:text-indigo-400 break-words">
                             {reparation.prestataire}
-                          </span>
+                          </h3>
                         </div>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
                           {reparation.description_panne}
@@ -271,20 +506,33 @@ const ReparationList = () => {
                         </Link>
                         <button
                           onClick={() => setDeleteModal(reparation.id_reparation)}
-                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          disabled={actionLoading === `delete-${reparation.id_reparation}`}
+                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
                           title="Supprimer"
                         >
-                          <FiTrash2 className="w-4 h-4" />
+                          {actionLoading === `delete-${reparation.id_reparation}` ? (
+                            <FiRefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <FiTrash2 className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
               </motion.div>
+              </React.Fragment>
             );
-          })}
+          });
+          })()}
         </motion.div>
       </AnimatePresence>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
       <ConfirmModal
         isOpen={!!deleteModal}
@@ -300,6 +548,9 @@ const ReparationList = () => {
         onCancel={() => setBulkDeleteModal(false)}
         onConfirm={handleBulkDelete}
       />
+
+      <ReparationFormModal />
+      <ReparationDetails />
     </div>
   );
 };

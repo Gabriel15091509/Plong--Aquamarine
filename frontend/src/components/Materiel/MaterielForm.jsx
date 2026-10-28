@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import {
@@ -23,6 +23,7 @@ import {
   FiBatteryCharging,
 } from "react-icons/fi";
 import { useMateriels } from "../../hooks/Materiel/useMateriels";
+import { useCloseFormModal } from "../../hooks/useFormModal";
 import LoadingSpinner from "../Common/LoadingSpinner";
 import {
   CATEGORIE_MATERIEL_OPTIONS,
@@ -39,7 +40,9 @@ const fadeInUp = {
 };
 
 const MaterielForm = () => {
-  const navigate = useNavigate();
+  // Ferme la modale en revenant sur la page d'où elle a été ouverte si elle
+  // vient de là, sinon sur la liste des matériels — voir useCloseFormModal.
+  const closeModal = useCloseFormModal("/materiels");
   const { id } = useParams();
   const editMode = !!id;
 
@@ -162,7 +165,7 @@ const MaterielForm = () => {
           formData: photoFormData,
         });
       }
-      navigate("/materiels");
+      closeModal();
     } catch (error) {
       console.error("Échec de l'enregistrement du matériel :", error);
       toast.error(
@@ -190,32 +193,7 @@ const MaterielForm = () => {
     "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5";
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      onSubmit={handleSubmit}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
-    >
-      {/* En-tête */}
-      <div className="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {editMode ? "Modifier le matériel" : "Nouveau matériel"}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {editMode
-                ? "Mettez à jour les informations du matériel"
-                : "Ajoutez un nouvel équipement"}
-            </p>
-          </div>
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <FiPackage className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-      </div>
-
+    <form onSubmit={handleSubmit}>
       {/* Corps du formulaire */}
       <div className="p-6 space-y-6">
         <motion.div {...fadeInUp} className="flex items-center gap-4">
@@ -598,10 +576,10 @@ const MaterielForm = () => {
       </div>
 
       {/* Pied de page */}
-      <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
+      <div className="sticky bottom-0 px-6 py-4 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row justify-end gap-3">
         <button
           type="button"
-          onClick={() => navigate("/materiels")}
+          onClick={closeModal}
           className="inline-flex items-center justify-center gap-2 px-5 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
         >
           <FiX className="w-4 h-4" />
@@ -621,7 +599,7 @@ const MaterielForm = () => {
           {editMode ? "Mettre à jour" : "Créer le matériel"}
         </button>
       </div>
-    </motion.form>
+    </form>
   );
 };
 

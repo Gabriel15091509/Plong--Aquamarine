@@ -1,8 +1,14 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
+// Le service worker (Workbox, via vite-plugin-pwa) a été retiré : sa mise en
+// cache HTTP (stratégie StaleWhileRevalidate) était pensée pour accélérer
+// les rechargements, mais a fini par ajouter une couche de complexité et de
+// comportements inattendus (voir src/main.jsx pour le nettoyage côté client
+// des installations existantes). Le site fonctionne désormais en ligne
+// classique, sans aucune couche de cache/rejeu applicative entre le
+// navigateur et l'API.
 export default defineConfig({
   test: {
     environment: "jsdom",
@@ -10,50 +16,7 @@ export default defineConfig({
     globals: true,
     css: false,
   },
-  plugins: [
-    react(),
-    VitePWA({
-      strategies: "injectManifest",
-      srcDir: "src",
-      filename: "sw.js",
-      injectRegister: false,
-      registerType: "autoUpdate",
-      devOptions: { enabled: false },
-      injectManifest: {
-        // opencv.js (~13 Mo) est chargé à la demande via une balise <script>
-        // (voir documentScanner.js) et ne doit jamais entrer dans le
-        // précache du service worker ; le bundle principal dépasse
-        // légèrement la limite par défaut (2 Mo) et a juste besoin d'un peu
-        // de marge pour rester précaché.
-        // pwa-192.png/pwa-512.png sont déjà injectées séparément par
-        // vite-plugin-pwa (déclarées dans `manifest.icons` ci-dessous) : les
-        // exclure ici évite une entrée en double dans le précache (même
-        // fichier, même révision, ajouté deux fois pour rien).
-        globIgnores: ["**/vendor/opencv.js", "**/pwa-192.png", "**/pwa-512.png"],
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        // Par défaut, injectManifest ne précache que js/css/html : le logo
-        // (src/assets/aqua.png, ~1,5 Mo, référencé par Logo.jsx) n'était donc
-        // jamais mis en cache et disparaissait (icône cassée) une fois
-        // hors-ligne, alors que tout le reste de l'app shell restait servi.
-        globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
-      },
-      manifest: {
-        name: "Plongée Club",
-        short_name: "Plongée Club",
-        description: "Application de gestion de club de plongée",
-        lang: "fr",
-        start_url: "/",
-        display: "standalone",
-        background_color: "#ffffff",
-        theme_color: "#0ea5e9",
-        icons: [
-          { src: "/pwa-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/pwa-512.png", sizes: "512x512", type: "image/png" },
-          { src: "/pwa-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-        ],
-      },
-    }),
-  ],
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

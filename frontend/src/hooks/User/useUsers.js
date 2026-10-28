@@ -137,6 +137,21 @@ export const useUsers = () => {
     });
   };
 
+  // Édition admin nom/email/téléphone d'un autre compte (formulaires
+  // Modifier de Moniteur/Président/Trésorier)
+  const useUpdateInfo = () => {
+    return useMutation({
+      mutationFn: ({ id, data }) => userService.updateInfo(id, data),
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['users']);
+        toast.success(response.message || 'Informations mises à jour avec succès');
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Erreur lors de la mise à jour des informations');
+      },
+    });
+  };
+
   // Changer le rôle
   const useChangeRole = () => {
     return useMutation({
@@ -203,6 +218,7 @@ export const useUsers = () => {
     useResetPassword,
     useChangeNiveau,
     useUpdatePhoto,
+    useUpdateInfo,
     useChangeRole,
     useDisableAccount,
     useEnableAccount,

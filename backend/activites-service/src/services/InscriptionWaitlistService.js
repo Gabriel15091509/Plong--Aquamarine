@@ -2,6 +2,7 @@ const { sequelize } = require("../models");
 const SortieService = require("./SortieService");
 const identiteClient = require("../utils/serviceClients/identiteClient");
 const { sendWaitlistPromotedEmail } = require("../utils/email");
+const { sortiesSeChevauchent } = require("../utils/sortieOverlap");
 
 function formatSortieLabel(sortie) {
   const date = sortie?.date_heure
@@ -92,6 +93,45 @@ class InscriptionWaitlistService {
     );
   }
 
+  // Une inscription venant d'être confirmée engage l'adhérent sur ce
+  // créneau : ses AUTRES inscriptions encore non confirmées ("En attente" /
+  // "Liste d'attente") à une sortie qui chevauche ce créneau n'ont plus de
+  // sens (il ne peut pas être à deux endroits) et passent automatiquement en
+  // "Annulée". Les inscriptions confirmées qui chevauchent sont déjà refusées
+  // en amont (assertNoConfirmedOverlap). Best-effort : ne fait jamais
+  // échouer la confirmation qui l'a déclenchée. Renvoie les inscriptions
+  // annulées.
+  async cancelOverlappingOthers(num_adherent, sortieConfirmee, excludeInscriptionId = null) {
+    try {
+      const autres = await this.inscriptionRepository.findByAdherent(num_adherent);
+      const aAnnuler = autres.filter(
+        (i) =>
+          ["En attente", "Liste d'attente"].includes(i.statut) &&
+          i.id_inscription !== excludeInscriptionId &&
+          i.sortie &&
+          i.sortie.id_sortie !== sortieConfirmee.id_sortie &&
+          sortiesSeChevauchent(i.sortie, sortieConfirmee),
+      );
+      const sortiesAvecListeAttente = new Set();
+      for (const inscription of aAnnuler) {
+        if (inscription.statut === "Liste d'attente") {
+          sortiesAvecListeAttente.add(inscription.id_sortie);
+        }
+        inscription.statut = "Annulée";
+        inscription.rang_liste_attente = null;
+        inscription.reconfirmation_requise = false;
+        await inscription.save();
+      }
+      for (const id_sortie of sortiesAvecListeAttente) {
+        await this.normalizeWaitlistRanks(id_sortie);
+      }
+      return aAnnuler;
+    } catch (error) {
+      console.error("Erreur annulation des inscriptions qui se chevauchent:", error.message);
+      return [];
+    }
+  }
+
   async normalizeWaitlistRanks(id_sortie) {
     const waitlist = await this.getWaitlistBySortie(id_sortie);
     let rank = 1;
@@ -110,6 +150,7 @@ class InscriptionWaitlistService {
     // : une annulation qui libère la dernière place et une confirmation
     // manuelle concurrente pour cette même place ne doivent pas pouvoir
     // toutes les deux réussir.
+    let sortieConfirmee = null;
     const next = await sequelize.transaction(async (transaction) => {
       const { sortie, placesDisponibles } = await this.getSortieCapacityLocked(
         id_sortie,
@@ -137,11 +178,13 @@ class InscriptionWaitlistService {
       candidate.rang_liste_attente = null;
       candidate.date_confirmation = new Date();
       await candidate.save({ transaction });
+      sortieConfirmee = sortie;
       return candidate;
     });
 
     if (!next) return null;
     await this.normalizeWaitlistRanks(id_sortie);
+    await this.cancelOverlappingOthers(next.num_adherent, sortieConfirmee, next.id_inscription);
 
     try {
       const adherent = await identiteClient.getAdherentById(next.num_adherent, authHeader);

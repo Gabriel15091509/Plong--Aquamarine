@@ -1,5 +1,5 @@
 import api from '../api';
-import { downloadFile, fetchPdfBlobUrl } from '../../utils/downloadFile';
+import { fetchPdfBlobUrl } from '../../utils/downloadFile';
 
 class PlongeeService {
   async getAll(params = {}) {
@@ -17,20 +17,11 @@ class PlongeeService {
     return response.data;
   }
 
-  async downloadCarnet(numAdherent) {
-    return downloadFile(
-      `/plongees/adherent/${numAdherent}/carnet-pdf`,
-      `carnet-plongee-${numAdherent}.pdf`,
-    );
-  }
-
-  async downloadAttestationSuivi(numAdherent) {
-    return downloadFile(
-      `/plongees/adherent/${numAdherent}/attestation-pdf`,
-      `attestation-suivi-plongee-${numAdherent}.pdf`,
-    );
-  }
-
+  // Aperçu (PdfPreviewModal), jamais un téléchargement direct — c'est
+  // désormais le seul flux PDF de toute l'app (voir aussi
+  // adhesionService.previewAttestation / paiementService.previewRecu) : un
+  // aperçu affiche systématiquement son propre bouton "Télécharger", pas
+  // besoin d'une méthode de service à part pour ça.
   async previewCarnet(numAdherent) {
     return fetchPdfBlobUrl(
       `/plongees/adherent/${numAdherent}/carnet-pdf`,
@@ -52,6 +43,14 @@ class PlongeeService {
 
   async getStats() {
     const response = await api.get('/plongees/stats');
+    return response.data;
+  }
+
+  // COUNT léger pour le badge Sidebar — jamais remplacer par getAll()
+  // filtré côté client (voir Sidebar.jsx et inscriptionService.
+  // getPendingCount, même motif).
+  async getAValiderCount() {
+    const response = await api.get('/plongees/a-valider-count');
     return response.data;
   }
 

@@ -106,7 +106,7 @@ export const usePaiements = () => {
 
   const useProcess = () => {
     return useMutation({
-      mutationFn: (id) => paiementService.process(id),
+      mutationFn: ({ id, ajustements }) => paiementService.process(id, ajustements),
       onSuccess: (response) => {
         queryClient.invalidateQueries(["paiements"]);
         toast.success(response.message || "Paiement validé avec succès");
