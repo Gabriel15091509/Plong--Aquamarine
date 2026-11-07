@@ -8,7 +8,7 @@ const tresorierController = new TresorierController();
 
 router.get('/', tresorierController.getAll.bind(tresorierController));
 router.get('/annee/:annee', tresorierController.getByAnnee.bind(tresorierController));
-router.get('/user/:user_id', tresorierController.getByUserId.bind(tresorierController));
+router.get('/user/:user_id', AuthMiddleware.authenticate, require('../../../shared/apiAccess').selfOrStaff, tresorierController.getByUserId.bind(tresorierController));
 router.get('/:id', tresorierController.getById.bind(tresorierController));
 
 router.post('/',

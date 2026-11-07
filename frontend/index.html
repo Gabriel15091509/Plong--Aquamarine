@@ -15,23 +15,7 @@
       fond clair (bg-gray-50, cf. src/styles/index.css) avant de basculer.
       Doit rester strictement synchronisé avec la logique de ThemeContext.jsx.
     -->
-    <script>
-      (function () {
-        try {
-          var theme = localStorage.getItem("theme");
-          if (!theme) {
-            theme =
-              window.matchMedia &&
-              window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light";
-          }
-          if (theme === "dark") {
-            document.documentElement.classList.add("dark");
-          }
-        } catch (e) {}
-      })();
-    </script>
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>

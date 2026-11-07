@@ -106,9 +106,8 @@ const ChangePasswordPage = () => {
       {
         onSuccess: (response) => {
           if (!response.success) return;
-          const { token, user: userData } = response.data;
-          // ✅ updateUser met à jour token + user dans AuthContext et localStorage
-          updateUser({ ...userData, token });
+          const { user: userData } = response.data;
+          updateUser(userData);
           navigate("/dashboard");
         },
       },

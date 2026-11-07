@@ -9,7 +9,7 @@ const moniteurController = new MoniteurController();
 router.get('/', moniteurController.getAll.bind(moniteurController));
 router.get('/disponibles', moniteurController.getDisponibles.bind(moniteurController));
 router.get('/specialite/:specialite', moniteurController.getBySpecialite.bind(moniteurController));
-router.get('/user/:user_id', moniteurController.getByUserId.bind(moniteurController));
+router.get('/user/:user_id', AuthMiddleware.authenticate, require('../../../shared/apiAccess').selfOrStaff, moniteurController.getByUserId.bind(moniteurController));
 router.get('/:id', moniteurController.getById.bind(moniteurController));
 
 router.post('/',

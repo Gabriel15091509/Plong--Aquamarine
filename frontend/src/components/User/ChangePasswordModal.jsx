@@ -83,8 +83,8 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
       {
         onSuccess: (response) => {
           if (!response.success) return;
-          const { token, user: userData } = response.data;
-          updateUser({ ...userData, token });
+          const { user: userData } = response.data;
+          updateUser(userData);
           resetAndClose();
         },
       },

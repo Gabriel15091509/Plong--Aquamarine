@@ -44,3 +44,4 @@ async function getTresorierIdForUser(user) {
 }
 
 module.exports = { getAdherentById, getAdherentForUser, getTresorierIdForUser };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

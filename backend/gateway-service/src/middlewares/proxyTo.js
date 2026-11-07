@@ -36,6 +36,11 @@ function proxyTo(baseUrl) {
       const contentType = response.headers.get("content-type") || "application/json";
       res.status(response.status);
       res.set("Content-Type", contentType);
+      // Preserve each cookie separately (Expires attributes contain commas).
+      const cookies = response.headers.getSetCookie();
+      if (cookies.length) res.set("Set-Cookie", cookies);
+      const cacheControl = response.headers.get("cache-control");
+      if (cacheControl) res.set("Cache-Control", cacheControl);
       res.send(Buffer.from(await response.arrayBuffer()));
     } catch (error) {
       next(error);

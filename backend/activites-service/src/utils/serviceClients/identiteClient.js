@@ -112,3 +112,4 @@ module.exports = {
   getUserBasicById,
   incrementPlongeesCount,
 };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

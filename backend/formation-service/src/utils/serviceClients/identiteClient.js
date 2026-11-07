@@ -126,3 +126,4 @@ module.exports = {
   updateNiveau,
   syncStatutFormation,
 };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

@@ -34,3 +34,4 @@ async function getProfondeurMaxAdherent(num_adherent, authHeader) {
 }
 
 module.exports = { getSortieById, getProfondeurMaxAdherent };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
-import Header from './Header';
-import Sidebar from './Sidebar';
-import Footer from './Footer';
-import ChatAssistant from '../Assistant/ChatAssistant';
-import ErrorBoundary from '../Common/ErrorBoundary';
+import React, { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "react-router-dom";
+import Header from "./Header";
+import Sidebar from "./Sidebar";
+import Footer from "./Footer";
+import ChatAssistant from "../Assistant/ChatAssistant";
+import ErrorBoundary from "../Common/ErrorBoundary";
 
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -63,11 +63,14 @@ const Layout = ({ children }) => {
     .replace(/\/create$/, "")
     .replace(
       /^\/(adherents|moniteurs|presidents|tresoriers|materiels|attributions|reparations|formations|adhesions|certificats|paiements|sorties|inscriptions|plongees|incidents)\/(?!communication$|carte$)[^/]+$/,
-      "/$1"
+      "/$1",
     )
     .replace(/^\/(adherents|moniteurs|presidents|tresoriers)$/, "/membres")
     .replace(/^\/(materiels|attributions|reparations)$/, "/materiel-groupe")
-    .replace(/^\/(formations|specialites-formation|brevets)$/, "/formation-groupe")
+    .replace(
+      /^\/(formations|specialites-formation|brevets)$/,
+      "/formation-groupe",
+    )
     .replace(/^\/(adhesions|certificats)$/, "/dossier-groupe");
 
   // Aucune remise à zéro du scroll n'existait nulle part dans l'app :
@@ -161,8 +164,6 @@ const Layout = ({ children }) => {
 
         <Footer />
       </div>
-
-      <ChatAssistant />
     </div>
   );
 };

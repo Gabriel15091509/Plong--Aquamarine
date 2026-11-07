@@ -11,6 +11,9 @@
 // directement via le modèle Sequelize (num_adherent est une simple colonne
 // texte, sans FK vers identite-service) pour éviter toute dépendance aux
 // autres microservices sur ce chemin de test précis.
+// Keep this suite focused on the real activities database. Revocation through
+// Identity HTTP is tested independently with the real service middleware.
+jest.mock("../../../shared/sessionValidation", () => ({ validateRemoteSession: jest.fn().mockResolvedValue(true) }));
 const jwt = require("jsonwebtoken");
 const request = require("supertest");
 const { app } = require("../../src/app");

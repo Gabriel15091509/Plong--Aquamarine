@@ -17,3 +17,4 @@ async function getTrend() {
 }
 
 module.exports = { getTrend };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

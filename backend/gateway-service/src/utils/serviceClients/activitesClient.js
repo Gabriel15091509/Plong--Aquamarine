@@ -58,3 +58,4 @@ module.exports = {
   getTauxRemplissageSorties,
   getNbAdherentsInactifs,
 };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

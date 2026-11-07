@@ -1,4 +1,4 @@
-const jwt = require("jsonwebtoken");
+const { getSystemAuthHeader: makeServiceAuth } = require("../../../shared/serviceAuth");
 
 // Jeton signé pour les appels serveur-à-serveur émis par les jobs cron de ce
 // service (aucun utilisateur connecté n'est à l'origine de l'action). Le
@@ -7,12 +7,7 @@ const jwt = require("jsonwebtoken");
 // contrôles canManage*/authorize des routes internes appelées (ex: POST
 // /alertes de vie-associative-service).
 function getSystemAuthHeader() {
-  const token = jwt.sign(
-    { id: 0, email: "system@internal", role: "president", name: "Système" },
-    process.env.JWT_SECRET,
-    { expiresIn: "5m" },
-  );
-  return `Bearer ${token}`;
+  return makeServiceAuth();
 }
 
 module.exports = { getSystemAuthHeader };

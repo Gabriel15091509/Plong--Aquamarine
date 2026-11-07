@@ -1,15 +1,14 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const { authResponse, csrfFor, readCookie, SESSION_COOKIE } = require("../../../shared/browserSession");
 const { User } = require("../models");
-const { sendPasswordResetEmail } = require("../utils/email");
+const { sendPasswordResetEmail, sendOtpEmail } = require("../utils/email");
+const { Op } = require("sequelize");
+const SessionService = require("../services/SessionService");
+const { allowedOrigins } = require("../../../shared/securityPolicy");
 const { getPasswordPolicyErrors } = require("../utils/passwordPolicy");
-// OTP président désactivé (2026-08-22, voir plus bas dans login()) : ces
-// deux imports/constantes ne servent plus qu'au bloc commenté, laissés en
-// commentaire eux aussi pour repartir tel quel à la réactivation.
-// const { sendOtpEmail } = require("../utils/email");
-
-// const OTP_VALIDITY_MINUTES = 5;
+const OTP_VALIDITY_MINUTES = 5;
 const OTP_MAX_ATTEMPTS = 5;
 const RESET_TOKEN_VALIDITY_MINUTES = 60;
 
@@ -65,6 +64,7 @@ const buildAuthResponse = (user) => ({
       role: user.role,
       name: user.name,
       must_change_password: user.must_change_password,
+      jti: crypto.randomBytes(16).toString("hex"),
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE || "7d" },
@@ -83,7 +83,24 @@ const buildAuthResponse = (user) => ({
   },
 });
 
+async function issueAuthResponse(req, res, user) {
+  const data = buildAuthResponse(user);
+  await SessionService.register(data.token, user);
+  return authResponse(req, res, data);
+}
+
 class AuthController {
+  async session(req, res) {
+    const user = await User.findByPk(req.user.id);
+    if (!user || !user.active) {
+      return res.status(401).json({ success: false, message: "Session expirée" });
+    }
+    const { user: userData } = buildAuthResponse(user);
+    const token = readCookie(req, SESSION_COOKIE);
+    res.set("Cache-Control", "no-store");
+    return res.json({ success: true, data: { user: userData, ...(token ? { csrfToken: csrfFor(token) } : {}) } });
+  }
+
   async login(req, res) {
     try {
       const { email, password } = req.body;
@@ -110,36 +127,20 @@ class AuthController {
           .status(401)
           .json({ success: false, message: "Email ou mot de passe incorrect" });
 
-      // Authentification renforcée (exigence 4.4) : le président doit en
-      // plus saisir un code à usage unique envoyé par email avant que le
-      // JWT ne soit délivré.
-      // Désactivée (2026-08-22, demande explicite) : bloc entier mis en
-      // commentaire plutôt que supprimé, pour pouvoir la réactiver
-      // simplement en décommentant. Le kill-switch PRESIDENT_2FA_DISABLED
-      // (env var, voir k8s/base/plongee-config.env) existait déjà mais
-      // dépend d'une variable déployée côté infra ; ici la coupure est
-      // dans le code lui-même, indépendante de toute config d'environnement.
-      // const president2faDisabled = process.env.PRESIDENT_2FA_DISABLED === "true";
-      // if (user.role === "president" && !president2faDisabled) {
-      //   const code = Math.floor(100000 + Math.random() * 900000).toString();
-      //   const salt = await bcrypt.genSalt(10);
-      //   user.otp_code_hash = await bcrypt.hash(code, salt);
-      //   user.otp_expires_at = new Date(
-      //     Date.now() + OTP_VALIDITY_MINUTES * 60 * 1000,
-      //   );
-      //   user.otp_attempts = 0;
-      //   await user.save();
-      //
-      //   await sendOtpEmail({ to: user.email, name: user.name, code });
-      //
-      //   return res.json({
-      //     success: true,
-      //     data: { otpRequired: true, email: user.email },
-      //   });
-      // }
+      if (user.role === "president") {
+        const code = crypto.randomInt(100000, 1000000).toString();
+        const otpHash = await bcrypt.hash(code, 10);
+        await user.update({ otp_code_hash: otpHash, otp_expires_at: new Date(Date.now() + OTP_VALIDITY_MINUTES * 60 * 1000), otp_attempts: 0 });
+        try { await sendOtpEmail({ to: user.email, name: user.name, code }); }
+        catch (error) {
+          await User.update({ otp_code_hash: null, otp_expires_at: null }, { where: { id: user.id, otp_code_hash: otpHash } });
+          throw error;
+        }
+        return res.json({ success: true, data: { otpRequired: true, email: user.email } });
+      }
 
       await user.update({ last_login: new Date() });
-      res.json({ success: true, data: buildAuthResponse(user) });
+      res.json({ success: true, data: await issueAuthResponse(req, res, user) });
     } catch (error) {
       console.error("Erreur lors de la connexion :", error);
       res
@@ -152,14 +153,14 @@ class AuthController {
     try {
       const { email, code } = req.body;
 
-      if (!email || !code) {
+      if (!email || typeof code !== "string" || !/^\d{6}$/.test(code)) {
         return res
           .status(400)
           .json({ success: false, message: "Email et code requis" });
       }
 
       const user = await User.findOne({ where: { email, role: "president" } });
-      if (!user || !user.otp_code_hash || !user.otp_expires_at) {
+      if (!user || !user.active || !user.otp_code_hash || !user.otp_expires_at) {
         return res
           .status(401)
           .json({ success: false, message: "Aucune vérification en attente" });
@@ -188,20 +189,18 @@ class AuthController {
 
       const isValid = await bcrypt.compare(code, user.otp_code_hash);
       if (!isValid) {
-        user.otp_attempts += 1;
-        await user.save();
+        await User.increment("otp_attempts", { where: { id: user.id, otp_code_hash: user.otp_code_hash, otp_attempts: { [Op.lt]: OTP_MAX_ATTEMPTS } } });
         return res
           .status(401)
           .json({ success: false, message: "Code incorrect" });
       }
 
-      user.otp_code_hash = null;
-      user.otp_expires_at = null;
-      user.otp_attempts = 0;
-      user.last_login = new Date();
-      await user.save();
-
-      res.json({ success: true, data: buildAuthResponse(user) });
+      // Atomic consumption prevents simultaneous requests from reusing a code.
+      const [consumed] = await User.update({ otp_code_hash: null, otp_expires_at: null, otp_attempts: 0, last_login: new Date() }, {
+        where: { id: user.id, active: true, otp_code_hash: user.otp_code_hash, otp_expires_at: { [Op.gt]: new Date() }, otp_attempts: { [Op.lt]: OTP_MAX_ATTEMPTS } },
+      });
+      if (consumed !== 1) return res.status(401).json({ success: false, message: "Code déjà utilisé ou expiré" });
+      res.json({ success: true, data: await issueAuthResponse(req, res, user) });
     } catch (error) {
       console.error("Erreur lors de la vérification du code OTP :", error);
       res
@@ -245,7 +244,8 @@ class AuthController {
       );
       await user.save();
 
-      const base = resetUrlBase || "http://localhost:3000";
+      const base = resetUrlBase || process.env.FRONTEND_URL?.trim() || "https://localhost:3000";
+      if (!allowedOrigins().has(new URL(base).origin)) return res.status(400).json({ success: false, message: "Adresse de retour non autorisée" });
       const resetUrl = `${base}/reset-password?token=${token}`;
 
       await sendPasswordResetEmail({
@@ -308,12 +308,16 @@ class AuthController {
       user.must_change_password = false;
       user.reset_token_hash = null;
       user.reset_token_expires_at = null;
+      user.otp_code_hash = null;
+      user.otp_expires_at = null;
       user.last_login = new Date();
       await user.save();
 
+      await SessionService.revokeUser(user.id);
+      if (user.role === "president") return res.json({ success: true, data: { requireLogin: true }, message: "Mot de passe réinitialisé. Reconnectez-vous avec le code email." });
       res.json({
         success: true,
-        data: buildAuthResponse(user),
+        data: await issueAuthResponse(req, res, user),
         message: "Mot de passe réinitialisé avec succès",
       });
     } catch (error) {
@@ -369,6 +373,7 @@ class AuthController {
           role: user.role,
           name: user.name,
           must_change_password: false,
+          jti: crypto.randomBytes(16).toString("hex"),
         },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRE || "7d" },
@@ -383,9 +388,11 @@ class AuthController {
         permissions: this.getUserPermissions(user.role),
       };
 
+      await SessionService.revokeUser(user.id);
+      await SessionService.register(token, user);
       res.json({
         success: true,
-        data: { token, user: userData },
+        data: authResponse(req, res, { token, user: userData }),
         message: "Mot de passe changé avec succès",
       });
     } catch (error) {

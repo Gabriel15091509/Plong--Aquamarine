@@ -1,7 +1,9 @@
 const jwt = require("jsonwebtoken");
+const { validateRemoteSession: validateSession } = require("../../../shared/sessionValidation");
 
 class AuthMiddleware {
-  static authenticate(req, res, next) {
+  static async authenticate(req, res, next) {
+    if (req.user) return next();
     try {
       const authHeader = req.headers.authorization;
 
@@ -21,11 +23,13 @@ class AuthMiddleware {
         });
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+      if (!(await validateSession(decoded, token))) return res.status(401).json({ success: false, message: "Session révoquée ou expirée" });
 
       // Ajouter l'utilisateur avec la méthode hasPermission
       req.user = {
         id: decoded.id,
+        must_change_password: Boolean(decoded.must_change_password),
         email: decoded.email,
         role: decoded.role,
         name: decoded.name,
@@ -79,6 +83,7 @@ class AuthMiddleware {
 
       next();
     } catch (error) {
+      if (error.status === 503) return res.status(503).json({ success: false, message: "Vérification de session temporairement indisponible" });
       if (error.name === "JsonWebTokenError") {
         return res.status(401).json({
           success: false,

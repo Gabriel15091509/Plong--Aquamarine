@@ -22,3 +22,4 @@ async function enregistrerPaiement(id_inscription, payload, authHeader) {
 }
 
 module.exports = { enregistrerPaiement };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

@@ -69,3 +69,4 @@ module.exports = {
   getNumAdherentsWithExpiringCertificates,
   creerLicenceAutomatique,
 };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

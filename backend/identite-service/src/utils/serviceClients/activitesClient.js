@@ -33,3 +33,4 @@ async function getCarnetStats(num_adherent, authHeader) {
 }
 
 module.exports = { getCarnetStats };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

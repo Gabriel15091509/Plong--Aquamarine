@@ -1,6 +1,9 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import mkcert from "vite-plugin-mkcert";
 import path from "path";
+import { createRequire } from "node:module";
+const securityPolicy = createRequire(import.meta.url)("../backend/shared/securityPolicy.js");
 
 // Le service worker (Workbox, via vite-plugin-pwa) a été retiré : sa mise en
 // cache HTTP (stratégie StaleWhileRevalidate) était pensée pour accélérer
@@ -9,20 +12,36 @@ import path from "path";
 // des installations existantes). Le site fonctionne désormais en ligne
 // classique, sans aucune couche de cache/rejeu applicative entre le
 // navigateur et l'API.
-export default defineConfig({
+export default defineConfig(({ command, isPreview, mode }) => ({
   test: {
     environment: "jsdom",
     setupFiles: "./src/test/setup.js",
     globals: true,
     css: false,
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: "aquanature-csp",
+      transformIndexHtml() {
+        const development = command === "serve" && !isPreview;
+        const content = securityPolicy.securityHeaders(development)["Content-Security-Policy"]
+          .split("; ").filter((directive) => !directive.startsWith("frame-ancestors ")).join("; ");
+        return [{ tag: "meta", attrs: { "http-equiv": "Content-Security-Policy", content }, injectTo: "head-prepend" }];
+      },
+    },
+    // HTTPS en développement ; les tests et le preview CI restent indépendants
+    // de l'installation des certificats locaux.
+    command === "serve" && !isPreview && mode === "development" && mkcert(),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
   server: {
+    headers: securityPolicy.securityHeaders(true),
+    https: command === "serve" && !isPreview && mode === "development",
     // host: true (= --host) : écoute sur 0.0.0.0 au lieu du seul localhost,
     // pour tester depuis un smartphone sur le même Wi-Fi sans repasser
     // `npm run dev -- --host` à chaque lancement (le `--host` seul, sans le
@@ -55,6 +74,9 @@ export default defineConfig({
   // appels /api de l'app tournée via `preview` retombent sur le port 3000
   // lui-même (404), le proxy ne s'appliquant qu'à `vite dev`.
   preview: {
+    // The local build preview/CI must not inherit development's TLS flag.
+    https: false,
+    headers: securityPolicy.securityHeaders(false),
     host: true,
     port: 3000,
     strictPort: true,
@@ -73,4 +95,4 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: true,
   },
-});
+}));

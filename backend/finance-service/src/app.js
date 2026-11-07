@@ -59,7 +59,7 @@ app.use((req, res, next) => {
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: require("../../shared/securityPolicy").helmetOptions.contentSecurityPolicy,
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: false,
   }),
@@ -67,11 +67,13 @@ app.use(
 
 app.use(
   cors({
-    origin: "*",
+    origin: require("../../shared/securityPolicy").corsOptions.origin,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
       "Authorization",
+      "X-Auth-Transport",
+      "X-CSRF-Token",
       "X-Requested-With",
       "Accept",
       "Origin",
@@ -117,6 +119,8 @@ app.get("/metrics", async (req, res) => {
   res.end(await metricsRegister.metrics());
 });
 
+app.use("/api", require("../../shared/browserSession").browserSession);
+app.use("/api", require("../../shared/apiAccess").apiAccess(require("./middlewares/authMiddleware").authenticate));
 app.use("/api", routes);
 
 app.use(ErrorHandler.notFound);

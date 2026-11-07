@@ -74,3 +74,4 @@ module.exports = {
   getTrend,
   getNbNeedingMaintenance,
 };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

@@ -29,21 +29,19 @@ export const AuthProvider = ({ children }) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
-
-    if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        setPermissions(getUserPermissions(parsedUser.role));
-        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      } catch {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      }
-    }
-    setLoading(false);
+    let cancelled = false;
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    delete api.defaults.headers.common["Authorization"];
+    api.get("/auth/session").then(({ data }) => {
+      if (cancelled) return;
+      setUser(data.data.user);
+      setPermissions(getUserPermissions(data.data.user.role));
+      localStorage.setItem("user", JSON.stringify(data.data.user));
+    }).catch(() => {
+      if (!cancelled) { setUser(null); setPermissions([]); }
+    }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   const getUserPermissions = (role) => {
@@ -67,18 +65,15 @@ export const AuthProvider = ({ children }) => {
     return permissionsMap[role] || [];
   };
 
-  // Finalise la session une fois le JWT obtenu (login direct, ou après
-  // vérification du code OTP pour le président).
-  const completeSession = (token, user) => {
+  // Le serveur a posé le cookie HttpOnly ; seul le profil est conservé ici.
+  const completeSession = (user) => {
     // Un compte peut se reconnecter directement après un autre sans passer
     // par logout() (session expirée, onglet resté ouvert) : vider le cache
     // React Query ici aussi évite d'afficher les données du rôle précédent
     // tant qu'elles n'ont pas expiré (staleTime).
     queryClient.clear();
 
-    localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
-    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
     setUser(user);
     setPermissions(getUserPermissions(user.role));
@@ -104,8 +99,8 @@ export const AuthProvider = ({ children }) => {
         return { otpRequired: true, email: response.data.data.email };
       }
 
-      const { token, user } = response.data.data;
-      return completeSession(token, user);
+      const { user } = response.data.data;
+      return completeSession(user);
     } catch (error) {
       const message = error.response?.data?.message || "Erreur de connexion";
       toast.error(message);
@@ -118,8 +113,8 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post("/auth/verify-otp", { email, code });
       if (!response.data.success) throw new Error("Code invalide");
 
-      const { token, user } = response.data.data;
-      return completeSession(token, user);
+      const { user } = response.data.data;
+      return completeSession(user);
     } catch (error) {
       const message = error.response?.data?.message || "Code invalide";
       toast.error(message);
@@ -151,9 +146,13 @@ export const AuthProvider = ({ children }) => {
         newPassword,
       });
       if (!response.data.success) throw new Error("Réinitialisation impossible");
+      if (response.data.data.requireLogin) {
+        toast.success("Mot de passe réinitialisé. Reconnectez-vous pour vérifier le code email.");
+        return { requireLogin: true };
+      }
 
-      const { token: authToken, user } = response.data.data;
-      return completeSession(authToken, user);
+      const { user } = response.data.data;
+      return completeSession(user);
     } catch (error) {
       const message =
         error.response?.data?.message || "Lien de réinitialisation invalide ou expiré";
@@ -162,7 +161,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      toast.error("Déconnexion impossible. Vérifiez votre connexion puis réessayez.");
+      return false;
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     delete api.defaults.headers.common["Authorization"];
@@ -174,6 +179,7 @@ export const AuthProvider = ({ children }) => {
     // de requête (staleTime 5 min dans App.jsx).
     queryClient.clear();
     toast.success("Déconnexion réussie");
+    return true;
   };
 
   // Rechargement complet (pas navigate()) : ce contexte est monté au-dessus
@@ -185,8 +191,8 @@ export const AuthProvider = ({ children }) => {
 
     let timeoutId;
 
-    const handleInactivityLogout = () => {
-      logout();
+    const handleInactivityLogout = async () => {
+      if (!(await logout())) return;
       toast("Session expirée après 15 minutes d'inactivité", { icon: "⏱️" });
       window.location.href = "/login";
     };
@@ -210,16 +216,13 @@ export const AuthProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
-  // Ajout : pour mettre à jour user + token après changement de mot de passe
+  // Le cookie est renouvelé par le serveur au changement de mot de passe.
   const updateUser = (newData) => {
-    const updatedUser = { ...user, ...newData };
+    const { token: ignoredToken, ...profile } = newData;
+    const updatedUser = { ...user, ...profile };
     setUser(updatedUser);
     localStorage.setItem("user", JSON.stringify(updatedUser));
     if (newData.permissions) setPermissions(newData.permissions);
-    if (newData.token) {
-      localStorage.setItem("token", newData.token);
-      api.defaults.headers.common["Authorization"] = `Bearer ${newData.token}`;
-    }
   };
 
   const hasPermission = (permission) => {

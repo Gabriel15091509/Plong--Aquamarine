@@ -86,3 +86,4 @@ module.exports = {
   getNumAdherentsWithExpiringCertificates,
   getTauxRenouvellement,
 };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

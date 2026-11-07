@@ -37,3 +37,4 @@ async function getTrend() {
 }
 
 module.exports = { enregistrerPaiement, getTrend };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

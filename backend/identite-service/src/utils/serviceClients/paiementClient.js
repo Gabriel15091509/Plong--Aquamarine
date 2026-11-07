@@ -16,3 +16,4 @@ async function getByAdherent(num_adherent, authHeader) {
 }
 
 module.exports = { getByAdherent };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

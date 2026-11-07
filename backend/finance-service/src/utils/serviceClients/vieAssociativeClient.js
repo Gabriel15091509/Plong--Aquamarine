@@ -23,3 +23,4 @@ async function createAlerte(num_adherent, type) {
 }
 
 module.exports = { createAlerte };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

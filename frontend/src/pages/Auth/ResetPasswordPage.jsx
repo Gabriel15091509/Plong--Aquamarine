@@ -70,8 +70,8 @@ const ResetPasswordPage = () => {
     if (!validate()) return;
     setLoading(true);
     try {
-      await resetPassword(token, formData.newPassword);
-      navigate("/dashboard");
+      const result = await resetPassword(token, formData.newPassword);
+      navigate(result?.requireLogin ? "/login" : "/dashboard");
     } catch {
       // toast.error déjà géré dans AuthContext.resetPassword()
     } finally {

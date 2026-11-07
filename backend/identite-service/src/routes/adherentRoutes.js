@@ -3,6 +3,8 @@ const router = express.Router();
 const AdherentController = require("../controllers/AdherentController");
 const AuthMiddleware = require("../middlewares/authMiddleware");
 const { ROLES } = require("../utils/roleScope");
+const { requireInternal } = require("../../../shared/serviceAuth");
+const { selfOrStaff } = require("../../../shared/apiAccess");
 
 const adherentController = new AdherentController();
 
@@ -48,6 +50,8 @@ router.get(
 // finance-service/vie-associative-service (identiteClient).
 router.get(
   "/adherents/user/:user_id",
+  AuthMiddleware.authenticate,
+  selfOrStaff,
   adherentController.getByUserId.bind(adherentController),
 );
 // Publique : utilisé par DashboardService (monolithe) à la place d'une
@@ -94,12 +98,14 @@ router.put(
 router.patch(
   "/adherents/:id/increment-plongees",
   AuthMiddleware.authenticate,
+  requireInternal,
   adherentController.incrementPlongees.bind(adherentController),
 );
 
 router.patch(
   "/adherents/:id/niveau",
   AuthMiddleware.authenticate,
+  requireInternal,
   adherentController.updateNiveau.bind(adherentController),
 );
 
@@ -108,6 +114,7 @@ router.patch(
 router.patch(
   "/adherents/:id/statut-formation",
   AuthMiddleware.authenticate,
+  requireInternal,
   adherentController.syncStatutFormation.bind(adherentController),
 );
 

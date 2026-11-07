@@ -103,7 +103,7 @@ class UserService extends BaseService {
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
     let password = "";
     for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+      password += chars.charAt(require("crypto").randomInt(chars.length));
     }
     return password;
   }
@@ -185,6 +185,7 @@ class UserService extends BaseService {
     }
     user.role = role;
     await user.save();
+    await require("./SessionService").revokeUser(user.id);
     return user;
   }
 
@@ -208,6 +209,7 @@ class UserService extends BaseService {
     }
     user.active = false;
     await user.save();
+    await require("./SessionService").revokeUser(user.id);
     return user;
   }
 

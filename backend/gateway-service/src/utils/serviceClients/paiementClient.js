@@ -71,3 +71,4 @@ async function getTrend() {
 }
 
 module.exports = { createLinkedPayment, marquerRembourse, getByAdherent, getTrend };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

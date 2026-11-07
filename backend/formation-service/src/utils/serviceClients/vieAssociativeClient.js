@@ -19,3 +19,4 @@ async function checkDossierValidity(num_adherent, authHeader) {
 }
 
 module.exports = { checkDossierValidity };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

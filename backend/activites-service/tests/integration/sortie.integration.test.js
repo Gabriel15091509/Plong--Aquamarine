@@ -8,6 +8,10 @@
 // (`afterAll`), sans jamais supposer un volume de données préexistant — ce
 // fichier doit passer aussi bien sur la base de démo locale (des centaines
 // de sorties déjà seedées) que sur une base CI fraîchement créée et vide.
+// This suite keeps the real activities database and JWT verification. The
+// separate Identity HTTP boundary is exercised with all six real middleware
+// implementations in identite-service/tests/browserSession.test.js.
+jest.mock("../../../shared/sessionValidation", () => ({ validateRemoteSession: jest.fn().mockResolvedValue(true) }));
 const jwt = require("jsonwebtoken");
 const request = require("supertest");
 const { app } = require("../../src/app");

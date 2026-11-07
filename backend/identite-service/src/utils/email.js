@@ -26,7 +26,15 @@ const createTransporter = () => {
 };
 
 const sendEmail = async (params = {}) => {
-  const { to, subject, html, text, from } = params;
+  const { to, subject, html, text, from, requireDelivery = false } = params;
+
+  // Security emails must be delivered synchronously, never simulated or cached.
+  if (requireDelivery) {
+    if (!to || !subject || !html) throw new Error("Email de sécurité incomplet");
+    const transporter = createTransporter();
+    if (!transporter) throw new Error("SMTP requis pour les emails de sécurité");
+    return transporter.sendMail({ from: from || process.env.EMAIL_FROM || process.env.EMAIL_USER, to, subject, html, text });
+  }
 
   const cacheKey = `${to}-${subject}`;
   if (emailCache.has(cacheKey)) {
@@ -320,6 +328,7 @@ const sendOtpEmail = async ({ to, name, code }) => {
   return sendEmail({
     to,
     subject: `Code de connexion — ${now}`,
+    requireDelivery: true,
     html: htmlContent,
     text: `Bonjour ${name},\n\nVotre code de connexion : ${code}\nValable 5 minutes.\n\nSi vous n'êtes pas à l'origine de cette connexion, changez votre mot de passe immédiatement.`,
   });
@@ -382,6 +391,7 @@ const sendPasswordResetEmail = async ({ to, name, resetUrl, validityMinutes = 60
   return sendEmail({
     to,
     subject: "Réinitialisation de votre mot de passe",
+    requireDelivery: true,
     html: htmlContent,
     text: `Bonjour ${name},\n\nPour choisir un nouveau mot de passe, ouvrez ce lien : ${resetUrl}\nValable ${validityMinutes} minutes.\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe actuel reste inchangé.`,
   });

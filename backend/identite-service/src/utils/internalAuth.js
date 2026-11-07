@@ -1,4 +1,4 @@
-const jwt = require("jsonwebtoken");
+const { getSystemAuthHeader: makeServiceAuth } = require("../../../shared/serviceAuth");
 
 // Jeton signé pour les appels serveur-à-serveur émis par ce service sans
 // utilisateur connecté à l'origine (ex: AdherentService.updateNiveau créant
@@ -11,12 +11,7 @@ const jwt = require("jsonwebtoken");
 // service (src/utils/internalAuth.js) — dupliqué plutôt que partagé, ces
 // services n'ayant pas de package commun.
 function getSystemAuthHeader() {
-  const token = jwt.sign(
-    { id: 0, email: "system@internal", role: "president", name: "Système" },
-    process.env.JWT_SECRET,
-    { expiresIn: "5m" },
-  );
-  return `Bearer ${token}`;
+  return makeServiceAuth();
 }
 
 module.exports = { getSystemAuthHeader };

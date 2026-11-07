@@ -15,7 +15,7 @@ const RETENTION_AUTOMATIQUES = 14;
 // soi-même) et "public" (jamais utilisé par un service de ce dépôt, tous
 // définissent leur propre schéma nommé — voir DB_SCHEMA dans chaque
 // config/database.js).
-const SCHEMAS_EXCLUS = ["information_schema", "backup", "public"];
+const SCHEMAS_EXCLUS = ["information_schema", "backup", "public", "security"];
 
 // Sauvegarde/restauration "logique" (au niveau des lignes, via SQL, pas un
 // export pg_dump binaire) de TOUTE la base partagée — un seul rôle

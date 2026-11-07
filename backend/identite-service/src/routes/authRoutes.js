@@ -5,6 +5,33 @@ const AuthController = require('../controllers/AuthController');
 const AuthMiddleware = require('../middlewares/authMiddleware');
 
 const authController = new AuthController();
+const { bootstrapCsrf, clearSession } = require('../../../shared/browserSession');
+const { requireInternal } = require('../../../shared/serviceAuth');
+const SessionService = require('../services/SessionService');
+const jwt = require('jsonwebtoken');
+
+router.post('/introspect', requireInternal, async (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    let decoded;
+    try { decoded = jwt.verify(req.body.token, process.env.JWT_SECRET, { algorithms: ['HS256'] }); }
+    catch { return res.json({ active: false }); }
+    return res.json({ active: await SessionService.validate(decoded, req.body.token) });
+  } catch (error) { next(error); }
+});
+
+router.get('/csrf', bootstrapCsrf);
+router.get('/session', AuthMiddleware.authenticate, (req, res, next) => {
+  Promise.resolve(authController.session(req, res)).catch(next);
+});
+router.post('/logout', async (req, res, next) => {
+  try {
+    const { readCookie, SESSION_COOKIE } = require('../../../shared/browserSession');
+    const token = readCookie(req, SESSION_COOKIE) || req.headers.authorization?.split(' ')[1];
+    await SessionService.revoke(token);
+    return clearSession(req, res);
+  } catch (error) { next(error); }
+});
 
 // Limiteur dédié, plus strict que le limiteur global "/api" (relevé à
 // 1000/15min pour l'usage normal de la SPA) : le login/OTP reste la cible

@@ -1,7 +1,9 @@
 const jwt = require("jsonwebtoken");
+const { validate: validateSession } = require("../services/SessionService");
 
 class AuthMiddleware {
-  static authenticate(req, res, next) {
+  static async authenticate(req, res, next) {
+    if (req.user) return next();
     try {
       const authHeader = req.headers.authorization;
 
@@ -21,10 +23,14 @@ class AuthMiddleware {
         });
       }
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+      if (!(await validateSession(decoded, token))) {
+        return res.status(401).json({ success: false, message: "Session révoquée ou expirée, reconnectez-vous" });
+      }
 
       req.user = {
         id: decoded.id,
+        must_change_password: Boolean(decoded.must_change_password),
         email: decoded.email,
         role: decoded.role,
         name: decoded.name,

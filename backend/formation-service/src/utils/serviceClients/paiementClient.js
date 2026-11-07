@@ -21,3 +21,4 @@ async function createLinkedPayment(payload, authHeader) {
 }
 
 module.exports = { createLinkedPayment };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

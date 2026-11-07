@@ -22,3 +22,4 @@ async function marquerSeanceRealisee(id_seance, authHeader) {
 }
 
 module.exports = { marquerSeanceRealisee };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

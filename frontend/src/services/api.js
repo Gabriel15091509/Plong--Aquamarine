@@ -9,8 +9,10 @@ const API_BASE_URL = "/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
+    "X-Auth-Transport": "cookie",
   },
   timeout: 30000,
   // adapter: "fetch" a été retiré. Il avait été introduit pour un problème
@@ -35,10 +37,8 @@ let socket = null;
 export const connectWebSocket = () => {
   if (socket) return socket;
 
-  const token = localStorage.getItem("token");
-  if (!token) return null;
-
-  socket = new WebSocket(`ws://${window.location.host}?token=${token}`);
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  socket = new WebSocket(`${protocol}//${window.location.host}`);
 
   socket.onopen = () => {
     console.log("Notifications temps réel : connexion WebSocket établie.");
@@ -62,12 +62,27 @@ export const disconnectWebSocket = () => {
   }
 };
 
-// Intercepteur pour ajouter le token
+// Only the CSRF proof is readable by JavaScript; the session stays HttpOnly.
+let csrfToken = null;
+let csrfRequest = null;
+async function getCsrfToken() {
+  if (csrfToken) return csrfToken;
+  if (!csrfRequest) {
+    csrfRequest = axios.get(`${API_BASE_URL}/auth/csrf`, {
+      withCredentials: true,
+      headers: { "X-Auth-Transport": "cookie" },
+    }).then((response) => {
+      csrfToken = response.data.data.csrfToken;
+      return csrfToken;
+    }).finally(() => { csrfRequest = null; });
+  }
+  return csrfRequest;
+}
+
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    if (["post", "put", "patch", "delete"].includes(config.method?.toLowerCase())) {
+      config.headers["X-CSRF-Token"] = await getCsrfToken();
     }
     return config;
   },
@@ -76,8 +91,22 @@ api.interceptors.request.use(
 
 // Intercepteur pour gérer les erreurs 401
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response) => {
+    if (response.data?.data?.csrfToken) csrfToken = response.data.data.csrfToken;
+    if (response.config?.url === "/auth/logout") {
+      csrfToken = null;
+      disconnectWebSocket();
+    }
+    return response;
+  },
+  async (error) => {
+    // A second tab may have rotated the session. Retry only a CSRF rejection,
+    // which is emitted before the controller performs any write.
+    if (error.response?.status === 403 && error.response.data?.code === "CSRF_INVALID" && !error.config?._csrfRetried) {
+      csrfToken = null;
+      error.config._csrfRetried = true;
+      return api.request(error.config);
+    }
     // Un 401 sur /auth/login ou /auth/verify-otp est une réponse
     // normale du formulaire (email/mot de passe incorrect, code OTP
     // invalide), pas une session expirée — le traiter comme les autres
@@ -85,7 +114,7 @@ api.interceptors.response.use(
     // page de connexion par-dessus elle-même, effaçant le toast
     // d'erreur avant que l'utilisateur ait pu le lire. Seul un 401 sur
     // une route déjà authentifiée doit purger la session.
-    const isAuthAttempt = ["/auth/login", "/auth/verify-otp"].some((path) =>
+    const isAuthAttempt = ["/auth/login", "/auth/verify-otp", "/auth/session"].some((path) =>
       error.config?.url?.startsWith(path),
     );
     if (error.response?.status === 401 && !isAuthAttempt) {

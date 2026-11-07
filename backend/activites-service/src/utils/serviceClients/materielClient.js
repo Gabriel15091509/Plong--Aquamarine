@@ -56,3 +56,4 @@ async function createReparation(payload, authHeader) {
 }
 
 module.exports = { checkAvailability, getByNumInventaire, createReparation, updateLocalisation };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

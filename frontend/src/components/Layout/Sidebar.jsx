@@ -138,9 +138,8 @@ const Sidebar = ({ isOpen, setIsOpen, mobileOpen, setMobileOpen }) => {
   const { theme } = useTheme();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
+  const handleLogout = async () => {
+    if (await logout()) navigate("/login");
   };
 
   const canSeeSorties = hasRole(["president", "moniteur", "adherent"]);

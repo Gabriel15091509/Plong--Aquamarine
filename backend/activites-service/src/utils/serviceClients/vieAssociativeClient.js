@@ -66,3 +66,4 @@ module.exports = {
   checkCertificateStatus,
   createAlerte,
 };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");

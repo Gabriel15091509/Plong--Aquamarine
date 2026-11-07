@@ -38,3 +38,4 @@ async function marquerRembourse(type_paiement, reference_id, authHeader) {
 }
 
 module.exports = { createLinkedPayment, marquerRembourse };
+const { serviceFetch: fetch } = require("../../../../shared/serviceAuth");
